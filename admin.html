@@ -973,7 +973,7 @@ const SHEET_URL       = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz
 const SHEET_FOTOS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`;
 const DRIVE_FOLDER_ID = ''; // Se completa automáticamente al conectar Drive
 const CLIENT_ID = '733837099876-opi6t9ohpru1c7su1hbgj8kqrvmqp1nh.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
 
 let tokenClient;
 let accessToken = null;
@@ -1466,42 +1466,83 @@ async function saveProduct() {
   const precio = document.getElementById('editPrecio').value.trim();
   if (!nombre || !precio) { showToast('Nombre y precio son obligatorios', true); return; }
 
-  const colores = getColorsFromEditor();
-  const specs   = document.getElementById('editSpecs').value.trim();
-  const desc    = document.getElementById('editDesc').value.trim();
-  const rowIdx  = parseInt(document.getElementById('editingRow').value);
+  const colores  = getColorsFromEditor();
+  const specs    = document.getElementById('editSpecs').value.trim();
+  const desc     = document.getElementById('editDesc').value.trim();
+  const rowIdx   = parseInt(document.getElementById('editingRow').value);
+  const sheetRow = rowIdx === -1 ? products.length + 2 : products[rowIdx].rowIndex;
 
-  const rowData = [nombre, precio, desc, colores, specs];
-
+  // Update local state
   if (rowIdx === -1) {
-    products.push({ nombre, precio: parseInt(precio), desc, colores, specs, rowIndex: products.length + 2 });
+    products.push({ nombre, precio: parseInt(precio), desc, colores, specs, rowIndex: sheetRow });
   } else {
     products[rowIdx] = { ...products[rowIdx], nombre, precio: parseInt(precio), desc, colores, specs };
   }
 
-  // Build fotos instructions
-  const coloresArr = colores.split(',').map(c => c.trim()).filter(c => c);
-  let fotosInstructions = '\n\n📷 FOTOS (pestaña "fotos" de tu planilla):\n';
-  coloresArr.forEach(color => {
-    const fotos = [];
-    for (let fi = 0; fi < 5; fi++) {
-      const input = document.getElementById(`foto_${nombre}_${color}_${fi}`);
-      fotos.push(input ? input.value.trim() : '');
+  const saveBtn = document.querySelector('.modal-footer .btn-primary');
+  if (saveBtn) { saveBtn.textContent = '⏳ Guardando...'; saveBtn.disabled = true; }
+
+  if (!driveReady) {
+    // No Google auth — copy to clipboard as fallback
+    closeModal();
+    const clip = [nombre, precio, desc, colores, specs].join('\t');
+    navigator.clipboard.writeText(clip);
+    showToast('⚠️ Conectate a Drive para guardar automático. Datos copiados.');
+    renderDashboard(); renderProductList();
+    return;
+  }
+
+  try {
+    // 1. Save product row to "productos" sheet
+    await updateSheetCell('productos', sheetRow, [nombre, precio, desc, colores, specs]);
+
+    // 2. Save fotos for each color to "fotos" sheet
+    const coloresArr = colores.split(',').map(c => c.trim()).filter(c => c);
+    for (const color of coloresArr) {
+      const fotos = [];
+      for (let fi = 0; fi < 5; fi++) {
+        const input = document.getElementById(`foto_${nombre}_${color}_${fi}`);
+        fotos.push(input ? input.value.trim() : '');
+      }
+
+      // Find existing row in fotosData or create new
+      const existing = fotosData.find(f => f.modelo === nombre && f.color === color);
+      const fotaRow  = existing ? existing.rowIndex : fotosData.length + 2;
+
+      await updateSheetCell('fotos', fotaRow, [nombre, color, ...fotos]);
+
+      if (!existing) {
+        fotosData.push({ rowIndex: fotaRow, modelo: nombre, color, fotos });
+      } else {
+        existing.fotos = fotos;
+      }
     }
-    fotosInstructions += `\nModelo: ${nombre} | Color: ${color}\n`;
-    fotos.forEach((f, fi) => { fotosInstructions += `  Foto ${fi+1}: ${f || '(vacía)'}\n`; });
+
+    closeModal();
+    showToast('✅ Guardado en Google Sheets');
+    renderDashboard();
+    renderProductList();
+
+  } catch(e) {
+    showToast('Error al guardar. Intentá de nuevo.', true);
+    console.error(e);
+  } finally {
+    if (saveBtn) { saveBtn.textContent = '💾 Guardar cambios'; saveBtn.disabled = false; }
+  }
+}
+
+async function updateSheetCell(sheet, row, values) {
+  const range = `${sheet}!A${row}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ values: [values] })
   });
-
-  closeModal();
-
-  // Copy product data to clipboard
-  const clipText = rowData.join('\t');
-  navigator.clipboard.writeText(clipText).then(() => {
-    showToast('✅ Datos copiados — pegálos en Google Sheets');
-  });
-
-  renderDashboard();
-  renderProductList();
+  if (!res.ok) throw new Error(await res.text());
 }
 
 // ============ IMAGE CONVERTER ============
