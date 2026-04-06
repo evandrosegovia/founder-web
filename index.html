@@ -1104,200 +1104,324 @@
     padding-left: 20px;
   }
 
-  /* CHECKOUT MODAL */
+  /* CHECKOUT PAGE */
   .checkout-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.9);
+    background: var(--black);
     z-index: 500;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.4s;
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
+    overflow-y: auto;
   }
   .checkout-overlay.open {
     opacity: 1;
     pointer-events: all;
   }
 
-  .checkout-modal {
-    background: var(--gray);
-    max-width: 560px;
-    width: 100%;
-    border: 1px solid var(--border);
-    max-height: 90vh;
-    overflow-y: auto;
-    transform: translateY(20px);
-    transition: transform 0.4s ease;
-  }
-  .checkout-overlay.open .checkout-modal { transform: translateY(0); }
-
-  .checkout-header {
-    padding: 36px 40px 24px;
-    border-bottom: 1px solid var(--border);
+  .checkout-page {
+    min-height: 100vh;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+  }
+
+  .checkout-topbar {
+    padding: 0 48px;
+    height: 70px;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--black);
+    z-index: 10;
   }
 
-  .checkout-title {
+  .checkout-close-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 8px 20px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: none;
+    transition: all 0.2s;
+  }
+  .checkout-close-btn:hover { border-color: var(--white); color: var(--white); }
+
+  .checkout-layout {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 60px;
+    padding: 48px 48px 80px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .checkout-main-title {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 28px;
-    font-weight: 400;
+    font-size: 48px;
+    font-weight: 300;
+    margin-bottom: 40px;
+    letter-spacing: -1px;
   }
 
-  .checkout-body {
-    padding: 36px 40px;
+  .checkout-step {
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .checkout-step-header {
     display: flex;
-    flex-direction: column;
-    gap: 20px;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--gray);
   }
 
-  .form-group {
+  .step-number {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--black);
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
   }
 
-  .form-group label {
-    font-size: 9px;
+  .step-title {
+    font-size: 11px;
     letter-spacing: 3px;
     text-transform: uppercase;
-    color: var(--text-muted);
+    font-weight: 600;
   }
 
-  .form-group input, .form-group select, .form-group textarea {
-    background: var(--gray-mid);
-    border: 1px solid var(--border);
-    color: var(--white);
-    padding: 14px 16px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 12px;
-    letter-spacing: 0.5px;
-    outline: none;
-    transition: border-color 0.3s;
-    cursor: text;
-  }
-  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-    border-color: var(--gold);
-  }
-  .form-group select option { background: var(--gray); }
-  .form-group textarea { resize: vertical; min-height: 80px; }
-
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-  .payment-section {
-    border: 1px solid var(--border);
+  .checkout-step-body {
     padding: 24px;
     display: flex;
     flex-direction: column;
     gap: 16px;
   }
 
-  .payment-title {
+  .co-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .co-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .co-label {
     font-size: 9px;
     letter-spacing: 3px;
     text-transform: uppercase;
-    color: var(--gold);
+    color: var(--text-muted);
   }
 
-  .payment-option {
+  .co-input {
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    color: var(--white);
+    padding: 12px 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.3s;
+    width: 100%;
+  }
+  .co-input:focus { border-color: var(--gold); }
+  .co-input option { background: var(--gray); }
+
+  .co-textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .co-toggle-row {
+    display: flex;
+    gap: 0;
+  }
+
+  .co-toggle-btn {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    border: 1px solid var(--border);
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: none;
+    transition: all 0.2s;
+    color: var(--text-muted);
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px;
-    border: 1px solid var(--border);
-    cursor: none;
-    transition: border-color 0.2s;
+    justify-content: center;
+    gap: 8px;
   }
-  .payment-option:hover { border-color: var(--gold); }
-  .payment-option input[type="radio"] { accent-color: var(--gold); }
-  .payment-option label {
-    font-size: 11px;
-    letter-spacing: 0.5px;
-    cursor: none;
-    flex: 1;
-  }
-  .payment-option .discount-tag {
-    font-size: 9px;
-    background: var(--gold);
+  .co-toggle-btn input { display: none; }
+  .co-toggle-btn.active,
+  .co-toggle-btn:has(input:checked) {
+    background: var(--white);
     color: var(--black);
-    padding: 3px 8px;
+    border-color: var(--white);
     font-weight: 600;
-    letter-spacing: 1px;
   }
 
-  .consent-group {
+  .co-note {
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.5px;
+    line-height: 1.7;
+    padding: 12px 16px;
+    border: 1px solid rgba(201,169,110,0.3);
+    background: rgba(201,169,110,0.05);
+  }
+
+  .co-consent {
     display: flex;
     gap: 12px;
     align-items: flex-start;
+    padding: 20px 0;
+    border-top: 1px solid var(--border);
   }
-  .consent-group input { margin-top: 2px; accent-color: var(--gold); cursor: none; }
-  .consent-group label {
-    font-size: 10px;
-    color: var(--text-muted);
-    line-height: 1.7;
-    letter-spacing: 0.3px;
-    cursor: none;
-  }
-  .consent-group label a { color: var(--gold); text-decoration: none; }
+  .co-consent input { margin-top: 2px; accent-color: var(--gold); flex-shrink: 0; }
+  .co-consent label { font-size: 10px; color: var(--text-muted); line-height: 1.7; letter-spacing: 0.3px; }
+  .co-consent label a { color: var(--gold); text-decoration: none; }
 
-  .checkout-summary {
-    background: var(--black);
+  .co-submit-btn {
+    width: 100%;
+    background: var(--gold);
+    color: var(--black);
+    border: none;
     padding: 20px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    cursor: none;
+    transition: all 0.3s;
+    margin-bottom: 16px;
+  }
+  .co-submit-btn:hover { background: var(--white); }
+
+  .co-cards-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* SUMMARY */
+  .checkout-summary-col {
+    position: sticky;
+    top: 90px;
+    align-self: start;
+  }
+
+  .co-summary-box {
+    background: var(--gray);
+    border: 1px solid var(--border);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .co-summary-title {
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .co-summary-item {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .co-summary-item-img {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .co-summary-item-info { flex: 1; }
+  .co-summary-item-name { font-size: 13px; margin-bottom: 4px; letter-spacing: 0.5px; }
+  .co-summary-item-variant { font-size: 10px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
+  .co-summary-item-price { font-family: 'Cormorant Garamond', serif; font-size: 20px; white-space: nowrap; }
+
+  .co-discount-section {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .co-apply-btn {
+    background: var(--white);
+    color: var(--black);
+    border: none;
+    padding: 12px 20px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    cursor: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .co-apply-btn:hover { background: var(--gold); }
+
+  .co-summary-lines {
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
 
-  .summary-line {
+  .co-summary-line {
     display: flex;
     justify-content: space-between;
     font-size: 11px;
     color: var(--text-muted);
     letter-spacing: 0.5px;
   }
-  .summary-line.total {
+
+  .co-summary-line.total {
     color: var(--white);
-    font-size: 14px;
-    padding-top: 10px;
+    padding-top: 12px;
     border-top: 1px solid var(--border);
     font-family: 'Cormorant Garamond', serif;
-    font-size: 20px;
+    font-size: 24px;
+    font-weight: 400;
   }
 
-  .pay-btn {
-    width: 100%;
-    background: var(--white);
-    color: var(--black);
-    border: none;
-    padding: 20px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 11px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    font-weight: 700;
-    cursor: none;
-    transition: all 0.3s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-  }
-  .pay-btn:hover { background: var(--gold); }
-
-  .mp-badge {
-    background: #009EE3;
-    color: white;
-    font-size: 9px;
-    padding: 3px 10px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    border-radius: 2px;
+  @media (max-width: 900px) {
+    .checkout-layout { grid-template-columns: 1fr; padding: 24px; gap: 32px; }
+    .checkout-topbar { padding: 0 24px; }
+    .checkout-summary-col { position: static; }
+    .co-form-row { grid-template-columns: 1fr; }
   }
 
   /* TOAST */
@@ -1572,121 +1696,204 @@
   </div>
 </div>
 
-<!-- CHECKOUT MODAL -->
+<!-- CHECKOUT PAGE -->
 <div class="checkout-overlay" id="checkoutOverlay">
-  <div class="checkout-modal">
-    <div class="checkout-header">
-      <span class="checkout-title">Finalizar compra</span>
-      <button class="close-cart" onclick="closeCheckout()">✕</button>
+  <div class="checkout-page">
+
+    <!-- CHECKOUT HEADER -->
+    <div class="checkout-topbar">
+      <a href="#" class="logo" onclick="closeCheckout();return false;">FOUNDER</a>
+      <button class="checkout-close-btn" onclick="closeCheckout()">✕ Volver</button>
     </div>
-    <div class="checkout-body">
-      <div class="checkout-summary" id="checkoutSummary"></div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label>Nombre *</label>
-          <input type="text" id="firstName" placeholder="Tu nombre" required>
+    <div class="checkout-layout">
+
+      <!-- LEFT — FORM -->
+      <div class="checkout-form-col">
+        <h1 class="checkout-main-title">Checkout</h1>
+
+        <!-- STEP 1 — DATOS PERSONALES -->
+        <div class="checkout-step">
+          <div class="checkout-step-header">
+            <div class="step-number">1</div>
+            <div class="step-title">Datos personales</div>
+          </div>
+          <div class="checkout-step-body">
+            <div class="co-form-row">
+              <div class="co-form-group">
+                <label class="co-label">Nombre *</label>
+                <input type="text" class="co-input" id="coNombre" placeholder="Tu nombre">
+              </div>
+              <div class="co-form-group">
+                <label class="co-label">Apellido *</label>
+                <input type="text" class="co-input" id="coApellido" placeholder="Tu apellido">
+              </div>
+            </div>
+            <div class="co-form-row">
+              <div class="co-form-group">
+                <label class="co-label">Celular *</label>
+                <input type="tel" class="co-input" id="coCelular" placeholder="Ej: 099123456">
+              </div>
+              <div class="co-form-group">
+                <label class="co-label">Email *</label>
+                <input type="email" class="co-input" id="coEmail" placeholder="tu@email.com">
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label>Apellido *</label>
-          <input type="text" id="lastName" placeholder="Tu apellido" required>
+
+        <!-- STEP 2 — FORMA DE ENTREGA -->
+        <div class="checkout-step">
+          <div class="checkout-step-header">
+            <div class="step-number">2</div>
+            <div class="step-title">Forma de entrega</div>
+          </div>
+          <div class="checkout-step-body">
+            <div class="co-toggle-row">
+              <label class="co-toggle-btn" id="btnEnvio">
+                <input type="radio" name="entrega" value="envio" checked onchange="toggleEntrega('envio')">
+                Envío
+              </label>
+              <label class="co-toggle-btn" id="btnRetiro">
+                <input type="radio" name="entrega" value="retiro" onchange="toggleEntrega('retiro')">
+                Retiro
+              </label>
+            </div>
+
+            <!-- ENVÍO FIELDS -->
+            <div id="envioFields">
+              <div class="co-form-row">
+                <div class="co-form-group">
+                  <label class="co-label">Departamento *</label>
+                  <select class="co-input" id="coDepartamento">
+                    <option value="">Seleccionar...</option>
+                    <option>Artigas</option>
+                    <option>Canelones</option>
+                    <option>Cerro Largo</option>
+                    <option>Colonia</option>
+                    <option>Durazno</option>
+                    <option>Flores</option>
+                    <option>Florida</option>
+                    <option>Lavalleja</option>
+                    <option>Maldonado</option>
+                    <option>Montevideo</option>
+                    <option>Paysandú</option>
+                    <option>Río Negro</option>
+                    <option>Rivera</option>
+                    <option>Rocha</option>
+                    <option>Salto</option>
+                    <option>San José</option>
+                    <option>Soriano</option>
+                    <option>Tacuarembó</option>
+                    <option>Treinta y Tres</option>
+                  </select>
+                </div>
+                <div class="co-form-group">
+                  <label class="co-label">Barrio / Localidad *</label>
+                  <input type="text" class="co-input" id="coBarrio" placeholder="Barrio o localidad">
+                </div>
+              </div>
+              <div class="co-form-row">
+                <div class="co-form-group">
+                  <label class="co-label">Dirección *</label>
+                  <input type="text" class="co-input" id="coDireccion" placeholder="Calle">
+                </div>
+                <div class="co-form-group">
+                  <label class="co-label">Nro Puerta / Apto</label>
+                  <input type="text" class="co-input" id="coNroPuerta" placeholder="Ej: 1234 / Apto 5">
+                </div>
+              </div>
+              <div class="co-form-group">
+                <label class="co-label">Observaciones</label>
+                <textarea class="co-input co-textarea" id="coObsEnvio" placeholder="Comentarios sobre tu pedido (opcional)"></textarea>
+              </div>
+            </div>
+
+            <!-- RETIRO FIELDS -->
+            <div id="retiroFields" style="display:none">
+              <div class="co-form-row">
+                <div class="co-form-group">
+                  <label class="co-label">Nombre de quien retira *</label>
+                  <input type="text" class="co-input" id="coNombreRetira" placeholder="Nombre completo">
+                </div>
+                <div class="co-form-group">
+                  <label class="co-label">CI de quien retira *</label>
+                  <input type="text" class="co-input" id="coCIRetira" placeholder="Ej: 1.234.567-8">
+                </div>
+              </div>
+              <div class="co-form-group">
+                <label class="co-label">Observaciones</label>
+                <textarea class="co-input co-textarea" id="coObsRetiro" placeholder="Comentarios sobre tu pedido (opcional)"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3 — MÉTODO DE PAGO -->
+        <div class="checkout-step">
+          <div class="checkout-step-header">
+            <div class="step-number">3</div>
+            <div class="step-title">Método de pago</div>
+          </div>
+          <div class="checkout-step-body">
+            <div class="co-toggle-row">
+              <label class="co-toggle-btn" id="btnTransfer">
+                <input type="radio" name="pago" value="transfer" onchange="updateCheckoutTotal()">
+                Transferencia
+              </label>
+              <label class="co-toggle-btn active" id="btnMP">
+                <input type="radio" name="pago" value="mercadopago" checked onchange="updateCheckoutTotal()">
+                Pago en línea (MercadoPago)
+              </label>
+            </div>
+            <div id="transferNote" style="display:none" class="co-note">
+              💰 Pagando por transferencia obtenés un <strong>10% de descuento</strong>. Te enviaremos los datos bancarios por WhatsApp.
+            </div>
+          </div>
+        </div>
+
+        <!-- CONSENT -->
+        <div class="co-consent">
+          <input type="checkbox" id="coConsent">
+          <label for="coConsent">
+            Acepto la <a href="#" onclick="showLegal('privacy')">Política de Privacidad</a> y los
+            <a href="#" onclick="showLegal('terms')">Términos y Condiciones</a>.
+            Autorizo el tratamiento de mis datos según la Ley N° 18.331 de Uruguay.
+          </label>
+        </div>
+
+        <!-- SUBMIT -->
+        <button class="co-submit-btn" onclick="processOrder()">
+          Continuar al pago (Mercado Pago)
+        </button>
+        <div class="co-cards-row">
+          <span style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase">Aceptamos</span>
+          <span style="color:#009EE3;font-weight:700;font-size:13px;letter-spacing:1px">Mercado Pago</span>
+          <span style="font-size:11px;color:var(--text-muted)">· Visa · Mastercard · OCA · Prex</span>
         </div>
       </div>
 
-      <div class="form-group">
-        <label>Email *</label>
-        <input type="email" id="email" placeholder="tu@email.com" required>
-      </div>
+      <!-- RIGHT — ORDER SUMMARY -->
+      <div class="checkout-summary-col">
+        <div class="co-summary-box">
+          <div class="co-summary-title">Resumen del pedido</div>
 
-      <div class="form-group">
-        <label>Teléfono *</label>
-        <input type="tel" id="phone" placeholder="09X XXX XXX" required>
-      </div>
+          <div id="coSummaryItems"></div>
 
-      <div class="form-group">
-        <label>Dirección de entrega *</label>
-        <input type="text" id="address" placeholder="Calle, número, apartamento" required>
-      </div>
+          <!-- DISCOUNT CODE -->
+          <div class="co-discount-section">
+            <div class="co-label" style="margin-bottom:8px">Código de descuento o regalo</div>
+            <div style="display:flex;gap:8px">
+              <input type="text" class="co-input" id="coDiscountCode" placeholder="Código" style="flex:1">
+              <button class="co-apply-btn" onclick="applyDiscount()">Aplicar</button>
+            </div>
+            <div id="coDiscountMsg" style="display:none;font-size:10px;color:var(--gold);margin-top:6px;letter-spacing:1px"></div>
+          </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label>Ciudad *</label>
-          <input type="text" id="city" placeholder="Montevideo" required>
-        </div>
-        <div class="form-group">
-          <label>Departamento *</label>
-          <select id="department">
-            <option value="">Seleccioná...</option>
-            <option>Montevideo</option>
-            <option>Canelones</option>
-            <option>Maldonado</option>
-            <option>Colonia</option>
-            <option>San José</option>
-            <option>Flores</option>
-            <option>Florida</option>
-            <option>Lavalleja</option>
-            <option>Rocha</option>
-            <option>Treinta y Tres</option>
-            <option>Cerro Largo</option>
-            <option>Rivera</option>
-            <option>Tacuarembó</option>
-            <option>Durazno</option>
-            <option>Soriano</option>
-            <option>Río Negro</option>
-            <option>Paysandú</option>
-            <option>Salto</option>
-            <option>Artigas</option>
-          </select>
+          <div class="co-summary-lines" id="coSummaryLines"></div>
         </div>
       </div>
 
-      <div class="form-group">
-        <label>Notas adicionales</label>
-        <textarea id="notes" placeholder="Instrucciones de entrega, aclaraciones..."></textarea>
-      </div>
-
-      <div class="payment-section">
-        <div class="payment-title">Método de pago</div>
-        <div class="payment-option">
-          <input type="radio" name="payment" id="payMP" value="mercadopago" checked onchange="updateCheckoutTotal()">
-          <label for="payMP">Mercado Pago (tarjetas, débito, crédito)</label>
-        </div>
-        <div class="payment-option">
-          <input type="radio" name="payment" id="payTransfer" value="transfer" onchange="updateCheckoutTotal()">
-          <label for="payTransfer">Transferencia bancaria</label>
-          <span class="discount-tag">-10%</span>
-        </div>
-        <div class="payment-option">
-          <input type="radio" name="payment" id="payCash" value="cash" onchange="updateCheckoutTotal()">
-          <label for="payCash">Efectivo (contra entrega o depósito)</label>
-          <span class="discount-tag">-10%</span>
-        </div>
-      </div>
-
-      <div class="consent-group">
-        <input type="checkbox" id="privacyConsent" required>
-        <label for="privacyConsent">
-          Acepto la <a href="#" onclick="showLegal('privacy')">Política de Privacidad</a> y los 
-          <a href="#" onclick="showLegal('terms')">Términos y Condiciones</a>. 
-          Autorizo el tratamiento de mis datos personales de acuerdo a la Ley N° 18.331 de Uruguay.
-        </label>
-      </div>
-
-      <div class="checkout-summary" id="checkoutTotalBox">
-        <div class="summary-line total">
-          <span>Total a pagar</span>
-          <span id="finalTotal"></span>
-        </div>
-      </div>
-
-      <button class="pay-btn" onclick="processOrder()">
-        Confirmar pedido
-        <span class="mp-badge">Mercado Pago</span>
-      </button>
-
-      <p style="font-size:10px;color:var(--text-muted);text-align:center;letter-spacing:0.5px;line-height:1.7;">
-        Al confirmar, nos contactaremos con vos por email o WhatsApp para coordinar el pago y el envío.
-      </p>
     </div>
   </div>
 </div>
@@ -2192,18 +2399,10 @@ function toggleCart() {
 function openCheckout() {
   if (cart.length === 0) return;
   toggleCart();
-  updateCheckoutTotal();
-
-  const summary = document.getElementById('checkoutSummary');
-  summary.innerHTML = cart.map(i => `
-    <div class="summary-line">
-      <span>Founder ${i.name} × ${i.qty} (${i.color})</span>
-      <span>$${(i.price * i.qty).toLocaleString('es-UY')}</span>
-    </div>
-  `).join('');
-
+  renderCheckoutSummary();
   document.getElementById('checkoutOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+  window.scrollTo(0,0);
 }
 
 function closeCheckout() {
@@ -2211,82 +2410,160 @@ function closeCheckout() {
   document.body.style.overflow = '';
 }
 
-function updateCheckoutTotal() {
-  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const method = document.querySelector('input[name="payment"]:checked')?.value;
-  const discount = (method === 'transfer' || method === 'cash') ? 0.10 : 0;
-  const total = Math.round(subtotal * (1 - discount));
+function toggleEntrega(tipo) {
+  const envioFields  = document.getElementById('envioFields');
+  const retiroFields = document.getElementById('retiroFields');
+  const btnEnvio     = document.getElementById('btnEnvio');
+  const btnRetiro    = document.getElementById('btnRetiro');
 
-  let html = '';
-  if (discount > 0) {
-    html += `<div class="summary-line"><span>Subtotal</span><span>$${subtotal.toLocaleString('es-UY')}</span></div>`;
-    html += `<div class="summary-line"><span>Descuento 10%</span><span style="color:var(--gold)">−$${(subtotal * discount).toLocaleString('es-UY')}</span></div>`;
+  if (tipo === 'envio') {
+    envioFields.style.display  = 'flex';
+    envioFields.style.flexDirection = 'column';
+    envioFields.style.gap = '16px';
+    retiroFields.style.display = 'none';
+    btnEnvio.classList.add('active');
+    btnRetiro.classList.remove('active');
+  } else {
+    envioFields.style.display  = 'none';
+    retiroFields.style.display = 'flex';
+    retiroFields.style.flexDirection = 'column';
+    retiroFields.style.gap = '16px';
+    btnRetiro.classList.add('active');
+    btnEnvio.classList.remove('active');
+  }
+  renderCheckoutSummary();
+}
+
+function updateCheckoutTotal() {
+  const method = document.querySelector('input[name="pago"]:checked')?.value;
+  const transferNote = document.getElementById('transferNote');
+  const submitBtn = document.querySelector('.co-submit-btn');
+
+  if (method === 'transfer') {
+    transferNote.style.display = 'block';
+    if (submitBtn) submitBtn.textContent = 'Confirmar pedido (Transferencia)';
+  } else {
+    transferNote.style.display = 'none';
+    if (submitBtn) submitBtn.textContent = 'Continuar al pago (Mercado Pago)';
+  }
+  renderCheckoutSummary();
+}
+
+function applyDiscount() {
+  const code = document.getElementById('coDiscountCode').value.trim().toUpperCase();
+  const msg  = document.getElementById('coDiscountMsg');
+  // Placeholder — códigos reales se agregarán después
+  if (code) {
+    msg.style.display = 'block';
+    msg.textContent = '⚠️ Código no válido. Los códigos de descuento estarán disponibles próximamente.';
+    msg.style.color = 'var(--text-muted)';
+  }
+}
+
+function renderCheckoutSummary() {
+  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const method   = document.querySelector('input[name="pago"]:checked')?.value;
+  const discount = method === 'transfer' ? 0.10 : 0;
+  const entrega  = document.querySelector('input[name="entrega"]:checked')?.value;
+  const shipping = subtotal >= 2000 ? 0 : (entrega === 'retiro' ? 0 : 150);
+  const total    = Math.round(subtotal * (1 - discount)) + shipping;
+
+  // Items
+  const itemsContainer = document.getElementById('coSummaryItems');
+  if (itemsContainer) {
+    itemsContainer.innerHTML = cart.map(item => {
+      const product = products.find(p => p.name === item.name);
+      const photos  = product ? getPhotos(product.name, item.color) : [];
+      const imgSrc  = photos[0] || '';
+      return `
+        <div class="co-summary-item">
+          ${imgSrc
+            ? `<img src="${imgSrc}" class="co-summary-item-img" alt="${item.name}">`
+            : `<div class="co-summary-item-img" style="display:flex;align-items:center;justify-content:center;font-size:20px">👜</div>`
+          }
+          <div class="co-summary-item-info">
+            <div class="co-summary-item-name">Founder ${item.name} × ${item.qty}</div>
+            <div class="co-summary-item-variant">${item.color}</div>
+          </div>
+          <div class="co-summary-item-price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
+        </div>
+      `;
+    }).join('');
   }
 
-  const shipping = subtotal >= 2000 ? 'Gratis' : 'A coordinar';
-  html += `<div class="summary-line"><span>Envío</span><span>${shipping}</span></div>`;
-  html += `<div class="summary-line total"><span>Total</span><span>$${total.toLocaleString('es-UY')} UYU</span></div>`;
-
-  document.getElementById('checkoutTotalBox').innerHTML = html;
-  document.getElementById('finalTotal').textContent = `$${total.toLocaleString('es-UY')} UYU`;
+  // Lines
+  const linesContainer = document.getElementById('coSummaryLines');
+  if (linesContainer) {
+    let html = `<div class="co-summary-line"><span>Subtotal</span><span>$${subtotal.toLocaleString('es-UY')}</span></div>`;
+    if (discount > 0) html += `<div class="co-summary-line"><span>Descuento transferencia</span><span style="color:var(--gold)">−$${(subtotal * discount).toLocaleString('es-UY')}</span></div>`;
+    html += `<div class="co-summary-line"><span>Envío</span><span>${shipping === 0 ? 'Gratis' : '$' + shipping.toLocaleString('es-UY')}</span></div>`;
+    html += `<div class="co-summary-line total"><span>Total</span><span>$${total.toLocaleString('es-UY')} UYU</span></div>`;
+    linesContainer.innerHTML = html;
+  }
 }
 
 function processOrder() {
-  const required = ['firstName', 'lastName', 'email', 'phone', 'address', 'city'];
-  for (const field of required) {
-    if (!document.getElementById(field).value.trim()) {
-      showToast('Completá todos los campos obligatorios');
-      return;
-    }
-  }
-  if (!document.getElementById('department').value) {
-    showToast('Seleccioná tu departamento');
-    return;
-  }
-  if (!document.getElementById('privacyConsent').checked) {
-    showToast('Debés aceptar la política de privacidad');
-    return;
+  const nombre   = document.getElementById('coNombre')?.value.trim();
+  const apellido = document.getElementById('coApellido')?.value.trim();
+  const celular  = document.getElementById('coCelular')?.value.trim();
+  const email    = document.getElementById('coEmail')?.value.trim();
+  const entrega  = document.querySelector('input[name="entrega"]:checked')?.value;
+  const pago     = document.querySelector('input[name="pago"]:checked')?.value;
+  const consent  = document.getElementById('coConsent')?.checked;
+
+  if (!nombre || !apellido || !celular || !email) {
+    showToast('Completá todos los datos personales'); return;
   }
 
-  const method = document.querySelector('input[name="payment"]:checked').value;
+  if (entrega === 'envio') {
+    const depto = document.getElementById('coDepartamento')?.value;
+    const dir   = document.getElementById('coDireccion')?.value.trim();
+    if (!depto || !dir) { showToast('Completá los datos de envío'); return; }
+  } else {
+    const nombreRetira = document.getElementById('coNombreRetira')?.value.trim();
+    const ci           = document.getElementById('coCIRetira')?.value.trim();
+    if (!nombreRetira || !ci) { showToast('Completá los datos de retiro'); return; }
+  }
+
+  if (!consent) { showToast('Debés aceptar la política de privacidad'); return; }
+
   const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const discount = (method === 'transfer' || method === 'cash') ? 0.10 : 0;
-  const total = Math.round(subtotal * (1 - discount));
-
-  const name = `${document.getElementById('firstName').value} ${document.getElementById('lastName').value}`;
-  const email = document.getElementById('email').value;
-  const phone = document.getElementById('phone').value;
-  const address = `${document.getElementById('address').value}, ${document.getElementById('city').value}, ${document.getElementById('department').value}`;
-  const notes = document.getElementById('notes').value;
+  const discount = pago === 'transfer' ? 0.10 : 0;
+  const shipping = subtotal >= 2000 ? 0 : 150;
+  const total    = Math.round(subtotal * (1 - discount)) + shipping;
 
   const orderLines = cart.map(i => `- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price*i.qty).toLocaleString('es-UY')}`).join('\n');
 
-  const subject = encodeURIComponent(`Nuevo pedido Founder — ${name}`);
-  const body = encodeURIComponent(
-    `NUEVO PEDIDO FOUNDER\n\n` +
-    `Nombre: ${name}\nEmail: ${email}\nTeléfono: ${phone}\nDirección: ${address}\n\n` +
-    `PRODUCTOS:\n${orderLines}\n\n` +
-    `Método de pago: ${method}\nTotal: $${total.toLocaleString('es-UY')} UYU\n\n` +
-    (notes ? `Notas: ${notes}` : '')
-  );
+  let entregaInfo = '';
+  if (entrega === 'envio') {
+    const depto  = document.getElementById('coDepartamento')?.value;
+    const barrio = document.getElementById('coBarrio')?.value;
+    const dir    = document.getElementById('coDireccion')?.value;
+    const nro    = document.getElementById('coNroPuerta')?.value;
+    const obs    = document.getElementById('coObsEnvio')?.value;
+    entregaInfo  = `📍 *Envío a:* ${dir} ${nro}, ${barrio}, ${depto}\n${obs ? `📝 Obs: ${obs}` : ''}`;
+  } else {
+    const quienRetira = document.getElementById('coNombreRetira')?.value;
+    const ci          = document.getElementById('coCIRetira')?.value;
+    const obs         = document.getElementById('coObsRetiro')?.value;
+    entregaInfo       = `🏪 *Retiro en tienda*\nRetira: ${quienRetira} (CI: ${ci})\n${obs ? `📝 Obs: ${obs}` : ''}`;
+  }
 
-  const waNumber = '598098550096';
   const waMsg = encodeURIComponent(
     `🛍️ *NUEVO PEDIDO FOUNDER*\n\n` +
-    `👤 *Nombre:* ${name}\n📧 *Email:* ${email}\n📱 *Teléfono:* ${phone}\n📍 *Dirección:* ${address}\n\n` +
+    `👤 *${nombre} ${apellido}*\n📱 ${celular}\n📧 ${email}\n\n` +
     `🛒 *PRODUCTOS:*\n${orderLines}\n\n` +
-    `💳 *Pago:* ${method === 'mercadopago' ? 'Mercado Pago' : method === 'transfer' ? 'Transferencia (-10%)' : 'Efectivo (-10%)'}\n` +
-    `💰 *Total:* $${total.toLocaleString('es-UY')} UYU\n\n` +
-    (notes ? `📝 *Notas:* ${notes}` : '')
+    `${entregaInfo}\n\n` +
+    `💳 *Pago:* ${pago === 'mercadopago' ? 'Mercado Pago' : 'Transferencia (-10%)'}\n` +
+    `💰 *Total:* $${total.toLocaleString('es-UY')} UYU`
   );
 
-  window.open(`https://wa.me/${waNumber}?text=${waMsg}`, '_blank');
-  showToast('Abriendo WhatsApp...');
+  window.open(`https://wa.me/598098550096?text=${waMsg}`, '_blank');
 
   cart = [];
   updateCart();
   closeCheckout();
-  showToast('¡Pedido recibido! Te contactaremos pronto.');
+  showToast('¡Pedido enviado! Te contactaremos pronto 🎉');
 }
 
 // ============ LEGAL ============
