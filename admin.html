@@ -692,9 +692,120 @@
   .loading p { font-family:'Cormorant Garamond',serif; font-size:22px; margin-bottom:8px; }
   .loading span { font-size:10px; letter-spacing:3px; }
 
-  /* RESPONSIVE */
+  /* ORDERS */
+  .orders-filter-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+
+  .order-filter-btn {
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 8px 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .order-filter-btn.active,
+  .order-filter-btn:hover { background: var(--white); color: var(--black); border-color: var(--white); }
+
+  .orders-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .order-card {
+    background: var(--gray);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .order-card-header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .order-status-badge {
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    font-weight: 700;
+  }
+  .status-pendiente-pago { background: rgba(224,85,85,0.2); color: #e05555; border: 1px solid rgba(224,85,85,0.3); }
+  .status-pendiente-mp { background: rgba(201,169,110,0.2); color: var(--gold); border: 1px solid rgba(201,169,110,0.3); }
+  .status-confirmado { background: rgba(76,175,130,0.2); color: var(--green); border: 1px solid rgba(76,175,130,0.3); }
+  .status-entregado { background: rgba(100,100,255,0.2); color: #8888ff; border: 1px solid rgba(100,100,255,0.3); }
+  .status-cancelado { background: rgba(100,100,100,0.2); color: var(--text-muted); border: 1px solid var(--border); }
+
+  .order-id { font-size: 10px; letter-spacing: 2px; color: var(--text-muted); }
+
+  .order-card-body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .order-client-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 400;
+  }
+
+  .order-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    line-height: 1.8;
+  }
+  .order-meta strong { color: var(--white); }
+
+  .order-products {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 10px;
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    line-height: 1.6;
+  }
+
+  .order-total {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    color: var(--gold);
+    text-align: right;
+  }
+
+  .order-pago-badge {
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: right;
+  }
+
+  .order-card-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
   @media (max-width: 768px) {
-    .admin-main { grid-template-columns: 1fr; }
+    .orders-grid { grid-template-columns: 1fr; }
+  }
     .sidebar { display: none; }
     .content { padding: 24px; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
@@ -749,6 +860,9 @@
       <div class="sidebar-item" onclick="showPage('productos')">
         <span class="icon">👜</span> Productos
       </div>
+      <div class="sidebar-item" onclick="showPage('pedidos')">
+        <span class="icon">📦</span> Pedidos
+      </div>
       <div class="sidebar-label">Herramientas</div>
       <div class="sidebar-item" onclick="showPage('imagenes')">
         <span class="icon">🖼️</span> Conversor de imágenes
@@ -792,9 +906,9 @@
             <div class="stat-label">Con imagen</div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon">💰</div>
-            <div class="stat-value" id="statPrecio">—</div>
-            <div class="stat-label">Precio promedio</div>
+            <div class="stat-icon">📦</div>
+            <div class="stat-value" id="statPedidos">—</div>
+            <div class="stat-label">Pedidos totales</div>
           </div>
         </div>
 
@@ -838,7 +952,29 @@
         </div>
       </div>
 
-      <!-- IMAGENES -->
+      <!-- PEDIDOS -->
+      <div class="page" id="page-pedidos">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Pedidos</div>
+            <div class="page-subtitle">Gestioná todos los pedidos recibidos</div>
+          </div>
+          <button class="btn btn-primary" onclick="loadOrders()">↻ Actualizar</button>
+        </div>
+
+        <div class="orders-filter-row">
+          <button class="order-filter-btn active" onclick="filterOrders('todos', this)">Todos</button>
+          <button class="order-filter-btn" onclick="filterOrders('Pendiente pago', this)">Pendiente pago</button>
+          <button class="order-filter-btn" onclick="filterOrders('Pendiente confirmación', this)">Pendiente MP</button>
+          <button class="order-filter-btn" onclick="filterOrders('Confirmado', this)">Confirmados</button>
+          <button class="order-filter-btn" onclick="filterOrders('Entregado', this)">Entregados</button>
+          <button class="order-filter-btn" onclick="filterOrders('Cancelado', this)">Cancelados</button>
+        </div>
+
+        <div id="ordersGrid" class="orders-grid">
+          <div class="loading"><p>Cargando pedidos...</p><span>conectando</span></div>
+        </div>
+      </div>
       <div class="page" id="page-imagenes">
         <div class="page-header">
           <div>
@@ -1059,6 +1195,7 @@ async function loadData() {
 
     renderDashboard();
     renderProductList();
+    loadOrders();
 
   } catch(e) {
     showToast('Error al cargar datos', true);
@@ -1545,7 +1682,101 @@ async function updateSheetCell(sheet, row, values) {
   if (!res.ok) throw new Error(await res.text());
 }
 
-// ============ IMAGE CONVERTER ============
+// ============ ORDERS ============
+let allOrders = [];
+let currentFilter = 'todos';
+
+function loadOrders() {
+  // Load from localStorage (where the store saves them)
+  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+  allOrders = stored.reverse(); // newest first
+  filterOrders(currentFilter);
+  // Update dashboard stat
+  const statEl = document.getElementById('statPedidos');
+  if (statEl) statEl.textContent = allOrders.length;
+}
+
+function filterOrders(filter, btn) {
+  currentFilter = filter;
+  if (btn) {
+    document.querySelectorAll('.order-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  const filtered = filter === 'todos'
+    ? allOrders
+    : allOrders.filter(o => o.estado === filter);
+
+  renderOrders(filtered);
+}
+
+function renderOrders(orders) {
+  const grid = document.getElementById('ordersGrid');
+  if (!orders.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-muted)">
+      <p style="font-family:'Cormorant Garamond',serif;font-size:24px;margin-bottom:8px">No hay pedidos</p>
+      <span style="font-size:10px;letter-spacing:2px">en esta categoría</span>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = orders.map(order => {
+    const statusClass = {
+      'Pendiente pago': 'status-pendiente-pago',
+      'Pendiente confirmación': 'status-pendiente-mp',
+      'Confirmado': 'status-confirmado',
+      'Entregado': 'status-entregado',
+      'Cancelado': 'status-cancelado'
+    }[order.estado] || 'status-pendiente-pago';
+
+    return `
+      <div class="order-card" id="order-${order.id}">
+        <div class="order-card-header">
+          <div>
+            <div class="order-id">${order.id} · ${order.fecha}</div>
+          </div>
+          <div class="order-status-badge ${statusClass}">${order.estado}</div>
+        </div>
+        <div class="order-card-body">
+          <div class="order-client-name">${order.nombre} ${order.apellido}</div>
+          <div class="order-meta">
+            <strong>Entrega:</strong> ${order.entrega}<br>
+            <strong>Dirección:</strong> ${order.direccion}<br>
+            <strong>Correo:</strong> ${order.email}<br>
+            <strong>Celular:</strong> ${order.celular}
+          </div>
+          <div class="order-products">${order.productos.replace(/\|/g, '<br>')}</div>
+          <div>
+            <div class="order-pago-badge">${order.pago}</div>
+            <div class="order-total">$${Number(order.total).toLocaleString('es-UY')} UYU</div>
+          </div>
+        </div>
+        <div class="order-card-footer">
+          <button class="btn btn-success btn-sm" onclick="updateOrderStatus('${order.id}', 'Confirmado')">✅ Confirmar</button>
+          <button class="btn btn-primary btn-sm" onclick="updateOrderStatus('${order.id}', 'Entregado')">📦 Entregado</button>
+          <a href="https://wa.me/598${order.celular.replace(/\D/g,'')}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">💬 WhatsApp</a>
+          <button class="btn btn-danger btn-sm" onclick="cancelOrder('${order.id}')">✕ Cancelar</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateOrderStatus(id, newStatus) {
+  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+  const order  = stored.find(o => o.id === id);
+  if (order) {
+    order.estado = newStatus;
+    localStorage.setItem('founder_pedidos', JSON.stringify(stored));
+    loadOrders();
+    showToast(`Pedido ${id} → ${newStatus}`);
+  }
+}
+
+function cancelOrder(id) {
+  if (!confirm(`¿Cancelar el pedido ${id}?`)) return;
+  updateOrderStatus(id, 'Cancelado');
+}
 function extractDriveId(url) {
   const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
   return match ? match[1] : null;
