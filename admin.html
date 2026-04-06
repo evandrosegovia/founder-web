@@ -3,829 +3,169 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FOUNDER — Panel de Administración</title>
+<title>FOUNDER — Panel Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --black: #0a0a0a;
-    --white: #f5f5f0;
-    --gold: #c9a96e;
-    --gray: #1a1a1a;
-    --gray-mid: #2a2a2a;
-    --gray-light: #333;
-    --text-muted: #888;
-    --border: rgba(255,255,255,0.08);
-    --green: #4caf82;
-    --red: #e05555;
-  }
-
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    background: var(--black);
-    color: var(--white);
-    font-family: 'Montserrat', sans-serif;
-    font-weight: 300;
-    min-height: 100vh;
-  }
-
-  /* LOGIN */
-  .login-screen {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    background: radial-gradient(ellipse at center, #1a1a1a 0%, #0a0a0a 70%);
-  }
-
-  .login-box {
-    width: 100%;
-    max-width: 400px;
-    border: 1px solid var(--border);
-    padding: 56px 48px;
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-    background: var(--gray);
-  }
-
-  .login-logo {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 28px;
-    letter-spacing: 8px;
-    text-align: center;
-  }
-
-  .login-title {
-    font-size: 9px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    text-align: center;
-  }
-
-  .login-input {
-    background: var(--gray-mid);
-    border: 1px solid var(--border);
-    color: var(--white);
-    padding: 16px 20px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 14px;
-    outline: none;
-    width: 100%;
-    transition: border-color 0.3s;
-    text-align: center;
-    letter-spacing: 4px;
-  }
-  .login-input:focus { border-color: var(--gold); }
-
-  .login-btn {
-    background: var(--white);
-    color: var(--black);
-    border: none;
-    padding: 16px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s;
-    width: 100%;
-  }
-  .login-btn:hover { background: var(--gold); }
-
-  .login-error {
-    font-size: 10px;
-    color: var(--red);
-    text-align: center;
-    letter-spacing: 1px;
-    display: none;
-  }
-
-  /* ADMIN PANEL */
-  .admin-panel { display: none; }
-
-  /* TOP BAR */
-  .topbar {
-    background: var(--gray);
-    border-bottom: 1px solid var(--border);
-    padding: 0 40px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    width: 100%;
-  }
-
-  .topbar-left {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-  }
-
-  .topbar-logo {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 20px;
-    letter-spacing: 6px;
-  }
-
-  .topbar-badge {
-    font-size: 8px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--gold);
-    border: 1px solid rgba(201,169,110,0.3);
-    padding: 4px 10px;
-  }
-
-  .topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .view-site-btn {
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    transition: color 0.2s;
-  }
-  .view-site-btn:hover { color: var(--white); }
-
-  .logout-btn {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    padding: 8px 16px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .logout-btn:hover { border-color: var(--red); color: var(--red); }
-
-  /* ADMIN PANEL */
-  .admin-panel {
-    display: none;
-    min-height: 100vh;
-    width: 100%;
-    overflow-x: hidden;
-  }
-  .admin-main {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    min-height: calc(100vh - 64px);
-    width: 100%;
-    overflow: hidden;
-  }
-
-  /* SIDEBAR */
-  .sidebar {
-    background: var(--gray);
-    border-right: 1px solid var(--border);
-    padding: 32px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 240px;
-    overflow-y: auto;
-  }
-
-  .sidebar-label {
-    font-size: 8px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    padding: 0 24px;
-    margin-bottom: 8px;
-    margin-top: 16px;
-  }
-
-  .sidebar-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 24px;
-    font-size: 11px;
-    letter-spacing: 1px;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.2s;
-    border-left: 2px solid transparent;
-  }
-  .sidebar-item:hover { color: var(--white); background: rgba(255,255,255,0.03); }
-  .sidebar-item.active { color: var(--white); border-left-color: var(--gold); background: rgba(201,169,110,0.05); }
-  .sidebar-item .icon { font-size: 16px; width: 20px; text-align: center; }
-
-  /* CONTENT */
-  .content {
-    padding: 40px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    min-width: 0;
-  }
-
-  .page { display: none; }
-  .page.active { display: block; animation: fadeIn 0.3s ease; }
-
-  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-
-  /* PAGE HEADER */
-  .page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 40px;
-  }
-
-  .page-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 36px;
-    font-weight: 300;
-  }
-
-  .page-subtitle {
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 1px;
-    margin-top: 4px;
-  }
-
-  /* BUTTONS */
-  .btn {
-    padding: 12px 24px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    border: none;
-  }
-
-  .btn-primary { background: var(--white); color: var(--black); }
-  .btn-primary:hover { background: var(--gold); }
-
-  .btn-secondary { background: var(--gray-mid); color: var(--white); }
-  .btn-secondary:hover { background: var(--gray-light); }
-
-  .btn-danger { background: rgba(224,85,85,0.15); color: var(--red); border: 1px solid rgba(224,85,85,0.3); }
-  .btn-danger:hover { background: var(--red); color: var(--white); }
-
-  .btn-success { background: rgba(76,175,130,0.15); color: var(--green); border: 1px solid rgba(76,175,130,0.3); }
-  .btn-success:hover { background: var(--green); color: var(--white); }
-
-  .btn-sm { padding: 8px 16px; font-size: 9px; }
-
-  /* CARDS */
-  .card {
-    background: var(--gray);
-    border: 1px solid var(--border);
-    padding: 32px;
-    margin-bottom: 16px;
-  }
-
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .card-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 22px;
-    font-weight: 400;
-  }
-
-  .card-actions {
-    display: flex;
-    gap: 8px;
-  }
-
-  /* FORM */
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .form-group.full { grid-column: 1 / -1; }
-
-  .form-label {
-    font-size: 9px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--gold);
-  }
-
-  .form-input, .form-textarea, .form-select {
-    background: var(--gray-mid);
-    border: 1px solid var(--border);
-    color: var(--white);
-    padding: 12px 16px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 12px;
-    outline: none;
-    transition: border-color 0.3s;
-    width: 100%;
-  }
-  .form-input:focus, .form-textarea:focus { border-color: var(--gold); }
-  .form-textarea { resize: vertical; min-height: 80px; }
-
-  .form-hint {
-    font-size: 9px;
-    color: var(--text-muted);
-    letter-spacing: 0.5px;
-    line-height: 1.6;
-  }
-
-  /* IMAGE CONVERTER */
-  .img-converter {
-    background: var(--gray-mid);
-    border: 1px solid var(--border);
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .img-converter-title {
-    font-size: 9px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--gold);
-  }
-
-  .img-input-row {
-    display: flex;
-    gap: 8px;
-  }
-
-  .img-input-row input {
-    flex: 1;
-    background: var(--gray);
-    border: 1px solid var(--border);
-    color: var(--white);
-    padding: 10px 14px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 11px;
-    outline: none;
-  }
-  .img-input-row input:focus { border-color: var(--gold); }
-
-  .img-convert-btn {
-    background: var(--gold);
-    color: var(--black);
-    border: none;
-    padding: 10px 20px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-weight: 700;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: opacity 0.2s;
-  }
-  .img-convert-btn:hover { opacity: 0.85; }
-
-  .img-result {
-    display: none;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .img-preview {
-    width: 100%;
-    height: 160px;
-    object-fit: cover;
-    border: 1px solid var(--border);
-  }
-
-  .img-link-result {
-    background: var(--gray);
-    border: 1px solid var(--green);
-    color: var(--green);
-    padding: 10px 14px;
-    font-size: 10px;
-    letter-spacing: 0.5px;
-    word-break: break-all;
-    cursor: pointer;
-  }
-
-  .img-copy-note {
-    font-size: 9px;
-    color: var(--text-muted);
-    letter-spacing: 1px;
-  }
-
-  /* COLORS EDITOR */
-  .colors-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .color-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .color-preview {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .color-name-input {
-    flex: 1;
-    background: var(--gray-mid);
-    border: 1px solid var(--border);
-    color: var(--white);
-    padding: 8px 12px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 11px;
-    outline: none;
-  }
-
-  .color-hex-input {
-    width: 100px;
-    background: var(--gray-mid);
-    border: 1px solid var(--border);
-    color: var(--white);
-    padding: 8px 12px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 11px;
-    outline: none;
-  }
-
-  .remove-color {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 16px;
-    transition: color 0.2s;
-    padding: 4px;
-  }
-  .remove-color:hover { color: var(--red); }
-
-  .add-color-btn {
-    background: none;
-    border: 1px dashed var(--border);
-    color: var(--text-muted);
-    padding: 10px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-    width: 100%;
-  }
-  .add-color-btn:hover { border-color: var(--gold); color: var(--gold); }
-
-  /* STATS */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 40px;
-    width: 100%;
-  }
-
-  .stat-card {
-    background: var(--gray);
-    border: 1px solid var(--border);
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .stat-icon { font-size: 24px; }
-
-  .stat-value {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 32px;
-    font-weight: 400;
-  }
-
-  .stat-label {
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  /* PRODUCT LIST */
-  .product-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .product-row {
-    background: var(--gray);
-    border: 1px solid var(--border);
-    padding: 20px 24px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    transition: background 0.2s;
-  }
-  .product-row:hover { background: var(--gray-mid); }
-
-  .product-row-img {
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
-    background: var(--gray-mid);
-    flex-shrink: 0;
-    border: 1px solid var(--border);
-  }
-
-  .product-row-img-placeholder {
-    width: 60px;
-    height: 60px;
-    background: var(--gray-mid);
-    flex-shrink: 0;
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-  }
-
-  .product-row-info { flex: 1; }
-
-  .product-row-name {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 20px;
-    font-weight: 400;
-    margin-bottom: 4px;
-  }
-
-  .product-row-meta {
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 1px;
-    display: flex;
-    gap: 16px;
-  }
-
-  .product-row-price {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 22px;
-    font-weight: 400;
-    white-space: nowrap;
-  }
-
-  .product-row-actions {
-    display: flex;
-    gap: 8px;
-  }
-
-  /* TOAST */
-  .toast {
-    position: fixed;
-    bottom: 32px;
-    right: 32px;
-    background: var(--green);
-    color: var(--black);
-    padding: 14px 24px;
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-weight: 600;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.4s;
-    z-index: 1000;
-  }
-  .toast.error { background: var(--red); color: var(--white); }
-  .toast.show { opacity: 1; transform: translateY(0); }
-
-  /* MODAL */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.85);
-    z-index: 500;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s;
-    backdrop-filter: blur(4px);
-  }
-  .modal-overlay.open { opacity: 1; pointer-events: all; }
-
-  .modal {
-    background: var(--gray);
-    width: 100%;
-    max-width: 700px;
-    max-height: 90vh;
-    overflow-y: auto;
-    border: 1px solid var(--border);
-    transform: translateY(20px);
-    transition: transform 0.3s;
-  }
-  .modal-overlay.open .modal { transform: translateY(0); }
-
-  .modal-header {
-    padding: 28px 32px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    background: var(--gray);
-    z-index: 10;
-  }
-
-  .modal-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 26px;
-    font-weight: 400;
-  }
-
-  .modal-close {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 22px;
-    cursor: pointer;
-    transition: color 0.2s;
-  }
-  .modal-close:hover { color: var(--white); }
-
-  .modal-body { padding: 32px; }
-
-  .modal-footer {
-    padding: 20px 32px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    position: sticky;
-    bottom: 0;
-    background: var(--gray);
-  }
-
-  /* LOADING */
-  .loading {
-    text-align: center;
-    padding: 60px;
-    color: var(--text-muted);
-  }
-  .loading p { font-family:'Cormorant Garamond',serif; font-size:22px; margin-bottom:8px; }
-  .loading span { font-size:10px; letter-spacing:3px; }
-
-  /* ORDERS */
-  .orders-filter-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 24px;
-  }
-
-  .order-filter-btn {
-    background: var(--gray-mid);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    padding: 8px 16px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .order-filter-btn.active,
-  .order-filter-btn:hover { background: var(--white); color: var(--black); border-color: var(--white); }
-
-  .orders-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-
-  .order-card {
-    background: var(--gray);
-    border: 1px solid var(--border);
-    overflow: hidden;
-  }
-
-  .order-card-header {
-    padding: 16px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .order-status-badge {
-    font-size: 8px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    padding: 5px 12px;
-    font-weight: 700;
-  }
-  .status-pendiente-pago { background: rgba(224,85,85,0.2); color: #e05555; border: 1px solid rgba(224,85,85,0.3); }
-  .status-pendiente-mp { background: rgba(201,169,110,0.2); color: var(--gold); border: 1px solid rgba(201,169,110,0.3); }
-  .status-confirmado { background: rgba(76,175,130,0.2); color: var(--green); border: 1px solid rgba(76,175,130,0.3); }
-  .status-entregado { background: rgba(100,100,255,0.2); color: #8888ff; border: 1px solid rgba(100,100,255,0.3); }
-  .status-cancelado { background: rgba(100,100,100,0.2); color: var(--text-muted); border: 1px solid var(--border); }
-
-  .order-id { font-size: 10px; letter-spacing: 2px; color: var(--text-muted); }
-
-  .order-card-body {
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .order-client-name {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 20px;
-    font-weight: 400;
-  }
-
-  .order-meta {
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.5px;
-    line-height: 1.8;
-  }
-  .order-meta strong { color: var(--white); }
-
-  .order-products {
-    font-size: 11px;
-    color: var(--text-muted);
-    padding: 10px;
-    background: var(--gray-mid);
-    border: 1px solid var(--border);
-    line-height: 1.6;
-  }
-
-  .order-total {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 24px;
-    color: var(--gold);
-    text-align: right;
-  }
-
-  .order-pago-badge {
-    font-size: 9px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    text-align: right;
-  }
-
-  .order-card-footer {
-    padding: 12px 20px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  @media (max-width: 768px) {
-    .orders-grid { grid-template-columns: 1fr; }
-  }
-    .sidebar { display: none; }
-    .content { padding: 24px; }
-    .stats-grid { grid-template-columns: 1fr 1fr; }
-    .form-grid { grid-template-columns: 1fr; }
-    .topbar { padding: 0 20px; }
-  }
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#0a0a0a;color:#f5f5f0;font-family:'Montserrat',sans-serif;font-weight:300}
+:root{
+  --black:#0a0a0a;--white:#f5f5f0;--gold:#c9a96e;
+  --gray:#1a1a1a;--mid:#2a2a2a;--light:#333;
+  --muted:#888;--border:rgba(255,255,255,0.08);
+  --green:#4caf82;--red:#e05555;
+}
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#1a1a1a,#0a0a0a);z-index:999}
+.login-box{width:360px;background:var(--gray);border:1px solid var(--border);padding:48px;display:flex;flex-direction:column;gap:28px}
+.login-logo{font-family:'Cormorant Garamond',serif;font-size:26px;letter-spacing:8px;text-align:center}
+.login-sub{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);text-align:center}
+.login-input{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:14px;font-family:'Montserrat',sans-serif;font-size:14px;outline:none;width:100%;text-align:center;letter-spacing:4px}
+.login-input:focus{border-color:var(--gold)}
+.login-btn{background:var(--white);color:var(--black);border:none;padding:14px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;cursor:pointer;width:100%;transition:background .3s}
+.login-btn:hover{background:var(--gold)}
+.login-err{font-size:10px;color:var(--red);text-align:center;display:none}
+/* PANEL */
+#adminPanel{display:none}
+#adminPanel.visible{display:block}
+/* TOPBAR */
+.topbar{height:60px;background:var(--gray);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 32px;position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-logo{font-family:'Cormorant Garamond',serif;font-size:20px;letter-spacing:6px}
+.topbar-badge{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);border:1px solid rgba(201,169,110,.3);padding:3px 10px}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.drive-status{font-size:10px;color:var(--muted);letter-spacing:1px}
+.tbtn{background:none;border:1px solid var(--border);color:var(--muted);padding:7px 14px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center}
+.tbtn:hover{border-color:var(--white);color:var(--white)}
+.tbtn.green{border-color:rgba(76,175,130,.4);color:var(--green)}
+.tbtn.green:hover{background:var(--green);color:var(--black)}
+/* BODY LAYOUT */
+.body-layout{display:flex;height:calc(100vh - 60px)}
+/* SIDEBAR */
+.sidebar{width:210px;min-width:210px;background:var(--gray);border-right:1px solid var(--border);overflow-y:auto;padding:20px 0}
+.nav-section{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);padding:14px 18px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;font-size:11px;letter-spacing:.5px;color:var(--muted);cursor:pointer;transition:all .2s;border-left:2px solid transparent}
+.nav-item:hover{color:var(--white);background:rgba(255,255,255,.03)}
+.nav-item.active{color:var(--white);border-left-color:var(--gold);background:rgba(201,169,110,.05)}
+.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+/* CONTENT */
+.main-content{flex:1;overflow-y:auto;padding:32px}
+.page{display:none}
+.page.active{display:block}
+/* PAGE HEADER */
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap}
+.ph-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300}
+.ph-sub{font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:3px}
+/* BUTTONS */
+.btn{padding:9px 18px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:600;cursor:pointer;border:none;transition:all .3s;display:inline-block}
+.btn-primary{background:var(--white);color:var(--black)}.btn-primary:hover{background:var(--gold)}
+.btn-secondary{background:var(--mid);color:var(--white)}.btn-secondary:hover{background:var(--light)}
+.btn-success{background:rgba(76,175,130,.15);color:var(--green);border:1px solid rgba(76,175,130,.3)}.btn-success:hover{background:var(--green);color:var(--black)}
+.btn-danger{background:rgba(224,85,85,.15);color:var(--red);border:1px solid rgba(224,85,85,.3)}.btn-danger:hover{background:var(--red);color:var(--white)}
+.btn-sm{padding:6px 12px;font-size:8px}
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.stat-card{background:var(--gray);border:1px solid var(--border);padding:18px}
+.stat-icon{font-size:20px;margin-bottom:6px}
+.stat-value{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400}
+.stat-label{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:3px}
+/* CARD */
+.card{background:var(--gray);border:1px solid var(--border);margin-bottom:14px}
+.card-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.card-title{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:400}
+.card-body{padding:18px}
+/* PRODUCT ROWS */
+.product-row{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--gray);transition:background .2s}
+.product-row:hover{background:var(--mid)}
+.prod-img{width:50px;height:50px;object-fit:cover;background:var(--mid);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px}
+.prod-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400}
+.prod-meta{font-size:10px;color:var(--muted);letter-spacing:.5px;margin-top:2px}
+.prod-price{font-family:'Cormorant Garamond',serif;font-size:18px;white-space:nowrap;margin-left:auto;padding-left:12px}
+.prod-actions{display:flex;gap:6px;flex-shrink:0}
+/* ORDERS */
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.filter-btn{background:var(--mid);border:1px solid var(--border);color:var(--muted);padding:6px 12px;font-family:'Montserrat',sans-serif;font-size:8px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.filter-btn.active,.filter-btn:hover{background:var(--white);color:var(--black);border-color:var(--white)}
+.orders-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.order-card{background:var(--gray);border:1px solid var(--border)}
+.order-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.order-id{font-size:10px;letter-spacing:1px;color:var(--muted)}
+.order-badge{font-size:8px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;font-weight:700}
+.badge-pago{background:rgba(224,85,85,.2);color:var(--red);border:1px solid rgba(224,85,85,.3)}
+.badge-mp{background:rgba(201,169,110,.2);color:var(--gold);border:1px solid rgba(201,169,110,.3)}
+.badge-ok{background:rgba(76,175,130,.2);color:var(--green);border:1px solid rgba(76,175,130,.3)}
+.badge-done{background:rgba(100,100,255,.2);color:#8888ff;border:1px solid rgba(100,100,255,.3)}
+.badge-cancel{background:rgba(100,100,100,.2);color:var(--muted);border:1px solid var(--border)}
+.order-body{padding:12px 16px;display:flex;flex-direction:column;gap:7px}
+.order-name{font-family:'Cormorant Garamond',serif;font-size:17px}
+.order-info{font-size:10px;color:var(--muted);line-height:1.8}
+.order-info strong{color:var(--white)}
+.order-prods{font-size:10px;color:var(--muted);background:var(--mid);padding:7px 9px;border:1px solid var(--border);line-height:1.6}
+.order-total{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--gold);text-align:right}
+.order-pago{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right}
+.order-foot{padding:8px 16px;border-top:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap}
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.fg{display:flex;flex-direction:column;gap:6px}
+.fl{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold)}
+.fi{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:10px 13px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none;width:100%;transition:border-color .3s}
+.fi:focus{border-color:var(--gold)}
+.fi option{background:var(--gray)}
+textarea.fi{resize:vertical;min-height:70px}
+.fhint{font-size:9px;color:var(--muted);letter-spacing:.5px;line-height:1.6}
+/* COLORS */
+.color-row{display:flex;gap:7px;align-items:center;margin-bottom:7px}
+.color-dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);flex-shrink:0}
+.color-name-in{flex:1;background:var(--mid);border:1px solid var(--border);color:var(--white);padding:7px 10px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none}
+.rem-color{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;transition:color .2s;padding:3px}
+.rem-color:hover{color:var(--red)}
+.add-color-btn{width:100%;background:none;border:1px dashed var(--border);color:var(--muted);padding:8px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:3px}
+.add-color-btn:hover{border-color:var(--gold);color:var(--gold)}
+/* PHOTOS */
+.photo-block{border:1px solid var(--border);padding:12px;margin-bottom:8px}
+.photo-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.photo-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);flex-shrink:0}
+.photo-color-name{font-size:9px;letter-spacing:2px;text-transform:uppercase}
+.photo-slots{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.photo-slot{display:flex;flex-direction:column;gap:3px}
+.slot-label{font-size:8px;color:var(--muted);letter-spacing:1px}
+.slot-input{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:4px 5px;font-size:8px;outline:none;width:100%}
+.slot-btns{display:flex;gap:2px}
+.slot-btn{flex:1;border:none;padding:3px 0;font-family:'Montserrat',sans-serif;font-size:7px;letter-spacing:1px;cursor:pointer;font-weight:700;text-transform:uppercase}
+.slot-btn.conv{background:var(--gold);color:var(--black)}
+.slot-btn.up{background:var(--light);color:var(--white)}
+.slot-prev{width:100%;height:38px;object-fit:cover;border:1px solid var(--border)}
+.slot-empty{width:100%;height:38px;background:var(--mid);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px}
+/* CONVERTER */
+.conv-row{display:flex;gap:7px}
+.conv-inp{flex:1;background:var(--mid);border:1px solid var(--border);color:var(--white);padding:9px 12px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none}
+.conv-btn{background:var(--gold);color:var(--black);border:none;padding:9px 14px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;font-weight:700;cursor:pointer;white-space:nowrap}
+.conv-result{background:var(--mid);border:1px solid var(--green);color:var(--green);padding:9px 12px;font-size:10px;word-break:break-all;cursor:pointer;margin-top:8px}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;display:flex;align-items:center;justify-content:center;padding:28px;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(4px)}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--gray);width:100%;max-width:660px;max-height:88vh;overflow-y:auto;border:1px solid var(--border)}
+.modal-head{padding:22px 26px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--gray);z-index:5}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400}
+.modal-x{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;transition:color .2s}
+.modal-x:hover{color:var(--white)}
+.modal-body{padding:24px;display:flex;flex-direction:column;gap:18px}
+.modal-foot{padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--gray)}
+/* LINKS */
+.links-grid{display:flex;gap:8px;flex-wrap:wrap}
+.link-btn{background:var(--mid);border:1px solid var(--border);padding:12px 18px;text-decoration:none;color:var(--white);font-size:11px;letter-spacing:1px;transition:border-color .2s;display:inline-flex;align-items:center;gap:8px}
+.link-btn:hover{border-color:var(--gold)}
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:600;opacity:0;transform:translateY(6px);transition:all .4s;z-index:9999;background:var(--green);color:var(--black)}
+.toast.err{background:var(--red);color:var(--white)}
+.toast.show{opacity:1;transform:translateY(0)}
+@media(max-width:768px){
+  .stats{grid-template-columns:1fr 1fr}
+  .orders-grid{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .photo-slots{grid-template-columns:repeat(3,1fr)}
+}
 </style>
 </head>
 <body>
@@ -833,228 +173,146 @@
 <div class="toast" id="toast"></div>
 
 <!-- LOGIN -->
-<div class="login-screen" id="loginScreen">
+<div id="loginScreen">
   <div class="login-box">
     <div class="login-logo">FOUNDER</div>
-    <div class="login-title">Panel de Administración</div>
+    <div class="login-sub">Panel de Administración</div>
     <div>
       <input type="password" class="login-input" id="passwordInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
-      <div class="login-error" id="loginError">Contraseña incorrecta</div>
+      <div class="login-err" id="loginError">Contraseña incorrecta</div>
     </div>
     <button class="login-btn" onclick="login()">Ingresar</button>
   </div>
 </div>
 
 <!-- ADMIN PANEL -->
-<div class="admin-panel" id="adminPanel">
-
-  <!-- TOPBAR -->
+<div id="adminPanel">
   <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-logo">FOUNDER</div>
       <div class="topbar-badge">Admin</div>
     </div>
     <div class="topbar-right">
-      <span id="driveStatus" style="font-size:10px;letter-spacing:1px;color:var(--text-muted)">⚪ Drive desconectado</span>
-      <button id="connectDriveBtn" class="btn btn-success btn-sm" onclick="connectDrive()">Conectar Drive</button>
-      <a href="https://founder-web-gules.vercel.app" target="_blank" class="view-site-btn">Ver sitio →</a>
-      <button class="logout-btn" onclick="logout()">Salir</button>
+      <span class="drive-status" id="driveStatus">⚪ Drive desconectado</span>
+      <button class="tbtn green" id="connectDriveBtn" onclick="connectDrive()">Conectar Drive</button>
+      <a href="https://founder-web-gules.vercel.app" target="_blank" class="tbtn">Ver sitio →</a>
+      <button class="tbtn" style="border-color:rgba(224,85,85,.3);color:var(--red)" onclick="logout()">Salir</button>
     </div>
   </div>
 
-  <!-- MAIN -->
-  <div class="admin-main">
-
-    <!-- SIDEBAR -->
+  <div class="body-layout">
     <div class="sidebar">
-      <div class="sidebar-label">Principal</div>
-      <div class="sidebar-item active" onclick="showPage('dashboard')">
-        <span class="icon">📊</span> Dashboard
-      </div>
-      <div class="sidebar-item" onclick="showPage('productos')">
-        <span class="icon">👜</span> Productos
-      </div>
-      <div class="sidebar-item" onclick="showPage('pedidos')">
-        <span class="icon">📦</span> Pedidos
-      </div>
-      <div class="sidebar-label">Herramientas</div>
-      <div class="sidebar-item" onclick="showPage('imagenes')">
-        <span class="icon">🖼️</span> Conversor de imágenes
-      </div>
-      <div class="sidebar-label">Sitio</div>
-      <div class="sidebar-item" onclick="window.open('https://founder-web-gules.vercel.app','_blank')">
-        <span class="icon">🌐</span> Ver tienda
-      </div>
-      <div class="sidebar-item" onclick="window.open('https://docs.google.com/spreadsheets/d/1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8','_blank')">
-        <span class="icon">📋</span> Ver planilla
-      </div>
+      <div class="nav-section">Principal</div>
+      <div class="nav-item active" onclick="nav('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-item" onclick="nav('pedidos',this)"><span class="nav-icon">📦</span>Pedidos</div>
+      <div class="nav-item" onclick="nav('productos',this)"><span class="nav-icon">👜</span>Productos</div>
+      <div class="nav-section">Herramientas</div>
+      <div class="nav-item" onclick="nav('imagenes',this)"><span class="nav-icon">🖼️</span>Conversor imágenes</div>
+      <div class="nav-section">Accesos</div>
+      <div class="nav-item" onclick="window.open('https://founder-web-gules.vercel.app','_blank')"><span class="nav-icon">🌐</span>Ver tienda</div>
+      <div class="nav-item" onclick="window.open('https://docs.google.com/spreadsheets/d/1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8','_blank')"><span class="nav-icon">📋</span>Planilla</div>
+      <div class="nav-item" onclick="window.open('https://drive.google.com','_blank')"><span class="nav-icon">📁</span>Google Drive</div>
     </div>
 
-    <!-- CONTENT -->
-    <div class="content">
+    <div class="main-content">
 
       <!-- DASHBOARD -->
       <div class="page active" id="page-dashboard">
-        <div class="page-header">
-          <div>
-            <div class="page-title">Dashboard</div>
-            <div class="page-subtitle">Resumen general de tu tienda</div>
-          </div>
-          <button class="btn btn-primary" onclick="loadData()">↻ Actualizar</button>
+        <div class="ph">
+          <div><div class="ph-title">Dashboard</div><div class="ph-sub">Resumen de tu tienda</div></div>
+          <button class="btn btn-primary btn-sm" onclick="loadData()">↻ Actualizar</button>
         </div>
-
-        <div class="stats-grid" id="statsGrid">
-          <div class="stat-card">
-            <div class="stat-icon">👜</div>
-            <div class="stat-value" id="statProductos">—</div>
-            <div class="stat-label">Productos</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">🎨</div>
-            <div class="stat-value" id="statColores">—</div>
-            <div class="stat-label">Variantes de color</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">🖼️</div>
-            <div class="stat-value" id="statImagenes">—</div>
-            <div class="stat-label">Con imagen</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">📦</div>
-            <div class="stat-value" id="statPedidos">—</div>
-            <div class="stat-label">Pedidos totales</div>
-          </div>
+        <div class="stats">
+          <div class="stat-card"><div class="stat-icon">👜</div><div class="stat-value" id="statProductos">—</div><div class="stat-label">Productos</div></div>
+          <div class="stat-card"><div class="stat-icon">🎨</div><div class="stat-value" id="statColores">—</div><div class="stat-label">Variantes color</div></div>
+          <div class="stat-card"><div class="stat-icon">🖼️</div><div class="stat-value" id="statImagenes">—</div><div class="stat-label">Sets de fotos</div></div>
+          <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-value" id="statPedidos">—</div><div class="stat-label">Pedidos</div></div>
         </div>
-
         <div class="card">
-          <div class="card-header">
-            <div class="card-title">Productos activos</div>
-            <button class="btn btn-primary btn-sm" onclick="showPage('productos')">Gestionar</button>
-          </div>
-          <div id="dashProductList" class="loading">
-            <p>Cargando...</p>
-            <span>conectando con google sheets</span>
+          <div class="card-head"><div class="card-title">Productos activos</div><button class="btn btn-primary btn-sm" onclick="nav('productos',document.querySelectorAll('.nav-item')[2])">Gestionar</button></div>
+          <div id="dashProductList" style="min-height:60px"><div style="padding:32px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px">Cargando...</div></div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <div class="card-head"><div class="card-title">Accesos rápidos</div></div>
+          <div class="card-body">
+            <div class="links-grid">
+              <a href="https://founder-web-gules.vercel.app" target="_blank" class="link-btn">🌐 Ver tienda</a>
+              <a href="https://docs.google.com/spreadsheets/d/1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8" target="_blank" class="link-btn">📋 Planilla</a>
+              <a href="https://drive.google.com" target="_blank" class="link-btn">📁 Google Drive</a>
+              <a href="https://wa.me/598098550096" target="_blank" class="link-btn">💬 WhatsApp</a>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="card" style="margin-top:16px">
-          <div class="card-header">
-            <div class="card-title">Links rápidos</div>
-          </div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap">
-            <a href="https://founder-web-gules.vercel.app" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">🌐 Ver tienda</a>
-            <a href="https://docs.google.com/spreadsheets/d/1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">📋 Ver planilla</a>
-            <a href="https://drive.google.com" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">📁 Google Drive</a>
-            <a href="https://wa.me/598098550096" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">💬 WhatsApp</a>
+      <!-- PEDIDOS -->
+      <div class="page" id="page-pedidos">
+        <div class="ph">
+          <div><div class="ph-title">Pedidos</div><div class="ph-sub">Gestioná todos los pedidos</div></div>
+          <button class="btn btn-primary btn-sm" onclick="loadOrders()">↻ Actualizar</button>
+        </div>
+        <div class="filter-row">
+          <button class="filter-btn active" onclick="filterOrders('todos',this)">Todos</button>
+          <button class="filter-btn" onclick="filterOrders('Pendiente pago',this)">Pendiente pago</button>
+          <button class="filter-btn" onclick="filterOrders('Pendiente confirmación',this)">Pendiente MP</button>
+          <button class="filter-btn" onclick="filterOrders('Confirmado',this)">Confirmados</button>
+          <button class="filter-btn" onclick="filterOrders('Entregado',this)">Entregados</button>
+          <button class="filter-btn" onclick="filterOrders('Cancelado',this)">Cancelados</button>
+        </div>
+        <div class="orders-grid" id="ordersGrid">
+          <div style="grid-column:1/-1;padding:48px;text-align:center;color:var(--muted)">
+            <div style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:6px">No hay pedidos aún</div>
+            <div style="font-size:10px;letter-spacing:2px">Los pedidos aparecerán acá cuando alguien compre</div>
           </div>
         </div>
       </div>
 
       <!-- PRODUCTOS -->
       <div class="page" id="page-productos">
-        <div class="page-header">
-          <div>
-            <div class="page-title">Productos</div>
-            <div class="page-subtitle">Editá precios, descripciones, colores e imágenes</div>
-          </div>
-          <button class="btn btn-primary" onclick="openNewProduct()">+ Nuevo producto</button>
+        <div class="ph">
+          <div><div class="ph-title">Productos</div><div class="ph-sub">Editá precios, descripciones, colores e imágenes</div></div>
+          <button class="btn btn-primary btn-sm" onclick="openNewProduct()">+ Nuevo</button>
         </div>
-
-        <div id="productListAdmin" class="loading">
-          <p>Cargando productos...</p>
-          <span>conectando con google sheets</span>
-        </div>
+        <div id="productListAdmin"><div style="padding:32px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px">Cargando...</div></div>
       </div>
 
-      <!-- PEDIDOS -->
-      <div class="page" id="page-pedidos">
-        <div class="page-header">
-          <div>
-            <div class="page-title">Pedidos</div>
-            <div class="page-subtitle">Gestioná todos los pedidos recibidos</div>
-          </div>
-          <button class="btn btn-primary" onclick="loadOrders()">↻ Actualizar</button>
-        </div>
-
-        <div class="orders-filter-row">
-          <button class="order-filter-btn active" onclick="filterOrders('todos', this)">Todos</button>
-          <button class="order-filter-btn" onclick="filterOrders('Pendiente pago', this)">Pendiente pago</button>
-          <button class="order-filter-btn" onclick="filterOrders('Pendiente confirmación', this)">Pendiente MP</button>
-          <button class="order-filter-btn" onclick="filterOrders('Confirmado', this)">Confirmados</button>
-          <button class="order-filter-btn" onclick="filterOrders('Entregado', this)">Entregados</button>
-          <button class="order-filter-btn" onclick="filterOrders('Cancelado', this)">Cancelados</button>
-        </div>
-
-        <div id="ordersGrid" class="orders-grid">
-          <div class="loading"><p>Cargando pedidos...</p><span>conectando</span></div>
-        </div>
-      </div>
+      <!-- IMAGENES -->
       <div class="page" id="page-imagenes">
-        <div class="page-header">
-          <div>
-            <div class="page-title">Conversor de imágenes</div>
-            <div class="page-subtitle">Convertí links de Google Drive al formato correcto</div>
-          </div>
-        </div>
-
+        <div class="ph"><div><div class="ph-title">Conversor de imágenes</div><div class="ph-sub">Convertí links de Google Drive al formato correcto</div></div></div>
         <div class="card">
-          <div class="card-header">
-            <div class="card-title">¿Cómo funciona?</div>
+          <div class="card-head"><div class="card-title">¿Cómo funciona?</div></div>
+          <div class="card-body" style="font-size:11px;color:var(--muted);line-height:2">
+            1. Subí la foto a <strong style="color:var(--white)">founder-imagenes</strong> en Google Drive<br>
+            2. Click derecho → Compartir → "Cualquier persona con el enlace"<br>
+            3. Copiá el link y pegalo abajo → hacé click en "Convertir"
           </div>
-          <div style="display:flex;flex-direction:column;gap:12px">
-            <div style="font-size:11px;color:var(--text-muted);line-height:1.8;letter-spacing:0.3px">
-              1. Subí la foto a tu carpeta <strong style="color:var(--white)">founder-imagenes</strong> en Google Drive<br>
-              2. Click derecho → Compartir → "Cualquier persona con el enlace"<br>
-              3. Copiá el link y pegalo abajo<br>
-              4. Hacé click en "Convertir" y copiá el resultado<br>
-              5. Pegalo en el campo de imagen del producto correspondiente
+        </div>
+        <div class="card" style="margin-top:12px">
+          <div class="card-head"><div class="card-title">Convertir link</div></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <div class="fg">
+              <div class="fl">Link de Google Drive</div>
+              <div class="conv-row">
+                <input type="text" class="conv-inp" id="driveInput" placeholder="https://drive.google.com/file/d/...">
+                <button class="conv-btn" onclick="convertDriveLink()">Convertir →</button>
+              </div>
+            </div>
+            <div id="convertResult" style="display:none">
+              <div class="fl" style="margin-bottom:6px">✅ Hacé click para copiar</div>
+              <div class="conv-result" id="convertedLink" onclick="copyConverted()"></div>
+              <img id="convertedPreview" src="" style="max-width:220px;max-height:150px;object-fit:cover;border:1px solid var(--border);margin-top:10px">
             </div>
           </div>
         </div>
-
-        <div class="card" style="margin-top:16px">
-          <div class="card-header">
-            <div class="card-title">Convertir link</div>
-          </div>
-
-          <div style="display:flex;flex-direction:column;gap:20px">
-            <div class="form-group">
-              <div class="form-label">Link de Google Drive</div>
-              <div class="img-input-row">
-                <input type="text" id="driveInput" placeholder="https://drive.google.com/file/d/...">
-                <button class="img-convert-btn" onclick="convertDriveLink()">Convertir →</button>
-              </div>
-              <div class="form-hint">Pegá el link completo que copiaste de Google Drive</div>
+        <div class="card" style="margin-top:12px">
+          <div class="card-head"><div class="card-title">Convertir varios</div></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <div class="fg">
+              <div class="fl">Links (uno por línea)</div>
+              <textarea class="fi" id="bulkInput" placeholder="https://drive.google.com/file/d/ID1/view&#10;https://drive.google.com/file/d/ID2/view" style="min-height:90px"></textarea>
             </div>
-
-            <div id="convertResult" style="display:none;flex-direction:column;gap:16px">
-              <div class="form-group">
-                <div class="form-label">✅ Link convertido — hacé click para copiar</div>
-                <div class="img-link-result" id="convertedLink" onclick="copyConverted()"></div>
-                <div class="form-hint">Hacé click en el link para copiarlo automáticamente</div>
-              </div>
-              <div>
-                <div class="form-label" style="margin-bottom:12px">Vista previa</div>
-                <img id="convertedPreview" src="" alt="Preview" style="max-width:300px;max-height:200px;object-fit:cover;border:1px solid var(--border)">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-top:16px">
-          <div class="card-header">
-            <div class="card-title">Convertir varios links</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:16px">
-            <div class="form-group">
-              <div class="form-label">Links de Google Drive (uno por línea)</div>
-              <textarea class="form-textarea" id="bulkInput" placeholder="https://drive.google.com/file/d/ID1/view&#10;https://drive.google.com/file/d/ID2/view&#10;https://drive.google.com/file/d/ID3/view" style="min-height:120px"></textarea>
-            </div>
-            <button class="btn btn-primary" onclick="convertBulk()" style="align-self:flex-start">Convertir todos</button>
-            <div id="bulkResult" style="display:none">
-              <div class="form-label" style="margin-bottom:12px">Links convertidos</div>
-              <div id="bulkLinks" style="display:flex;flex-direction:column;gap:8px"></div>
-            </div>
+            <button class="btn btn-primary btn-sm" onclick="convertBulk()" style="align-self:flex-start">Convertir todos</button>
+            <div id="bulkResult" style="display:none;flex-direction:column;gap:7px"></div>
           </div>
         </div>
       </div>
@@ -1066,819 +324,311 @@
 <!-- PRODUCT MODAL -->
 <div class="modal-overlay" id="productModal">
   <div class="modal">
-    <div class="modal-header">
+    <div class="modal-head">
       <div class="modal-title" id="modalTitle">Editar producto</div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      <button class="modal-x" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="editingRow">
-      <div style="display:flex;flex-direction:column;gap:24px">
-
-        <div class="form-grid">
-          <div class="form-group">
-            <div class="form-label">Nombre del modelo *</div>
-            <input type="text" class="form-input" id="editNombre" placeholder="Ej: Simple">
-          </div>
-          <div class="form-group">
-            <div class="form-label">Precio (UYU) *</div>
-            <input type="number" class="form-input" id="editPrecio" placeholder="Ej: 990">
-          </div>
-          <div class="form-group full">
-            <div class="form-label">Descripción</div>
-            <textarea class="form-textarea" id="editDesc" placeholder="Descripción del producto..."></textarea>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <div class="form-label">Especificaciones (separadas por |)</div>
-          <textarea class="form-textarea" id="editSpecs" placeholder="Eco cuero + aluminio|Tecnología RFID|Botón deslizante..."></textarea>
-          <div class="form-hint">Separá cada característica con el símbolo | — Ej: RFID|Botón deslizante|5-6 tarjetas</div>
-        </div>
-
-        <div class="form-group">
-          <div class="form-label">Colores disponibles</div>
-          <div class="colors-editor" id="colorsEditor"></div>
-          <button class="add-color-btn" onclick="addColorRow()">+ Agregar color</button>
-          <div class="form-hint" style="margin-top:8px">
-            Nombres válidos: Negro, Marrón, Marrón Oscuro, Gris Oscuro, Azul, Rosa, Rojo, Crema, Carbon, Verde Oliva
-          </div>
-        </div>
-
-        <div id="colorPhotosSection"></div>
-
+      <div class="form-grid">
+        <div class="fg"><div class="fl">Nombre *</div><input type="text" class="fi" id="editNombre" placeholder="Ej: Simple"></div>
+        <div class="fg"><div class="fl">Precio UYU *</div><input type="number" class="fi" id="editPrecio" placeholder="990"></div>
+        <div class="fg form-full"><div class="fl">Descripción</div><textarea class="fi" id="editDesc"></textarea></div>
       </div>
+      <div class="fg">
+        <div class="fl">Especificaciones (separadas por |)</div>
+        <textarea class="fi" id="editSpecs" placeholder="RFID|Botón deslizante|5-6 tarjetas..."></textarea>
+        <div class="fhint">Separá con | — Ej: RFID|Botón deslizante|5-6 tarjetas</div>
+      </div>
+      <div class="fg">
+        <div class="fl">Colores disponibles</div>
+        <div id="colorsEditor"></div>
+        <button class="add-color-btn" onclick="addColorRow()">+ Agregar color</button>
+        <div class="fhint" style="margin-top:5px">Nombres válidos: Negro, Marrón, Marrón Oscuro, Gris Oscuro, Azul, Rosa, Rojo, Crema, Carbon, Verde Oliva</div>
+      </div>
+      <div id="colorPhotosSection"></div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-foot">
       <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveProduct()">💾 Guardar cambios</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveProduct()">💾 Guardar</button>
     </div>
   </div>
 </div>
 
 <script>
-// ============ CONFIG ============
-const PASSWORD = 'nerito20';
-const SHEET_ID = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
-const SHEET_URL       = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`;
-const SHEET_FOTOS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`;
-const DRIVE_FOLDER_ID = ''; // Se completa automáticamente al conectar Drive
-const CLIENT_ID = '733837099876-opi6t9ohpru1c7su1hbgj8kqrvmqp1nh.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
+const PASSWORD='nerito20';
+const SHEET_ID='1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
+const SHEET_URL=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`;
+const FOTOS_URL=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`;
+const CLIENT_ID='733837099876-opi6t9ohpru1c7su1hbgj8kqrvmqp1nh.apps.googleusercontent.com';
+const SCOPES='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
+const COLOR_MAP={'Negro':'#1a1a1a','Marrón':'#8b4513','Marrón Oscuro':'#3d2010','Gris Oscuro':'#4a4a5a','Azul':'#1a3a5c','Rosa':'#d4a0a0','Rojo':'#8b1a1a','Crema':'#d4c8a8','Carbon':'#2a2a2a','Verde Oliva':'#4a5a2a'};
+let products=[],fotosData=[],allOrders=[],currentFilter='todos';
+let tokenClient,accessToken=null,driveReady=false;
 
-let tokenClient;
-let accessToken = null;
-let driveReady = false;
-
-const COLOR_MAP = {
-  'Negro':         '#1a1a1a',
-  'Marrón':        '#8b4513',
-  'Marrón Oscuro': '#3d2010',
-  'Gris Oscuro':   '#4a4a5a',
-  'Azul':          '#1a3a5c',
-  'Rosa':          '#d4a0a0',
-  'Rojo':          '#8b1a1a',
-  'Crema':         '#d4c8a8',
-  'Carbon':        '#2a2a2a',
-  'Verde Oliva':   '#4a5a2a',
-};
-
-let products = [];
-let fotosData = []; // [{modelo, color, fotos:[f1,f2,f3,f4,f5]}]
-
-// ============ LOGIN ============
-function login() {
-  const pass = document.getElementById('passwordInput').value;
-  if (pass === PASSWORD) {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'block';
+function login(){
+  if(document.getElementById('passwordInput').value===PASSWORD){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('adminPanel').style.display='block';
     loadData();
-  } else {
-    document.getElementById('loginError').style.display = 'block';
-    document.getElementById('passwordInput').value = '';
-    document.getElementById('passwordInput').focus();
-  }
+  }else{document.getElementById('loginError').style.display='block';document.getElementById('passwordInput').value='';}
 }
-
-function logout() {
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('adminPanel').style.display = 'none';
-  document.getElementById('passwordInput').value = '';
+function logout(){
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('adminPanel').style.display='none';
+  document.getElementById('passwordInput').value='';
 }
-
-// ============ NAVIGATION ============
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  event.currentTarget.classList.add('active');
+function nav(page,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if(el)el.classList.add('active');
+  if(page==='pedidos')loadOrders();
 }
-
-// ============ LOAD DATA ============
-async function loadData() {
-  try {
-    const [resP, resF] = await Promise.all([
-      fetch(SHEET_URL + '&t=' + Date.now()),
-      fetch(SHEET_FOTOS_URL + '&t=' + Date.now())
-    ]);
-    const textP = await resP.text();
-    const textF = await resF.text();
-    const jsonP = JSON.parse(textP.substring(47, textP.length - 2));
-    const jsonF = JSON.parse(textF.substring(47, textF.length - 2));
-
-    products = (jsonP.table.rows || []).map((row, i) => ({
-      rowIndex: i + 2,
-      nombre:  row.c[0]?.v || '',
-      precio:  parseInt(row.c[1]?.v) || 0,
-      desc:    row.c[2]?.v || '',
-      colores: row.c[3]?.v || '',
-      specs:   row.c[4]?.v || '',
-    }));
-
-    fotosData = (jsonF.table.rows || []).map((row, i) => ({
-      rowIndex: i + 2,
-      modelo: row.c[0]?.v || '',
-      color:  row.c[1]?.v || '',
-      fotos: [
-        row.c[2]?.v || '',
-        row.c[3]?.v || '',
-        row.c[4]?.v || '',
-        row.c[5]?.v || '',
-        row.c[6]?.v || '',
-      ]
-    }));
-
-    renderDashboard();
-    renderProductList();
-    loadOrders();
-
-  } catch(e) {
-    showToast('Error al cargar datos', true);
-  }
+async function loadData(){
+  try{
+    const[rP,rF]=await Promise.all([fetch(SHEET_URL+'&t='+Date.now()),fetch(FOTOS_URL+'&t='+Date.now())]);
+    const tP=await rP.text(),tF=await rF.text();
+    const jP=JSON.parse(tP.substring(47,tP.length-2));
+    const jF=JSON.parse(tF.substring(47,tF.length-2));
+    products=(jP.table.rows||[]).map((r,i)=>({rowIndex:i+2,nombre:r.c[0]?.v||'',precio:parseInt(r.c[1]?.v)||0,desc:r.c[2]?.v||'',colores:r.c[3]?.v||'',specs:r.c[4]?.v||''}));
+    fotosData=(jF.table.rows||[]).map((r,i)=>({rowIndex:i+2,modelo:r.c[0]?.v||'',color:r.c[1]?.v||'',fotos:[r.c[2]?.v||'',r.c[3]?.v||'',r.c[4]?.v||'',r.c[5]?.v||'',r.c[6]?.v||'']}));
+    renderDashboard();renderProductList();loadOrders();
+  }catch(e){toast('Error al cargar datos',true);}
 }
-
-function getFotosForColor(modelo, color) {
-  const entry = fotosData.find(f => f.modelo === modelo && f.color === color);
-  return entry ? entry.fotos : ['','','','',''];
-}
-
-// ============ GOOGLE DRIVE AUTH ============
-function initGoogleAuth() {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (resp) => {
-      if (resp.error) { showToast('Error al conectar con Google Drive', true); return; }
-      accessToken = resp.access_token;
-      driveReady = true;
-      showToast('✅ Conectado a Google Drive');
-      document.getElementById('driveStatus').textContent = '✅ Conectado';
-      document.getElementById('driveStatus').style.color = 'var(--green)';
-      document.getElementById('connectDriveBtn').style.display = 'none';
-    }
-  });
-}
-
-function connectDrive() {
-  if (!tokenClient) { showToast('Cargando Google...', true); return; }
-  tokenClient.requestAccessToken();
-}
-
-// ============ UPLOAD TO DRIVE ============
-async function uploadToDrive(file, modelo, color, fotoNum) {
-  if (!driveReady) {
-    showToast('Primero conectate a Google Drive', true);
-    return null;
-  }
-
-  const inputId = `foto_${modelo}_${color}_${fotoNum}`;
-  const prevId  = `prev_${modelo}_${color}_${fotoNum}`;
-
-  // Show uploading state
-  const btn = document.querySelector(`[data-upload="${inputId}"]`);
-  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
-
-  try {
-    // 1. Find or create founder-imagenes folder
-    let folderId = await findOrCreateFolder();
-
-    // 2. Upload file
-    const metadata = {
-      name: `${modelo}-${color}-foto${fotoNum+1}-${Date.now()}.jpg`,
-      parents: [folderId]
-    };
-
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], {type:'application/json'}));
-    form.append('file', file);
-
-    const uploadRes = await fetch(
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-      { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: form }
-    );
-    const uploadData = await uploadRes.json();
-    const fileId = uploadData.id;
-
-    // 3. Make public
-    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'reader', type: 'anyone' })
-    });
-
-    // 4. Get direct link
-    const directLink = `https://lh3.googleusercontent.com/d/${fileId}`;
-
-    // 5. Update input and preview
-    const input = document.getElementById(inputId);
-    if (input) input.value = directLink;
-
-    const prev = document.getElementById(prevId);
-    if (prev) {
-      prev.outerHTML = `<img src="${directLink}" style="width:100%;height:40px;object-fit:cover;border:1px solid var(--border)" id="${prevId}">`;
-    }
-
-    if (btn) { btn.textContent = '✅'; btn.disabled = false; }
-    showToast(`Foto ${fotoNum+1} subida`);
-    return directLink;
-
-  } catch(e) {
-    if (btn) { btn.textContent = '📁'; btn.disabled = false; }
-    showToast('Error al subir foto', true);
-    return null;
-  }
-}
-
-async function findOrCreateFolder() {
-  // Search for founder-imagenes folder
-  const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='founder-imagenes' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-  const searchData = await searchRes.json();
-
-  if (searchData.files && searchData.files.length > 0) {
-    return searchData.files[0].id;
-  }
-
-  // Create folder if not exists
-  const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'founder-imagenes', mimeType: 'application/vnd.google-apps.folder' })
-  });
-  const createData = await createRes.json();
-  return createData.id;
-}
-
-function handleFileSelect(inputId, modelo, color, fotoNum) {
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.accept = 'image/*';
-  fileInput.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (file) await uploadToDrive(file, modelo, color, fotoNum);
-  };
-  fileInput.click();
-}
-
-// ============ LOGIN ============
-function login() {
-  const pass = document.getElementById('passwordInput').value;
-  if (pass === PASSWORD) {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'block';
-    loadData();
-  } else {
-    document.getElementById('loginError').style.display = 'block';
-    document.getElementById('passwordInput').value = '';
-    document.getElementById('passwordInput').focus();
-  }
-}
-
-function logout() {
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('adminPanel').style.display = 'none';
-  document.getElementById('passwordInput').value = '';
-}
-
-// ============ NAVIGATION ============
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  event.currentTarget.classList.add('active');
-}
-
-// ============ LOAD DATA ============
-async function loadData() {
-  try {
-    const [resP, resF] = await Promise.all([
-      fetch(SHEET_URL + '&t=' + Date.now()),
-      fetch(SHEET_FOTOS_URL + '&t=' + Date.now())
-    ]);
-    const textP = await resP.text();
-    const textF = await resF.text();
-    const jsonP = JSON.parse(textP.substring(47, textP.length - 2));
-    const jsonF = JSON.parse(textF.substring(47, textF.length - 2));
-
-    products = (jsonP.table.rows || []).map((row, i) => ({
-      rowIndex: i + 2,
-      nombre:  row.c[0]?.v || '',
-      precio:  parseInt(row.c[1]?.v) || 0,
-      desc:    row.c[2]?.v || '',
-      colores: row.c[3]?.v || '',
-      specs:   row.c[4]?.v || '',
-    }));
-
-    fotosData = (jsonF.table.rows || []).map((row, i) => ({
-      rowIndex: i + 2,
-      modelo: row.c[0]?.v || '',
-      color:  row.c[1]?.v || '',
-      fotos: [
-        row.c[2]?.v || '', row.c[3]?.v || '',
-        row.c[4]?.v || '', row.c[5]?.v || '', row.c[6]?.v || '',
-      ]
-    }));
-
-    renderDashboard();
-    renderProductList();
-
-  } catch(e) {
-    showToast('Error al cargar datos', true);
-  }
-}
-
-// ============ DASHBOARD ============
-function renderDashboard() {
-  document.getElementById('statProductos').textContent = products.length;
-  const totalColores = products.reduce((s, p) => s + (p.colores ? p.colores.split(',').length : 0), 0);
-  document.getElementById('statColores').textContent = totalColores;
-  const conFotos = fotosData.filter(f => f.fotos.some(p => p)).length;
-  document.getElementById('statImagenes').textContent = `${conFotos} sets`;
-  const avg = products.length ? Math.round(products.reduce((s,p) => s+p.precio, 0) / products.length) : 0;
-  document.getElementById('statPrecio').textContent = `$${avg.toLocaleString('es-UY')}`;
-
-  const list = document.getElementById('dashProductList');
-  list.className = '';
-  list.innerHTML = products.map(p => {
-    const firstPhoto = fotosData.find(f => f.modelo === p.nombre && f.fotos.some(x => x))?.fotos.find(x => x);
-    return `
-      <div class="product-row">
-        ${firstPhoto
-          ? `<img src="${firstPhoto}" class="product-row-img" alt="${p.nombre}">`
-          : `<div class="product-row-img-placeholder">👜</div>`
-        }
-        <div class="product-row-info">
-          <div class="product-row-name">Founder ${p.nombre}</div>
-          <div class="product-row-meta">
-            <span>${p.colores ? p.colores.split(',').length : 0} colores</span>
-            <span>${fotosData.filter(f => f.modelo === p.nombre && f.fotos.some(x => x)).length} sets de fotos</span>
-          </div>
-        </div>
-        <div class="product-row-price">$${p.precio.toLocaleString('es-UY')}</div>
-      </div>
-    `;
+function getFotos(m,c){return fotosData.find(f=>f.modelo===m&&f.color===c)?.fotos||['','','','',''];}
+function renderDashboard(){
+  document.getElementById('statProductos').textContent=products.length;
+  document.getElementById('statColores').textContent=products.reduce((s,p)=>s+(p.colores?p.colores.split(',').length:0),0);
+  document.getElementById('statImagenes').textContent=fotosData.filter(f=>f.fotos.some(x=>x)).length+' sets';
+  const stored=JSON.parse(localStorage.getItem('founder_pedidos')||'[]');
+  document.getElementById('statPedidos').textContent=stored.length;
+  document.getElementById('dashProductList').innerHTML=products.map(p=>{
+    const foto=fotosData.find(f=>f.modelo===p.nombre&&f.fotos.some(x=>x))?.fotos.find(x=>x);
+    const sets=fotosData.filter(f=>f.modelo===p.nombre&&f.fotos.some(x=>x)).length;
+    return`<div class="product-row">${foto?`<img src="${foto}" class="prod-img" style="object-fit:cover">`:`<div class="prod-img">👜</div>`}<div style="flex:1"><div class="prod-name">Founder ${p.nombre}</div><div class="prod-meta">${p.colores?p.colores.split(',').length:0} colores · ${sets} sets fotos</div></div><div class="prod-price">$${p.precio.toLocaleString('es-UY')}</div></div>`;
   }).join('');
 }
-
-// ============ PRODUCT LIST ============
-function renderProductList() {
-  const container = document.getElementById('productListAdmin');
-  container.className = 'product-list';
-  container.innerHTML = products.map((p, i) => {
-    const firstPhoto = fotosData.find(f => f.modelo === p.nombre && f.fotos.some(x => x))?.fotos.find(x => x);
-    const setsCount = fotosData.filter(f => f.modelo === p.nombre && f.fotos.some(x => x)).length;
-    return `
-      <div class="product-row">
-        ${firstPhoto
-          ? `<img src="${firstPhoto}" class="product-row-img" alt="${p.nombre}">`
-          : `<div class="product-row-img-placeholder">👜</div>`
-        }
-        <div class="product-row-info">
-          <div class="product-row-name">Founder ${p.nombre}</div>
-          <div class="product-row-meta">
-            <span>$${p.precio.toLocaleString('es-UY')} UYU</span>
-            <span>${p.colores ? p.colores.split(',').length : 0} colores</span>
-            <span>${setsCount > 0 ? `✅ ${setsCount} sets de fotos` : '⚠️ Sin fotos'}</span>
-          </div>
-        </div>
-        <div class="product-row-actions">
-          <button class="btn btn-secondary btn-sm" onclick="editProduct(${i})">✏️ Editar</button>
-        </div>
-      </div>
-    `;
+function renderProductList(){
+  document.getElementById('productListAdmin').innerHTML=products.map((p,i)=>{
+    const foto=fotosData.find(f=>f.modelo===p.nombre&&f.fotos.some(x=>x))?.fotos.find(x=>x);
+    const sets=fotosData.filter(f=>f.modelo===p.nombre&&f.fotos.some(x=>x)).length;
+    return`<div class="product-row">${foto?`<img src="${foto}" class="prod-img" style="object-fit:cover">`:`<div class="prod-img">👜</div>`}<div style="flex:1"><div class="prod-name">Founder ${p.nombre}</div><div class="prod-meta">$${p.precio.toLocaleString('es-UY')} · ${p.colores?p.colores.split(',').length:0} colores · ${sets>0?'✅ '+sets+' sets':'⚠️ Sin fotos'}</div></div><div class="prod-actions"><button class="btn btn-secondary btn-sm" onclick="editProduct(${i})">✏️ Editar</button></div></div>`;
   }).join('');
 }
-
-// ============ EDIT PRODUCT ============
-function editProduct(i) {
-  const p = products[i];
-  document.getElementById('modalTitle').textContent = `Editar — Founder ${p.nombre}`;
-  document.getElementById('editingRow').value = i;
-  document.getElementById('editNombre').value = p.nombre;
-  document.getElementById('editPrecio').value = p.precio;
-  document.getElementById('editDesc').value = p.desc;
-  document.getElementById('editSpecs').value = p.specs;
-
-  const colores = p.colores ? p.colores.split(',').map(c => c.trim()) : [];
-  renderColorRows(colores);
-  renderColorPhotos(p.nombre, colores);
-
+function editProduct(i){
+  const p=products[i];
+  document.getElementById('modalTitle').textContent=`Editar — Founder ${p.nombre}`;
+  document.getElementById('editingRow').value=i;
+  document.getElementById('editNombre').value=p.nombre;
+  document.getElementById('editPrecio').value=p.precio;
+  document.getElementById('editDesc').value=p.desc;
+  document.getElementById('editSpecs').value=p.specs;
+  const cols=p.colores?p.colores.split(',').map(c=>c.trim()):[];
+  renderColorRows(cols);renderColorPhotos(p.nombre,cols);
   document.getElementById('productModal').classList.add('open');
 }
-
-function openNewProduct() {
-  document.getElementById('modalTitle').textContent = 'Nuevo producto';
-  document.getElementById('editingRow').value = -1;
-  document.getElementById('editNombre').value = '';
-  document.getElementById('editPrecio').value = '';
-  document.getElementById('editDesc').value = '';
-  document.getElementById('editSpecs').value = '';
-  document.getElementById('colorPhotosSection').innerHTML = '';
-  renderColorRows([]);
+function openNewProduct(){
+  document.getElementById('modalTitle').textContent='Nuevo producto';
+  document.getElementById('editingRow').value=-1;
+  ['editNombre','editPrecio','editDesc','editSpecs'].forEach(id=>document.getElementById(id).value='');
+  renderColorRows([]);document.getElementById('colorPhotosSection').innerHTML='';
   document.getElementById('productModal').classList.add('open');
 }
-
-function closeModal() {
-  document.getElementById('productModal').classList.remove('open');
+function closeModal(){document.getElementById('productModal').classList.remove('open');}
+function renderColorRows(cols){
+  document.getElementById('colorsEditor').innerHTML=cols.map((c,i)=>`
+    <div class="color-row" id="cr${i}">
+      <div class="color-dot" id="cd${i}" style="background:${COLOR_MAP[c]||'#555'}"></div>
+      <input type="text" class="color-name-in" value="${c}" placeholder="Nombre del color" oninput="updDot(${i},this.value)" id="cn${i}">
+      <button class="rem-color" onclick="remRow(${i})">✕</button>
+    </div>`).join('');
 }
-
-// ============ COLOR PHOTOS ============
-function renderColorPhotos(modelo, colores) {
-  const container = document.getElementById('colorPhotosSection');
-  if (!colores.length) { container.innerHTML = ''; return; }
-
-  container.innerHTML = `
-    <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px">
-      Fotos por color (5 fotos por cada color)
-    </div>
-    ${colores.map(color => {
-      const fotos = getFotosForColor(modelo, color);
-      const hex = COLOR_MAP[color] || '#555';
-      return `
-        <div style="border:1px solid var(--border);padding:16px;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-            <div style="width:20px;height:20px;border-radius:50%;background:${hex};border:2px solid var(--border);flex-shrink:0"></div>
-            <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--white)">${color}</div>
+function addColorRow(){
+  const e=document.getElementById('colorsEditor'),i=e.children.length,d=document.createElement('div');
+  d.className='color-row';d.id=`cr${i}`;
+  d.innerHTML=`<div class="color-dot" id="cd${i}" style="background:#555"></div><input type="text" class="color-name-in" placeholder="Nombre del color" oninput="updDot(${i},this.value)" id="cn${i}"><button class="rem-color" onclick="remRow(${i})">✕</button>`;
+  e.appendChild(d);
+}
+function remRow(i){const r=document.getElementById(`cr${i}`);if(r)r.remove();}
+function updDot(i,v){const d=document.getElementById(`cd${i}`);if(d)d.style.background=COLOR_MAP[v.trim()]||'#555';}
+function getColors(){return Array.from(document.querySelectorAll('#colorsEditor .color-name-in')).map(i=>i.value.trim()).filter(v=>v).join(',');}
+function renderColorPhotos(modelo,cols){
+  const c=document.getElementById('colorPhotosSection');
+  if(!cols.length){c.innerHTML='';return;}
+  c.innerHTML=`<div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Fotos por color (5 por cada color)</div>`+
+  cols.map(color=>{
+    const fotos=getFotos(modelo,color);
+    return`<div class="photo-block">
+      <div class="photo-head"><div class="photo-dot" style="background:${COLOR_MAP[color]||'#555'}"></div><div class="photo-color-name">${color}</div></div>
+      <div class="photo-slots">${fotos.map((f,fi)=>`
+        <div class="photo-slot">
+          <div class="slot-label">Foto ${fi+1}</div>
+          <input type="text" id="foto_${modelo}_${color}_${fi}" value="${f}" placeholder="Link" class="slot-input">
+          <div class="slot-btns">
+            <button class="slot-btn conv" onclick="convPhoto('${modelo}','${color}',${fi})">Conv.</button>
+            <button class="slot-btn up" onclick="pickFile('${modelo}','${color}',${fi})">📁</button>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
-            ${fotos.map((f, fi) => `
-              <div style="display:flex;flex-direction:column;gap:4px">
-                <div style="font-size:8px;color:var(--text-muted);letter-spacing:1px">Foto ${fi+1}</div>
-                <input type="text" 
-                       id="foto_${modelo}_${color}_${fi}"
-                       value="${f}" 
-                       placeholder="Link Drive"
-                       style="width:100%;background:var(--gray-mid);border:1px solid var(--border);color:var(--white);padding:5px 6px;font-size:8px;outline:none">
-                <button onclick="autoConvertColorPhoto('${modelo}','${color}',${fi})"
-                        style="background:var(--gold);color:var(--black);border:none;padding:3px;font-size:7px;letter-spacing:1px;cursor:pointer;font-weight:700">
-                  ↻ Conv.
-                </button>
-                <button data-upload="foto_${modelo}_${color}_${fi}"
-                        onclick="handleFileSelect('foto_${modelo}_${color}_${fi}','${modelo}','${color}',${fi})"
-                        style="background:var(--gray-light);color:var(--white);border:none;padding:3px;font-size:7px;letter-spacing:1px;cursor:pointer;font-weight:700">
-                  📁 Subir
-                </button>
-                ${f
-                  ? `<img src="${f}" style="width:100%;height:40px;object-fit:cover;border:1px solid var(--border)" id="prev_${modelo}_${color}_${fi}">`
-                  : `<div style="width:100%;height:40px;background:var(--gray-mid);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px" id="prev_${modelo}_${color}_${fi}">📷</div>`
-                }
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
-    }).join('')}
-  `;
-}
-
-function autoConvertColorPhoto(modelo, color, fi) {
-  const input = document.getElementById(`foto_${modelo}_${color}_${fi}`);
-  const url = input.value.trim();
-  if (!url) return;
-  const id = extractDriveId(url);
-  if (id) {
-    input.value = convertToDirectLink(id);
-    const prev = document.getElementById(`prev_${modelo}_${color}_${fi}`);
-    if (prev) prev.src = input.value;
-    showToast('Convertido ✓');
-  } else if (url.startsWith('http')) {
-    const prev = document.getElementById(`prev_${modelo}_${color}_${fi}`);
-    if (prev) prev.src = url;
-  }
-}
-
-// ============ COLORS ============
-function renderColorRows(colores) {
-  const editor = document.getElementById('colorsEditor');
-  editor.innerHTML = colores.map((c, i) => `
-    <div class="color-row" id="colorRow${i}">
-      <div class="color-preview" id="colorPreview${i}" style="background:${COLOR_MAP[c] || '#555'}"></div>
-      <input type="text" class="color-name-input" value="${c}" placeholder="Nombre del color" 
-             oninput="updateColorPreview(${i}, this.value)" id="colorName${i}">
-      <button class="remove-color" onclick="removeColorRow(${i})">✕</button>
-    </div>
-  `).join('');
-}
-
-function addColorRow() {
-  const editor = document.getElementById('colorsEditor');
-  const i = editor.children.length;
-  const div = document.createElement('div');
-  div.className = 'color-row';
-  div.id = `colorRow${i}`;
-  div.innerHTML = `
-    <div class="color-preview" id="colorPreview${i}" style="background:#555"></div>
-    <input type="text" class="color-name-input" placeholder="Nombre del color" 
-           oninput="updateColorPreview(${i}, this.value)" id="colorName${i}">
-    <button class="remove-color" onclick="removeColorRow(${i})">✕</button>
-  `;
-  editor.appendChild(div);
-}
-
-function removeColorRow(i) {
-  const row = document.getElementById(`colorRow${i}`);
-  if (row) row.remove();
-}
-
-function updateColorPreview(i, name) {
-  const preview = document.getElementById(`colorPreview${i}`);
-  if (preview) preview.style.background = COLOR_MAP[name.trim()] || '#555';
-}
-
-function getColorsFromEditor() {
-  const inputs = document.querySelectorAll('#colorsEditor .color-name-input');
-  return Array.from(inputs).map(i => i.value.trim()).filter(v => v).join(',');
-}
-
-// ============ SAVE PRODUCT ============
-async function saveProduct() {
-  const nombre = document.getElementById('editNombre').value.trim();
-  const precio = document.getElementById('editPrecio').value.trim();
-  if (!nombre || !precio) { showToast('Nombre y precio son obligatorios', true); return; }
-
-  const colores  = getColorsFromEditor();
-  const specs    = document.getElementById('editSpecs').value.trim();
-  const desc     = document.getElementById('editDesc').value.trim();
-  const rowIdx   = parseInt(document.getElementById('editingRow').value);
-  const sheetRow = rowIdx === -1 ? products.length + 2 : products[rowIdx].rowIndex;
-
-  // Update local state
-  if (rowIdx === -1) {
-    products.push({ nombre, precio: parseInt(precio), desc, colores, specs, rowIndex: sheetRow });
-  } else {
-    products[rowIdx] = { ...products[rowIdx], nombre, precio: parseInt(precio), desc, colores, specs };
-  }
-
-  const saveBtn = document.querySelector('.modal-footer .btn-primary');
-  if (saveBtn) { saveBtn.textContent = '⏳ Guardando...'; saveBtn.disabled = true; }
-
-  if (!driveReady) {
-    // No Google auth — copy to clipboard as fallback
-    closeModal();
-    const clip = [nombre, precio, desc, colores, specs].join('\t');
-    navigator.clipboard.writeText(clip);
-    showToast('⚠️ Conectate a Drive para guardar automático. Datos copiados.');
-    renderDashboard(); renderProductList();
-    return;
-  }
-
-  try {
-    // 1. Save product row to "productos" sheet
-    await updateSheetCell('productos', sheetRow, [nombre, precio, desc, colores, specs]);
-
-    // 2. Save fotos for each color to "fotos" sheet
-    const coloresArr = colores.split(',').map(c => c.trim()).filter(c => c);
-    for (const color of coloresArr) {
-      const fotos = [];
-      for (let fi = 0; fi < 5; fi++) {
-        const input = document.getElementById(`foto_${nombre}_${color}_${fi}`);
-        fotos.push(input ? input.value.trim() : '');
-      }
-
-      // Find existing row in fotosData or create new
-      const existing = fotosData.find(f => f.modelo === nombre && f.color === color);
-      const fotaRow  = existing ? existing.rowIndex : fotosData.length + 2;
-
-      await updateSheetCell('fotos', fotaRow, [nombre, color, ...fotos]);
-
-      if (!existing) {
-        fotosData.push({ rowIndex: fotaRow, modelo: nombre, color, fotos });
-      } else {
-        existing.fotos = fotos;
-      }
-    }
-
-    closeModal();
-    showToast('✅ Guardado en Google Sheets');
-    renderDashboard();
-    renderProductList();
-
-  } catch(e) {
-    showToast('Error al guardar. Intentá de nuevo.', true);
-    console.error(e);
-  } finally {
-    if (saveBtn) { saveBtn.textContent = '💾 Guardar cambios'; saveBtn.disabled = false; }
-  }
-}
-
-async function updateSheetCell(sheet, row, values) {
-  const range = `${sheet}!A${row}`;
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ values: [values] })
-  });
-  if (!res.ok) throw new Error(await res.text());
-}
-
-// ============ ORDERS ============
-let allOrders = [];
-let currentFilter = 'todos';
-
-function loadOrders() {
-  // Load from localStorage (where the store saves them)
-  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
-  allOrders = stored.reverse(); // newest first
-  filterOrders(currentFilter);
-  // Update dashboard stat
-  const statEl = document.getElementById('statPedidos');
-  if (statEl) statEl.textContent = allOrders.length;
-}
-
-function filterOrders(filter, btn) {
-  currentFilter = filter;
-  if (btn) {
-    document.querySelectorAll('.order-filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
-
-  const filtered = filter === 'todos'
-    ? allOrders
-    : allOrders.filter(o => o.estado === filter);
-
-  renderOrders(filtered);
-}
-
-function renderOrders(orders) {
-  const grid = document.getElementById('ordersGrid');
-  if (!orders.length) {
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-muted)">
-      <p style="font-family:'Cormorant Garamond',serif;font-size:24px;margin-bottom:8px">No hay pedidos</p>
-      <span style="font-size:10px;letter-spacing:2px">en esta categoría</span>
+          ${f?`<img src="${f}" class="slot-prev" id="prev_${modelo}_${color}_${fi}">`:`<div class="slot-empty" id="prev_${modelo}_${color}_${fi}">📷</div>`}
+        </div>`).join('')}
+      </div>
     </div>`;
-    return;
-  }
-
-  grid.innerHTML = orders.map(order => {
-    const statusClass = {
-      'Pendiente pago': 'status-pendiente-pago',
-      'Pendiente confirmación': 'status-pendiente-mp',
-      'Confirmado': 'status-confirmado',
-      'Entregado': 'status-entregado',
-      'Cancelado': 'status-cancelado'
-    }[order.estado] || 'status-pendiente-pago';
-
-    return `
-      <div class="order-card" id="order-${order.id}">
-        <div class="order-card-header">
-          <div>
-            <div class="order-id">${order.id} · ${order.fecha}</div>
-          </div>
-          <div class="order-status-badge ${statusClass}">${order.estado}</div>
-        </div>
-        <div class="order-card-body">
-          <div class="order-client-name">${order.nombre} ${order.apellido}</div>
-          <div class="order-meta">
-            <strong>Entrega:</strong> ${order.entrega}<br>
-            <strong>Dirección:</strong> ${order.direccion}<br>
-            <strong>Correo:</strong> ${order.email}<br>
-            <strong>Celular:</strong> ${order.celular}
-          </div>
-          <div class="order-products">${order.productos.replace(/\|/g, '<br>')}</div>
-          <div>
-            <div class="order-pago-badge">${order.pago}</div>
-            <div class="order-total">$${Number(order.total).toLocaleString('es-UY')} UYU</div>
-          </div>
-        </div>
-        <div class="order-card-footer">
-          <button class="btn btn-success btn-sm" onclick="updateOrderStatus('${order.id}', 'Confirmado')">✅ Confirmar</button>
-          <button class="btn btn-primary btn-sm" onclick="updateOrderStatus('${order.id}', 'Entregado')">📦 Entregado</button>
-          <a href="https://wa.me/598${order.celular.replace(/\D/g,'')}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">💬 WhatsApp</a>
-          <button class="btn btn-danger btn-sm" onclick="cancelOrder('${order.id}')">✕ Cancelar</button>
-        </div>
-      </div>
-    `;
   }).join('');
 }
-
-function updateOrderStatus(id, newStatus) {
-  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
-  const order  = stored.find(o => o.id === id);
-  if (order) {
-    order.estado = newStatus;
-    localStorage.setItem('founder_pedidos', JSON.stringify(stored));
-    loadOrders();
-    showToast(`Pedido ${id} → ${newStatus}`);
+function convPhoto(m,c,fi){
+  const inp=document.getElementById(`foto_${m}_${c}_${fi}`);
+  const id=extractDriveId(inp.value.trim());
+  if(id){inp.value=convertToDirectLink(id);refreshPrev(m,c,fi,inp.value);toast('Convertido ✓');}
+}
+function refreshPrev(m,c,fi,url){
+  const el=document.getElementById(`prev_${m}_${c}_${fi}`);if(!el)return;
+  el.outerHTML=url?`<img src="${url}" class="slot-prev" id="prev_${m}_${c}_${fi}">`:`<div class="slot-empty" id="prev_${m}_${c}_${fi}">📷</div>`;
+}
+function pickFile(m,c,fi){
+  const f=document.createElement('input');f.type='file';f.accept='image/*';
+  f.onchange=async e=>{const file=e.target.files[0];if(file)await uploadToDrive(file,m,c,fi);};f.click();
+}
+async function saveProduct(){
+  const nombre=document.getElementById('editNombre').value.trim();
+  const precio=document.getElementById('editPrecio').value.trim();
+  if(!nombre||!precio){toast('Nombre y precio son obligatorios',true);return;}
+  const colores=getColors(),specs=document.getElementById('editSpecs').value.trim(),desc=document.getElementById('editDesc').value.trim();
+  const rowIdx=parseInt(document.getElementById('editingRow').value);
+  const sheetRow=rowIdx===-1?products.length+2:products[rowIdx].rowIndex;
+  if(rowIdx===-1)products.push({nombre,precio:parseInt(precio),desc,colores,specs,rowIndex:sheetRow});
+  else products[rowIdx]={...products[rowIdx],nombre,precio:parseInt(precio),desc,colores,specs};
+  const sb=document.getElementById('saveBtn');sb.textContent='⏳ Guardando...';sb.disabled=true;
+  if(!driveReady){
+    closeModal();navigator.clipboard.writeText([nombre,precio,desc,colores,specs].join('\t'));
+    toast('⚠️ Conectate a Drive para guardar automático. Datos copiados.');
+    renderDashboard();renderProductList();sb.textContent='💾 Guardar';sb.disabled=false;return;
   }
+  try{
+    await updateSheetCell('productos',sheetRow,[nombre,precio,desc,colores,specs]);
+    const colsArr=colores.split(',').map(c=>c.trim()).filter(c=>c);
+    for(const color of colsArr){
+      const fotos=[];
+      for(let fi=0;fi<5;fi++){const inp=document.getElementById(`foto_${nombre}_${color}_${fi}`);fotos.push(inp?inp.value.trim():'');}
+      const ex=fotosData.find(f=>f.modelo===nombre&&f.color===color);
+      const fotaRow=ex?ex.rowIndex:fotosData.length+2;
+      await updateSheetCell('fotos',fotaRow,[nombre,color,...fotos]);
+      if(!ex)fotosData.push({rowIndex:fotaRow,modelo:nombre,color,fotos});else ex.fotos=fotos;
+    }
+    closeModal();toast('✅ Guardado en Google Sheets');renderDashboard();renderProductList();
+  }catch(e){toast('Error al guardar',true);console.error(e);}
+  finally{sb.textContent='💾 Guardar';sb.disabled=false;}
 }
-
-function cancelOrder(id) {
-  if (!confirm(`¿Cancelar el pedido ${id}?`)) return;
-  updateOrderStatus(id, 'Cancelado');
+async function updateSheetCell(sheet,row,values){
+  const range=`${sheet}!A${row}`;
+  const url=`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+  const res=await fetch(url,{method:'PUT',headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({values:[values]})});
+  if(!res.ok)throw new Error(await res.text());
 }
-function extractDriveId(url) {
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  return match ? match[1] : null;
+function loadOrders(){
+  const stored=JSON.parse(localStorage.getItem('founder_pedidos')||'[]');
+  allOrders=[...stored].reverse();
+  filterOrders(currentFilter,null);
+  const el=document.getElementById('statPedidos');if(el)el.textContent=stored.length;
 }
-
-function convertToDirectLink(id) {
-  return `https://lh3.googleusercontent.com/d/${id}`;
+function filterOrders(filter,btn){
+  currentFilter=filter;
+  if(btn){document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+  const list=filter==='todos'?allOrders:allOrders.filter(o=>o.estado===filter);
+  renderOrders(list);
 }
-
-function convertDriveLink() {
-  const url = document.getElementById('driveInput').value.trim();
-  const id = extractDriveId(url);
-
-  if (!id) {
-    showToast('Link inválido. Asegurate de copiar el link completo de Google Drive', true);
-    return;
-  }
-
-  const converted = convertToDirectLink(id);
-  document.getElementById('convertedLink').textContent = converted;
-  document.getElementById('convertedPreview').src = converted;
-  document.getElementById('convertResult').style.display = 'flex';
+function renderOrders(orders){
+  const g=document.getElementById('ordersGrid');
+  if(!orders.length){g.innerHTML=`<div style="grid-column:1/-1;padding:48px;text-align:center;color:var(--muted)"><div style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:6px">No hay pedidos</div><div style="font-size:10px;letter-spacing:2px">en esta categoría</div></div>`;return;}
+  const bm={'Pendiente pago':'badge-pago','Pendiente confirmación':'badge-mp','Confirmado':'badge-ok','Entregado':'badge-done','Cancelado':'badge-cancel'};
+  g.innerHTML=orders.map(o=>`
+    <div class="order-card" id="order-${o.id}">
+      <div class="order-head"><div class="order-id">${o.id} · ${o.fecha}</div><div class="order-badge ${bm[o.estado]||'badge-pago'}">${o.estado}</div></div>
+      <div class="order-body">
+        <div class="order-name">${o.nombre} ${o.apellido}</div>
+        <div class="order-info"><strong>Entrega:</strong> ${o.entrega}<br><strong>Dirección:</strong> ${o.direccion}<br><strong>Correo:</strong> ${o.email}<br><strong>Celular:</strong> ${o.celular}</div>
+        <div class="order-prods">${o.productos.replace(/\|/g,'<br>')}</div>
+        <div><div class="order-pago">${o.pago}</div><div class="order-total">$${Number(o.total).toLocaleString('es-UY')} UYU</div></div>
+      </div>
+      <div class="order-foot">
+        <button class="btn btn-success btn-sm" onclick="updOrder('${o.id}','Confirmado')">✅ Confirmar</button>
+        <button class="btn btn-primary btn-sm" onclick="updOrder('${o.id}','Entregado')">📦 Entregado</button>
+        <a href="https://wa.me/598${(o.celular||'').replace(/\D/g,'')}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">💬 WhatsApp</a>
+        <button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕ Cancelar</button>
+      </div>
+    </div>`).join('');
 }
-
-function copyConverted() {
-  const link = document.getElementById('convertedLink').textContent;
-  navigator.clipboard.writeText(link).then(() => {
-    showToast('Link copiado al portapapeles');
+function updOrder(id,status){
+  const stored=JSON.parse(localStorage.getItem('founder_pedidos')||'[]');
+  const o=stored.find(x=>x.id===id);
+  if(o){o.estado=status;localStorage.setItem('founder_pedidos',JSON.stringify(stored));loadOrders();toast(`Pedido ${id} → ${status}`);}
+}
+function cancelOrder(id){if(confirm(`¿Cancelar el pedido ${id}?`))updOrder(id,'Cancelado');}
+function initGoogleAuth(){
+  tokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:CLIENT_ID,scope:SCOPES,
+    callback:resp=>{
+      if(resp.error){toast('Error al conectar con Google Drive',true);return;}
+      accessToken=resp.access_token;driveReady=true;
+      toast('✅ Conectado a Google Drive');
+      document.getElementById('driveStatus').textContent='✅ Conectado';
+      document.getElementById('driveStatus').style.color='var(--green)';
+      document.getElementById('connectDriveBtn').style.display='none';
+    }
   });
 }
-
-function convertBulk() {
-  const input = document.getElementById('bulkInput').value.trim();
-  const lines = input.split('\n').filter(l => l.trim());
-  const container = document.getElementById('bulkLinks');
-
-  container.innerHTML = lines.map((url, i) => {
-    const id = extractDriveId(url.trim());
-    if (!id) return `<div style="color:var(--red);font-size:11px">❌ Link ${i+1}: inválido</div>`;
-    const converted = convertToDirectLink(id);
-    return `
-      <div style="display:flex;gap:8px;align-items:center">
-        <div style="font-size:10px;color:var(--text-muted);min-width:60px">Link ${i+1}</div>
-        <div style="flex:1;background:var(--gray-mid);border:1px solid var(--green);color:var(--green);padding:8px 12px;font-size:10px;word-break:break-all;cursor:pointer" onclick="navigator.clipboard.writeText('${converted}').then(()=>showToast('Copiado'))">${converted}</div>
-      </div>
-    `;
+function connectDrive(){if(!tokenClient){toast('Cargando Google...',true);return;}tokenClient.requestAccessToken();}
+async function uploadToDrive(file,modelo,color,fotoNum){
+  if(!driveReady){toast('Primero conectate a Google Drive',true);return null;}
+  try{
+    const folderId=await findOrCreateFolder();
+    const meta={name:`${modelo}-${color}-foto${fotoNum+1}-${Date.now()}.jpg`,parents:[folderId]};
+    const form=new FormData();
+    form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+    form.append('file',file);
+    const upRes=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:`Bearer ${accessToken}`},body:form});
+    const{id:fileId}=await upRes.json();
+    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,{method:'POST',headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({role:'reader',type:'anyone'})});
+    const link=`https://lh3.googleusercontent.com/d/${fileId}`;
+    const inp=document.getElementById(`foto_${modelo}_${color}_${fotoNum}`);if(inp)inp.value=link;
+    refreshPrev(modelo,color,fotoNum,link);toast(`Foto ${fotoNum+1} subida ✅`);return link;
+  }catch(e){toast('Error al subir foto',true);return null;}
+}
+async function findOrCreateFolder(){
+  const s=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='founder-imagenes' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`,{headers:{Authorization:`Bearer ${accessToken}`}});
+  const{files}=await s.json();
+  if(files&&files.length)return files[0].id;
+  const c=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({name:'founder-imagenes',mimeType:'application/vnd.google-apps.folder'})});
+  return(await c.json()).id;
+}
+function extractDriveId(url){const m=url.match(/\/d\/([a-zA-Z0-9_-]+)/);return m?m[1]:null;}
+function convertToDirectLink(id){return`https://lh3.googleusercontent.com/d/${id}`;}
+function convertDriveLink(){
+  const url=document.getElementById('driveInput').value.trim();
+  const id=extractDriveId(url);
+  if(!id){toast('Link inválido',true);return;}
+  const conv=convertToDirectLink(id);
+  document.getElementById('convertedLink').textContent=conv;
+  document.getElementById('convertedPreview').src=conv;
+  document.getElementById('convertResult').style.display='block';
+}
+function copyConverted(){navigator.clipboard.writeText(document.getElementById('convertedLink').textContent).then(()=>toast('Copiado al portapapeles'));}
+function convertBulk(){
+  const lines=document.getElementById('bulkInput').value.trim().split('\n').filter(l=>l.trim());
+  const res=document.getElementById('bulkResult');res.style.display='flex';res.style.flexDirection='column';
+  res.innerHTML=lines.map((url,i)=>{
+    const id=extractDriveId(url.trim());
+    if(!id)return`<div style="color:var(--red);font-size:11px">❌ Link ${i+1}: inválido</div>`;
+    const conv=convertToDirectLink(id);
+    return`<div style="display:flex;gap:7px;align-items:center"><div style="font-size:10px;color:var(--muted);min-width:50px">Link ${i+1}</div><div style="flex:1;background:var(--mid);border:1px solid var(--green);color:var(--green);padding:7px 10px;font-size:10px;word-break:break-all;cursor:pointer" onclick="navigator.clipboard.writeText('${conv}').then(()=>toast('Copiado'))">${conv}</div></div>`;
   }).join('');
-
-  document.getElementById('bulkResult').style.display = 'block';
 }
-
-function autoConvertImage() {
-  const url = document.getElementById('editImagen').value.trim();
-  if (!url) return;
-
-  const id = extractDriveId(url);
-  if (id) {
-    const converted = convertToDirectLink(id);
-    document.getElementById('editImagen').value = converted;
-    const preview = document.getElementById('editImagenPreview');
-    preview.src = converted;
-    preview.style.display = 'block';
-    showToast('Link convertido automáticamente');
-  } else if (url.startsWith('http')) {
-    // Already a direct link
-    const preview = document.getElementById('editImagenPreview');
-    preview.src = url;
-    preview.style.display = 'block';
-  }
+function toast(msg,err=false){
+  const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${err?'err':''} show`;
+  setTimeout(()=>t.classList.remove('show'),4000);
 }
-
-// ============ TOAST ============
-function showToast(msg, isError = false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = `toast ${isError ? 'error' : ''} show`;
-  setTimeout(() => t.classList.remove('show'), 4000);
-}
-
-// ============ INIT ============
 document.getElementById('passwordInput').focus();
-
-// Load Google Identity Services
-window.onload = () => {
-  const script = document.createElement('script');
-  script.src = 'https://accounts.google.com/gsi/client';
-  script.onload = initGoogleAuth;
-  document.head.appendChild(script);
+window.onload=()=>{
+  const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=initGoogleAuth;document.head.appendChild(s);
 };
 </script>
 </body>
