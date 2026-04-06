@@ -1815,106 +1815,81 @@
 </div>
 
 <script>
+// ============ CONFIG ============
+const SHEET_ID = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+
+// Mapa de colores por nombre
+const COLOR_MAP = {
+  'Negro':         { hex: '#1a1a1a' },
+  'Marrón':        { hex: '#8b4513' },
+  'Marrón Oscuro': { hex: '#3d2010' },
+  'Gris Oscuro':   { hex: '#4a4a5a' },
+  'Azul':          { hex: '#1a3a5c' },
+  'Rosa':          { hex: '#d4a0a0' },
+  'Rojo':          { hex: '#8b1a1a' },
+  'Crema':         { hex: '#d4c8a8' },
+  'Carbon':        { hex: '#2a2a2a', pattern: true },
+  'Verde Oliva':   { hex: '#4a5a2a' },
+};
+
 // ============ DATA ============
-const products = [
-  {
-    id: 1,
-    name: 'Simple',
-    subtitle: 'Tarjetero compacto',
-    price: 990,
-    description: 'Billetera compacta y funcional, ideal para uso diario. Minimalista, liviana y práctica.',
-    specs: [
-      'Eco cuero + aluminio de alta calidad',
-      'Tecnología RFID — protección contra escaneos no autorizados',
-      'Botón deslizante lateral para acceso rápido',
-      'Capacidad: 5–6 tarjetas + ventana para cédula',
-      '2 bolsillos internos para billetes y monedas',
-      'Medidas: 10,3 × 6,6 × 1,2 cm · Peso: 65 g'
-    ],
-    colors: [
-      { name: 'Gris Oscuro', hex: '#4a4a5a' },
-      { name: 'Marrón', hex: '#6b3a2a' },
-      { name: 'Negro', hex: '#1a1a1a' },
-      { name: 'Azul', hex: '#1a3a5c' },
-      { name: 'Rosa', hex: '#d4a0a0' },
-      { name: 'Rojo', hex: '#8b1a1a' }
-    ],
-    image: null
-  },
-  {
-    id: 2,
-    name: 'Classic',
-    subtitle: 'Mayor organización',
-    price: 1390,
-    description: 'Mayor capacidad y organización para quienes necesitan más espacio. Cierre tipo libro imantado.',
-    specs: [
-      'Cuero + aluminio de alta calidad',
-      'Tecnología RFID',
-      'Botón deslizante lateral',
-      'Tarjetero para 5–6 tarjetas + 4 compartimentos adicionales',
-      'Espacio para libreta de conducir y propiedad',
-      'Bolsillo para billetes (hasta 10–14) · Monedero con cierre',
-      'Cierre tipo libro imantado'
-    ],
-    colors: [
-      { name: 'Negro', hex: '#1a1a1a' },
-      { name: 'Marrón Oscuro', hex: '#3d2010' },
-      { name: 'Marrón', hex: '#8b4513' },
-      { name: 'Carbon', hex: '#2a2a2a', pattern: true }
-    ],
-    image: null
-  },
-  {
-    id: 3,
-    name: 'Confort',
-    subtitle: 'Capacidad máxima',
-    price: 2490,
-    description: 'La combinación perfecta entre capacidad y comodidad. Con bolsillo para monedas con cierre.',
-    specs: [
-      'Cuero + aluminio de alta calidad',
-      'Tecnología RFID',
-      'Botón deslizante lateral',
-      'Tarjetero 5–6 tarjetas + 4 compartimentos (8–10 total)',
-      'Espacio para libreta de conducir y propiedad',
-      'Bolsillo billetes (hasta 10–14 con uso)',
-      'Bolsillo para monedas con cierre · Cierre imantado',
-      'Medidas: 10,5 × 7,3 × 2,5 cm'
-    ],
-    colors: [
-      { name: 'Crema', hex: '#d4c8a8' },
-      { name: 'Rosa', hex: '#d4a0a0' },
-      { name: 'Negro', hex: '#1a1a1a' },
-      { name: 'Carbon', hex: '#2a2a2a', pattern: true },
-      { name: 'Marrón', hex: '#8b4513' },
-      { name: 'Azul', hex: '#1a3a5c' },
-      { name: 'Marrón Oscuro', hex: '#3d2010' }
-    ],
-    image: null
-  },
-  {
-    id: 4,
-    name: 'Essential',
-    subtitle: 'Edición premium',
-    price: 2790,
-    description: 'Versión premium con acabado en cuero texturizado. Para quienes exigen lo mejor.',
-    specs: [
-      'Cuero texturizado + aluminio de alta calidad',
-      'Tecnología RFID',
-      'Botón deslizante lateral',
-      'Tarjetero 5–6 tarjetas + 4 compartimentos adicionales',
-      'Espacio para documentos y libretas',
-      'Bolsillo para billetes (hasta 10–14 con uso)',
-      'Bolsillo para monedas con cierre · Cierre imantado',
-      'Medidas: 10,5 × 7,3 × 2,5 cm'
-    ],
-    colors: [
-      { name: 'Marrón', hex: '#6b3a2a' },
-      { name: 'Negro', hex: '#1a1a1a' },
-      { name: 'Verde Oliva', hex: '#4a5a2a' }
-    ],
-    image: null
+let products = [];
+
+async function loadProductsFromSheets() {
+  // Mostrar loading
+  document.getElementById('productsGrid').innerHTML = `
+    <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--text-muted)">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;margin-bottom:12px">Cargando productos...</div>
+      <div style="font-size:10px;letter-spacing:3px">UN MOMENTO</div>
+    </div>
+  `;
+
+  try {
+    const res = await fetch(SHEET_URL);
+    const text = await res.text();
+    // Google devuelve JSONP, limpiamos
+    const json = JSON.parse(text.substring(47, text.length - 2));
+    const rows = json.table.rows;
+
+    products = rows.map((row, i) => {
+      const nombre = row.c[0]?.v || '';
+      const precio = parseInt(row.c[1]?.v) || 0;
+      const desc   = row.c[2]?.v || '';
+      const coloresStr = row.c[3]?.v || '';
+      const specsStr   = row.c[4]?.v || '';
+
+      const colores = coloresStr.split(',').map(c => {
+        const nombre = c.trim();
+        return { name: nombre, ...(COLOR_MAP[nombre] || { hex: '#555' }) };
+      });
+
+      const specs = specsStr.split('|').map(s => s.trim());
+
+      return {
+        id: i + 1,
+        name: nombre,
+        subtitle: specs[0] || '',
+        price: precio,
+        description: desc,
+        specs: specs,
+        colors: colores,
+        image: null
+      };
+    });
+
+    renderProducts();
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('productsGrid').innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--text-muted)">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;margin-bottom:12px">Error al cargar productos</div>
+        <div style="font-size:11px;letter-spacing:1px">Verificá tu conexión e intentá de nuevo</div>
+      </div>
+    `;
   }
-];
+}
 
 // ============ STATE ============
 let cart = [];
@@ -2282,7 +2257,7 @@ document.querySelectorAll('a, button, .product-card, .color-dot, .color-option, 
 });
 
 // ============ INIT ============
-renderProducts();
+loadProductsFromSheets();
 updateCart();
 
 // Scroll reveal
