@@ -1866,6 +1866,8 @@ async function loadProductsFromSheets() {
 
       const specs = specsStr.split('|').map(s => s.trim());
 
+      const imagen = row.c[5]?.v || null;
+
       return {
         id: i + 1,
         name: nombre,
@@ -1874,7 +1876,7 @@ async function loadProductsFromSheets() {
         description: desc,
         specs: specs,
         colors: colores,
-        image: null
+        image: imagen
       };
     });
 
@@ -1902,6 +1904,9 @@ function renderProducts() {
   grid.innerHTML = products.map(p => `
     <div class="product-card">
       <div class="product-img-wrap" onclick="openModal(${p.id})">
+        ${p.image ? `
+          <img src="${p.image}" alt="Founder ${p.name}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.8s ease;filter:brightness(0.85);" onmouseover="this.style.transform='scale(1.05)';this.style.filter='brightness(1)'" onmouseout="this.style.transform='scale(1)';this.style.filter='brightness(0.85)'">
+        ` : `
         <div style="
           width:100%;height:100%;
           display:flex;align-items:center;justify-content:center;
@@ -1944,6 +1949,7 @@ function renderProducts() {
             ">FOUNDER</div>
           </div>
         </div>
+        `}
         <div class="product-badge">RFID</div>
       </div>
       <div class="product-info">
@@ -1990,8 +1996,14 @@ function openModal(id) {
   document.getElementById('selectedColorName').textContent = currentColor.name;
 
   // Image placeholder
-  document.getElementById('modalImg').src = '';
-  document.getElementById('modalImg').style.background = `linear-gradient(135deg, #111, #1a1a1a)`;
+  const modalImg = document.getElementById('modalImg');
+  if (currentProduct.image) {
+    modalImg.src = currentProduct.image;
+    modalImg.style.background = '';
+  } else {
+    modalImg.src = '';
+    modalImg.style.background = `linear-gradient(135deg, #111, #1a1a1a)`;
+  }
 
   renderModalColors();
   document.getElementById('modalOverlay').classList.add('open');
