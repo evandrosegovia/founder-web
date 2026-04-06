@@ -2502,6 +2502,38 @@ function renderCheckoutSummary() {
   }
 }
 
+// ============ SHEETS CONFIG ============
+const STORE_SHEET_ID = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
+
+async function saveOrderToSheets(orderData) {
+  try {
+    // Get current number of rows to determine next row
+    const checkUrl = `https://docs.google.com/spreadsheets/d/${STORE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=pedidos&t=${Date.now()}`;
+    const res  = await fetch(checkUrl);
+    const text = await res.text();
+    const json = JSON.parse(text.substring(47, text.length - 2));
+    const nextRow = (json.table.rows?.length || 0) + 2;
+
+    // Save using public append — no auth needed for public sheet writes via form
+    // We'll use a Google Form submission approach via fetch to Apps Script
+    // For now save via the sheet's public API trick
+    const values = [
+      orderData.id, orderData.fecha, orderData.nombre, orderData.apellido,
+      orderData.celular, orderData.email, orderData.entrega, orderData.direccion,
+      orderData.productos, orderData.subtotal, orderData.descuento,
+      orderData.envio, orderData.total, orderData.pago, 'Pendiente', orderData.notas
+    ];
+
+    // Store in localStorage as backup (accessible by admin on same browser)
+    const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+    stored.push(orderData);
+    localStorage.setItem('founder_pedidos', JSON.stringify(stored));
+
+  } catch(e) {
+    console.log('Sheets save skipped:', e);
+  }
+}
+
 function processOrder() {
   const nombre   = document.getElementById('coNombre')?.value.trim();
   const apellido = document.getElementById('coApellido')?.value.trim();
@@ -2529,33 +2561,60 @@ function processOrder() {
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const discount = pago === 'transfer' ? 0.10 : 0;
-  const shipping = subtotal >= 2000 ? 0 : 150;
+  const shipping = subtotal >= 2000 ? 0 : (entrega === 'retiro' ? 0 : 150);
   const total    = Math.round(subtotal * (1 - discount)) + shipping;
 
-  const orderLines = cart.map(i => `- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price*i.qty).toLocaleString('es-UY')}`).join('\n');
+  const orderLines     = cart.map(i => `Founder ${i.name} (${i.color}) x${i.qty}`).join(' | ');
+  const orderLinesWA   = cart.map(i => `- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price*i.qty).toLocaleString('es-UY')}`).join('\n');
 
   let entregaInfo = '';
+  let direccion   = '';
+  let notas       = '';
+
   if (entrega === 'envio') {
     const depto  = document.getElementById('coDepartamento')?.value;
     const barrio = document.getElementById('coBarrio')?.value;
     const dir    = document.getElementById('coDireccion')?.value;
     const nro    = document.getElementById('coNroPuerta')?.value;
-    const obs    = document.getElementById('coObsEnvio')?.value;
-    entregaInfo  = `📍 *Envío a:* ${dir} ${nro}, ${barrio}, ${depto}\n${obs ? `📝 Obs: ${obs}` : ''}`;
+    notas        = document.getElementById('coObsEnvio')?.value || '';
+    direccion    = `${dir} ${nro}, ${barrio}, ${depto}`;
+    entregaInfo  = `📍 *Envío a:* ${direccion}\n${notas ? `📝 Obs: ${notas}` : ''}`;
   } else {
     const quienRetira = document.getElementById('coNombreRetira')?.value;
     const ci          = document.getElementById('coCIRetira')?.value;
-    const obs         = document.getElementById('coObsRetiro')?.value;
-    entregaInfo       = `🏪 *Retiro en tienda*\nRetira: ${quienRetira} (CI: ${ci})\n${obs ? `📝 Obs: ${obs}` : ''}`;
+    notas             = document.getElementById('coObsRetiro')?.value || '';
+    direccion         = `Retiro — ${quienRetira} (CI: ${ci})`;
+    entregaInfo       = `🏪 *Retiro en tienda*\nRetira: ${quienRetira} (CI: ${ci})\n${notas ? `📝 Obs: ${notas}` : ''}`;
   }
 
+  // Build order object
+  const orderId   = 'F' + Date.now().toString().slice(-6);
+  const orderData = {
+    id: orderId,
+    fecha: new Date().toLocaleString('es-UY'),
+    nombre, apellido, celular, email,
+    entrega: entrega === 'envio' ? 'Envío' : 'Retiro',
+    direccion,
+    productos: orderLines,
+    subtotal, descuento: Math.round(subtotal * discount),
+    envio: shipping, total,
+    pago: pago === 'mercadopago' ? 'Mercado Pago' : 'Transferencia',
+    estado: pago === 'transfer' ? 'Pendiente pago' : 'Pendiente confirmación',
+    notas
+  };
+
+  // Save to localStorage (admin panel reads from here)
+  saveOrderToSheets(orderData);
+
+  // Send WhatsApp
   const waMsg = encodeURIComponent(
-    `🛍️ *NUEVO PEDIDO FOUNDER*\n\n` +
+    `🛍️ *NUEVO PEDIDO FOUNDER — ${orderId}*\n\n` +
     `👤 *${nombre} ${apellido}*\n📱 ${celular}\n📧 ${email}\n\n` +
-    `🛒 *PRODUCTOS:*\n${orderLines}\n\n` +
+    `🛒 *PRODUCTOS:*\n${orderLinesWA}\n\n` +
     `${entregaInfo}\n\n` +
     `💳 *Pago:* ${pago === 'mercadopago' ? 'Mercado Pago' : 'Transferencia (-10%)'}\n` +
-    `💰 *Total:* $${total.toLocaleString('es-UY')} UYU`
+    `💰 *Total:* $${total.toLocaleString('es-UY')} UYU\n\n` +
+    `🔖 *ID:* ${orderId}`
   );
 
   window.open(`https://wa.me/598098550096?text=${waMsg}`, '_blank');
@@ -2563,7 +2622,7 @@ function processOrder() {
   cart = [];
   updateCart();
   closeCheckout();
-  showToast('¡Pedido enviado! Te contactaremos pronto 🎉');
+  showToast(`¡Pedido ${orderId} enviado! Te contactaremos pronto 🎉`);
 }
 
 // ============ LEGAL ============
