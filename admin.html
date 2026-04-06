@@ -944,25 +944,15 @@
         </div>
 
         <div class="form-group">
-          <div class="form-label">Imagen del producto</div>
-          <div style="display:flex;flex-direction:column;gap:12px">
-            <div class="img-input-row">
-              <input type="text" id="editImagen" placeholder="Pegá el link de Google Drive o el link ya convertido">
-              <button class="img-convert-btn" onclick="autoConvertImage()">Convertir →</button>
-            </div>
-            <div class="form-hint">Podés pegar directamente el link de Google Drive y hacer click en "Convertir"</div>
-            <img id="editImagenPreview" src="" style="max-width:200px;max-height:140px;object-fit:cover;border:1px solid var(--border);display:none">
-          </div>
-        </div>
-
-        <div class="form-group">
           <div class="form-label">Colores disponibles</div>
           <div class="colors-editor" id="colorsEditor"></div>
           <button class="add-color-btn" onclick="addColorRow()">+ Agregar color</button>
           <div class="form-hint" style="margin-top:8px">
-            Nombres de colores disponibles: Negro, Marrón, Marrón Oscuro, Gris Oscuro, Azul, Rosa, Rojo, Crema, Carbon, Verde Oliva
+            Nombres válidos: Negro, Marrón, Marrón Oscuro, Gris Oscuro, Azul, Rosa, Rojo, Crema, Carbon, Verde Oliva
           </div>
         </div>
+
+        <div id="colorPhotosSection"></div>
 
       </div>
     </div>
@@ -977,7 +967,8 @@
 // ============ CONFIG ============
 const PASSWORD = 'nerito20';
 const SHEET_ID = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+const SHEET_URL       = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`;
+const SHEET_FOTOS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`;
 
 const COLOR_MAP = {
   'Negro':         '#1a1a1a',
@@ -993,6 +984,7 @@ const COLOR_MAP = {
 };
 
 let products = [];
+let fotosData = []; // [{modelo, color, fotos:[f1,f2,f3,f4,f5]}]
 
 // ============ LOGIN ============
 function login() {
@@ -1025,19 +1017,107 @@ function showPage(name) {
 // ============ LOAD DATA ============
 async function loadData() {
   try {
-    const res = await fetch(SHEET_URL + '&t=' + Date.now());
-    const text = await res.text();
-    const json = JSON.parse(text.substring(47, text.length - 2));
-    const rows = json.table.rows;
+    const [resP, resF] = await Promise.all([
+      fetch(SHEET_URL + '&t=' + Date.now()),
+      fetch(SHEET_FOTOS_URL + '&t=' + Date.now())
+    ]);
+    const textP = await resP.text();
+    const textF = await resF.text();
+    const jsonP = JSON.parse(textP.substring(47, textP.length - 2));
+    const jsonF = JSON.parse(textF.substring(47, textF.length - 2));
 
-    products = rows.map((row, i) => ({
+    products = (jsonP.table.rows || []).map((row, i) => ({
       rowIndex: i + 2,
       nombre:  row.c[0]?.v || '',
       precio:  parseInt(row.c[1]?.v) || 0,
       desc:    row.c[2]?.v || '',
       colores: row.c[3]?.v || '',
       specs:   row.c[4]?.v || '',
-      imagen:  row.c[5]?.v || '',
+    }));
+
+    fotosData = (jsonF.table.rows || []).map((row, i) => ({
+      rowIndex: i + 2,
+      modelo: row.c[0]?.v || '',
+      color:  row.c[1]?.v || '',
+      fotos: [
+        row.c[2]?.v || '',
+        row.c[3]?.v || '',
+        row.c[4]?.v || '',
+        row.c[5]?.v || '',
+        row.c[6]?.v || '',
+      ]
+    }));
+
+    renderDashboard();
+    renderProductList();
+
+  } catch(e) {
+    showToast('Error al cargar datos', true);
+  }
+}
+
+function getFotosForColor(modelo, color) {
+  const entry = fotosData.find(f => f.modelo === modelo && f.color === color);
+  return entry ? entry.fotos : ['','','','',''];
+}
+
+// ============ LOGIN ============
+function login() {
+  const pass = document.getElementById('passwordInput').value;
+  if (pass === PASSWORD) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    loadData();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('passwordInput').value = '';
+    document.getElementById('passwordInput').focus();
+  }
+}
+
+function logout() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('passwordInput').value = '';
+}
+
+// ============ NAVIGATION ============
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ============ LOAD DATA ============
+async function loadData() {
+  try {
+    const [resP, resF] = await Promise.all([
+      fetch(SHEET_URL + '&t=' + Date.now()),
+      fetch(SHEET_FOTOS_URL + '&t=' + Date.now())
+    ]);
+    const textP = await resP.text();
+    const textF = await resF.text();
+    const jsonP = JSON.parse(textP.substring(47, textP.length - 2));
+    const jsonF = JSON.parse(textF.substring(47, textF.length - 2));
+
+    products = (jsonP.table.rows || []).map((row, i) => ({
+      rowIndex: i + 2,
+      nombre:  row.c[0]?.v || '',
+      precio:  parseInt(row.c[1]?.v) || 0,
+      desc:    row.c[2]?.v || '',
+      colores: row.c[3]?.v || '',
+      specs:   row.c[4]?.v || '',
+    }));
+
+    fotosData = (jsonF.table.rows || []).map((row, i) => ({
+      rowIndex: i + 2,
+      modelo: row.c[0]?.v || '',
+      color:  row.c[1]?.v || '',
+      fotos: [
+        row.c[2]?.v || '', row.c[3]?.v || '',
+        row.c[4]?.v || '', row.c[5]?.v || '', row.c[6]?.v || '',
+      ]
     }));
 
     renderDashboard();
@@ -1053,54 +1133,62 @@ function renderDashboard() {
   document.getElementById('statProductos').textContent = products.length;
   const totalColores = products.reduce((s, p) => s + (p.colores ? p.colores.split(',').length : 0), 0);
   document.getElementById('statColores').textContent = totalColores;
-  const conImagen = products.filter(p => p.imagen).length;
-  document.getElementById('statImagenes').textContent = `${conImagen}/${products.length}`;
+  const conFotos = fotosData.filter(f => f.fotos.some(p => p)).length;
+  document.getElementById('statImagenes').textContent = `${conFotos} sets`;
   const avg = products.length ? Math.round(products.reduce((s,p) => s+p.precio, 0) / products.length) : 0;
   document.getElementById('statPrecio').textContent = `$${avg.toLocaleString('es-UY')}`;
 
   const list = document.getElementById('dashProductList');
   list.className = '';
-  list.innerHTML = products.map(p => `
-    <div class="product-row">
-      ${p.imagen
-        ? `<img src="${p.imagen}" class="product-row-img" alt="${p.nombre}">`
-        : `<div class="product-row-img-placeholder">👜</div>`
-      }
-      <div class="product-row-info">
-        <div class="product-row-name">Founder ${p.nombre}</div>
-        <div class="product-row-meta">
-          <span>${p.colores ? p.colores.split(',').length : 0} colores</span>
-          <span>${p.imagen ? '✅ Con imagen' : '⚠️ Sin imagen'}</span>
+  list.innerHTML = products.map(p => {
+    const firstPhoto = fotosData.find(f => f.modelo === p.nombre && f.fotos.some(x => x))?.fotos.find(x => x);
+    return `
+      <div class="product-row">
+        ${firstPhoto
+          ? `<img src="${firstPhoto}" class="product-row-img" alt="${p.nombre}">`
+          : `<div class="product-row-img-placeholder">👜</div>`
+        }
+        <div class="product-row-info">
+          <div class="product-row-name">Founder ${p.nombre}</div>
+          <div class="product-row-meta">
+            <span>${p.colores ? p.colores.split(',').length : 0} colores</span>
+            <span>${fotosData.filter(f => f.modelo === p.nombre && f.fotos.some(x => x)).length} sets de fotos</span>
+          </div>
         </div>
+        <div class="product-row-price">$${p.precio.toLocaleString('es-UY')}</div>
       </div>
-      <div class="product-row-price">$${p.precio.toLocaleString('es-UY')}</div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+}
 }
 
 // ============ PRODUCT LIST ============
 function renderProductList() {
   const container = document.getElementById('productListAdmin');
   container.className = 'product-list';
-  container.innerHTML = products.map((p, i) => `
-    <div class="product-row">
-      ${p.imagen
-        ? `<img src="${p.imagen}" class="product-row-img" alt="${p.nombre}">`
-        : `<div class="product-row-img-placeholder">👜</div>`
-      }
-      <div class="product-row-info">
-        <div class="product-row-name">Founder ${p.nombre}</div>
-        <div class="product-row-meta">
-          <span>$${p.precio.toLocaleString('es-UY')} UYU</span>
-          <span>${p.colores ? p.colores.split(',').length : 0} colores</span>
-          <span>${p.imagen ? '✅ Imagen cargada' : '⚠️ Sin imagen'}</span>
+  container.innerHTML = products.map((p, i) => {
+    const firstPhoto = fotosData.find(f => f.modelo === p.nombre && f.fotos.some(x => x))?.fotos.find(x => x);
+    const setsCount = fotosData.filter(f => f.modelo === p.nombre && f.fotos.some(x => x)).length;
+    return `
+      <div class="product-row">
+        ${firstPhoto
+          ? `<img src="${firstPhoto}" class="product-row-img" alt="${p.nombre}">`
+          : `<div class="product-row-img-placeholder">👜</div>`
+        }
+        <div class="product-row-info">
+          <div class="product-row-name">Founder ${p.nombre}</div>
+          <div class="product-row-meta">
+            <span>$${p.precio.toLocaleString('es-UY')} UYU</span>
+            <span>${p.colores ? p.colores.split(',').length : 0} colores</span>
+            <span>${setsCount > 0 ? `✅ ${setsCount} sets de fotos` : '⚠️ Sin fotos'}</span>
+          </div>
+        </div>
+        <div class="product-row-actions">
+          <button class="btn btn-secondary btn-sm" onclick="editProduct(${i})">✏️ Editar</button>
         </div>
       </div>
-      <div class="product-row-actions">
-        <button class="btn btn-secondary btn-sm" onclick="editProduct(${i})">✏️ Editar</button>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // ============ EDIT PRODUCT ============
@@ -1112,15 +1200,10 @@ function editProduct(i) {
   document.getElementById('editPrecio').value = p.precio;
   document.getElementById('editDesc').value = p.desc;
   document.getElementById('editSpecs').value = p.specs;
-  document.getElementById('editImagen').value = p.imagen;
 
-  // Preview imagen
-  const preview = document.getElementById('editImagenPreview');
-  if (p.imagen) { preview.src = p.imagen; preview.style.display = 'block'; }
-  else { preview.style.display = 'none'; }
-
-  // Colores
-  renderColorRows(p.colores ? p.colores.split(',').map(c => c.trim()) : []);
+  const colores = p.colores ? p.colores.split(',').map(c => c.trim()) : [];
+  renderColorRows(colores);
+  renderColorPhotos(p.nombre, colores);
 
   document.getElementById('productModal').classList.add('open');
 }
@@ -1132,14 +1215,73 @@ function openNewProduct() {
   document.getElementById('editPrecio').value = '';
   document.getElementById('editDesc').value = '';
   document.getElementById('editSpecs').value = '';
-  document.getElementById('editImagen').value = '';
-  document.getElementById('editImagenPreview').style.display = 'none';
+  document.getElementById('colorPhotosSection').innerHTML = '';
   renderColorRows([]);
   document.getElementById('productModal').classList.add('open');
 }
 
 function closeModal() {
   document.getElementById('productModal').classList.remove('open');
+}
+
+// ============ COLOR PHOTOS ============
+function renderColorPhotos(modelo, colores) {
+  const container = document.getElementById('colorPhotosSection');
+  if (!colores.length) { container.innerHTML = ''; return; }
+
+  container.innerHTML = `
+    <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px">
+      Fotos por color (5 fotos por cada color)
+    </div>
+    ${colores.map(color => {
+      const fotos = getFotosForColor(modelo, color);
+      const hex = COLOR_MAP[color] || '#555';
+      return `
+        <div style="border:1px solid var(--border);padding:16px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <div style="width:20px;height:20px;border-radius:50%;background:${hex};border:2px solid var(--border);flex-shrink:0"></div>
+            <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--white)">${color}</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+            ${fotos.map((f, fi) => `
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font-size:8px;color:var(--text-muted);letter-spacing:1px">Foto ${fi+1}</div>
+                <input type="text" 
+                       id="foto_${modelo}_${color}_${fi}"
+                       value="${f}" 
+                       placeholder="Link Drive"
+                       style="width:100%;background:var(--gray-mid);border:1px solid var(--border);color:var(--white);padding:5px 6px;font-size:8px;outline:none">
+                <button onclick="autoConvertColorPhoto('${modelo}','${color}',${fi})"
+                        style="background:var(--gold);color:var(--black);border:none;padding:3px;font-size:7px;letter-spacing:1px;cursor:pointer;font-weight:700">
+                  ↻ Conv.
+                </button>
+                ${f
+                  ? `<img src="${f}" style="width:100%;height:40px;object-fit:cover;border:1px solid var(--border)" id="prev_${modelo}_${color}_${fi}">`
+                  : `<div style="width:100%;height:40px;background:var(--gray-mid);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px" id="prev_${modelo}_${color}_${fi}">📷</div>`
+                }
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('')}
+  `;
+}
+
+function autoConvertColorPhoto(modelo, color, fi) {
+  const input = document.getElementById(`foto_${modelo}_${color}_${fi}`);
+  const url = input.value.trim();
+  if (!url) return;
+  const id = extractDriveId(url);
+  if (id) {
+    input.value = convertToDirectLink(id);
+    const prev = document.getElementById(`prev_${modelo}_${color}_${fi}`);
+    if (prev) prev.src = input.value;
+    showToast('Convertido ✓');
+  } else if (url.startsWith('http')) {
+    const prev = document.getElementById(`prev_${modelo}_${color}_${fi}`);
+    if (prev) prev.src = url;
+  }
 }
 
 // ============ COLORS ============
@@ -1189,56 +1331,44 @@ function getColorsFromEditor() {
 async function saveProduct() {
   const nombre = document.getElementById('editNombre').value.trim();
   const precio = document.getElementById('editPrecio').value.trim();
-
-  if (!nombre || !precio) {
-    showToast('Nombre y precio son obligatorios', true);
-    return;
-  }
+  if (!nombre || !precio) { showToast('Nombre y precio son obligatorios', true); return; }
 
   const colores = getColorsFromEditor();
   const specs   = document.getElementById('editSpecs').value.trim();
   const desc    = document.getElementById('editDesc').value.trim();
-  const imagen  = document.getElementById('editImagen').value.trim();
   const rowIdx  = parseInt(document.getElementById('editingRow').value);
 
-  // Build the new row data
-  const rowData = [nombre, precio, desc, colores, specs, imagen];
+  const rowData = [nombre, precio, desc, colores, specs];
 
   if (rowIdx === -1) {
-    // New product — append to sheet
-    products.push({ nombre, precio: parseInt(precio), desc, colores, specs, imagen, rowIndex: products.length + 2 });
+    products.push({ nombre, precio: parseInt(precio), desc, colores, specs, rowIndex: products.length + 2 });
   } else {
-    // Update existing
-    products[rowIdx] = { ...products[rowIdx], nombre, precio: parseInt(precio), desc, colores, specs, imagen };
+    products[rowIdx] = { ...products[rowIdx], nombre, precio: parseInt(precio), desc, colores, specs };
   }
 
-  closeModal();
-  showToast('✅ Guardado — actualizá la planilla manualmente con los datos de abajo');
+  // Build fotos instructions
+  const coloresArr = colores.split(',').map(c => c.trim()).filter(c => c);
+  let fotosInstructions = '\n\n📷 FOTOS (pestaña "fotos" de tu planilla):\n';
+  coloresArr.forEach(color => {
+    const fotos = [];
+    for (let fi = 0; fi < 5; fi++) {
+      const input = document.getElementById(`foto_${nombre}_${color}_${fi}`);
+      fotos.push(input ? input.value.trim() : '');
+    }
+    fotosInstructions += `\nModelo: ${nombre} | Color: ${color}\n`;
+    fotos.forEach((f, fi) => { fotosInstructions += `  Foto ${fi+1}: ${f || '(vacía)'}\n`; });
+  });
 
-  // Show what to update in the sheet
-  showSheetInstructions(rowData, rowIdx === -1 ? products.length + 1 : products[rowIdx]?.rowIndex);
+  closeModal();
+
+  // Copy product data to clipboard
+  const clipText = rowData.join('\t');
+  navigator.clipboard.writeText(clipText).then(() => {
+    showToast('✅ Datos copiados — pegálos en Google Sheets');
+  });
 
   renderDashboard();
   renderProductList();
-}
-
-function showSheetInstructions(data, rowNum) {
-  const msg = `
-📋 ACTUALIZÁ TU PLANILLA EN GOOGLE SHEETS
-
-Fila ${rowNum}:
-A: ${data[0]}
-B: ${data[1]}
-C: ${data[2]}
-D: ${data[3]}
-E: ${data[4]}
-F: ${data[5]}
-  `.trim();
-
-  // Copy to clipboard
-  navigator.clipboard.writeText(data.join('\t')).then(() => {
-    showToast('Datos copiados — pegálos en Google Sheets con Ctrl+V');
-  });
 }
 
 // ============ IMAGE CONVERTER ============
