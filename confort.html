@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Founder Confort — Billetera RFID Premium | Founder.uy</title>
+<meta name="description" content="Founder Confort: billetera premium con tecnología RFID, botón deslizante, bolsillo monedas y capacidad para 8-10 tarjetas. Envíos a todo Uruguay.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a;
+    --white: #f5f5f0;
+    --gold: #c9a96e;
+    --gray: #1a1a1a;
+    --gray-mid: #2a2a2a;
+    --gray-light: #555;
+    --text-muted: #888;
+    --border: rgba(255,255,255,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 300;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* CURSOR */
+  .cursor { position:fixed;width:8px;height:8px;background:var(--white);border-radius:50%;pointer-events:none;z-index:9999;transition:transform 0.15s;transform:translate(-50%,-50%); }
+  .cursor-ring { position:fixed;width:32px;height:32px;border:1px solid rgba(255,255,255,0.4);border-radius:50%;pointer-events:none;z-index:9998;transition:transform 0.4s ease,width 0.3s,height 0.3s,border-color 0.3s;transform:translate(-50%,-50%); }
+  .cursor-ring.hover { width:48px;height:48px;border-color:var(--gold); }
+
+  /* HEADER */
+  header {
+    position: fixed; top:0; left:0; right:0; z-index:100;
+    padding: 0 48px; height: 70px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(10,10,10,0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo { font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;letter-spacing:6px;color:var(--white);text-decoration:none; }
+
+  .header-right { display:flex;align-items:center;gap:24px; }
+
+  .back-link {
+    color: var(--text-muted); text-decoration:none;
+    font-size:10px;letter-spacing:3px;text-transform:uppercase;
+    display:flex;align-items:center;gap:10px;transition:color 0.3s;
+  }
+  .back-link:hover { color:var(--white); }
+  .back-link::before { content:'←'; font-size:14px; }
+
+  .cart-btn {
+    position:relative;background:none;border:1px solid var(--border);
+    color:var(--white);padding:10px 20px;
+    font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:3px;
+    text-transform:uppercase;cursor:none;transition:all 0.3s;
+  }
+  .cart-btn:hover { background:var(--white);color:var(--black); }
+  .cart-count {
+    position:absolute;top:-8px;right:-8px;background:var(--gold);
+    color:var(--black);width:18px;height:18px;border-radius:50%;
+    font-size:9px;display:none;align-items:center;justify-content:center;font-weight:600;
+  }
+
+  /* BREADCRUMB */
+  .breadcrumb {
+    padding: 90px 48px 0;
+    display:flex;align-items:center;gap:12px;
+    font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);
+  }
+  .breadcrumb a { color:var(--text-muted);text-decoration:none;transition:color 0.2s; }
+  .breadcrumb a:hover { color:var(--white); }
+  .breadcrumb span { color:var(--gold); }
+
+  /* MAIN PRODUCT LAYOUT */
+  .product-main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 40px 48px 0;
+    min-height: 90vh;
+  }
+
+  /* LEFT — GALLERY */
+  .gallery {
+    position: sticky;
+    top: 70px;
+    height: calc(100vh - 70px);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 40px;
+  }
+
+  .gallery-main {
+    flex: 1;
+    background: var(--gray);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .gallery-main-inner {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: background 0.6s ease;
+  }
+
+  .gallery-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    width: 100%;
+    height: 100%;
+    padding: 40px;
+  }
+
+  .wallet-preview {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .wallet-shape {
+    border-radius: 6px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    transition: all 0.5s ease;
+  }
+
+  .wallet-front {
+    width: 120px;
+    height: 160px;
+  }
+
+  .wallet-open {
+    width: 200px;
+    height: 140px;
+  }
+
+  .rfid-badge {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    background: rgba(201,169,110,0.15);
+    border: 1px solid var(--gold);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .gallery-thumbs {
+    display: flex;
+    gap: 2px;
+    height: 80px;
+  }
+
+  .thumb {
+    flex: 1;
+    background: var(--gray);
+    cursor: none;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    overflow: hidden;
+  }
+  .thumb.active { border-color: var(--gold); }
+  .thumb:hover { border-color: rgba(255,255,255,0.3); }
+
+  /* RIGHT — INFO */
+  .product-info {
+    padding: 0 0 80px 40px;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+  }
+
+  .product-label {
+    font-size: 9px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);
+    display:flex;align-items:center;gap:12px;
+  }
+  .product-label::before { content:'';display:block;width:24px;height:1px;background:var(--gold); }
+
+  .product-name-section h1 {
+    font-family:'Cormorant Garamond',serif;
+    font-size: clamp(48px, 5vw, 72px);
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+
+  .product-name-section .subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 12px;
+  }
+
+  .product-short-desc {
+    font-size: 13px;
+    line-height: 2;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+    border-left: 2px solid var(--gold);
+    padding-left: 20px;
+  }
+
+  /* COLOR SELECTOR */
+  .color-section h3 {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  .color-selected-name {
+    color: var(--white);
+    font-size: 11px;
+    letter-spacing: 2px;
+    margin-left: 8px;
+  }
+
+  .colors-grid {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .color-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: none;
+  }
+
+  .color-swatch {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    transition: all 0.25s;
+    position: relative;
+  }
+  .color-item:hover .color-swatch,
+  .color-item.active .color-swatch {
+    border-color: var(--white);
+    transform: scale(1.15);
+  }
+  .color-item.active .color-swatch::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+
+  .color-label {
+    font-size: 8px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    text-align: center;
+    max-width: 50px;
+  }
+
+  /* SPECS */
+  .specs-section {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .spec-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .spec-row .spec-icon {
+    color: var(--gold);
+    font-size: 10px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    width: 16px;
+  }
+
+  /* DIMENSIONS */
+  .dimensions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .dim-item {
+    background: var(--gray);
+    padding: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .dim-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--white);
+  }
+
+  .dim-label {
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* PRICE & CTA */
+  .purchase-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .price-block {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .price-main {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 48px;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  .price-currency {
+    font-size: 14px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+  }
+
+  .price-discount-tag {
+    background: rgba(201,169,110,0.15);
+    border: 1px solid rgba(201,169,110,0.3);
+    color: var(--gold);
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 6px 12px;
+    text-transform: uppercase;
+  }
+
+  .shipping-note {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .shipping-note .free { color: var(--gold); font-weight: 500; }
+
+  .add-cart-btn {
+    background: var(--white);
+    color: var(--black);
+    border: none;
+    padding: 20px;
+    width: 100%;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    cursor: none;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .add-cart-btn:hover { background: var(--gold); }
+  .add-cart-btn:disabled {
+    background: var(--gray-mid);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+
+  .buy-now-btn {
+    background: transparent;
+    color: var(--white);
+    border: 1px solid var(--border);
+    padding: 18px;
+    width: 100%;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    cursor: none;
+    transition: all 0.3s;
+  }
+  .buy-now-btn:hover { border-color: var(--white); background: rgba(255,255,255,0.04); }
+
+  .trust-badges {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .trust-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .trust-badge span:first-child { font-size: 18px; }
+  .trust-badge span:last-child {
+    font-size: 8px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    line-height: 1.4;
+  }
+
+  /* DETAILS TABS */
+  .details-section {
+    padding: 80px 48px;
+    border-top: 1px solid var(--border);
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    padding: 16px 32px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: none;
+    transition: all 0.3s;
+    margin-bottom: -1px;
+  }
+  .tab-btn.active {
+    color: var(--white);
+    border-bottom-color: var(--gold);
+  }
+  .tab-btn:hover { color: var(--white); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; animation: fadeUp 0.4s ease; }
+
+  .specs-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    background: var(--border);
+  }
+
+  .spec-cell {
+    background: var(--gray);
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .spec-cell-label {
+    font-size: 8px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .spec-cell-value {
+    font-size: 13px;
+    color: var(--white);
+    line-height: 1.6;
+  }
+
+  .rfid-explain {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+
+  .rfid-explain h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 300;
+    margin-bottom: 20px;
+    line-height: 1.2;
+  }
+
+  .rfid-explain p {
+    font-size: 12px;
+    line-height: 2;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+    margin-bottom: 16px;
+  }
+
+  .rfid-visual {
+    background: var(--gray);
+    padding: 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .rfid-icon-big { font-size: 64px; }
+
+  .rfid-visual p {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    line-height: 1.8;
+  }
+
+  /* RELATED */
+  .related-section {
+    padding: 80px 48px;
+    border-top: 1px solid var(--border);
+  }
+
+  .related-header {
+    margin-bottom: 48px;
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+
+  .related-card {
+    background: var(--gray);
+    cursor: none;
+    text-decoration: none;
+    color: var(--white);
+    transition: all 0.3s;
+    display: block;
+  }
+  .related-card:hover { background: var(--gray-mid); }
+
+  .related-img {
+    aspect-ratio: 4/3;
+    background: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .related-info {
+    padding: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .related-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 400;
+  }
+
+  .related-price {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  /* CART SIDEBAR */
+  .cart-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;opacity:0;pointer-events:none;transition:opacity 0.4s;backdrop-filter:blur(4px); }
+  .cart-overlay.open { opacity:1;pointer-events:all; }
+
+  .cart-sidebar { position:fixed;top:0;right:0;width:420px;height:100vh;background:var(--gray);z-index:201;transform:translateX(100%);transition:transform 0.5s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column;border-left:1px solid var(--border); }
+  .cart-sidebar.open { transform:translateX(0); }
+
+  .cart-header { padding:32px 36px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center; }
+  .cart-title { font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;letter-spacing:3px; }
+  .close-cart { background:none;border:none;color:var(--text-muted);font-size:24px;cursor:none;transition:color 0.2s;line-height:1; }
+  .close-cart:hover { color:var(--white); }
+
+  .cart-items { flex:1;overflow-y:auto;padding:24px 36px; }
+  .cart-item { display:flex;gap:16px;padding:20px 0;border-bottom:1px solid var(--border); }
+  .cart-item-info { flex:1; }
+  .cart-item-name { font-family:'Cormorant Garamond',serif;font-size:18px;margin-bottom:4px; }
+  .cart-item-variant { font-size:10px;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px; }
+  .cart-item-controls { display:flex;align-items:center;gap:12px; }
+  .qty-btn { background:var(--gray-mid);border:none;color:var(--white);width:28px;height:28px;font-size:16px;cursor:none;transition:background 0.2s;display:flex;align-items:center;justify-content:center; }
+  .qty-btn:hover { background:var(--gray-light); }
+  .qty-display { font-size:14px;min-width:20px;text-align:center; }
+  .cart-item-price { font-family:'Cormorant Garamond',serif;font-size:20px;white-space:nowrap;align-self:center; }
+  .remove-item { background:none;border:none;color:var(--text-muted);cursor:none;font-size:16px;align-self:center;transition:color 0.2s; }
+  .remove-item:hover { color:#ff4444; }
+
+  .cart-empty { text-align:center;padding:80px 36px;color:var(--text-muted); }
+  .cart-empty p { font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:8px; }
+  .cart-empty span { font-size:11px;letter-spacing:2px; }
+
+  .cart-footer { padding:24px 36px 36px;border-top:1px solid var(--border); }
+  .cart-subtotal { display:flex;justify-content:space-between;align-items:center;margin-bottom:16px; }
+  .cart-subtotal span { font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted); }
+  .cart-subtotal strong { font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400; }
+
+  .checkout-btn { width:100%;background:var(--white);color:var(--black);border:none;padding:18px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:4px;text-transform:uppercase;font-weight:700;cursor:none;transition:all 0.3s; }
+  .checkout-btn:hover { background:var(--gold); }
+
+  /* TOAST */
+  .toast { position:fixed;bottom:40px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--white);color:var(--black);padding:16px 32px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;opacity:0;transition:all 0.4s;z-index:1000;white-space:nowrap; }
+  .toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+
+  /* FOOTER */
+  footer { background:var(--gray);border-top:1px solid var(--border);padding:48px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:24px; }
+  footer p { font-size:10px;color:var(--text-muted);letter-spacing:1px; }
+  .footer-links { display:flex;gap:24px; }
+  .footer-links a { color:var(--text-muted);text-decoration:none;font-size:10px;letter-spacing:1px;transition:color 0.2s; }
+  .footer-links a:hover { color:var(--white); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)} }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.5} }
+
+  /* MOBILE */
+  @media (max-width: 900px) {
+    header { padding:0 24px; }
+    .breadcrumb { padding:90px 24px 0; }
+    .product-main { grid-template-columns:1fr;padding:24px 24px 0; }
+    .gallery { position:static;height:auto;padding-right:0; }
+    .gallery-main { height:300px; }
+    .product-info { padding:32px 0 60px;border-left:none;border-top:1px solid var(--border); }
+    .details-section { padding:60px 24px; }
+    .specs-grid { grid-template-columns:1fr; }
+    .rfid-explain { grid-template-columns:1fr; }
+    .related-section { padding:60px 24px; }
+    .related-grid { grid-template-columns:1fr; }
+    .cart-sidebar { width:100%; }
+    body { cursor:auto; }
+    .cursor,.cursor-ring { display:none; }
+    footer { padding:32px 24px; }
+    .trust-badges { grid-template-columns:1fr; }
+    .tabs { overflow-x:auto; }
+    .tab-btn { white-space:nowrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+<div class="toast" id="toast"></div>
+
+<!-- HEADER -->
+<header>
+  <a href="index.html" class="logo">FOUNDER</a>
+  <div class="header-right">
+    <a href="index.html" class="back-link">Volver</a>
+    <button class="cart-btn" onclick="toggleCart()">
+      Carrito
+      <span class="cart-count" id="cartCount">0</span>
+    </button>
+  </div>
+</header>
+
+<!-- BREADCRUMB -->
+<div class="breadcrumb">
+  <a href="index.html">Inicio</a>
+  <span>›</span>
+  <a href="index.html#productos">Productos</a>
+  <span>›</span>
+  <span style="color:var(--white)">Founder Confort</span>
+</div>
+
+<!-- PRODUCT MAIN -->
+<div class="product-main">
+
+  <!-- GALLERY -->
+  <div class="gallery">
+    <div class="gallery-main">
+      <div class="gallery-main-inner" id="galleryMain">
+        <div class="gallery-placeholder">
+          <div class="wallet-preview" id="walletPreview">
+            <!-- Wallet shapes rendered by JS -->
+          </div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:4px;color:rgba(255,255,255,0.2);text-transform:uppercase;">
+            Tus fotos irán aquí
+          </div>
+        </div>
+        <div class="rfid-badge">
+          <span>🛡️</span>
+          Protección RFID
+        </div>
+      </div>
+    </div>
+
+    <div class="gallery-thumbs">
+      <div class="thumb active" onclick="setThumb(0)">Frente</div>
+      <div class="thumb" onclick="setThumb(1)">Abierta</div>
+      <div class="thumb" onclick="setThumb(2)">Interior</div>
+      <div class="thumb" onclick="setThumb(3)">Detalle</div>
+    </div>
+  </div>
+
+  <!-- INFO -->
+  <div class="product-info">
+    <div class="product-label">Founder.uy — Colección 2025</div>
+
+    <div class="product-name-section">
+      <h1>Confort</h1>
+      <div class="subtitle">Capacidad máxima · Protección RFID</div>
+    </div>
+
+    <p class="product-short-desc">
+      La billetera que lo tiene todo. Capacidad para hasta 10 tarjetas, bolsillo monedas con cierre, espacio para documentos y cierre tipo libro imantado. Todo con tecnología RFID y acabado premium.
+    </p>
+
+    <!-- COLORS -->
+    <div class="color-section">
+      <h3>Color: <span class="color-selected-name" id="selectedColor">Marrón</span></h3>
+      <div class="colors-grid" id="colorsGrid"></div>
+    </div>
+
+    <!-- SPECS -->
+    <div class="specs-section">
+      <div class="spec-row"><span class="spec-icon">✦</span>Tecnología RFID — protección contra escaneos no autorizados</div>
+      <div class="spec-row"><span class="spec-icon">✦</span>Botón deslizante lateral para acceso rápido a tarjetas</div>
+      <div class="spec-row"><span class="spec-icon">✦</span>Tarjetero 5–6 tarjetas + 4 compartimentos adicionales (8–10 total)</div>
+      <div class="spec-row"><span class="spec-icon">✦</span>Espacio para libreta de conducir y propiedad</div>
+      <div class="spec-row"><span class="spec-icon">✦</span>Bolsillo para billetes (4–6 inicial, hasta 10–14 con uso)</div>
+      <div class="spec-row"><span class="spec-icon">✦</span>Bolsillo para monedas con cierre</div>
+      <div class="spec-row"><span class="spec-icon">✦</span>Cierre tipo libro imantado</div>
+    </div>
+
+    <!-- DIMENSIONS -->
+    <div class="dimensions">
+      <div class="dim-item">
+        <div class="dim-value">10,5</div>
+        <div class="dim-label">cm alto</div>
+      </div>
+      <div class="dim-item">
+        <div class="dim-value">7,3</div>
+        <div class="dim-label">cm ancho</div>
+      </div>
+      <div class="dim-item">
+        <div class="dim-value">2,5</div>
+        <div class="dim-label">cm grosor</div>
+      </div>
+    </div>
+
+    <!-- PURCHASE -->
+    <div class="purchase-section">
+      <div class="price-block">
+        <div>
+          <div style="font-size:9px;letter-spacing:3px;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px">Precio</div>
+          <div style="display:flex;align-items:baseline;gap:12px">
+            <span class="price-main" id="displayPrice">$2.490</span>
+            <span class="price-currency">UYU</span>
+          </div>
+        </div>
+        <div class="price-discount-tag">10% OFF<br>efectivo/transferencia</div>
+      </div>
+
+      <div class="shipping-note">
+        <span>🚚</span>
+        <span>Envío <span class="free">gratis</span> — este producto supera $2.000 UYU</span>
+      </div>
+
+      <button class="add-cart-btn" id="addCartBtn" onclick="addToCart()" disabled>
+        Seleccioná un color para continuar
+      </button>
+      <button class="buy-now-btn" onclick="buyNow()">Comprar ahora por WhatsApp</button>
+
+      <div class="trust-badges">
+        <div class="trust-badge">
+          <span>🛡️</span>
+          <span>RFID protegido</span>
+        </div>
+        <div class="trust-badge">
+          <span>🚚</span>
+          <span>Envío gratis</span>
+        </div>
+        <div class="trust-badge">
+          <span>↩️</span>
+          <span>Cambios 7 días</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAILS TABS -->
+<div class="details-section">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('specs')">Especificaciones</button>
+    <button class="tab-btn" onclick="switchTab('rfid')">¿Qué es RFID?</button>
+    <button class="tab-btn" onclick="switchTab('shipping')">Envíos y cambios</button>
+  </div>
+
+  <div class="tab-content active" id="tab-specs">
+    <div class="specs-grid">
+      <div class="spec-cell">
+        <div class="spec-cell-label">Material</div>
+        <div class="spec-cell-value">Cuero + aluminio de alta calidad</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Tecnología</div>
+        <div class="spec-cell-value">RFID — Bloqueo electromagnético</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Capacidad tarjetas</div>
+        <div class="spec-cell-value">5–6 en tarjetero + 4 compartimentos adicionales (8–10 total)</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Capacidad billetes</div>
+        <div class="spec-cell-value">4–6 inicial / hasta 10–14 con uso</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Bolsillo monedas</div>
+        <div class="spec-cell-value">Sí, con cierre</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Documentos</div>
+        <div class="spec-cell-value">Libreta de conducir y propiedad</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Cierre</div>
+        <div class="spec-cell-value">Tipo libro imantado</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Medidas</div>
+        <div class="spec-cell-value">10,5 × 7,3 × 2,5 cm</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Colores disponibles</div>
+        <div class="spec-cell-value">Crema, Rosa, Negro, Carbon, Marrón, Azul, Marrón Oscuro</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Precio</div>
+        <div class="spec-cell-value">$2.490 UYU (10% OFF efectivo/transferencia)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-rfid">
+    <div class="rfid-explain">
+      <div>
+        <h3>Tu dinero digital,<br>protegido.</h3>
+        <p>Las tarjetas de crédito, débito y documentos modernos tienen un chip RFID que permite pagos sin contacto. Esto es conveniente, pero también significa que alguien con un lector RFID podría escanear tus datos sin que lo notes.</p>
+        <p>La tecnología RFID de Founder crea un escudo electromagnético alrededor de tus tarjetas, bloqueando cualquier intento de lectura no autorizada. Tus datos están protegidos mientras la billetera esté cerrada.</p>
+        <p>Abrís la billetera para pagar normalmente. La protección actúa solo cuando está cerrada, sin interferir con el uso cotidiano.</p>
+        <p style="color:var(--gold);font-size:11px;letter-spacing:1px;">Compatible con: tarjetas Visa, Mastercard, BROU, BBVA, Santander, Itaú, cédula de identidad uruguaya y más.</p>
+      </div>
+      <div class="rfid-visual">
+        <div class="rfid-icon-big">🛡️</div>
+        <p>Blindaje electromagnético activo cuando la billetera está cerrada</p>
+        <div style="width:100%;height:1px;background:var(--border);margin:8px 0"></div>
+        <p style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold)">100% segura · 100% founder</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-shipping">
+    <div class="specs-grid">
+      <div class="spec-cell">
+        <div class="spec-cell-label">Envíos</div>
+        <div class="spec-cell-value">A todo el territorio uruguayo</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Envío gratis</div>
+        <div class="spec-cell-value">En compras desde $2.000 UYU — este producto califica ✓</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Plazo de entrega</div>
+        <div class="spec-cell-value">3 a 7 días hábiles según departamento</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Formas de pago</div>
+        <div class="spec-cell-value">Mercado Pago · Transferencia (-10%) · Efectivo (-10%)</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Cambios</div>
+        <div class="spec-cell-value">Hasta 7 días corridos de recibido el producto, sin uso</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-cell-label">Defectos de fábrica</div>
+        <div class="spec-cell-value">Cambio o reintegro sin costo. Plazo: 30 días</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RELATED PRODUCTS -->
+<div class="related-section">
+  <div class="related-header">
+    <div style="font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:12px"><span style="display:block;width:24px;height:1px;background:var(--gold)"></span>También te puede gustar</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300">Otros modelos</div>
+  </div>
+
+  <div class="related-grid">
+    <a href="#" class="related-card">
+      <div class="related-img" style="background:linear-gradient(135deg,#111,#1a1a1a)">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:80px;font-weight:300;color:rgba(255,255,255,0.04)">S</div>
+        <div style="position:absolute;display:flex;gap:8px">
+          <div style="width:28px;height:40px;background:#4a4a5a;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.5)"></div>
+          <div style="width:28px;height:40px;background:#6b3a2a;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.5)"></div>
+          <div style="width:28px;height:40px;background:#1a1a1a;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.5)"></div>
+        </div>
+      </div>
+      <div class="related-info">
+        <div>
+          <div class="related-name">Simple</div>
+          <div class="related-price">Tarjetero compacto · RFID</div>
+        </div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:20px">$990</div>
+      </div>
+    </a>
+
+    <a href="#" class="related-card">
+      <div class="related-img" style="background:linear-gradient(135deg,#111,#1a1a1a)">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:80px;font-weight:300;color:rgba(255,255,255,0.04)">C</div>
+        <div style="position:absolute;display:flex;gap:8px">
+          <div style="width:28px;height:40px;background:#1a1a1a;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.5)"></div>
+          <div style="width:28px;height:40px;background:#3d2010;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.5)"></div>
+          <div style="width:28px;height:40px;background:#8b4513;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.5)"></div>
+        </div>
+      </div>
+      <div class="related-info">
+        <div>
+          <div class="related-name">Classic</div>
+          <div class="related-price">Mayor organización · RFID</div>
+        </div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:20px">$1.390</div>
+      </div>
+    </a>
+
+    <a href="#" class="related-card">
+      <div class="related-img" style="background:linear-gradient(135deg,#111,#1a1a1a)">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:80px;font-weight:300;color:rgba(255,255,255,0.04)">E</div>
+        <div style="position:absolute;display:flex;gap:8px">
+          <div style="width:28px;height:40px;background:#6b3a2a;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.5)"></div>
+          <div style="width:28px;height:40px;background:#1a1a1a;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.5)"></div>
+          <div style="width:28px;height:40px;background:#4a5a2a;border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,0.5)"></div>
+        </div>
+      </div>
+      <div class="related-info">
+        <div>
+          <div class="related-name">Essential</div>
+          <div class="related-price">Edición premium · RFID</div>
+        </div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:20px">$2.790</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <a href="index.html" class="logo" style="font-size:18px">FOUNDER</a>
+  <p>© 2025 Founder.uy — Todos los derechos reservados</p>
+  <div class="footer-links">
+    <a href="index.html#rfid">RFID</a>
+    <a href="https://wa.me/598098550096" target="_blank">WhatsApp</a>
+    <a href="https://instagram.com/founder.uy" target="_blank">Instagram</a>
+  </div>
+</footer>
+
+<!-- CART SIDEBAR -->
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+<div class="cart-sidebar" id="cartSidebar">
+  <div class="cart-header">
+    <span class="cart-title">Mi Carrito</span>
+    <button class="close-cart" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <div class="cart-empty">
+      <p>Tu carrito está vacío</p>
+      <span>Agregá productos para continuar</span>
+    </div>
+  </div>
+  <div class="cart-footer" id="cartFooter" style="display:none">
+    <div class="cart-subtotal">
+      <span>Total</span>
+      <strong id="cartTotal">$0</strong>
+    </div>
+    <button class="checkout-btn" onclick="goCheckout()">Finalizar por WhatsApp</button>
+  </div>
+</div>
+
+<script>
+const PRODUCT = {
+  id: 3,
+  name: 'Confort',
+  price: 2490,
+  colors: [
+    { name: 'Crema',        hex: '#d4c8a8' },
+    { name: 'Rosa',         hex: '#d4a0a0' },
+    { name: 'Negro',        hex: '#1a1a1a' },
+    { name: 'Carbon',       hex: '#2a2a2a', pattern: true },
+    { name: 'Marrón',       hex: '#8b4513' },
+    { name: 'Azul',         hex: '#1a3a5c' },
+    { name: 'Marrón Oscuro',hex: '#3d2010' }
+  ]
+};
+
+let selectedColor = null;
+let cart = [];
+
+// RENDER COLORS
+function renderColors() {
+  const grid = document.getElementById('colorsGrid');
+  grid.innerHTML = PRODUCT.colors.map((c, i) => `
+    <div class="color-item ${selectedColor && selectedColor.name === c.name ? 'active' : ''}" onclick="selectColor(${i})">
+      <div class="color-swatch" style="
+        background:${c.hex};
+        ${c.pattern ? 'background:repeating-linear-gradient(45deg,#1a1a1a 0,#1a1a1a 3px,#2a2a2a 3px,#2a2a2a 6px);' : ''}
+      "></div>
+      <div class="color-label">${c.name}</div>
+    </div>
+  `).join('');
+}
+
+function selectColor(i) {
+  selectedColor = PRODUCT.colors[i];
+  document.getElementById('selectedColor').textContent = selectedColor.name;
+
+  // Update gallery bg
+  const main = document.getElementById('galleryMain');
+  main.style.background = `radial-gradient(ellipse at 60% 40%, ${selectedColor.hex}22 0%, transparent 60%)`;
+
+  // Update wallet preview
+  renderWallet(selectedColor);
+
+  // Enable button
+  const btn = document.getElementById('addCartBtn');
+  btn.disabled = false;
+  btn.textContent = `Agregar al carrito — $${PRODUCT.price.toLocaleString('es-UY')} UYU`;
+
+  renderColors();
+}
+
+function renderWallet(color) {
+  const preview = document.getElementById('walletPreview');
+  const bg = color.pattern
+    ? 'repeating-linear-gradient(45deg,#1a1a1a 0,#1a1a1a 4px,#222 4px,#222 8px)'
+    : color.hex;
+
+  preview.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:20px">
+      <div style="display:flex;gap:20px;align-items:flex-end">
+        <div class="wallet-shape wallet-front" style="background:${bg};border-radius:6px;box-shadow:0 20px 60px rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center;padding:12px">
+          <span style="font-family:'Cormorant Garamond',serif;font-size:9px;letter-spacing:3px;color:rgba(255,255,255,0.5)">FOUNDER</span>
+        </div>
+        <div class="wallet-shape wallet-open" style="
+          background:linear-gradient(135deg,${bg} 0%,${bg} 45%,#1a1a1a 45%,#111 100%);
+          border-radius:6px;
+          box-shadow:0 20px 60px rgba(0,0,0,0.6);
+          position:relative;
+          overflow:hidden;
+        ">
+          <div style="position:absolute;left:45%;top:50%;transform:translateY(-50%);width:2px;height:80%;background:rgba(255,255,255,0.1)"></div>
+          <div style="position:absolute;right:10%;top:20%;display:flex;flex-direction:column;gap:4px">
+            <div style="width:40px;height:6px;background:rgba(255,255,255,0.15);border-radius:2px"></div>
+            <div style="width:36px;height:6px;background:rgba(255,255,255,0.1);border-radius:2px"></div>
+            <div style="width:32px;height:6px;background:rgba(255,255,255,0.08);border-radius:2px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Initial wallet
+renderWallet({ hex: '#8b4513', name: 'Marrón' });
+
+// GALLERY THUMBS
+function setThumb(i) {
+  document.querySelectorAll('.thumb').forEach((t, idx) => t.classList.toggle('active', idx === i));
+}
+
+// TABS
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// CART
+function addToCart() {
+  if (!selectedColor) return;
+  const existing = cart.find(i => i.color === selectedColor.name);
+  if (existing) existing.qty++;
+  else cart.push({ name: PRODUCT.name, color: selectedColor.name, price: PRODUCT.price, qty: 1 });
+  updateCart();
+  showToast(`Founder ${PRODUCT.name} — ${selectedColor.name} agregado`);
+  toggleCart();
+}
+
+function buyNow() {
+  const color = selectedColor ? selectedColor.name : 'Sin especificar';
+  const msg = encodeURIComponent(
+    `¡Hola! Quiero comprar:\n\n` +
+    `🛒 *Founder Confort*\n` +
+    `🎨 Color: ${color}\n` +
+    `💰 Precio: $${PRODUCT.price.toLocaleString('es-UY')} UYU\n\n` +
+    `¿Me podés ayudar con el pedido?`
+  );
+  window.open(`https://wa.me/598098550096?text=${msg}`, '_blank');
+}
+
+function goCheckout() {
+  const lines = cart.map(i => `- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price*i.qty).toLocaleString('es-UY')}`).join('\n');
+  const total = cart.reduce((s,i) => s + i.price*i.qty, 0);
+  const msg = encodeURIComponent(
+    `🛍️ *NUEVO PEDIDO FOUNDER*\n\n${lines}\n\n💰 Total: $${total.toLocaleString('es-UY')} UYU\n\n¿Me ayudás a completar el pedido?`
+  );
+  window.open(`https://wa.me/598098550096?text=${msg}`, '_blank');
+}
+
+function updateCart() {
+  const total = cart.reduce((s,i) => s+i.price*i.qty, 0);
+  const count = cart.reduce((s,i) => s+i.qty, 0);
+  const badge = document.getElementById('cartCount');
+  badge.style.display = count > 0 ? 'flex' : 'none';
+  badge.textContent = count;
+
+  const container = document.getElementById('cartItems');
+  const footer = document.getElementById('cartFooter');
+
+  if (cart.length === 0) {
+    container.innerHTML = '<div class="cart-empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>';
+    footer.style.display = 'none';
+    return;
+  }
+
+  footer.style.display = 'block';
+  container.innerHTML = cart.map((item, idx) => `
+    <div class="cart-item">
+      <div class="cart-item-info">
+        <div class="cart-item-name">Founder ${item.name}</div>
+        <div class="cart-item-variant">${item.color}</div>
+        <div class="cart-item-controls">
+          <button class="qty-btn" onclick="changeQty(${idx},-1)">−</button>
+          <span class="qty-display">${item.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="cart-item-price">$${(item.price*item.qty).toLocaleString('es-UY')}</div>
+        <button class="remove-item" onclick="removeItem(${idx})">✕</button>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('cartTotal').textContent = `$${total.toLocaleString('es-UY')} UYU`;
+}
+
+function changeQty(idx, d) {
+  cart[idx].qty += d;
+  if (cart[idx].qty <= 0) cart.splice(idx, 1);
+  updateCart();
+}
+
+function removeItem(idx) { cart.splice(idx, 1); updateCart(); }
+
+function toggleCart() {
+  document.getElementById('cartSidebar').classList.toggle('open');
+  document.getElementById('cartOverlay').classList.toggle('open');
+  document.body.style.overflow = document.getElementById('cartSidebar').classList.contains('open') ? 'hidden' : '';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// CURSOR
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursorRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; });
+function animateCursor() {
+  cursor.style.left=mx+'px'; cursor.style.top=my+'px';
+  rx+=(mx-rx)*0.12; ry+=(my-ry)*0.12;
+  ring.style.left=rx+'px'; ring.style.top=ry+'px';
+  requestAnimationFrame(animateCursor);
+}
+animateCursor();
+document.querySelectorAll('a,button,.color-item,.thumb,.related-card').forEach(el => {
+  el.addEventListener('mouseenter', () => ring.classList.add('hover'));
+  el.addEventListener('mouseleave', () => ring.classList.remove('hover'));
+});
+
+renderColors();
+</script>
+</body>
+</html>

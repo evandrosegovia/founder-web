@@ -1,0 +1,2301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOUNDER — Billeteras & Tarjeteros con Protección RFID</title>
+<meta name="description" content="Billeteras y tarjeteros premium con tecnología RFID. Envíos a todo Uruguay. Pagá con Mercado Pago.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a;
+    --white: #f5f5f0;
+    --gold: #c9a96e;
+    --gray: #1a1a1a;
+    --gray-mid: #2a2a2a;
+    --gray-light: #555;
+    --text-muted: #888;
+    --border: rgba(255,255,255,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 300;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    background: var(--white);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transition: transform 0.15s ease;
+    transform: translate(-50%, -50%);
+  }
+  .cursor-ring {
+    position: fixed;
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transition: transform 0.4s ease, width 0.3s, height 0.3s, border-color 0.3s;
+    transform: translate(-50%, -50%);
+  }
+  .cursor-ring.hover {
+    width: 48px;
+    height: 48px;
+    border-color: var(--gold);
+  }
+
+  /* HEADER */
+  header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 0 48px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    transition: all 0.3s ease;
+  }
+
+  .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 6px;
+    color: var(--white);
+    text-decoration: none;
+  }
+
+  nav {
+    display: flex;
+    gap: 36px;
+    align-items: center;
+  }
+
+  nav a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    transition: color 0.3s;
+  }
+  nav a:hover { color: var(--white); }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .cart-btn {
+    position: relative;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--white);
+    padding: 10px 20px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: none;
+    transition: all 0.3s;
+  }
+  .cart-btn:hover {
+    background: var(--white);
+    color: var(--black);
+  }
+  .cart-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--gold);
+    color: var(--black);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    display: none;
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding: 0 48px;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 70% 50%, rgba(201,169,110,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 20% 80%, rgba(255,255,255,0.02) 0%, transparent 50%);
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 700px;
+    animation: fadeUp 1.2s ease both;
+  }
+
+  .hero-label {
+    font-size: 9px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .hero-label::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  .hero h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(64px, 8vw, 110px);
+    font-weight: 300;
+    line-height: 0.95;
+    margin-bottom: 32px;
+    letter-spacing: -2px;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .hero p {
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--text-muted);
+    max-width: 440px;
+    margin-bottom: 48px;
+    letter-spacing: 0.5px;
+  }
+
+  .hero-ctas {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    background: var(--white);
+    color: var(--black);
+    padding: 16px 36px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s;
+    cursor: none;
+    display: inline-block;
+  }
+  .btn-primary:hover {
+    background: var(--gold);
+    color: var(--black);
+  }
+
+  .btn-secondary {
+    border: 1px solid rgba(255,255,255,0.2);
+    color: var(--white);
+    padding: 16px 36px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: all 0.3s;
+    cursor: none;
+    display: inline-block;
+  }
+  .btn-secondary:hover {
+    border-color: var(--white);
+    background: rgba(255,255,255,0.05);
+  }
+
+  .hero-right {
+    position: absolute;
+    right: -60px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 45vw;
+    max-width: 600px;
+    opacity: 0.15;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(140px, 18vw, 260px);
+    font-weight: 300;
+    letter-spacing: -10px;
+    color: var(--white);
+    pointer-events: none;
+    line-height: 1;
+    animation: fadeUp 1.5s ease 0.3s both;
+  }
+
+  /* RFID BANNER */
+  .rfid-banner {
+    padding: 80px 48px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .rfid-item {
+    background: var(--black);
+    padding: 48px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .rfid-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+
+  .rfid-item h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: 1px;
+  }
+
+  .rfid-item p {
+    font-size: 11px;
+    line-height: 1.8;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+  }
+
+  /* PRODUCTS */
+  .products-section {
+    padding: 120px 48px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 80px;
+  }
+
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .section-label::before {
+    content: '';
+    display: block;
+    width: 30px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(36px, 4vw, 54px);
+    font-weight: 300;
+    line-height: 1.1;
+    letter-spacing: -1px;
+  }
+
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+  }
+
+  .product-card {
+    background: var(--gray);
+    position: relative;
+    overflow: hidden;
+    cursor: none;
+    group: true;
+  }
+
+  .product-img-wrap {
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    background: #111;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .product-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.8s ease;
+    filter: brightness(0.85);
+  }
+
+  .product-card:hover .product-img-wrap img {
+    transform: scale(1.05);
+    filter: brightness(1);
+  }
+
+  .product-badge {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: var(--gold);
+    color: var(--black);
+    font-size: 8px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    font-weight: 600;
+    z-index: 2;
+  }
+
+  .product-info {
+    padding: 32px 36px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .product-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: 2px;
+  }
+
+  .product-desc {
+    font-size: 11px;
+    line-height: 1.8;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+  }
+
+  .product-colors {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .color-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: none;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .color-dot:hover, .color-dot.active {
+    border-color: var(--white);
+    transform: scale(1.2);
+  }
+
+  .colors-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-right: 4px;
+  }
+
+  .product-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .product-price {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .price-main {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28px;
+    font-weight: 400;
+  }
+
+  .price-discount {
+    font-size: 9px;
+    color: var(--gold);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .add-to-cart {
+    background: var(--white);
+    color: var(--black);
+    border: none;
+    padding: 14px 28px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-weight: 600;
+    cursor: none;
+    transition: all 0.3s;
+  }
+  .add-to-cart:hover {
+    background: var(--gold);
+  }
+
+  .product-specs {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .spec-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+  .spec-item::before {
+    content: '—';
+    color: var(--gold);
+    font-size: 10px;
+  }
+
+  /* SHIPPING BANNER */
+  .shipping-banner {
+    background: var(--gray);
+    padding: 32px 48px;
+    display: flex;
+    justify-content: center;
+    gap: 80px;
+    border-top: 1px solid var(--border);
+  }
+
+  .ship-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .ship-item span:first-child {
+    font-size: 20px;
+  }
+  .ship-item strong {
+    color: var(--white);
+    display: block;
+    font-size: 11px;
+    letter-spacing: 2px;
+  }
+
+  /* CART SIDEBAR */
+  .cart-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+    backdrop-filter: blur(4px);
+  }
+  .cart-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .cart-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 420px;
+    height: 100vh;
+    background: var(--gray);
+    z-index: 201;
+    transform: translateX(100%);
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--border);
+  }
+  .cart-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .cart-header {
+    padding: 32px 36px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .cart-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    font-weight: 400;
+    letter-spacing: 3px;
+  }
+
+  .close-cart {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 24px;
+    cursor: none;
+    transition: color 0.2s;
+    line-height: 1;
+  }
+  .close-cart:hover { color: var(--white); }
+
+  .cart-items {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 36px;
+  }
+
+  .cart-item {
+    display: flex;
+    gap: 16px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .cart-item-info {
+    flex: 1;
+  }
+
+  .cart-item-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+
+  .cart-item-variant {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .cart-item-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .qty-btn {
+    background: var(--gray-mid);
+    border: none;
+    color: var(--white);
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+    cursor: none;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .qty-btn:hover { background: var(--gray-light); }
+
+  .qty-display {
+    font-size: 14px;
+    min-width: 20px;
+    text-align: center;
+  }
+
+  .cart-item-price {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    white-space: nowrap;
+    align-self: center;
+  }
+
+  .remove-item {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: none;
+    font-size: 16px;
+    align-self: center;
+    transition: color 0.2s;
+  }
+  .remove-item:hover { color: #ff4444; }
+
+  .cart-empty {
+    text-align: center;
+    padding: 80px 36px;
+    color: var(--text-muted);
+  }
+  .cart-empty p {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+  .cart-empty span {
+    font-size: 11px;
+    letter-spacing: 2px;
+  }
+
+  .cart-footer {
+    padding: 24px 36px 36px;
+    border-top: 1px solid var(--border);
+  }
+
+  .cart-subtotal {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .cart-subtotal span {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .cart-subtotal strong {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28px;
+    font-weight: 400;
+  }
+
+  .cart-note {
+    font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .discount-note {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+
+  .checkout-btn {
+    width: 100%;
+    background: var(--white);
+    color: var(--black);
+    border: none;
+    padding: 18px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    cursor: none;
+    transition: all 0.3s;
+    margin-bottom: 12px;
+  }
+  .checkout-btn:hover { background: var(--gold); }
+
+  .mp-logos {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .mp-logos span {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  /* PRODUCT MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 300;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+  }
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    background: var(--gray);
+    max-width: 900px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid var(--border);
+    transform: translateY(20px);
+    transition: transform 0.4s ease;
+    position: relative;
+  }
+  .modal-overlay.open .modal {
+    transform: translateY(0);
+  }
+
+  .modal-img {
+    aspect-ratio: 1;
+    background: #111;
+    overflow: hidden;
+  }
+  .modal-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .modal-content {
+    padding: 48px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .close-modal {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: var(--gray-mid);
+    border: none;
+    color: var(--white);
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    cursor: none;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  .close-modal:hover { background: var(--gray-light); }
+
+  .modal-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    font-weight: 400;
+    letter-spacing: 3px;
+  }
+
+  .modal-specs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .modal-spec {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    letter-spacing: 0.3px;
+  }
+  .modal-spec::before {
+    content: '✦';
+    color: var(--gold);
+    font-size: 8px;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+
+  .modal-color-section h4 {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .modal-colors {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .color-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: none;
+  }
+
+  .color-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .color-option:hover .color-swatch,
+  .color-option.active .color-swatch {
+    border-color: var(--white);
+    transform: scale(1.15);
+  }
+
+  .color-name-label {
+    font-size: 8px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .modal-footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .modal-price {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    font-weight: 400;
+  }
+
+  .modal-price-note {
+    font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 1px;
+    margin-top: -10px;
+  }
+
+  .modal-add-cart {
+    background: var(--white);
+    color: var(--black);
+    border: none;
+    padding: 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    cursor: none;
+    transition: all 0.3s;
+  }
+  .modal-add-cart:hover { background: var(--gold); }
+
+  /* FOOTER */
+  footer {
+    background: var(--gray);
+    border-top: 1px solid var(--border);
+    padding: 80px 48px 40px;
+  }
+
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 60px;
+    margin-bottom: 60px;
+  }
+
+  .footer-brand .logo {
+    display: block;
+    margin-bottom: 24px;
+    font-size: 20px;
+  }
+
+  .footer-brand p {
+    font-size: 11px;
+    line-height: 1.9;
+    color: var(--text-muted);
+    max-width: 280px;
+    letter-spacing: 0.3px;
+  }
+
+  .footer-col h4 {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 24px;
+  }
+
+  .footer-col ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .footer-col ul a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    transition: color 0.2s;
+  }
+  .footer-col ul a:hover { color: var(--white); }
+
+  .footer-bottom {
+    border-top: 1px solid var(--border);
+    padding-top: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-bottom p {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  .footer-legal a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 10px;
+    letter-spacing: 1px;
+    margin-left: 24px;
+    transition: color 0.2s;
+  }
+  .footer-legal a:hover { color: var(--white); }
+
+  /* LEGAL PAGES */
+  .legal-page {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--black);
+    z-index: 400;
+    overflow-y: auto;
+    padding: 100px 48px 60px;
+  }
+  .legal-page.active { display: block; }
+
+  .legal-close {
+    position: fixed;
+    top: 24px;
+    right: 48px;
+    background: var(--gray);
+    border: 1px solid var(--border);
+    color: var(--white);
+    padding: 10px 20px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    cursor: none;
+    transition: all 0.2s;
+  }
+  .legal-close:hover { background: var(--white); color: var(--black); }
+
+  .legal-content {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .legal-content h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 48px;
+    font-weight: 300;
+    margin-bottom: 12px;
+  }
+
+  .legal-content .legal-date {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 60px;
+  }
+
+  .legal-content h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    font-weight: 400;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    color: var(--gold);
+  }
+
+  .legal-content p, .legal-content li {
+    font-size: 12px;
+    line-height: 2;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+    margin-bottom: 12px;
+  }
+
+  .legal-content ul {
+    padding-left: 20px;
+  }
+
+  /* CHECKOUT MODAL */
+  .checkout-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+  }
+  .checkout-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .checkout-modal {
+    background: var(--gray);
+    max-width: 560px;
+    width: 100%;
+    border: 1px solid var(--border);
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: translateY(20px);
+    transition: transform 0.4s ease;
+  }
+  .checkout-overlay.open .checkout-modal { transform: translateY(0); }
+
+  .checkout-header {
+    padding: 36px 40px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .checkout-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28px;
+    font-weight: 400;
+  }
+
+  .checkout-body {
+    padding: 36px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .form-group label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .form-group input, .form-group select, .form-group textarea {
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    color: var(--white);
+    padding: 14px 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    outline: none;
+    transition: border-color 0.3s;
+    cursor: text;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--gold);
+  }
+  .form-group select option { background: var(--gray); }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .payment-section {
+    border: 1px solid var(--border);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .payment-title {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .payment-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    cursor: none;
+    transition: border-color 0.2s;
+  }
+  .payment-option:hover { border-color: var(--gold); }
+  .payment-option input[type="radio"] { accent-color: var(--gold); }
+  .payment-option label {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    cursor: none;
+    flex: 1;
+  }
+  .payment-option .discount-tag {
+    font-size: 9px;
+    background: var(--gold);
+    color: var(--black);
+    padding: 3px 8px;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  .consent-group {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .consent-group input { margin-top: 2px; accent-color: var(--gold); cursor: none; }
+  .consent-group label {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    letter-spacing: 0.3px;
+    cursor: none;
+  }
+  .consent-group label a { color: var(--gold); text-decoration: none; }
+
+  .checkout-summary {
+    background: var(--black);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .summary-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+  .summary-line.total {
+    color: var(--white);
+    font-size: 14px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+  }
+
+  .pay-btn {
+    width: 100%;
+    background: var(--white);
+    color: var(--black);
+    border: none;
+    padding: 20px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    cursor: none;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .pay-btn:hover { background: var(--gold); }
+
+  .mp-badge {
+    background: #009EE3;
+    color: white;
+    font-size: 9px;
+    padding: 3px 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border-radius: 2px;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--white);
+    color: var(--black);
+    padding: 16px 32px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 0.4s;
+    z-index: 1000;
+    white-space: nowrap;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* MOBILE */
+  @media (max-width: 900px) {
+    header { padding: 0 24px; }
+    nav { display: none; }
+    .hero { padding: 0 24px; }
+    .hero-right { display: none; }
+    .rfid-banner { grid-template-columns: 1fr 1fr; padding: 60px 24px; }
+    .products-section { padding: 80px 24px; }
+    .products-grid { grid-template-columns: 1fr; }
+    .section-header { flex-direction: column; align-items: flex-start; gap: 20px; }
+    .shipping-banner { flex-wrap: wrap; gap: 32px; padding: 32px 24px; }
+    .footer-grid { grid-template-columns: 1fr 1fr; gap: 40px; }
+    .modal { grid-template-columns: 1fr; }
+    .modal-img { aspect-ratio: 16/9; }
+    footer { padding: 60px 24px 40px; }
+    .legal-page { padding: 80px 24px 60px; }
+    .legal-close { right: 24px; }
+    .cart-sidebar { width: 100%; }
+    body { cursor: auto; }
+    .cursor, .cursor-ring { display: none; }
+    .checkout-body { padding: 24px; }
+    .checkout-header { padding: 24px; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 600px) {
+    .rfid-banner { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr; }
+    .footer-bottom { flex-direction: column; gap: 16px; text-align: center; }
+    .footer-legal { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+    .footer-legal a { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Custom Cursor -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- HEADER -->
+<header>
+  <a href="#" class="logo">FOUNDER</a>
+  <nav>
+    <a href="#productos">Productos</a>
+    <a href="#rfid">Tecnología RFID</a>
+    <a href="#envios">Envíos</a>
+  </nav>
+  <div class="header-actions">
+    <button class="cart-btn" onclick="toggleCart()">
+      Carrito
+      <span class="cart-count" id="cartCount">0</span>
+    </button>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-label">Founder.uy — Uruguay</div>
+    <h1>Protegé<br>lo que <em>importa.</em></h1>
+    <p>Billeteras y tarjeteros premium con tecnología RFID. Diseño minimalista, materiales de alta calidad. Tus tarjetas, protegidas.</p>
+    <div class="hero-ctas">
+      <a href="#productos" class="btn-primary">Ver colección</a>
+      <a href="#rfid" class="btn-secondary">¿Qué es RFID?</a>
+    </div>
+  </div>
+  <div class="hero-right">F</div>
+</section>
+
+<!-- RFID SECTION -->
+<section class="rfid-banner" id="rfid">
+  <div class="rfid-item">
+    <div class="rfid-icon">🛡️</div>
+    <h3>Protección RFID</h3>
+    <p>Blindaje electromagnético que impide la lectura no autorizada de tus tarjetas de crédito, débito y documentos con chip.</p>
+  </div>
+  <div class="rfid-item">
+    <div class="rfid-icon">⚡</div>
+    <h3>Acceso rápido</h3>
+    <p>Botón deslizante lateral que expulsa tus tarjetas al instante. Sin perder tiempo, sin buscar nada.</p>
+  </div>
+  <div class="rfid-item">
+    <div class="rfid-icon">✦</div>
+    <h3>Premium siempre</h3>
+    <p>Eco cuero + estructura de aluminio de alta calidad. Liviana, resistente y con acabado de lujo.</p>
+  </div>
+  <div class="rfid-item">
+    <div class="rfid-icon">📦</div>
+    <h3>Envíos Uruguay</h3>
+    <p>Enviamos a todo el país. Envío gratis en compras desde $2.000 UYU. Pagá con Mercado Pago.</p>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section class="products-section" id="productos">
+  <div class="section-header">
+    <div>
+      <div class="section-label">Colección 2025</div>
+      <h2 class="section-title">Nuestros<br>modelos</h2>
+    </div>
+  </div>
+
+  <div class="products-grid" id="productsGrid"></div>
+</section>
+
+<!-- SHIPPING -->
+<div class="shipping-banner" id="envios">
+  <div class="ship-item">
+    <span>🚚</span>
+    <div>
+      <strong>Envíos a todo Uruguay</strong>
+      gratis desde $2.000 UYU
+    </div>
+  </div>
+  <div class="ship-item">
+    <span>💳</span>
+    <div>
+      <strong>Mercado Pago</strong>
+      tarjetas, débito y más
+    </div>
+  </div>
+  <div class="ship-item">
+    <span>💰</span>
+    <div>
+      <strong>10% OFF</strong>
+      en efectivo o transferencia
+    </div>
+  </div>
+  <div class="ship-item">
+    <span>🛡️</span>
+    <div>
+      <strong>Compra segura</strong>
+      datos protegidos
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <a href="#" class="logo">FOUNDER</a>
+      <p>Billeteras y tarjeteros premium con tecnología RFID. Diseñados para quienes cuidan cada detalle. Enviamos a todo Uruguay.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Productos</h4>
+      <ul>
+        <li><a href="#productos">Simple</a></li>
+        <li><a href="#productos">Classic</a></li>
+        <li><a href="#productos">Confort</a></li>
+        <li><a href="#productos">Essential</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Info</h4>
+      <ul>
+        <li><a href="#rfid">Tecnología RFID</a></li>
+        <li><a href="#envios">Envíos</a></li>
+        <li><a href="https://instagram.com/founder.uy" target="_blank">@founder.uy</a></li>
+        <li><a href="https://wa.me/598098550096" target="_blank">WhatsApp 098 550 096</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="#" onclick="showLegal('privacy')">Política de Privacidad</a></li>
+        <li><a href="#" onclick="showLegal('terms')">Términos y Condiciones</a></li>
+        <li><a href="#" onclick="showLegal('returns')">Cambios y Devoluciones</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2025 Founder.uy — Todos los derechos reservados</p>
+    <div class="footer-legal">
+      <a href="#" onclick="showLegal('privacy')">Privacidad</a>
+      <a href="#" onclick="showLegal('terms')">Términos</a>
+    </div>
+  </div>
+</footer>
+
+<!-- CART SIDEBAR -->
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+<div class="cart-sidebar" id="cartSidebar">
+  <div class="cart-header">
+    <span class="cart-title">Mi Carrito</span>
+    <button class="close-cart" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <div class="cart-empty">
+      <p>Tu carrito está vacío</p>
+      <span>Agregá productos para continuar</span>
+    </div>
+  </div>
+  <div class="cart-footer" id="cartFooter" style="display:none">
+    <div class="cart-subtotal">
+      <span>Subtotal</span>
+      <strong id="cartTotal">$0</strong>
+    </div>
+    <div class="cart-note" id="shippingNote"></div>
+    <div class="discount-note">💰 Pagando en efectivo o transferencia obtenés un <strong>10% de descuento</strong> adicional.</div>
+    <button class="checkout-btn" onclick="openCheckout()">Finalizar compra</button>
+    <div class="mp-logos">
+      <span>Pagás con</span>
+      <span style="color:#009EE3;font-weight:700;font-size:12px;letter-spacing:1px;">Mercado Pago</span>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="productModal">
+    <div class="modal-img">
+      <img id="modalImg" src="" alt="">
+    </div>
+    <div class="modal-content">
+      <button class="close-modal" onclick="closeModalDirect()">✕</button>
+      <div>
+        <div class="section-label" style="margin-bottom:8px">FOUNDER</div>
+        <div class="modal-name" id="modalName"></div>
+      </div>
+      <div class="modal-specs" id="modalSpecs"></div>
+      <div class="modal-color-section">
+        <h4>Color seleccionado: <span id="selectedColorName"></span></h4>
+        <div class="modal-colors" id="modalColors"></div>
+      </div>
+      <div class="modal-footer">
+        <div>
+          <div class="modal-price" id="modalPrice"></div>
+          <div class="modal-price-note">10% OFF pagando en efectivo o transferencia</div>
+        </div>
+        <button class="modal-add-cart" onclick="addFromModal()">Agregar al carrito</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKOUT MODAL -->
+<div class="checkout-overlay" id="checkoutOverlay">
+  <div class="checkout-modal">
+    <div class="checkout-header">
+      <span class="checkout-title">Finalizar compra</span>
+      <button class="close-cart" onclick="closeCheckout()">✕</button>
+    </div>
+    <div class="checkout-body">
+      <div class="checkout-summary" id="checkoutSummary"></div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input type="text" id="firstName" placeholder="Tu nombre" required>
+        </div>
+        <div class="form-group">
+          <label>Apellido *</label>
+          <input type="text" id="lastName" placeholder="Tu apellido" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Email *</label>
+        <input type="email" id="email" placeholder="tu@email.com" required>
+      </div>
+
+      <div class="form-group">
+        <label>Teléfono *</label>
+        <input type="tel" id="phone" placeholder="09X XXX XXX" required>
+      </div>
+
+      <div class="form-group">
+        <label>Dirección de entrega *</label>
+        <input type="text" id="address" placeholder="Calle, número, apartamento" required>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ciudad *</label>
+          <input type="text" id="city" placeholder="Montevideo" required>
+        </div>
+        <div class="form-group">
+          <label>Departamento *</label>
+          <select id="department">
+            <option value="">Seleccioná...</option>
+            <option>Montevideo</option>
+            <option>Canelones</option>
+            <option>Maldonado</option>
+            <option>Colonia</option>
+            <option>San José</option>
+            <option>Flores</option>
+            <option>Florida</option>
+            <option>Lavalleja</option>
+            <option>Rocha</option>
+            <option>Treinta y Tres</option>
+            <option>Cerro Largo</option>
+            <option>Rivera</option>
+            <option>Tacuarembó</option>
+            <option>Durazno</option>
+            <option>Soriano</option>
+            <option>Río Negro</option>
+            <option>Paysandú</option>
+            <option>Salto</option>
+            <option>Artigas</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Notas adicionales</label>
+        <textarea id="notes" placeholder="Instrucciones de entrega, aclaraciones..."></textarea>
+      </div>
+
+      <div class="payment-section">
+        <div class="payment-title">Método de pago</div>
+        <div class="payment-option">
+          <input type="radio" name="payment" id="payMP" value="mercadopago" checked onchange="updateCheckoutTotal()">
+          <label for="payMP">Mercado Pago (tarjetas, débito, crédito)</label>
+        </div>
+        <div class="payment-option">
+          <input type="radio" name="payment" id="payTransfer" value="transfer" onchange="updateCheckoutTotal()">
+          <label for="payTransfer">Transferencia bancaria</label>
+          <span class="discount-tag">-10%</span>
+        </div>
+        <div class="payment-option">
+          <input type="radio" name="payment" id="payCash" value="cash" onchange="updateCheckoutTotal()">
+          <label for="payCash">Efectivo (contra entrega o depósito)</label>
+          <span class="discount-tag">-10%</span>
+        </div>
+      </div>
+
+      <div class="consent-group">
+        <input type="checkbox" id="privacyConsent" required>
+        <label for="privacyConsent">
+          Acepto la <a href="#" onclick="showLegal('privacy')">Política de Privacidad</a> y los 
+          <a href="#" onclick="showLegal('terms')">Términos y Condiciones</a>. 
+          Autorizo el tratamiento de mis datos personales de acuerdo a la Ley N° 18.331 de Uruguay.
+        </label>
+      </div>
+
+      <div class="checkout-summary" id="checkoutTotalBox">
+        <div class="summary-line total">
+          <span>Total a pagar</span>
+          <span id="finalTotal"></span>
+        </div>
+      </div>
+
+      <button class="pay-btn" onclick="processOrder()">
+        Confirmar pedido
+        <span class="mp-badge">Mercado Pago</span>
+      </button>
+
+      <p style="font-size:10px;color:var(--text-muted);text-align:center;letter-spacing:0.5px;line-height:1.7;">
+        Al confirmar, nos contactaremos con vos por email o WhatsApp para coordinar el pago y el envío.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- LEGAL PAGES -->
+<div class="legal-page" id="legalPrivacy">
+  <button class="legal-close" onclick="hideLegal('privacy')">✕ Cerrar</button>
+  <div class="legal-content">
+    <h1>Política de Privacidad</h1>
+    <p class="legal-date">Vigente desde: Enero 2025</p>
+
+    <h2>1. Responsable del tratamiento</h2>
+    <p>Founder (en adelante "Founder.uy"), con presencia comercial en la República Oriental del Uruguay, es el responsable del tratamiento de los datos personales recabados a través de este sitio web.</p>
+
+    <h2>2. Marco legal</h2>
+    <p>El tratamiento de datos personales se realiza en cumplimiento de la Ley N° 18.331 de Protección de Datos Personales y Acción de Habeas Data, su Decreto Reglamentario N° 414/009, y demás normativa aplicable en Uruguay.</p>
+
+    <h2>3. Datos que recopilamos</h2>
+    <p>Recopilamos los siguientes datos personales cuando realizás una compra:</p>
+    <ul>
+      <li>Nombre y apellido</li>
+      <li>Dirección de correo electrónico</li>
+      <li>Número de teléfono</li>
+      <li>Dirección de entrega (departamento, ciudad, calle)</li>
+      <li>Información de pago procesada por Mercado Pago (no almacenamos datos de tarjetas)</li>
+    </ul>
+
+    <h2>4. Finalidad del tratamiento</h2>
+    <p>Tus datos personales son utilizados exclusivamente para:</p>
+    <ul>
+      <li>Procesar y coordinar tu pedido</li>
+      <li>Gestionar el envío de productos</li>
+      <li>Comunicarnos con vos en relación a tu compra</li>
+      <li>Cumplir obligaciones legales y comerciales</li>
+    </ul>
+
+    <h2>5. Consentimiento</h2>
+    <p>Al completar el formulario de compra y tildar la casilla de aceptación, otorgás tu consentimiento libre, expreso e informado para el tratamiento de tus datos personales según lo establecido en esta política, de conformidad con el artículo 9 de la Ley N° 18.331.</p>
+
+    <h2>6. Seguridad</h2>
+    <p>Implementamos medidas técnicas y organizativas adecuadas para proteger tus datos personales contra accesos no autorizados, pérdida o destrucción accidental.</p>
+
+    <h2>7. Compartir datos con terceros</h2>
+    <p>No compartimos tus datos personales con terceros salvo cuando sea estrictamente necesario para el cumplimiento del servicio (empresa de logística/envíos) o por obligación legal. Mercado Pago gestiona los datos de pago bajo sus propias políticas de privacidad.</p>
+
+    <h2>8. Plazo de conservación</h2>
+    <p>Conservamos tus datos durante el tiempo necesario para cumplir con las finalidades descritas y las obligaciones legales vigentes, no superando los 5 años desde la última transacción.</p>
+
+    <h2>9. Tus derechos</h2>
+    <p>De acuerdo al artículo 13 de la Ley N° 18.331, tenés derecho a:</p>
+    <ul>
+      <li><strong>Acceso:</strong> conocer qué datos tuyos tenemos registrados</li>
+      <li><strong>Rectificación:</strong> corregir datos inexactos o incompletos</li>
+      <li><strong>Supresión:</strong> solicitar la eliminación de tus datos</li>
+      <li><strong>Impugnación:</strong> oponerte al tratamiento en determinadas circunstancias</li>
+    </ul>
+    <p>Para ejercer estos derechos, contactanos por Instagram @founder.uy.</p>
+
+    <h2>10. Cambios a esta política</h2>
+    <p>Nos reservamos el derecho de actualizar esta política. Te notificaremos sobre cambios significativos a través de nuestros canales de comunicación.</p>
+  </div>
+</div>
+
+<div class="legal-page" id="legalTerms">
+  <button class="legal-close" onclick="hideLegal('terms')">✕ Cerrar</button>
+  <div class="legal-content">
+    <h1>Términos y Condiciones</h1>
+    <p class="legal-date">Vigente desde: Enero 2025</p>
+
+    <h2>1. Aceptación</h2>
+    <p>Al realizar una compra en Founder.uy, aceptás estos Términos y Condiciones en su totalidad. Si no estás de acuerdo, no realices la compra.</p>
+
+    <h2>2. Productos</h2>
+    <p>Todos los productos Founder incluyen tecnología RFID y están fabricados con eco cuero y aluminio de alta calidad. Las fotografías son referenciales; los colores reales pueden variar levemente según la pantalla.</p>
+
+    <h2>3. Precios</h2>
+    <p>Los precios están expresados en Pesos Uruguayos (UYU) e incluyen IVA. Founder.uy se reserva el derecho de modificar precios sin previo aviso. Se aplica el precio vigente al momento de confirmar el pedido.</p>
+
+    <h2>4. Descuentos</h2>
+    <p>Se aplica un descuento del 10% para pagos en efectivo o transferencia bancaria. Este descuento no es acumulable con otras promociones.</p>
+
+    <h2>5. Proceso de compra</h2>
+    <p>Al confirmar el pedido, nos contactaremos con vos por email o WhatsApp para coordinar el pago y el envío. El pedido se considera confirmado una vez que el pago es acreditado.</p>
+
+    <h2>6. Envíos</h2>
+    <ul>
+      <li>Enviamos a todo el territorio nacional uruguayo</li>
+      <li>Envío gratis en compras desde $2.000 UYU</li>
+      <li>El plazo de entrega es de 3 a 7 días hábiles según el departamento</li>
+      <li>Founder.uy no se responsabiliza por demoras causadas por la empresa de logística</li>
+    </ul>
+
+    <h2>7. Cambios y devoluciones</h2>
+    <p>Ver nuestra Política de Cambios y Devoluciones para más información.</p>
+
+    <h2>8. Propiedad intelectual</h2>
+    <p>Todo el contenido de este sitio (imágenes, textos, logo, diseño) es propiedad de Founder.uy y está protegido por las leyes de propiedad intelectual vigentes en Uruguay.</p>
+
+    <h2>9. Jurisdicción</h2>
+    <p>Ante cualquier controversia, las partes se someten a la jurisdicción de los Tribunales de la República Oriental del Uruguay.</p>
+  </div>
+</div>
+
+<div class="legal-page" id="legalReturns">
+  <button class="legal-close" onclick="hideLegal('returns')">✕ Cerrar</button>
+  <div class="legal-content">
+    <h1>Cambios y Devoluciones</h1>
+    <p class="legal-date">Vigente desde: Enero 2025</p>
+
+    <h2>Política de cambios</h2>
+    <p>Aceptamos cambios dentro de los 7 días corridos de recibido el producto, siempre que:</p>
+    <ul>
+      <li>El producto esté sin uso, en su estado original</li>
+      <li>Conserve el empaque y etiquetas originales</li>
+      <li>Se presente el comprobante de compra</li>
+    </ul>
+
+    <h2>Cambio por defecto de fábrica</h2>
+    <p>Si el producto tiene un defecto de fábrica, lo cambiamos o reintegramos el importe sin costo adicional para vos. El plazo para reclamar es de 30 días desde la recepción.</p>
+
+    <h2>Cómo solicitar un cambio</h2>
+    <p>Contactanos por Instagram @founder.uy indicando tu número de pedido y el motivo del cambio. Te responderemos en un plazo máximo de 48 horas hábiles.</p>
+
+    <h2>Costos de envío en cambios</h2>
+    <p>Los gastos de envío para cambios por gusto o error en el pedido (color, modelo) corren por cuenta del comprador. En caso de defecto de fábrica, Founder.uy cubre los costos de envío.</p>
+
+    <h2>Devolución de dinero</h2>
+    <p>Las devoluciones de dinero se procesan dentro de los 10 días hábiles de aprobado el cambio, por el mismo medio de pago utilizado originalmente.</p>
+  </div>
+</div>
+
+<script>
+// ============ DATA ============
+const products = [
+  {
+    id: 1,
+    name: 'Simple',
+    subtitle: 'Tarjetero compacto',
+    price: 990,
+    description: 'Billetera compacta y funcional, ideal para uso diario. Minimalista, liviana y práctica.',
+    specs: [
+      'Eco cuero + aluminio de alta calidad',
+      'Tecnología RFID — protección contra escaneos no autorizados',
+      'Botón deslizante lateral para acceso rápido',
+      'Capacidad: 5–6 tarjetas + ventana para cédula',
+      '2 bolsillos internos para billetes y monedas',
+      'Medidas: 10,3 × 6,6 × 1,2 cm · Peso: 65 g'
+    ],
+    colors: [
+      { name: 'Gris Oscuro', hex: '#4a4a5a' },
+      { name: 'Marrón', hex: '#6b3a2a' },
+      { name: 'Negro', hex: '#1a1a1a' },
+      { name: 'Azul', hex: '#1a3a5c' },
+      { name: 'Rosa', hex: '#d4a0a0' },
+      { name: 'Rojo', hex: '#8b1a1a' }
+    ],
+    image: null
+  },
+  {
+    id: 2,
+    name: 'Classic',
+    subtitle: 'Mayor organización',
+    price: 1390,
+    description: 'Mayor capacidad y organización para quienes necesitan más espacio. Cierre tipo libro imantado.',
+    specs: [
+      'Cuero + aluminio de alta calidad',
+      'Tecnología RFID',
+      'Botón deslizante lateral',
+      'Tarjetero para 5–6 tarjetas + 4 compartimentos adicionales',
+      'Espacio para libreta de conducir y propiedad',
+      'Bolsillo para billetes (hasta 10–14) · Monedero con cierre',
+      'Cierre tipo libro imantado'
+    ],
+    colors: [
+      { name: 'Negro', hex: '#1a1a1a' },
+      { name: 'Marrón Oscuro', hex: '#3d2010' },
+      { name: 'Marrón', hex: '#8b4513' },
+      { name: 'Carbon', hex: '#2a2a2a', pattern: true }
+    ],
+    image: null
+  },
+  {
+    id: 3,
+    name: 'Confort',
+    subtitle: 'Capacidad máxima',
+    price: 2490,
+    description: 'La combinación perfecta entre capacidad y comodidad. Con bolsillo para monedas con cierre.',
+    specs: [
+      'Cuero + aluminio de alta calidad',
+      'Tecnología RFID',
+      'Botón deslizante lateral',
+      'Tarjetero 5–6 tarjetas + 4 compartimentos (8–10 total)',
+      'Espacio para libreta de conducir y propiedad',
+      'Bolsillo billetes (hasta 10–14 con uso)',
+      'Bolsillo para monedas con cierre · Cierre imantado',
+      'Medidas: 10,5 × 7,3 × 2,5 cm'
+    ],
+    colors: [
+      { name: 'Crema', hex: '#d4c8a8' },
+      { name: 'Rosa', hex: '#d4a0a0' },
+      { name: 'Negro', hex: '#1a1a1a' },
+      { name: 'Carbon', hex: '#2a2a2a', pattern: true },
+      { name: 'Marrón', hex: '#8b4513' },
+      { name: 'Azul', hex: '#1a3a5c' },
+      { name: 'Marrón Oscuro', hex: '#3d2010' }
+    ],
+    image: null
+  },
+  {
+    id: 4,
+    name: 'Essential',
+    subtitle: 'Edición premium',
+    price: 2790,
+    description: 'Versión premium con acabado en cuero texturizado. Para quienes exigen lo mejor.',
+    specs: [
+      'Cuero texturizado + aluminio de alta calidad',
+      'Tecnología RFID',
+      'Botón deslizante lateral',
+      'Tarjetero 5–6 tarjetas + 4 compartimentos adicionales',
+      'Espacio para documentos y libretas',
+      'Bolsillo para billetes (hasta 10–14 con uso)',
+      'Bolsillo para monedas con cierre · Cierre imantado',
+      'Medidas: 10,5 × 7,3 × 2,5 cm'
+    ],
+    colors: [
+      { name: 'Marrón', hex: '#6b3a2a' },
+      { name: 'Negro', hex: '#1a1a1a' },
+      { name: 'Verde Oliva', hex: '#4a5a2a' }
+    ],
+    image: null
+  }
+];
+
+// ============ STATE ============
+let cart = [];
+let currentProduct = null;
+let currentColor = null;
+
+// ============ RENDER PRODUCTS ============
+function renderProducts() {
+  const grid = document.getElementById('productsGrid');
+  grid.innerHTML = products.map(p => `
+    <div class="product-card">
+      <div class="product-img-wrap" onclick="openModal(${p.id})">
+        <div style="
+          width:100%;height:100%;
+          display:flex;align-items:center;justify-content:center;
+          background: linear-gradient(135deg, #111 0%, #1a1a1a 50%, #0d0d0d 100%);
+          position:relative;overflow:hidden;
+        ">
+          <div style="
+            font-family:'Cormorant Garamond',serif;
+            font-size:clamp(80px,12vw,140px);
+            font-weight:300;
+            color:rgba(255,255,255,0.04);
+            letter-spacing:-4px;
+            position:absolute;
+            right:-10px;bottom:-20px;
+            line-height:1;
+          ">${p.name.toUpperCase()}</div>
+          <div style="
+            display:flex;flex-direction:column;align-items:center;
+            gap:20px;position:relative;z-index:2;
+          ">
+            <div style="
+              display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 20px;
+            ">
+              ${p.colors.slice(0,4).map(c => `
+                <div style="
+                  width:36px;height:52px;
+                  background:${c.hex};
+                  border-radius:3px;
+                  box-shadow:0 4px 20px rgba(0,0,0,0.5);
+                  ${c.pattern ? 'background:repeating-linear-gradient(45deg,#1a1a1a 0px,#1a1a1a 4px,#222 4px,#222 8px);' : ''}
+                "></div>
+              `).join('')}
+            </div>
+            <div style="
+              font-family:'Cormorant Garamond',serif;
+              font-size:14px;
+              letter-spacing:4px;
+              color:rgba(255,255,255,0.3);
+              text-transform:uppercase;
+            ">FOUNDER</div>
+          </div>
+        </div>
+        <div class="product-badge">RFID</div>
+      </div>
+      <div class="product-info">
+        <div>
+          <div style="font-size:9px;letter-spacing:3px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">${p.subtitle}</div>
+          <div class="product-name">Founder ${p.name}</div>
+        </div>
+        <div class="product-desc">${p.description}</div>
+        <div class="product-specs">
+          ${p.specs.slice(0,3).map(s => `<div class="spec-item">${s}</div>`).join('')}
+        </div>
+        <div>
+          <div class="colors-label">Colores disponibles</div>
+          <div class="product-colors" style="margin-top:8px">
+            ${p.colors.map(c => `
+              <div class="color-dot" 
+                   style="background:${c.hex};${c.pattern ? 'background:repeating-linear-gradient(45deg,#1a1a1a 0px,#1a1a1a 3px,#222 3px,#222 6px);' : ''}" 
+                   title="${c.name}"></div>
+            `).join('')}
+          </div>
+        </div>
+        <div class="product-footer">
+          <div class="product-price">
+            <div class="price-main">$${p.price.toLocaleString('es-UY')} UYU</div>
+            <div class="price-discount">10% OFF efectivo/transferencia</div>
+          </div>
+          <button class="add-to-cart" onclick="openModal(${p.id})">Ver detalles</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============ MODAL ============
+function openModal(id) {
+  currentProduct = products.find(p => p.id === id);
+  currentColor = currentProduct.colors[0];
+
+  document.getElementById('modalName').textContent = `Founder ${currentProduct.name}`;
+  document.getElementById('modalSpecs').innerHTML = currentProduct.specs.map(s =>
+    `<div class="modal-spec">${s}</div>`
+  ).join('');
+  document.getElementById('modalPrice').textContent = `$${currentProduct.price.toLocaleString('es-UY')} UYU`;
+  document.getElementById('selectedColorName').textContent = currentColor.name;
+
+  // Image placeholder
+  document.getElementById('modalImg').src = '';
+  document.getElementById('modalImg').style.background = `linear-gradient(135deg, #111, #1a1a1a)`;
+
+  renderModalColors();
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function renderModalColors() {
+  const container = document.getElementById('modalColors');
+  container.innerHTML = currentProduct.colors.map((c, i) => `
+    <div class="color-option ${c.name === currentColor.name ? 'active' : ''}" onclick="selectColor(${i})">
+      <div class="color-swatch" style="background:${c.hex};${c.pattern ? 'background:repeating-linear-gradient(45deg,#1a1a1a 0px,#1a1a1a 3px,#222 3px,#222 6px);' : ''}"></div>
+      <div class="color-name-label">${c.name}</div>
+    </div>
+  `).join('');
+}
+
+function selectColor(index) {
+  currentColor = currentProduct.colors[index];
+  document.getElementById('selectedColorName').textContent = currentColor.name;
+  renderModalColors();
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModalDirect();
+}
+
+function closeModalDirect() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function addFromModal() {
+  if (!currentColor) { showToast('Seleccioná un color'); return; }
+  addToCart(currentProduct, currentColor);
+  closeModalDirect();
+}
+
+// ============ CART ============
+function addToCart(product, color) {
+  const existing = cart.find(i => i.id === product.id && i.color === color.name);
+  if (existing) {
+    existing.qty++;
+  } else {
+    cart.push({ id: product.id, name: product.name, color: color.name, price: product.price, qty: 1 });
+  }
+  updateCart();
+  showToast(`Founder ${product.name} — ${color.name} agregado`);
+}
+
+function updateCart() {
+  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const count = cart.reduce((s, i) => s + i.qty, 0);
+
+  // Count badge
+  const badge = document.getElementById('cartCount');
+  badge.style.display = count > 0 ? 'flex' : 'none';
+  badge.textContent = count;
+
+  // Items
+  const container = document.getElementById('cartItems');
+  const footer = document.getElementById('cartFooter');
+
+  if (cart.length === 0) {
+    container.innerHTML = '<div class="cart-empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>';
+    footer.style.display = 'none';
+    return;
+  }
+
+  footer.style.display = 'block';
+  container.innerHTML = cart.map((item, idx) => `
+    <div class="cart-item">
+      <div class="cart-item-info">
+        <div class="cart-item-name">Founder ${item.name}</div>
+        <div class="cart-item-variant">${item.color}</div>
+        <div class="cart-item-controls">
+          <button class="qty-btn" onclick="changeQty(${idx}, -1)">−</button>
+          <span class="qty-display">${item.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${idx}, 1)">+</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="cart-item-price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
+        <button class="remove-item" onclick="removeItem(${idx})">✕</button>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('cartTotal').textContent = `$${total.toLocaleString('es-UY')} UYU`;
+
+  const shippingNote = document.getElementById('shippingNote');
+  if (total >= 2000) {
+    shippingNote.textContent = '🎉 ¡Tenés envío gratis!';
+    shippingNote.style.color = 'var(--gold)';
+  } else {
+    const remaining = 2000 - total;
+    shippingNote.textContent = `Agregá $${remaining.toLocaleString('es-UY')} más para envío gratis`;
+    shippingNote.style.color = 'var(--text-muted)';
+  }
+}
+
+function changeQty(idx, delta) {
+  cart[idx].qty += delta;
+  if (cart[idx].qty <= 0) cart.splice(idx, 1);
+  updateCart();
+}
+
+function removeItem(idx) {
+  cart.splice(idx, 1);
+  updateCart();
+}
+
+function toggleCart() {
+  const sidebar = document.getElementById('cartSidebar');
+  const overlay = document.getElementById('cartOverlay');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('open');
+  document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : '';
+}
+
+// ============ CHECKOUT ============
+function openCheckout() {
+  if (cart.length === 0) return;
+  toggleCart();
+  updateCheckoutTotal();
+
+  const summary = document.getElementById('checkoutSummary');
+  summary.innerHTML = cart.map(i => `
+    <div class="summary-line">
+      <span>Founder ${i.name} × ${i.qty} (${i.color})</span>
+      <span>$${(i.price * i.qty).toLocaleString('es-UY')}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('checkoutOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCheckout() {
+  document.getElementById('checkoutOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function updateCheckoutTotal() {
+  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const method = document.querySelector('input[name="payment"]:checked')?.value;
+  const discount = (method === 'transfer' || method === 'cash') ? 0.10 : 0;
+  const total = Math.round(subtotal * (1 - discount));
+
+  let html = '';
+  if (discount > 0) {
+    html += `<div class="summary-line"><span>Subtotal</span><span>$${subtotal.toLocaleString('es-UY')}</span></div>`;
+    html += `<div class="summary-line"><span>Descuento 10%</span><span style="color:var(--gold)">−$${(subtotal * discount).toLocaleString('es-UY')}</span></div>`;
+  }
+
+  const shipping = subtotal >= 2000 ? 'Gratis' : 'A coordinar';
+  html += `<div class="summary-line"><span>Envío</span><span>${shipping}</span></div>`;
+  html += `<div class="summary-line total"><span>Total</span><span>$${total.toLocaleString('es-UY')} UYU</span></div>`;
+
+  document.getElementById('checkoutTotalBox').innerHTML = html;
+  document.getElementById('finalTotal').textContent = `$${total.toLocaleString('es-UY')} UYU`;
+}
+
+function processOrder() {
+  const required = ['firstName', 'lastName', 'email', 'phone', 'address', 'city'];
+  for (const field of required) {
+    if (!document.getElementById(field).value.trim()) {
+      showToast('Completá todos los campos obligatorios');
+      return;
+    }
+  }
+  if (!document.getElementById('department').value) {
+    showToast('Seleccioná tu departamento');
+    return;
+  }
+  if (!document.getElementById('privacyConsent').checked) {
+    showToast('Debés aceptar la política de privacidad');
+    return;
+  }
+
+  const method = document.querySelector('input[name="payment"]:checked').value;
+  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const discount = (method === 'transfer' || method === 'cash') ? 0.10 : 0;
+  const total = Math.round(subtotal * (1 - discount));
+
+  const name = `${document.getElementById('firstName').value} ${document.getElementById('lastName').value}`;
+  const email = document.getElementById('email').value;
+  const phone = document.getElementById('phone').value;
+  const address = `${document.getElementById('address').value}, ${document.getElementById('city').value}, ${document.getElementById('department').value}`;
+  const notes = document.getElementById('notes').value;
+
+  const orderLines = cart.map(i => `- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price*i.qty).toLocaleString('es-UY')}`).join('\n');
+
+  const subject = encodeURIComponent(`Nuevo pedido Founder — ${name}`);
+  const body = encodeURIComponent(
+    `NUEVO PEDIDO FOUNDER\n\n` +
+    `Nombre: ${name}\nEmail: ${email}\nTeléfono: ${phone}\nDirección: ${address}\n\n` +
+    `PRODUCTOS:\n${orderLines}\n\n` +
+    `Método de pago: ${method}\nTotal: $${total.toLocaleString('es-UY')} UYU\n\n` +
+    (notes ? `Notas: ${notes}` : '')
+  );
+
+  const waNumber = '598098550096';
+  const waMsg = encodeURIComponent(
+    `🛍️ *NUEVO PEDIDO FOUNDER*\n\n` +
+    `👤 *Nombre:* ${name}\n📧 *Email:* ${email}\n📱 *Teléfono:* ${phone}\n📍 *Dirección:* ${address}\n\n` +
+    `🛒 *PRODUCTOS:*\n${orderLines}\n\n` +
+    `💳 *Pago:* ${method === 'mercadopago' ? 'Mercado Pago' : method === 'transfer' ? 'Transferencia (-10%)' : 'Efectivo (-10%)'}\n` +
+    `💰 *Total:* $${total.toLocaleString('es-UY')} UYU\n\n` +
+    (notes ? `📝 *Notas:* ${notes}` : '')
+  );
+
+  window.open(`https://wa.me/${waNumber}?text=${waMsg}`, '_blank');
+  showToast('Abriendo WhatsApp...');
+
+  cart = [];
+  updateCart();
+  closeCheckout();
+  showToast('¡Pedido recibido! Te contactaremos pronto.');
+}
+
+// ============ LEGAL ============
+function showLegal(page) {
+  const pages = { privacy: 'legalPrivacy', terms: 'legalTerms', returns: 'legalReturns' };
+  document.getElementById(pages[page]).classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function hideLegal(page) {
+  const pages = { privacy: 'legalPrivacy', terms: 'legalTerms', returns: 'legalReturns' };
+  document.getElementById(pages[page]).classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// ============ TOAST ============
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ============ CURSOR ============
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursorRing');
+let mx = 0, my = 0, rx = 0, ry = 0;
+
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+function animateCursor() {
+  cursor.style.left = mx + 'px';
+  cursor.style.top = my + 'px';
+  rx += (mx - rx) * 0.12;
+  ry += (my - ry) * 0.12;
+  ring.style.left = rx + 'px';
+  ring.style.top = ry + 'px';
+  requestAnimationFrame(animateCursor);
+}
+animateCursor();
+
+document.querySelectorAll('a, button, .product-card, .color-dot, .color-option, .payment-option').forEach(el => {
+  el.addEventListener('mouseenter', () => ring.classList.add('hover'));
+  el.addEventListener('mouseleave', () => ring.classList.remove('hover'));
+});
+
+// ============ INIT ============
+renderProducts();
+updateCart();
+
+// Scroll reveal
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.animation = 'fadeUp 0.8s ease both';
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.product-card, .rfid-item').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
