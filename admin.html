@@ -176,6 +176,8 @@
     display: grid;
     grid-template-columns: 240px 1fr;
     min-height: calc(100vh - 64px);
+    width: 100%;
+    overflow: hidden;
   }
 
   /* SIDEBAR */
@@ -186,6 +188,8 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 240px;
+    overflow-y: auto;
   }
 
   .sidebar-label {
@@ -218,6 +222,8 @@
   .content {
     padding: 40px;
     overflow-y: auto;
+    overflow-x: hidden;
+    min-width: 0;
   }
 
   .page { display: none; }
@@ -499,6 +505,7 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     margin-bottom: 40px;
+    width: 100%;
   }
 
   .stat-card {
