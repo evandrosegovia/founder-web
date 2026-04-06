@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOUNDER — Panel de Administración</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a;
+    --white: #f5f5f0;
+    --gold: #c9a96e;
+    --gray: #1a1a1a;
+    --gray-mid: #2a2a2a;
+    --gray-light: #333;
+    --text-muted: #888;
+    --border: rgba(255,255,255,0.08);
+    --green: #4caf82;
+    --red: #e05555;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+  }
+
+  /* LOGIN */
+  .login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: radial-gradient(ellipse at center, #1a1a1a 0%, #0a0a0a 70%);
+  }
+
+  .login-box {
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid var(--border);
+    padding: 56px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    background: var(--gray);
+  }
+
+  .login-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28px;
+    letter-spacing: 8px;
+    text-align: center;
+  }
+
+  .login-title {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .login-input {
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    color: var(--white);
+    padding: 16px 20px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.3s;
+    text-align: center;
+    letter-spacing: 4px;
+  }
+  .login-input:focus { border-color: var(--gold); }
+
+  .login-btn {
+    background: var(--white);
+    color: var(--black);
+    border: none;
+    padding: 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: 100%;
+  }
+  .login-btn:hover { background: var(--gold); }
+
+  .login-error {
+    font-size: 10px;
+    color: var(--red);
+    text-align: center;
+    letter-spacing: 1px;
+    display: none;
+  }
+
+  /* ADMIN PANEL */
+  .admin-panel { display: none; }
+
+  /* TOP BAR */
+  .topbar {
+    background: var(--gray);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .topbar-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    letter-spacing: 6px;
+  }
+
+  .topbar-badge {
+    font-size: 8px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid rgba(201,169,110,0.3);
+    padding: 4px 10px;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .view-site-btn {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .view-site-btn:hover { color: var(--white); }
+
+  .logout-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 8px 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* MAIN LAYOUT */
+  .admin-main {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: calc(100vh - 64px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: var(--gray);
+    border-right: 1px solid var(--border);
+    padding: 32px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .sidebar-label {
+    font-size: 8px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0 24px;
+    margin-bottom: 8px;
+    margin-top: 16px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 24px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-left: 2px solid transparent;
+  }
+  .sidebar-item:hover { color: var(--white); background: rgba(255,255,255,0.03); }
+  .sidebar-item.active { color: var(--white); border-left-color: var(--gold); background: rgba(201,169,110,0.05); }
+  .sidebar-item .icon { font-size: 16px; width: 20px; text-align: center; }
+
+  /* CONTENT */
+  .content {
+    padding: 40px;
+    overflow-y: auto;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.3s ease; }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  /* PAGE HEADER */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 40px;
+  }
+
+  .page-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    font-weight: 300;
+  }
+
+  .page-subtitle {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* BUTTONS */
+  .btn {
+    padding: 12px 24px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+  }
+
+  .btn-primary { background: var(--white); color: var(--black); }
+  .btn-primary:hover { background: var(--gold); }
+
+  .btn-secondary { background: var(--gray-mid); color: var(--white); }
+  .btn-secondary:hover { background: var(--gray-light); }
+
+  .btn-danger { background: rgba(224,85,85,0.15); color: var(--red); border: 1px solid rgba(224,85,85,0.3); }
+  .btn-danger:hover { background: var(--red); color: var(--white); }
+
+  .btn-success { background: rgba(76,175,130,0.15); color: var(--green); border: 1px solid rgba(76,175,130,0.3); }
+  .btn-success:hover { background: var(--green); color: var(--white); }
+
+  .btn-sm { padding: 8px 16px; font-size: 9px; }
+
+  /* CARDS */
+  .card {
+    background: var(--gray);
+    border: 1px solid var(--border);
+    padding: 32px;
+    margin-bottom: 16px;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 400;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* FORM */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .form-group.full { grid-column: 1 / -1; }
+
+  .form-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .form-input, .form-textarea, .form-select {
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    color: var(--white);
+    padding: 12px 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.3s;
+    width: 100%;
+  }
+  .form-input:focus, .form-textarea:focus { border-color: var(--gold); }
+  .form-textarea { resize: vertical; min-height: 80px; }
+
+  .form-hint {
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    line-height: 1.6;
+  }
+
+  /* IMAGE CONVERTER */
+  .img-converter {
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .img-converter-title {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .img-input-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .img-input-row input {
+    flex: 1;
+    background: var(--gray);
+    border: 1px solid var(--border);
+    color: var(--white);
+    padding: 10px 14px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    outline: none;
+  }
+  .img-input-row input:focus { border-color: var(--gold); }
+
+  .img-convert-btn {
+    background: var(--gold);
+    color: var(--black);
+    border: none;
+    padding: 10px 20px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+  }
+  .img-convert-btn:hover { opacity: 0.85; }
+
+  .img-result {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .img-preview {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+  }
+
+  .img-link-result {
+    background: var(--gray);
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 10px 14px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    word-break: break-all;
+    cursor: pointer;
+  }
+
+  .img-copy-note {
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  /* COLORS EDITOR */
+  .colors-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .color-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .color-preview {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .color-name-input {
+    flex: 1;
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    color: var(--white);
+    padding: 8px 12px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    outline: none;
+  }
+
+  .color-hex-input {
+    width: 100px;
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    color: var(--white);
+    padding: 8px 12px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    outline: none;
+  }
+
+  .remove-color {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    transition: color 0.2s;
+    padding: 4px;
+  }
+  .remove-color:hover { color: var(--red); }
+
+  .add-color-btn {
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    padding: 10px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .add-color-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* STATS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  .stat-card {
+    background: var(--gray);
+    border: 1px solid var(--border);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stat-icon { font-size: 24px; }
+
+  .stat-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 400;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* PRODUCT LIST */
+  .product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .product-row {
+    background: var(--gray);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: background 0.2s;
+  }
+  .product-row:hover { background: var(--gray-mid); }
+
+  .product-row-img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    background: var(--gray-mid);
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+
+  .product-row-img-placeholder {
+    width: 60px;
+    height: 60px;
+    background: var(--gray-mid);
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .product-row-info { flex: 1; }
+
+  .product-row-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 400;
+    margin-bottom: 4px;
+  }
+
+  .product-row-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    display: flex;
+    gap: 16px;
+  }
+
+  .product-row-price {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .product-row-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    background: var(--green);
+    color: var(--black);
+    padding: 14px 24px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.4s;
+    z-index: 1000;
+  }
+  .toast.error { background: var(--red); color: var(--white); }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--gray);
+    width: 100%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    transform: translateY(20px);
+    transition: transform 0.3s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-header {
+    padding: 28px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: var(--gray);
+    z-index: 10;
+  }
+
+  .modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px;
+    font-weight: 400;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 22px;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .modal-close:hover { color: var(--white); }
+
+  .modal-body { padding: 32px; }
+
+  .modal-footer {
+    padding: 20px 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    position: sticky;
+    bottom: 0;
+    background: var(--gray);
+  }
+
+  /* LOADING */
+  .loading {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+  }
+  .loading p { font-family:'Cormorant Garamond',serif; font-size:22px; margin-bottom:8px; }
+  .loading span { font-size:10px; letter-spacing:3px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .admin-main { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .content { padding: 24px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .topbar { padding: 0 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">FOUNDER</div>
+    <div class="login-title">Panel de Administración</div>
+    <div>
+      <input type="password" class="login-input" id="passwordInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+      <div class="login-error" id="loginError">Contraseña incorrecta</div>
+    </div>
+    <button class="login-btn" onclick="login()">Ingresar</button>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin-panel" id="adminPanel">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">FOUNDER</div>
+      <div class="topbar-badge">Admin</div>
+    </div>
+    <div class="topbar-right">
+      <a href="https://founder-web-gules.vercel.app" target="_blank" class="view-site-btn">Ver sitio →</a>
+      <button class="logout-btn" onclick="logout()">Salir</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="admin-main">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-label">Principal</div>
+      <div class="sidebar-item active" onclick="showPage('dashboard')">
+        <span class="icon">📊</span> Dashboard
+      </div>
+      <div class="sidebar-item" onclick="showPage('productos')">
+        <span class="icon">👜</span> Productos
+      </div>
+      <div class="sidebar-label">Herramientas</div>
+      <div class="sidebar-item" onclick="showPage('imagenes')">
+        <span class="icon">🖼️</span> Conversor de imágenes
+      </div>
+      <div class="sidebar-label">Sitio</div>
+      <div class="sidebar-item" onclick="window.open('https://founder-web-gules.vercel.app','_blank')">
+        <span class="icon">🌐</span> Ver tienda
+      </div>
+      <div class="sidebar-item" onclick="window.open('https://docs.google.com/spreadsheets/d/1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8','_blank')">
+        <span class="icon">📋</span> Ver planilla
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Dashboard</div>
+            <div class="page-subtitle">Resumen general de tu tienda</div>
+          </div>
+          <button class="btn btn-primary" onclick="loadData()">↻ Actualizar</button>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="stat-icon">👜</div>
+            <div class="stat-value" id="statProductos">—</div>
+            <div class="stat-label">Productos</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🎨</div>
+            <div class="stat-value" id="statColores">—</div>
+            <div class="stat-label">Variantes de color</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🖼️</div>
+            <div class="stat-value" id="statImagenes">—</div>
+            <div class="stat-label">Con imagen</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-value" id="statPrecio">—</div>
+            <div class="stat-label">Precio promedio</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Productos activos</div>
+            <button class="btn btn-primary btn-sm" onclick="showPage('productos')">Gestionar</button>
+          </div>
+          <div id="dashProductList" class="loading">
+            <p>Cargando...</p>
+            <span>conectando con google sheets</span>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-header">
+            <div class="card-title">Links rápidos</div>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <a href="https://founder-web-gules.vercel.app" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">🌐 Ver tienda</a>
+            <a href="https://docs.google.com/spreadsheets/d/1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">📋 Ver planilla</a>
+            <a href="https://drive.google.com" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">📁 Google Drive</a>
+            <a href="https://wa.me/598098550096" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">💬 WhatsApp</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRODUCTOS -->
+      <div class="page" id="page-productos">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Productos</div>
+            <div class="page-subtitle">Editá precios, descripciones, colores e imágenes</div>
+          </div>
+          <button class="btn btn-primary" onclick="openNewProduct()">+ Nuevo producto</button>
+        </div>
+
+        <div id="productListAdmin" class="loading">
+          <p>Cargando productos...</p>
+          <span>conectando con google sheets</span>
+        </div>
+      </div>
+
+      <!-- IMAGENES -->
+      <div class="page" id="page-imagenes">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Conversor de imágenes</div>
+            <div class="page-subtitle">Convertí links de Google Drive al formato correcto</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">¿Cómo funciona?</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="font-size:11px;color:var(--text-muted);line-height:1.8;letter-spacing:0.3px">
+              1. Subí la foto a tu carpeta <strong style="color:var(--white)">founder-imagenes</strong> en Google Drive<br>
+              2. Click derecho → Compartir → "Cualquier persona con el enlace"<br>
+              3. Copiá el link y pegalo abajo<br>
+              4. Hacé click en "Convertir" y copiá el resultado<br>
+              5. Pegalo en el campo de imagen del producto correspondiente
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-header">
+            <div class="card-title">Convertir link</div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <div class="form-group">
+              <div class="form-label">Link de Google Drive</div>
+              <div class="img-input-row">
+                <input type="text" id="driveInput" placeholder="https://drive.google.com/file/d/...">
+                <button class="img-convert-btn" onclick="convertDriveLink()">Convertir →</button>
+              </div>
+              <div class="form-hint">Pegá el link completo que copiaste de Google Drive</div>
+            </div>
+
+            <div id="convertResult" style="display:none;flex-direction:column;gap:16px">
+              <div class="form-group">
+                <div class="form-label">✅ Link convertido — hacé click para copiar</div>
+                <div class="img-link-result" id="convertedLink" onclick="copyConverted()"></div>
+                <div class="form-hint">Hacé click en el link para copiarlo automáticamente</div>
+              </div>
+              <div>
+                <div class="form-label" style="margin-bottom:12px">Vista previa</div>
+                <img id="convertedPreview" src="" alt="Preview" style="max-width:300px;max-height:200px;object-fit:cover;border:1px solid var(--border)">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-header">
+            <div class="card-title">Convertir varios links</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="form-group">
+              <div class="form-label">Links de Google Drive (uno por línea)</div>
+              <textarea class="form-textarea" id="bulkInput" placeholder="https://drive.google.com/file/d/ID1/view&#10;https://drive.google.com/file/d/ID2/view&#10;https://drive.google.com/file/d/ID3/view" style="min-height:120px"></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="convertBulk()" style="align-self:flex-start">Convertir todos</button>
+            <div id="bulkResult" style="display:none">
+              <div class="form-label" style="margin-bottom:12px">Links convertidos</div>
+              <div id="bulkLinks" style="display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Editar producto</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editingRow">
+      <div style="display:flex;flex-direction:column;gap:24px">
+
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="form-label">Nombre del modelo *</div>
+            <input type="text" class="form-input" id="editNombre" placeholder="Ej: Simple">
+          </div>
+          <div class="form-group">
+            <div class="form-label">Precio (UYU) *</div>
+            <input type="number" class="form-input" id="editPrecio" placeholder="Ej: 990">
+          </div>
+          <div class="form-group full">
+            <div class="form-label">Descripción</div>
+            <textarea class="form-textarea" id="editDesc" placeholder="Descripción del producto..."></textarea>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">Especificaciones (separadas por |)</div>
+          <textarea class="form-textarea" id="editSpecs" placeholder="Eco cuero + aluminio|Tecnología RFID|Botón deslizante..."></textarea>
+          <div class="form-hint">Separá cada característica con el símbolo | — Ej: RFID|Botón deslizante|5-6 tarjetas</div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">Imagen del producto</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="img-input-row">
+              <input type="text" id="editImagen" placeholder="Pegá el link de Google Drive o el link ya convertido">
+              <button class="img-convert-btn" onclick="autoConvertImage()">Convertir →</button>
+            </div>
+            <div class="form-hint">Podés pegar directamente el link de Google Drive y hacer click en "Convertir"</div>
+            <img id="editImagenPreview" src="" style="max-width:200px;max-height:140px;object-fit:cover;border:1px solid var(--border);display:none">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">Colores disponibles</div>
+          <div class="colors-editor" id="colorsEditor"></div>
+          <button class="add-color-btn" onclick="addColorRow()">+ Agregar color</button>
+          <div class="form-hint" style="margin-top:8px">
+            Nombres de colores disponibles: Negro, Marrón, Marrón Oscuro, Gris Oscuro, Azul, Rosa, Rojo, Crema, Carbon, Verde Oliva
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProduct()">💾 Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ CONFIG ============
+const PASSWORD = 'nerito20';
+const SHEET_ID = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+
+const COLOR_MAP = {
+  'Negro':         '#1a1a1a',
+  'Marrón':        '#8b4513',
+  'Marrón Oscuro': '#3d2010',
+  'Gris Oscuro':   '#4a4a5a',
+  'Azul':          '#1a3a5c',
+  'Rosa':          '#d4a0a0',
+  'Rojo':          '#8b1a1a',
+  'Crema':         '#d4c8a8',
+  'Carbon':        '#2a2a2a',
+  'Verde Oliva':   '#4a5a2a',
+};
+
+let products = [];
+
+// ============ LOGIN ============
+function login() {
+  const pass = document.getElementById('passwordInput').value;
+  if (pass === PASSWORD) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    loadData();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('passwordInput').value = '';
+    document.getElementById('passwordInput').focus();
+  }
+}
+
+function logout() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('passwordInput').value = '';
+}
+
+// ============ NAVIGATION ============
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ============ LOAD DATA ============
+async function loadData() {
+  try {
+    const res = await fetch(SHEET_URL + '&t=' + Date.now());
+    const text = await res.text();
+    const json = JSON.parse(text.substring(47, text.length - 2));
+    const rows = json.table.rows;
+
+    products = rows.map((row, i) => ({
+      rowIndex: i + 2,
+      nombre:  row.c[0]?.v || '',
+      precio:  parseInt(row.c[1]?.v) || 0,
+      desc:    row.c[2]?.v || '',
+      colores: row.c[3]?.v || '',
+      specs:   row.c[4]?.v || '',
+      imagen:  row.c[5]?.v || '',
+    }));
+
+    renderDashboard();
+    renderProductList();
+
+  } catch(e) {
+    showToast('Error al cargar datos', true);
+  }
+}
+
+// ============ DASHBOARD ============
+function renderDashboard() {
+  document.getElementById('statProductos').textContent = products.length;
+  const totalColores = products.reduce((s, p) => s + (p.colores ? p.colores.split(',').length : 0), 0);
+  document.getElementById('statColores').textContent = totalColores;
+  const conImagen = products.filter(p => p.imagen).length;
+  document.getElementById('statImagenes').textContent = `${conImagen}/${products.length}`;
+  const avg = products.length ? Math.round(products.reduce((s,p) => s+p.precio, 0) / products.length) : 0;
+  document.getElementById('statPrecio').textContent = `$${avg.toLocaleString('es-UY')}`;
+
+  const list = document.getElementById('dashProductList');
+  list.className = '';
+  list.innerHTML = products.map(p => `
+    <div class="product-row">
+      ${p.imagen
+        ? `<img src="${p.imagen}" class="product-row-img" alt="${p.nombre}">`
+        : `<div class="product-row-img-placeholder">👜</div>`
+      }
+      <div class="product-row-info">
+        <div class="product-row-name">Founder ${p.nombre}</div>
+        <div class="product-row-meta">
+          <span>${p.colores ? p.colores.split(',').length : 0} colores</span>
+          <span>${p.imagen ? '✅ Con imagen' : '⚠️ Sin imagen'}</span>
+        </div>
+      </div>
+      <div class="product-row-price">$${p.precio.toLocaleString('es-UY')}</div>
+    </div>
+  `).join('');
+}
+
+// ============ PRODUCT LIST ============
+function renderProductList() {
+  const container = document.getElementById('productListAdmin');
+  container.className = 'product-list';
+  container.innerHTML = products.map((p, i) => `
+    <div class="product-row">
+      ${p.imagen
+        ? `<img src="${p.imagen}" class="product-row-img" alt="${p.nombre}">`
+        : `<div class="product-row-img-placeholder">👜</div>`
+      }
+      <div class="product-row-info">
+        <div class="product-row-name">Founder ${p.nombre}</div>
+        <div class="product-row-meta">
+          <span>$${p.precio.toLocaleString('es-UY')} UYU</span>
+          <span>${p.colores ? p.colores.split(',').length : 0} colores</span>
+          <span>${p.imagen ? '✅ Imagen cargada' : '⚠️ Sin imagen'}</span>
+        </div>
+      </div>
+      <div class="product-row-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editProduct(${i})">✏️ Editar</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============ EDIT PRODUCT ============
+function editProduct(i) {
+  const p = products[i];
+  document.getElementById('modalTitle').textContent = `Editar — Founder ${p.nombre}`;
+  document.getElementById('editingRow').value = i;
+  document.getElementById('editNombre').value = p.nombre;
+  document.getElementById('editPrecio').value = p.precio;
+  document.getElementById('editDesc').value = p.desc;
+  document.getElementById('editSpecs').value = p.specs;
+  document.getElementById('editImagen').value = p.imagen;
+
+  // Preview imagen
+  const preview = document.getElementById('editImagenPreview');
+  if (p.imagen) { preview.src = p.imagen; preview.style.display = 'block'; }
+  else { preview.style.display = 'none'; }
+
+  // Colores
+  renderColorRows(p.colores ? p.colores.split(',').map(c => c.trim()) : []);
+
+  document.getElementById('productModal').classList.add('open');
+}
+
+function openNewProduct() {
+  document.getElementById('modalTitle').textContent = 'Nuevo producto';
+  document.getElementById('editingRow').value = -1;
+  document.getElementById('editNombre').value = '';
+  document.getElementById('editPrecio').value = '';
+  document.getElementById('editDesc').value = '';
+  document.getElementById('editSpecs').value = '';
+  document.getElementById('editImagen').value = '';
+  document.getElementById('editImagenPreview').style.display = 'none';
+  renderColorRows([]);
+  document.getElementById('productModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('productModal').classList.remove('open');
+}
+
+// ============ COLORS ============
+function renderColorRows(colores) {
+  const editor = document.getElementById('colorsEditor');
+  editor.innerHTML = colores.map((c, i) => `
+    <div class="color-row" id="colorRow${i}">
+      <div class="color-preview" id="colorPreview${i}" style="background:${COLOR_MAP[c] || '#555'}"></div>
+      <input type="text" class="color-name-input" value="${c}" placeholder="Nombre del color" 
+             oninput="updateColorPreview(${i}, this.value)" id="colorName${i}">
+      <button class="remove-color" onclick="removeColorRow(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function addColorRow() {
+  const editor = document.getElementById('colorsEditor');
+  const i = editor.children.length;
+  const div = document.createElement('div');
+  div.className = 'color-row';
+  div.id = `colorRow${i}`;
+  div.innerHTML = `
+    <div class="color-preview" id="colorPreview${i}" style="background:#555"></div>
+    <input type="text" class="color-name-input" placeholder="Nombre del color" 
+           oninput="updateColorPreview(${i}, this.value)" id="colorName${i}">
+    <button class="remove-color" onclick="removeColorRow(${i})">✕</button>
+  `;
+  editor.appendChild(div);
+}
+
+function removeColorRow(i) {
+  const row = document.getElementById(`colorRow${i}`);
+  if (row) row.remove();
+}
+
+function updateColorPreview(i, name) {
+  const preview = document.getElementById(`colorPreview${i}`);
+  if (preview) preview.style.background = COLOR_MAP[name.trim()] || '#555';
+}
+
+function getColorsFromEditor() {
+  const inputs = document.querySelectorAll('#colorsEditor .color-name-input');
+  return Array.from(inputs).map(i => i.value.trim()).filter(v => v).join(',');
+}
+
+// ============ SAVE PRODUCT ============
+async function saveProduct() {
+  const nombre = document.getElementById('editNombre').value.trim();
+  const precio = document.getElementById('editPrecio').value.trim();
+
+  if (!nombre || !precio) {
+    showToast('Nombre y precio son obligatorios', true);
+    return;
+  }
+
+  const colores = getColorsFromEditor();
+  const specs   = document.getElementById('editSpecs').value.trim();
+  const desc    = document.getElementById('editDesc').value.trim();
+  const imagen  = document.getElementById('editImagen').value.trim();
+  const rowIdx  = parseInt(document.getElementById('editingRow').value);
+
+  // Build the new row data
+  const rowData = [nombre, precio, desc, colores, specs, imagen];
+
+  if (rowIdx === -1) {
+    // New product — append to sheet
+    products.push({ nombre, precio: parseInt(precio), desc, colores, specs, imagen, rowIndex: products.length + 2 });
+  } else {
+    // Update existing
+    products[rowIdx] = { ...products[rowIdx], nombre, precio: parseInt(precio), desc, colores, specs, imagen };
+  }
+
+  closeModal();
+  showToast('✅ Guardado — actualizá la planilla manualmente con los datos de abajo');
+
+  // Show what to update in the sheet
+  showSheetInstructions(rowData, rowIdx === -1 ? products.length + 1 : products[rowIdx]?.rowIndex);
+
+  renderDashboard();
+  renderProductList();
+}
+
+function showSheetInstructions(data, rowNum) {
+  const msg = `
+📋 ACTUALIZÁ TU PLANILLA EN GOOGLE SHEETS
+
+Fila ${rowNum}:
+A: ${data[0]}
+B: ${data[1]}
+C: ${data[2]}
+D: ${data[3]}
+E: ${data[4]}
+F: ${data[5]}
+  `.trim();
+
+  // Copy to clipboard
+  navigator.clipboard.writeText(data.join('\t')).then(() => {
+    showToast('Datos copiados — pegálos en Google Sheets con Ctrl+V');
+  });
+}
+
+// ============ IMAGE CONVERTER ============
+function extractDriveId(url) {
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
+}
+
+function convertToDirectLink(id) {
+  return `https://lh3.googleusercontent.com/d/${id}`;
+}
+
+function convertDriveLink() {
+  const url = document.getElementById('driveInput').value.trim();
+  const id = extractDriveId(url);
+
+  if (!id) {
+    showToast('Link inválido. Asegurate de copiar el link completo de Google Drive', true);
+    return;
+  }
+
+  const converted = convertToDirectLink(id);
+  document.getElementById('convertedLink').textContent = converted;
+  document.getElementById('convertedPreview').src = converted;
+  document.getElementById('convertResult').style.display = 'flex';
+}
+
+function copyConverted() {
+  const link = document.getElementById('convertedLink').textContent;
+  navigator.clipboard.writeText(link).then(() => {
+    showToast('Link copiado al portapapeles');
+  });
+}
+
+function convertBulk() {
+  const input = document.getElementById('bulkInput').value.trim();
+  const lines = input.split('\n').filter(l => l.trim());
+  const container = document.getElementById('bulkLinks');
+
+  container.innerHTML = lines.map((url, i) => {
+    const id = extractDriveId(url.trim());
+    if (!id) return `<div style="color:var(--red);font-size:11px">❌ Link ${i+1}: inválido</div>`;
+    const converted = convertToDirectLink(id);
+    return `
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="font-size:10px;color:var(--text-muted);min-width:60px">Link ${i+1}</div>
+        <div style="flex:1;background:var(--gray-mid);border:1px solid var(--green);color:var(--green);padding:8px 12px;font-size:10px;word-break:break-all;cursor:pointer" onclick="navigator.clipboard.writeText('${converted}').then(()=>showToast('Copiado'))">${converted}</div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('bulkResult').style.display = 'block';
+}
+
+function autoConvertImage() {
+  const url = document.getElementById('editImagen').value.trim();
+  if (!url) return;
+
+  const id = extractDriveId(url);
+  if (id) {
+    const converted = convertToDirectLink(id);
+    document.getElementById('editImagen').value = converted;
+    const preview = document.getElementById('editImagenPreview');
+    preview.src = converted;
+    preview.style.display = 'block';
+    showToast('Link convertido automáticamente');
+  } else if (url.startsWith('http')) {
+    // Already a direct link
+    const preview = document.getElementById('editImagenPreview');
+    preview.src = url;
+    preview.style.display = 'block';
+  }
+}
+
+// ============ TOAST ============
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${isError ? 'error' : ''} show`;
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+// ============ INIT ============
+document.getElementById('passwordInput').focus();
+</script>
+</body>
+</html>
