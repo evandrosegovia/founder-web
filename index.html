@@ -801,6 +801,7 @@
     overflow-y: auto;
     display: grid;
     grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
     border: 1px solid var(--border);
     transform: translateY(20px);
     transition: transform 0.4s ease;
@@ -826,6 +827,8 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
+    grid-row: 1 / 3;
+    grid-column: 2;
   }
 
   .close-modal {
@@ -1546,6 +1549,7 @@
     <div class="modal-img">
       <img id="modalImg" src="" alt="">
     </div>
+    <div id="modalThumbs" style="display:none;gap:4px;padding:4px;background:var(--black);flex-wrap:wrap"></div>
     <div class="modal-content">
       <button class="close-modal" onclick="closeModalDirect()">✕</button>
       <div>
@@ -1817,9 +1821,9 @@
 <script>
 // ============ CONFIG ============
 const SHEET_ID = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+const SHEET_URL       = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`;
+const SHEET_FOTOS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`;
 
-// Mapa de colores por nombre
 const COLOR_MAP = {
   'Negro':         { hex: '#1a1a1a' },
   'Marrón':        { hex: '#8b4513' },
@@ -1835,9 +1839,10 @@ const COLOR_MAP = {
 
 // ============ DATA ============
 let products = [];
+// photoMap[modelo][color] = [foto1, foto2, foto3, foto4, foto5]
+let photoMap = {};
 
 async function loadProductsFromSheets() {
-  // Mostrar loading
   document.getElementById('productsGrid').innerHTML = `
     <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--text-muted)">
       <div style="font-family:'Cormorant Garamond',serif;font-size:28px;margin-bottom:12px">Cargando productos...</div>
@@ -1846,38 +1851,62 @@ async function loadProductsFromSheets() {
   `;
 
   try {
-    const res = await fetch(SHEET_URL);
-    const text = await res.text();
-    // Google devuelve JSONP, limpiamos
-    const json = JSON.parse(text.substring(47, text.length - 2));
-    const rows = json.table.rows;
+    // Load both sheets in parallel
+    const [resProducts, resFotos] = await Promise.all([
+      fetch(SHEET_URL + '&t=' + Date.now()),
+      fetch(SHEET_FOTOS_URL + '&t=' + Date.now())
+    ]);
 
-    products = rows.map((row, i) => {
-      const nombre = row.c[0]?.v || '';
-      const precio = parseInt(row.c[1]?.v) || 0;
-      const desc   = row.c[2]?.v || '';
+    const textProducts = await resProducts.text();
+    const textFotos    = await resFotos.text();
+
+    const jsonProducts = JSON.parse(textProducts.substring(47, textProducts.length - 2));
+    const jsonFotos    = JSON.parse(textFotos.substring(47, textFotos.length - 2));
+
+    // Build photoMap from fotos sheet
+    photoMap = {};
+    if (jsonFotos.table.rows) {
+      jsonFotos.table.rows.forEach(row => {
+        const modelo = row.c[0]?.v || '';
+        const color  = row.c[1]?.v || '';
+        const fotos  = [
+          row.c[2]?.v || null,
+          row.c[3]?.v || null,
+          row.c[4]?.v || null,
+          row.c[5]?.v || null,
+          row.c[6]?.v || null,
+        ].filter(f => f);
+        if (modelo && color) {
+          if (!photoMap[modelo]) photoMap[modelo] = {};
+          photoMap[modelo][color] = fotos;
+        }
+      });
+    }
+
+    // Build products
+    products = jsonProducts.table.rows.map((row, i) => {
+      const nombre     = row.c[0]?.v || '';
+      const precio     = parseInt(row.c[1]?.v) || 0;
+      const desc       = row.c[2]?.v || '';
       const coloresStr = row.c[3]?.v || '';
       const specsStr   = row.c[4]?.v || '';
 
       const colores = coloresStr.split(',').map(c => {
-        const nombre = c.trim();
-        return { name: nombre, ...(COLOR_MAP[nombre] || { hex: '#555' }) };
+        const n = c.trim();
+        return { name: n, ...(COLOR_MAP[n] || { hex: '#555' }) };
       });
 
       const specs = specsStr.split('|').map(s => s.trim());
 
-      const imagen = row.c[5]?.v || null;
+      // Main image = first photo of first color that has photos
+      let mainImage = null;
+      if (photoMap[nombre]) {
+        const firstColorWithPhoto = colores.find(c => photoMap[nombre][c.name]?.length > 0);
+        if (firstColorWithPhoto) mainImage = photoMap[nombre][firstColorWithPhoto.name][0];
+      }
 
-      return {
-        id: i + 1,
-        name: nombre,
-        subtitle: specs[0] || '',
-        price: precio,
-        description: desc,
-        specs: specs,
-        colors: colores,
-        image: imagen
-      };
+      return { id: i+1, name: nombre, subtitle: specs[0]||'', price: precio,
+               description: desc, specs, colors: colores, image: mainImage };
     });
 
     renderProducts();
@@ -1891,6 +1920,11 @@ async function loadProductsFromSheets() {
       </div>
     `;
   }
+}
+
+// Get photos for a product+color combination
+function getPhotos(modelName, colorName) {
+  return (photoMap[modelName] && photoMap[modelName][colorName]) || [];
 }
 
 // ============ STATE ============
@@ -1995,19 +2029,49 @@ function openModal(id) {
   document.getElementById('modalPrice').textContent = `$${currentProduct.price.toLocaleString('es-UY')} UYU`;
   document.getElementById('selectedColorName').textContent = currentColor.name;
 
-  // Image placeholder
-  const modalImg = document.getElementById('modalImg');
-  if (currentProduct.image) {
-    modalImg.src = currentProduct.image;
-    modalImg.style.background = '';
-  } else {
-    modalImg.src = '';
-    modalImg.style.background = `linear-gradient(135deg, #111, #1a1a1a)`;
-  }
-
+  updateModalGallery();
   renderModalColors();
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+}
+
+function updateModalGallery() {
+  const photos = getPhotos(currentProduct.name, currentColor.name);
+  const mainImg = document.getElementById('modalImg');
+
+  if (photos.length > 0) {
+    mainImg.src = photos[0];
+    mainImg.style.background = '';
+  } else {
+    mainImg.src = '';
+    mainImg.style.background = 'linear-gradient(135deg, #111, #1a1a1a)';
+  }
+
+  // Thumbnails
+  const thumbsContainer = document.getElementById('modalThumbs');
+  if (photos.length > 1) {
+    thumbsContainer.style.display = 'flex';
+    thumbsContainer.innerHTML = photos.map((p, i) => `
+      <div onclick="setModalMainPhoto('${p}', this)"
+           style="
+             width:60px;height:60px;flex-shrink:0;
+             border:2px solid ${i===0 ? 'var(--gold)' : 'transparent'};
+             cursor:pointer;overflow:hidden;background:#111;
+             transition:border-color 0.2s;
+           ">
+        <img src="${p}" style="width:100%;height:100%;object-fit:cover">
+      </div>
+    `).join('');
+  } else {
+    thumbsContainer.style.display = 'none';
+    thumbsContainer.innerHTML = '';
+  }
+}
+
+function setModalMainPhoto(src, el) {
+  document.getElementById('modalImg').src = src;
+  document.querySelectorAll('#modalThumbs > div').forEach(d => d.style.borderColor = 'transparent');
+  el.style.borderColor = 'var(--gold)';
 }
 
 function renderModalColors() {
@@ -2023,6 +2087,7 @@ function renderModalColors() {
 function selectColor(index) {
   currentColor = currentProduct.colors[index];
   document.getElementById('selectedColorName').textContent = currentColor.name;
+  updateModalGallery();
   renderModalColors();
 }
 
