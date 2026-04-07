@@ -1158,7 +1158,8 @@ function addFromModal() {
 }
 
 function addToCart(product, color) {
-  const existing = state.cart.find(i => i.id === product.id && i.color === color.name);
+  // Busca por nombre+color para compatibilidad con items de producto.html
+  const existing = state.cart.find(i => i.name === product.name && i.color === color.name);
   if (existing) {
     existing.qty++;
   } else {
@@ -1186,8 +1187,8 @@ function updateCart() {
 
   footer.style.display = 'block';
   setHTML('cartItems', state.cart.map((item, idx) => {
-    const p     = state.products.find(x => x.name === item.name);
-    const photo = p ? (getPhotos(p.name, item.color)[0] || null) : null;
+    // Busca foto directo en photoMap (funciona antes y después de cargar productos)
+    const photo = getPhotos(item.name, item.color)[0] || null;
     return `
       <div class="cart-item">
         ${photo
