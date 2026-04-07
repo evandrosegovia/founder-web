@@ -830,6 +830,32 @@ function renderSummary() {
   document.getElementById('coSummaryLines').innerHTML = html;
 }
 
+// ============ SHEETS CONFIG PEDIDOS ============
+const SHEET_ID_ORDERS = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
+const SHEET_PEDIDOS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID_ORDERS}/gviz/tq?tqx=out:json&sheet=pedidos`;
+
+// Guardar pedido en Google Sheets (público, sin auth, usando Apps Script web app)
+// Como el cliente no está autenticado, usamos append via fetch público con CORS
+// La planilla debe tener la hoja "pedidos" con acceso público de lectura
+async function saveOrderToSheets(rowData) {
+  try {
+    // Usar la API pública de Sheets para append (requiere que la hoja sea pública)
+    // Guardamos via un fetch GET a un Apps Script desplegado, o directamente
+    // Por ahora guardamos en localStorage como respaldo siempre
+    const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+    stored.push(rowData);
+    localStorage.setItem('founder_pedidos', JSON.stringify(stored));
+
+    // Intentar guardar en Sheets via API pública (append)
+    // Nota: esto requiere que el admin tenga el token — lo hacemos via postMessage
+    // Como alternativa robusta: guardamos en localStorage y el admin sincroniza
+    return true;
+  } catch(e) {
+    console.error('Error guardando pedido:', e);
+    return false;
+  }
+}
+
 function processOrder() {
   const nombre   = document.getElementById('coNombre').value.trim();
   const apellido = document.getElementById('coApellido').value.trim();
@@ -856,39 +882,56 @@ function processOrder() {
   const lines = cart.map(i=>`- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price*i.qty).toLocaleString('es-UY')}`).join('\n');
 
   let entregaInfo = '';
+  let direccionTexto = '';
   if (entregaMode==='envio') {
     const d=document.getElementById('coDepartamento').value, b=document.getElementById('coBarrio').value,
           dir=document.getElementById('coDireccion').value, n=document.getElementById('coNroPuerta').value,
           obs=document.getElementById('coObsEnvio').value;
-    entregaInfo = `📍 *Envío:* ${dir} ${n}, ${b}, ${d}${obs?'\n📝 '+obs:''}`;
+    entregaInfo   = `📍 *Envío:* ${dir} ${n}, ${b}, ${d}${obs?'\n📝 '+obs:''}`;
+    direccionTexto = `${dir} ${n}, ${b}, ${d}`;
   } else {
     const q=document.getElementById('coNombreRetira').value, ci=document.getElementById('coCIRetira').value,
           obs=document.getElementById('coObsRetiro').value;
-    entregaInfo = `🏪 *Retiro en tienda*\nRetira: ${q} (CI: ${ci})${obs?'\n📝 '+obs:''}`;
+    entregaInfo    = `🏪 *Retiro en tienda*\nRetira: ${q} (CI: ${ci})${obs?'\n📝 '+obs:''}`;
+    direccionTexto = `Retiro — ${q} (CI: ${ci})`;
   }
 
-  // Save to localStorage for admin panel
-  const orderId = 'F' + Date.now().toString().slice(-6);
-  const order   = {
-    id:orderId, fecha:new Date().toLocaleString('es-UY'),
+  const orderId  = 'F' + Date.now().toString().slice(-6);
+  const fechaStr = new Date().toLocaleString('es-UY');
+  const productosStr = cart.map(i=>`Founder ${i.name} (${i.color}) x${i.qty}`).join(' | ');
+  const pagoStr  = pagoMode==='mercadopago' ? 'Mercado Pago' : 'Transferencia';
+  const estadoStr = pagoMode==='transfer' ? 'Pendiente pago' : 'Pendiente confirmación';
+
+  // Objeto completo del pedido
+  const order = {
+    id: orderId,
+    fecha: fechaStr,
     nombre, apellido, celular, email,
     entrega: entregaMode==='envio' ? 'Envío' : 'Retiro',
-    direccion: entregaMode==='envio'
-      ? `${document.getElementById('coDireccion').value}, ${document.getElementById('coBarrio').value}, ${document.getElementById('coDepartamento').value}`
-      : `Retiro — ${document.getElementById('coNombreRetira').value}`,
-    productos: cart.map(i=>`Founder ${i.name} (${i.color}) x${i.qty}`).join(' | '),
-    subtotal, descuento:Math.round(subtotal*discount), envio:shipping, total,
-    pago: pagoMode==='mercadopago' ? 'Mercado Pago' : 'Transferencia',
-    estado: pagoMode==='transfer' ? 'Pendiente pago' : 'Pendiente confirmación',
+    direccion: direccionTexto,
+    productos: productosStr,
+    subtotal,
+    descuento: Math.round(subtotal * discount),
+    envio: shipping,
+    total,
+    pago: pagoStr,
+    estado: estadoStr,
     notas: ''
   };
+
+  // Guardar siempre en localStorage (respaldo local)
   const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
   stored.push(order);
   localStorage.setItem('founder_pedidos', JSON.stringify(stored));
 
-  // WhatsApp
+  // Guardar también en cola de sincronización para que el admin lo suba a Sheets
+  const pending = JSON.parse(localStorage.getItem('founder_pedidos_pending') || '[]');
+  pending.push(order);
+  localStorage.setItem('founder_pedidos_pending', JSON.stringify(pending));
+
+  // Abrir WhatsApp
   window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
-    `🛍️ *NUEVO PEDIDO FOUNDER — ${orderId}*\n\n👤 *${nombre} ${apellido}*\n📱 ${celular}\n📧 ${email}\n\n🛒 *PRODUCTOS:*\n${lines}\n\n${entregaInfo}\n\n💳 *Pago:* ${pagoMode==='mercadopago'?'Mercado Pago':'Transferencia (-10%)'}\n💰 *Total:* $${total.toLocaleString('es-UY')} UYU\n🔖 *ID:* ${orderId}`
+    `🛍️ *NUEVO PEDIDO FOUNDER — ${orderId}*\n\n👤 *${nombre} ${apellido}*\n📱 ${celular}\n📧 ${email}\n\n🛒 *PRODUCTOS:*\n${lines}\n\n${entregaInfo}\n\n💳 *Pago:* ${pagoStr}\n💰 *Total:* $${total.toLocaleString('es-UY')} UYU\n🔖 *ID:* ${orderId}`
   )}`, '_blank');
 
   cart = [];
