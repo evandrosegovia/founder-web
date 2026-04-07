@@ -40,6 +40,23 @@
   --transition-base: 0.3s ease;
   --transition-slow: 0.5s cubic-bezier(.4,0,.2,1);
   --z-header: 100; --z-cart: 200; --z-modal: 300; --z-toast: 9999; --z-cursor: 9998;
+  /* Colores de productos — definidos aquí para renderizado consistente en todos los dispositivos */
+  --swatch-negro:       #3a3f4a;
+  --swatch-camel:       #d4a96e;
+  --swatch-marron:      #6b3820;
+  --swatch-gris-oscuro: #6a6a7a;
+  --swatch-azul:        #2a5a8c;
+  --swatch-rosa:        #e8b8b8;
+  --swatch-rojo:        #b52a2a;
+  --swatch-crema:       #e4d8b8;
+  --swatch-carbon:      #3a3a3a;
+  --swatch-verde-oliva: #6a7a3a;
+}
+/* Forzar renderizado de color nativo — sin ajuste automático del navegador móvil */
+.color-item__swatch, .color-dot, .color-swatch {
+  color-scheme: only light;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 /* ── RESET ────────────────────────────────────────────────── */
@@ -649,16 +666,16 @@ const CONFIG = Object.freeze({
 });
 
 const COLOR_MAP = Object.freeze({
-  'Negro':       { hex: '#3a3f4a' },
-  'Camel':       { hex: '#d4a96e' },
-  'Marrón':      { hex: '#6b3820' },
-  'Gris Oscuro': { hex: '#6a6a7a' },
-  'Azul':        { hex: '#2a5a8c' },
-  'Rosa':        { hex: '#e8b8b8' },
-  'Rojo':        { hex: '#b52a2a' },
-  'Crema':       { hex: '#e4d8b8' },
-  'Carbon':      { hex: '#3a3a3a', pattern: true },
-  'Verde Oliva': { hex: '#6a7a3a' },
+  'Negro':       { hex: '#3a3f4a', css: 'var(--swatch-negro)' },
+  'Camel':       { hex: '#d4a96e', css: 'var(--swatch-camel)' },
+  'Marrón':      { hex: '#6b3820', css: 'var(--swatch-marron)' },
+  'Gris Oscuro': { hex: '#6a6a7a', css: 'var(--swatch-gris-oscuro)' },
+  'Azul':        { hex: '#2a5a8c', css: 'var(--swatch-azul)' },
+  'Rosa':        { hex: '#e8b8b8', css: 'var(--swatch-rosa)' },
+  'Rojo':        { hex: '#b52a2a', css: 'var(--swatch-rojo)' },
+  'Crema':       { hex: '#e4d8b8', css: 'var(--swatch-crema)' },
+  'Carbon':      { hex: '#3a3a3a', css: 'var(--swatch-carbon)', pattern: true },
+  'Verde Oliva': { hex: '#6a7a3a', css: 'var(--swatch-verde-oliva)' },
 });
 
 // ── STATE ─────────────────────────────────────────────────────
@@ -842,7 +859,7 @@ function renderColors() {
     <div class="color-item ${state.selectedColor?.name === c.name ? 'is-active' : ''}"
       onclick="selectColor(${i})" role="button" aria-label="Color ${c.name}" tabindex="0">
       <div class="color-item__swatch" style="background:${
-        c.pattern ? 'repeating-linear-gradient(45deg,#1a1a1a 0,#1a1a1a 3px,#222 3px,#222 6px)' : c.hex
+        c.pattern ? 'repeating-linear-gradient(45deg,var(--swatch-carbon) 0,var(--swatch-carbon) 4px,#4a4a4a 4px,#4a4a4a 8px)' : (c.css || c.hex)
       }"></div>
       <div class="color-item__name">${c.name}</div>
     </div>`).join(''));
@@ -946,7 +963,7 @@ function renderRelated() {
     const firstPhoto = Object.values(state.photoMap[p.name] || {}).flat()[0] || null;
     const swatches   = p.colors.slice(0, 3).map(c => `
       <div style="width:24px;height:36px;border-radius:3px;box-shadow:0 4px 12px rgba(0,0,0,.5);background:${
-        c.pattern ? 'repeating-linear-gradient(45deg,#1a1a1a 0,#1a1a1a 3px,#222 3px,#222 6px)' : c.hex
+        c.pattern ? 'repeating-linear-gradient(45deg,var(--swatch-carbon) 0,var(--swatch-carbon) 4px,#4a4a4a 4px,#4a4a4a 8px)' : (c.css || c.hex)
       }"></div>`).join('');
 
     return `
