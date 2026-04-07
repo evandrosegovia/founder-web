@@ -883,10 +883,12 @@ const COLOR_MAP = Object.freeze({
 });
 
 // ── STATE ──────────────────────────────────────────────────────
+const CART_KEY = 'founder_cart'; // clave compartida con producto.html
+
 const state = {
   products:       [],
   photoMap:       {},
-  cart:           [],
+  cart:           loadCartFromStorage(), // carrito persistente compartido con producto.html
   currentProduct: null,
   currentColor:   null,
   entregaMode:    'envio',
@@ -894,12 +896,19 @@ const state = {
   thumbOffset:    0,
 };
 
+function loadCartFromStorage() {
+  try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
+}
+
+function saveCartToStorage() {
+  try { localStorage.setItem(CART_KEY, JSON.stringify(state.cart)); } catch {}
+}
+
 // ── DOM HELPERS ────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 const setHTML = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
 const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
-const show    = (id) => { const el = $(id); if (el) el.style.display = ''; };
-const hide    = (id) => { const el = $(id); if (el) el.style.display = 'none'; };
+
 const toggle  = (el, cls, force) => el?.classList.toggle(cls, force);
 
 // ── API — Google Sheets ────────────────────────────────────────
@@ -1160,6 +1169,7 @@ function addToCart(product, color) {
 }
 
 function updateCart() {
+  saveCartToStorage(); // persistir carrito para compartir con producto.html
   const total  = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
   const count  = state.cart.reduce((s, i) => s + i.qty, 0);
   const badge  = $('cartCount');
@@ -1362,6 +1372,7 @@ function processOrder() {
   )}`, '_blank');
 
   state.cart = [];
+  saveCartToStorage(); // limpiar carrito persistido al confirmar pedido
   updateCart();
   closeCheckout();
   showToast(`¡Pedido ${orderId} enviado! 🎉`);
@@ -1422,6 +1433,7 @@ const revealObserver = new IntersectionObserver(entries => {
 }, { threshold: 0.1 });
 
 // ── BOOT ──────────────────────────────────────────────────────
+updateCart(); // reflejar carrito persistido (puede venir de producto.html)
 init();
 </script>
 </body>
