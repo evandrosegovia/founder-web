@@ -1171,7 +1171,17 @@ async function saveProduct() {
 
   try {
     // 1. Guardar producto en hoja "productos"
-    await updateSheetCell('productos', sheetRow, [nombre, precio, desc, colores, specs, '', extras]); // col F=banner, col G=extras
+    // Leer el banner actual del Sheet para NO sobreescribirlo al guardar un producto
+    let bannerActual = '';
+    try {
+      const rb = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos&t=` + Date.now());
+      const tb = await rb.text();
+      const jb = JSON.parse(tb.substring(47, tb.length - 2));
+      bannerActual = jb.table.rows?.[0]?.c?.[5]?.v || '';
+    } catch(e) { /* si falla, dejar vacío — no es crítico */ }
+
+    // precio como número (parseInt), banner preservado en col F, extras en col G
+    await updateSheetCell('productos', sheetRow, [nombre, parseInt(precio), desc, colores, specs, sheetRow === 2 ? bannerActual : '', extras]);
 
     // 2. Guardar fotos — CRÍTICO: siempre buscar la fila real actual desde fotosData
     const colsArr = colores.split(',').map(c => c.trim()).filter(c => c);
