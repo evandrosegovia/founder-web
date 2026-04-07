@@ -297,6 +297,7 @@ footer{background:var(--gray);border-top:1px solid var(--border);padding:80px 48
 
 <!-- HERO -->
 <section class="hero">
+  <div id="heroBannerImg"></div>
   <div class="hero-bg"></div>
   <div class="hero-grid"></div>
   <div class="hero-content">
@@ -573,6 +574,10 @@ async function init() {
     const jP = JSON.parse(tP.substring(47, tP.length - 2));
     const jF = JSON.parse(tF.substring(47, tF.length - 2));
 
+    // ---- Leer banner desde columna F2 de la hoja productos ----
+    const bannerUrl = jP.table.rows?.[0]?.c?.[5]?.v || null;
+    applyBanner(bannerUrl);
+
     // Build photoMap
     photoMap = {};
     (jF.table.rows || []).forEach(row => {
@@ -584,7 +589,7 @@ async function init() {
       }
     });
 
-    // Build products
+    // Build products — solo columnas A-E (ignorar F que es el banner)
     products = (jP.table.rows || []).map((row, i) => ({
       id: i + 1,
       name:   row.c[0]?.v || '',
@@ -592,7 +597,7 @@ async function init() {
       desc:   row.c[2]?.v || '',
       colors: (row.c[3]?.v || '').split(',').map(c => { const n = c.trim(); return { name: n, ...(COLOR_MAP[n] || {hex:'#555'}) }; }),
       specs:  (row.c[4]?.v || '').split('|').map(s => s.trim())
-    }));
+    })).filter(p => p.name); // filtrar filas vacías
 
     renderProducts();
     // Observe cards after render
@@ -978,19 +983,18 @@ document.querySelectorAll('.rfid-item').forEach(el => revealObserver.observe(el)
 // ============ START ============
 init();
 
-// ============ BANNER DE INICIO ============
-(function(){
-  const bUrl = localStorage.getItem('founder_banner_url');
-  if(bUrl){
-    const hero = document.querySelector('.hero');
-    if(hero){
-      const img = document.createElement('img');
-      img.src = bUrl;
-      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.35;pointer-events:none;z-index:1;';
-      hero.insertBefore(img, hero.firstChild);
-    }
+// ============ BANNER DINÁMICO DESDE SHEETS ============
+function applyBanner(url) {
+  const container = document.getElementById('heroBannerImg');
+  if (!container) return;
+  if (url && url.trim()) {
+    container.innerHTML = `<img src="${url.trim()}" alt="Banner Founder"
+      style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.45;pointer-events:none;z-index:0;"
+      onerror="this.style.display='none'">`;
+  } else {
+    container.innerHTML = '';
   }
-})();
+}
 
 </script>
 </body>
