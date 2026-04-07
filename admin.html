@@ -1332,17 +1332,6 @@ function viewOrder(id) {
 }
 function closeOrderDetail() { document.getElementById('orderDetailModal').classList.remove('open'); }
 
-function changeOrderStatus(id, newStatus) {
-  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
-  const idx = stored.findIndex(o => o.id === id);
-  if (idx >= 0) {
-    stored[idx].estado = newStatus;
-    localStorage.setItem('founder_pedidos', JSON.stringify(stored));
-    loadOrders();
-    toast('Estado actualizado');
-  }
-}
-
 // ============================================================
 // BANNER
 // ============================================================
