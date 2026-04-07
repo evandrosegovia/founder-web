@@ -548,6 +548,49 @@ textarea.fi{resize:vertical;min-height:70px}
         <textarea class="fi" id="editSpecs" placeholder="RFID|Botón deslizante|5-6 tarjetas..."></textarea>
         <div class="fhint">Separá con | — Ej: RFID|Botón deslizante|5-6 tarjetas</div>
       </div>
+
+      <div style="padding:16px;border:1px solid rgba(201,169,110,.25);background:rgba(201,169,110,.04);margin-bottom:4px">
+        <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:14px">✦ Características del modelo</div>
+        <div class="form-grid">
+          <div class="fg">
+            <div class="fl">Capacidad de tarjetas</div>
+            <input type="text" class="fi" id="editCapacidad" placeholder="Ej: 5-6 tarjetas">
+            <div class="fhint">Aparece en la ficha del producto</div>
+          </div>
+          <div class="fg">
+            <div class="fl">Dimensiones</div>
+            <input type="text" class="fi" id="editDimensiones" placeholder="Ej: 9.5 × 6.5 × 0.8 cm">
+            <div class="fhint">Formato: Alto × Ancho × Grosor cm</div>
+          </div>
+          <div class="fg">
+            <div class="fl">Lugar para billetes</div>
+            <select class="fi" id="editBilletes">
+              <option value="">— No especificado —</option>
+              <option value="si">✅ Sí tiene</option>
+              <option value="no">❌ No tiene</option>
+            </select>
+          </div>
+          <div class="fg">
+            <div class="fl">Lugar para monedas</div>
+            <select class="fi" id="editMonedas">
+              <option value="">— No especificado —</option>
+              <option value="si">✅ Sí tiene</option>
+              <option value="no">❌ No tiene</option>
+            </select>
+          </div>
+          <div class="fg form-full">
+            <div class="fl">Material / Características extra</div>
+            <input type="text" class="fi" id="editMaterial" placeholder="Ej: Eco cuero italiano + aluminio reforzado">
+            <div class="fhint">Si se completa, reemplaza el material por defecto en la página</div>
+          </div>
+          <div class="fg form-full">
+            <div class="fl">Nota especial del modelo</div>
+            <input type="text" class="fi" id="editNota" placeholder="Ej: Edición limitada · Solo disponible en Negro y Camel">
+            <div class="fhint">Se muestra como destacado en dorado en la página del producto (opcional)</div>
+          </div>
+        </div>
+      </div>
+
       <div class="fg">
         <div class="fl">Colores disponibles</div>
         <div id="colorsEditor"></div>
@@ -596,6 +639,12 @@ textarea.fi{resize:vertical;min-height:70px}
 
 <script>
 // ============================================================
+// Helper — parsea JSON de características extra (columna G del Sheet)
+function parseExtras(str) {
+  if (!str) return {};
+  try { return JSON.parse(str); } catch { return {}; }
+}
+
 // CONFIG
 // ============================================================
 const PASSWORD  = 'nerito20';
@@ -710,10 +759,11 @@ async function loadData() {
       products.push({
         rowIndex: i + 2,
         nombre,
-        precio: parseInt(r.c[1]?.v) || 0,
-        desc:   r.c[2]?.v || '',
+        precio:  parseInt(r.c[1]?.v) || 0,
+        desc:    r.c[2]?.v || '',
         colores: r.c[3]?.v || '',
-        specs:  r.c[4]?.v || ''
+        specs:   r.c[4]?.v || '',
+        extras:  r.c[6]?.v || ''  // col G — características extra (JSON)
       });
     });
 
@@ -944,6 +994,16 @@ function editProduct(i) {
   document.getElementById('editPrecio').value = p.precio;
   document.getElementById('editDesc').value   = p.desc;
   document.getElementById('editSpecs').value  = p.specs;
+
+  // Cargar características extra
+  const extras = parseExtras(p.extras || '');
+  document.getElementById('editCapacidad').value   = extras.capacidad   || '';
+  document.getElementById('editDimensiones').value = extras.dimensiones || '';
+  document.getElementById('editBilletes').value    = extras.billetes    || '';
+  document.getElementById('editMonedas').value     = extras.monedas     || '';
+  document.getElementById('editMaterial').value    = extras.material    || '';
+  document.getElementById('editNota').value        = extras.nota        || '';
+
   const cols = p.colores ? p.colores.split(',').map(c => c.trim()) : [];
   renderColorRows(cols);
   renderColorPhotos(p.nombre, cols);
@@ -953,7 +1013,13 @@ function editProduct(i) {
 function openNewProduct() {
   document.getElementById('modalTitle').textContent = 'Nuevo producto';
   document.getElementById('editingRow').value = -1;
-  ['editNombre','editPrecio','editDesc','editSpecs'].forEach(id => document.getElementById(id).value = '');
+  ['editNombre','editPrecio','editDesc','editSpecs',
+   'editCapacidad','editDimensiones','editMaterial','editNota'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['editBilletes','editMonedas'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
   renderColorRows([]);
   document.getElementById('colorPhotosSection').innerHTML = '';
   document.getElementById('productModal').classList.add('open');
@@ -1057,14 +1123,26 @@ async function saveProduct() {
   const desc     = document.getElementById('editDesc').value.trim();
   const rowIdx   = parseInt(document.getElementById('editingRow').value);
 
+  // Leer características extra y serializar como JSON para columna G
+  const extrasObj = {
+    capacidad:   document.getElementById('editCapacidad')?.value.trim()   || '',
+    dimensiones: document.getElementById('editDimensiones')?.value.trim() || '',
+    billetes:    document.getElementById('editBilletes')?.value            || '',
+    monedas:     document.getElementById('editMonedas')?.value            || '',
+    material:    document.getElementById('editMaterial')?.value.trim()    || '',
+    nota:        document.getElementById('editNota')?.value.trim()         || '',
+  };
+  Object.keys(extrasObj).forEach(k => { if (!extrasObj[k]) delete extrasObj[k]; });
+  const extras = Object.keys(extrasObj).length ? JSON.stringify(extrasObj) : '';
+
   // Calcular la fila real en la hoja
   const sheetRow = rowIdx === -1 ? products.length + 2 : products[rowIdx].rowIndex;
 
   // Actualizar estado local
   if (rowIdx === -1) {
-    products.push({ nombre, precio: parseInt(precio), desc, colores, specs, rowIndex: sheetRow });
+    products.push({ nombre, precio: parseInt(precio), desc, colores, specs, extras, rowIndex: sheetRow });
   } else {
-    products[rowIdx] = { ...products[rowIdx], nombre, precio: parseInt(precio), desc, colores, specs };
+    products[rowIdx] = { ...products[rowIdx], nombre, precio: parseInt(precio), desc, colores, specs, extras };
   }
 
   const sb = document.getElementById('saveBtn');
@@ -1081,7 +1159,7 @@ async function saveProduct() {
 
   try {
     // 1. Guardar producto en hoja "productos"
-    await updateSheetCell('productos', sheetRow, [nombre, precio, desc, colores, specs]);
+    await updateSheetCell('productos', sheetRow, [nombre, precio, desc, colores, specs, '', extras]); // col F=banner, col G=extras
 
     // 2. Guardar fotos — CRÍTICO: siempre buscar la fila real actual desde fotosData
     const colsArr = colores.split(',').map(c => c.trim()).filter(c => c);
