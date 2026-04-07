@@ -3,1497 +3,282 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FOUNDER — Billeteras & Tarjeteros con Protección RFID</title>
-<meta name="description" content="Billeteras y tarjeteros premium con tecnología RFID. Envíos a todo Uruguay. Pagá con Mercado Pago.">
+<title>FOUNDER — Billeteras & Tarjeteros con Protección RFID | Uruguay</title>
+<meta name="description" content="Billeteras y tarjeteros premium con tecnología RFID. Envíos a todo Uruguay. Pagá con Mercado Pago o transferencia.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --black: #0a0a0a;
-    --white: #f5f5f0;
-    --gold: #c9a96e;
-    --gray: #1a1a1a;
-    --gray-mid: #2a2a2a;
-    --gray-light: #555;
-    --text-muted: #888;
-    --border: rgba(255,255,255,0.08);
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  html { scroll-behavior: smooth; }
-
-  body {
-    background: var(--black);
-    color: var(--white);
-    font-family: 'Montserrat', sans-serif;
-    font-weight: 300;
-    overflow-x: hidden;
-    cursor: none;
-  }
-
-  /* Custom cursor */
-  .cursor {
-    position: fixed;
-    width: 8px;
-    height: 8px;
-    background: var(--white);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 9999;
-    transition: transform 0.15s ease;
-    transform: translate(-50%, -50%);
-  }
-  .cursor-ring {
-    position: fixed;
-    width: 32px;
-    height: 32px;
-    border: 1px solid rgba(255,255,255,0.4);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 9998;
-    transition: transform 0.4s ease, width 0.3s, height 0.3s, border-color 0.3s;
-    transform: translate(-50%, -50%);
-  }
-  .cursor-ring.hover {
-    width: 48px;
-    height: 48px;
-    border-color: var(--gold);
-  }
-
-  /* HEADER */
-  header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
-    padding: 0 48px;
-    height: 70px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: rgba(10,10,10,0.92);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    transition: all 0.3s ease;
-  }
-
-  .logo {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 22px;
-    font-weight: 500;
-    letter-spacing: 6px;
-    color: var(--white);
-    text-decoration: none;
-  }
-
-  nav {
-    display: flex;
-    gap: 36px;
-    align-items: center;
-  }
-
-  nav a {
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    transition: color 0.3s;
-  }
-  nav a:hover { color: var(--white); }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-  }
-
-  .cart-btn {
-    position: relative;
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--white);
-    padding: 10px 20px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    cursor: none;
-    transition: all 0.3s;
-  }
-  .cart-btn:hover {
-    background: var(--white);
-    color: var(--black);
-  }
-  .cart-count {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background: var(--gold);
-    color: var(--black);
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    font-size: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    display: none;
-  }
-
-  /* HERO */
-  .hero {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    position: relative;
-    overflow: hidden;
-    padding: 0 48px;
-  }
-
-  .hero-bg {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at 70% 50%, rgba(201,169,110,0.06) 0%, transparent 60%),
-                radial-gradient(ellipse at 20% 80%, rgba(255,255,255,0.02) 0%, transparent 50%);
-  }
-
-  .hero-grid {
-    position: absolute;
-    inset: 0;
-    background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-    background-size: 80px 80px;
-    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
-  }
-
-  .hero-content {
-    position: relative;
-    z-index: 2;
-    max-width: 700px;
-    animation: fadeUp 1.2s ease both;
-  }
-
-  .hero-label {
-    font-size: 9px;
-    letter-spacing: 5px;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 32px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-  .hero-label::before {
-    content: '';
-    display: block;
-    width: 40px;
-    height: 1px;
-    background: var(--gold);
-  }
-
-  .hero h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(64px, 8vw, 110px);
-    font-weight: 300;
-    line-height: 0.95;
-    margin-bottom: 32px;
-    letter-spacing: -2px;
-  }
-
-  .hero h1 em {
-    font-style: italic;
-    color: var(--gold);
-  }
-
-  .hero p {
-    font-size: 13px;
-    line-height: 1.9;
-    color: var(--text-muted);
-    max-width: 440px;
-    margin-bottom: 48px;
-    letter-spacing: 0.5px;
-  }
-
-  .hero-ctas {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .btn-primary {
-    background: var(--white);
-    color: var(--black);
-    padding: 16px 36px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    text-decoration: none;
-    font-weight: 600;
-    transition: all 0.3s;
-    cursor: none;
-    display: inline-block;
-  }
-  .btn-primary:hover {
-    background: var(--gold);
-    color: var(--black);
-  }
-
-  .btn-secondary {
-    border: 1px solid rgba(255,255,255,0.2);
-    color: var(--white);
-    padding: 16px 36px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    text-decoration: none;
-    transition: all 0.3s;
-    cursor: none;
-    display: inline-block;
-  }
-  .btn-secondary:hover {
-    border-color: var(--white);
-    background: rgba(255,255,255,0.05);
-  }
-
-  .hero-right {
-    position: absolute;
-    right: -60px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 45vw;
-    max-width: 600px;
-    opacity: 0.15;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(140px, 18vw, 260px);
-    font-weight: 300;
-    letter-spacing: -10px;
-    color: var(--white);
-    pointer-events: none;
-    line-height: 1;
-    animation: fadeUp 1.5s ease 0.3s both;
-  }
-
-  /* RFID BANNER */
-  .rfid-banner {
-    padding: 80px 48px;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    gap: 1px;
-    background: var(--border);
-  }
-
-  .rfid-item {
-    background: var(--black);
-    padding: 48px 36px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .rfid-icon {
-    font-size: 28px;
-    margin-bottom: 8px;
-  }
-
-  .rfid-item h3 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 22px;
-    font-weight: 400;
-    letter-spacing: 1px;
-  }
-
-  .rfid-item p {
-    font-size: 11px;
-    line-height: 1.8;
-    color: var(--text-muted);
-    letter-spacing: 0.3px;
-  }
-
-  /* PRODUCTS */
-  .products-section {
-    padding: 120px 48px;
-  }
-
-  .section-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    margin-bottom: 80px;
-  }
-
-  .section-label {
-    font-size: 9px;
-    letter-spacing: 5px;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-  .section-label::before {
-    content: '';
-    display: block;
-    width: 30px;
-    height: 1px;
-    background: var(--gold);
-  }
-
-  .section-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(36px, 4vw, 54px);
-    font-weight: 300;
-    line-height: 1.1;
-    letter-spacing: -1px;
-  }
-
-  .products-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2px;
-  }
-
-  .product-card {
-    background: var(--gray);
-    position: relative;
-    overflow: hidden;
-    cursor: none;
-    group: true;
-  }
-
-  .product-img-wrap {
-    aspect-ratio: 4/3;
-    overflow: hidden;
-    background: #111;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .product-img-wrap img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.8s ease;
-    filter: brightness(0.85);
-  }
-
-  .product-card:hover .product-img-wrap img {
-    transform: scale(1.05);
-    filter: brightness(1);
-  }
-
-  .product-badge {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    background: var(--gold);
-    color: var(--black);
-    font-size: 8px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    padding: 6px 12px;
-    font-weight: 600;
-    z-index: 2;
-  }
-
-  .product-info {
-    padding: 32px 36px 36px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .product-name {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 28px;
-    font-weight: 400;
-    letter-spacing: 2px;
-  }
-
-  .product-desc {
-    font-size: 11px;
-    line-height: 1.8;
-    color: var(--text-muted);
-    letter-spacing: 0.3px;
-  }
-
-  .product-colors {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .color-dot {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    cursor: none;
-    transition: all 0.2s;
-    position: relative;
-  }
-  .color-dot:hover, .color-dot.active {
-    border-color: var(--white);
-    transform: scale(1.2);
-  }
-
-  .colors-label {
-    font-size: 9px;
-    letter-spacing: 2px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    margin-right: 4px;
-  }
-
-  .product-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: 20px;
-    border-top: 1px solid var(--border);
-  }
-
-  .product-price {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .price-main {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 28px;
-    font-weight: 400;
-  }
-
-  .price-discount {
-    font-size: 9px;
-    color: var(--gold);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
-
-  .add-to-cart {
-    background: var(--white);
-    color: var(--black);
-    border: none;
-    padding: 14px 28px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 9px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    font-weight: 600;
-    cursor: none;
-    transition: all 0.3s;
-  }
-  .add-to-cart:hover {
-    background: var(--gold);
-  }
-
-  .product-specs {
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
-  }
-
-  .spec-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.5px;
-  }
-  .spec-item::before {
-    content: '—';
-    color: var(--gold);
-    font-size: 10px;
-  }
-
-  /* SHIPPING BANNER */
-  .shipping-banner {
-    background: var(--gray);
-    padding: 32px 48px;
-    display: flex;
-    justify-content: center;
-    gap: 80px;
-    border-top: 1px solid var(--border);
-  }
-
-  .ship-item {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-  .ship-item span:first-child {
-    font-size: 20px;
-  }
-  .ship-item strong {
-    color: var(--white);
-    display: block;
-    font-size: 11px;
-    letter-spacing: 2px;
-  }
-
-  /* CART SIDEBAR */
-  .cart-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    z-index: 200;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s;
-    backdrop-filter: blur(4px);
-  }
-  .cart-overlay.open {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .cart-sidebar {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 420px;
-    height: 100vh;
-    background: var(--gray);
-    z-index: 201;
-    transform: translateX(100%);
-    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
-    display: flex;
-    flex-direction: column;
-    border-left: 1px solid var(--border);
-  }
-  .cart-sidebar.open {
-    transform: translateX(0);
-  }
-
-  .cart-header {
-    padding: 32px 36px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .cart-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 24px;
-    font-weight: 400;
-    letter-spacing: 3px;
-  }
-
-  .close-cart {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 24px;
-    cursor: none;
-    transition: color 0.2s;
-    line-height: 1;
-  }
-  .close-cart:hover { color: var(--white); }
-
-  .cart-items {
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px 36px;
-  }
-
-  .cart-item {
-    display: flex;
-    gap: 16px;
-    padding: 20px 0;
-    border-bottom: 1px solid var(--border);
-    animation: fadeUp 0.3s ease both;
-  }
-
-  .cart-item-info {
-    flex: 1;
-  }
-
-  .cart-item-name {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 18px;
-    margin-bottom: 4px;
-  }
-
-  .cart-item-variant {
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-
-  .cart-item-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .qty-btn {
-    background: var(--gray-mid);
-    border: none;
-    color: var(--white);
-    width: 28px;
-    height: 28px;
-    font-size: 16px;
-    cursor: none;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .qty-btn:hover { background: var(--gray-light); }
-
-  .qty-display {
-    font-size: 14px;
-    min-width: 20px;
-    text-align: center;
-  }
-
-  .cart-item-price {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 20px;
-    white-space: nowrap;
-    align-self: center;
-  }
-
-  .remove-item {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: none;
-    font-size: 16px;
-    align-self: center;
-    transition: color 0.2s;
-  }
-  .remove-item:hover { color: #ff4444; }
-
-  .cart-empty {
-    text-align: center;
-    padding: 80px 36px;
-    color: var(--text-muted);
-  }
-  .cart-empty p {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 22px;
-    margin-bottom: 8px;
-  }
-  .cart-empty span {
-    font-size: 11px;
-    letter-spacing: 2px;
-  }
-
-  .cart-footer {
-    padding: 24px 36px 36px;
-    border-top: 1px solid var(--border);
-  }
-
-  .cart-subtotal {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-  .cart-subtotal span {
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-  .cart-subtotal strong {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 28px;
-    font-weight: 400;
-  }
-
-  .cart-note {
-    font-size: 10px;
-    color: var(--gold);
-    letter-spacing: 1px;
-    margin-bottom: 20px;
-    padding: 10px 0;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .discount-note {
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.5px;
-    margin-bottom: 16px;
-    line-height: 1.6;
-  }
-
-  .checkout-btn {
-    width: 100%;
-    background: var(--white);
-    color: var(--black);
-    border: none;
-    padding: 18px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    font-weight: 700;
-    cursor: none;
-    transition: all 0.3s;
-    margin-bottom: 12px;
-  }
-  .checkout-btn:hover { background: var(--gold); }
-
-  .mp-logos {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin-top: 16px;
-  }
-  .mp-logos span {
-    font-size: 9px;
-    letter-spacing: 2px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-  }
-
-  /* PRODUCT MODAL */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.85);
-    z-index: 300;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s;
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-  }
-  .modal-overlay.open {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .modal {
-    background: var(--gray);
-    max-width: 900px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-    border: 1px solid var(--border);
-    transform: translateY(20px);
-    transition: transform 0.4s ease;
-    position: relative;
-  }
-  .modal-overlay.open .modal {
-    transform: translateY(0);
-  }
-
-  .modal-img {
-    aspect-ratio: 1;
-    background: #111;
-    overflow: hidden;
-  }
-  .modal-img img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .modal-content {
-    padding: 48px 40px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    grid-row: 1 / 3;
-    grid-column: 2;
-  }
-
-  .close-modal {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: var(--gray-mid);
-    border: none;
-    color: var(--white);
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
-    cursor: none;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-  }
-  .close-modal:hover { background: var(--gray-light); }
-
-  .modal-name {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 36px;
-    font-weight: 400;
-    letter-spacing: 3px;
-  }
-
-  .modal-specs {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .modal-spec {
-    display: flex;
-    gap: 12px;
-    font-size: 11px;
-    color: var(--text-muted);
-    line-height: 1.6;
-    letter-spacing: 0.3px;
-  }
-  .modal-spec::before {
-    content: '✦';
-    color: var(--gold);
-    font-size: 8px;
-    margin-top: 3px;
-    flex-shrink: 0;
-  }
-
-  .modal-color-section h4 {
-    font-size: 9px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 12px;
-  }
-
-  .modal-colors {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .color-option {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    cursor: none;
-  }
-
-  .color-swatch {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    transition: all 0.2s;
-  }
-  .color-option:hover .color-swatch,
-  .color-option.active .color-swatch {
-    border-color: var(--white);
-    transform: scale(1.15);
-  }
-
-  .color-name-label {
-    font-size: 8px;
-    letter-spacing: 1px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    text-align: center;
-  }
-
-  .modal-footer {
-    margin-top: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding-top: 24px;
-    border-top: 1px solid var(--border);
-  }
-
-  .modal-price {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 36px;
-    font-weight: 400;
-  }
-
-  .modal-price-note {
-    font-size: 10px;
-    color: var(--gold);
-    letter-spacing: 1px;
-    margin-top: -10px;
-  }
-
-  .modal-add-cart {
-    background: var(--white);
-    color: var(--black);
-    border: none;
-    padding: 16px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    font-weight: 700;
-    cursor: none;
-    transition: all 0.3s;
-  }
-  .modal-add-cart:hover { background: var(--gold); }
-
-  /* FOOTER */
-  footer {
-    background: var(--gray);
-    border-top: 1px solid var(--border);
-    padding: 80px 48px 40px;
-  }
-
-  .footer-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: 60px;
-    margin-bottom: 60px;
-  }
-
-  .footer-brand .logo {
-    display: block;
-    margin-bottom: 24px;
-    font-size: 20px;
-  }
-
-  .footer-brand p {
-    font-size: 11px;
-    line-height: 1.9;
-    color: var(--text-muted);
-    max-width: 280px;
-    letter-spacing: 0.3px;
-  }
-
-  .footer-col h4 {
-    font-size: 9px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 24px;
-  }
-
-  .footer-col ul {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .footer-col ul a {
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: 11px;
-    letter-spacing: 0.5px;
-    transition: color 0.2s;
-  }
-  .footer-col ul a:hover { color: var(--white); }
-
-  .footer-bottom {
-    border-top: 1px solid var(--border);
-    padding-top: 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .footer-bottom p {
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 1px;
-  }
-
-  .footer-legal a {
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: 10px;
-    letter-spacing: 1px;
-    margin-left: 24px;
-    transition: color 0.2s;
-  }
-  .footer-legal a:hover { color: var(--white); }
-
-  /* LEGAL PAGES */
-  .legal-page {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: var(--black);
-    z-index: 400;
-    overflow-y: auto;
-    padding: 100px 48px 60px;
-  }
-  .legal-page.active { display: block; }
-
-  .legal-close {
-    position: fixed;
-    top: 24px;
-    right: 48px;
-    background: var(--gray);
-    border: 1px solid var(--border);
-    color: var(--white);
-    padding: 10px 20px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    letter-spacing: 2px;
-    cursor: none;
-    transition: all 0.2s;
-  }
-  .legal-close:hover { background: var(--white); color: var(--black); }
-
-  .legal-content {
-    max-width: 800px;
-    margin: 0 auto;
-  }
-
-  .legal-content h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 48px;
-    font-weight: 300;
-    margin-bottom: 12px;
-  }
-
-  .legal-content .legal-date {
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 60px;
-  }
-
-  .legal-content h2 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 24px;
-    font-weight: 400;
-    margin-top: 48px;
-    margin-bottom: 16px;
-    color: var(--gold);
-  }
-
-  .legal-content p, .legal-content li {
-    font-size: 12px;
-    line-height: 2;
-    color: var(--text-muted);
-    letter-spacing: 0.3px;
-    margin-bottom: 12px;
-  }
-
-  .legal-content ul {
-    padding-left: 20px;
-  }
-
-  /* CHECKOUT PAGE */
-  .checkout-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--black);
-    z-index: 500;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s;
-    overflow-y: auto;
-  }
-  .checkout-overlay.open {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .checkout-page {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .checkout-topbar {
-    padding: 0 48px;
-    height: 70px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    background: var(--black);
-    z-index: 10;
-  }
-
-  .checkout-close-btn {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    padding: 8px 20px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    cursor: none;
-    transition: all 0.2s;
-  }
-  .checkout-close-btn:hover { border-color: var(--white); color: var(--white); }
-
-  .checkout-layout {
-    display: grid;
-    grid-template-columns: 1fr 420px;
-    gap: 60px;
-    padding: 48px 48px 80px;
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-  }
-
-  .checkout-main-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 48px;
-    font-weight: 300;
-    margin-bottom: 40px;
-    letter-spacing: -1px;
-  }
-
-  .checkout-step {
-    border: 1px solid var(--border);
-    margin-bottom: 16px;
-  }
-
-  .checkout-step-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--border);
-    background: var(--gray);
-  }
-
-  .step-number {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--gold);
-    color: var(--black);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .step-title {
-    font-size: 11px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    font-weight: 600;
-  }
-
-  .checkout-step-body {
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .co-form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-
-  .co-form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .co-label {
-    font-size: 9px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  .co-input {
-    background: var(--gray-mid);
-    border: 1px solid var(--border);
-    color: var(--white);
-    padding: 12px 16px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 12px;
-    outline: none;
-    transition: border-color 0.3s;
-    width: 100%;
-  }
-  .co-input:focus { border-color: var(--gold); }
-  .co-input option { background: var(--gray); }
-
-  .co-textarea {
-    resize: vertical;
-    min-height: 80px;
-  }
-
-  .co-toggle-row {
-    display: flex;
-    gap: 0;
-  }
-
-  .co-toggle-btn {
-    flex: 1;
-    padding: 12px;
-    text-align: center;
-    border: 1px solid var(--border);
-    font-size: 11px;
-    letter-spacing: 1px;
-    cursor: none;
-    transition: all 0.2s;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  .co-toggle-btn input { display: none; }
-  .co-toggle-btn.active,
-  .co-toggle-btn:has(input:checked) {
-    background: var(--white);
-    color: var(--black);
-    border-color: var(--white);
-    font-weight: 600;
-  }
-
-  .co-note {
-    font-size: 11px;
-    color: var(--gold);
-    letter-spacing: 0.5px;
-    line-height: 1.7;
-    padding: 12px 16px;
-    border: 1px solid rgba(201,169,110,0.3);
-    background: rgba(201,169,110,0.05);
-  }
-
-  .co-consent {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    padding: 20px 0;
-    border-top: 1px solid var(--border);
-  }
-  .co-consent input { margin-top: 2px; accent-color: var(--gold); flex-shrink: 0; }
-  .co-consent label { font-size: 10px; color: var(--text-muted); line-height: 1.7; letter-spacing: 0.3px; }
-  .co-consent label a { color: var(--gold); text-decoration: none; }
-
-  .co-submit-btn {
-    width: 100%;
-    background: var(--gold);
-    color: var(--black);
-    border: none;
-    padding: 20px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 12px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    font-weight: 700;
-    cursor: none;
-    transition: all 0.3s;
-    margin-bottom: 16px;
-  }
-  .co-submit-btn:hover { background: var(--white); }
-
-  .co-cards-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  /* SUMMARY */
-  .checkout-summary-col {
-    position: sticky;
-    top: 90px;
-    align-self: start;
-  }
-
-  .co-summary-box {
-    background: var(--gray);
-    border: 1px solid var(--border);
-    padding: 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .co-summary-title {
-    font-size: 10px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .co-summary-item {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .co-summary-item-img {
-    width: 56px;
-    height: 56px;
-    object-fit: cover;
-    background: var(--gray-mid);
-    border: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .co-summary-item-info { flex: 1; }
-  .co-summary-item-name { font-size: 13px; margin-bottom: 4px; letter-spacing: 0.5px; }
-  .co-summary-item-variant { font-size: 10px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
-  .co-summary-item-price { font-family: 'Cormorant Garamond', serif; font-size: 20px; white-space: nowrap; }
-
-  .co-discount-section {
-    padding: 16px 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .co-apply-btn {
-    background: var(--white);
-    color: var(--black);
-    border: none;
-    padding: 12px 20px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-weight: 700;
-    cursor: none;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-  .co-apply-btn:hover { background: var(--gold); }
-
-  .co-summary-lines {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .co-summary-line {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: var(--text-muted);
-    letter-spacing: 0.5px;
-  }
-
-  .co-summary-line.total {
-    color: var(--white);
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 24px;
-    font-weight: 400;
-  }
-
-  @media (max-width: 900px) {
-    .checkout-layout { grid-template-columns: 1fr; padding: 24px; gap: 32px; }
-    .checkout-topbar { padding: 0 24px; }
-    .checkout-summary-col { position: static; }
-    .co-form-row { grid-template-columns: 1fr; }
-  }
-
-  /* TOAST */
-  .toast {
-    position: fixed;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    background: var(--white);
-    color: var(--black);
-    padding: 16px 32px;
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-weight: 600;
-    opacity: 0;
-    transition: all 0.4s;
-    z-index: 1000;
-    white-space: nowrap;
-  }
-  .toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  /* ANIMATIONS */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(30px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* MOBILE */
-  @media (max-width: 900px) {
-    header { padding: 0 24px; }
-    nav { display: none; }
-    .hero { padding: 0 24px; }
-    .hero-right { display: none; }
-    .rfid-banner { grid-template-columns: 1fr 1fr; padding: 60px 24px; }
-    .products-section { padding: 80px 24px; }
-    .products-grid { grid-template-columns: 1fr; }
-    .section-header { flex-direction: column; align-items: flex-start; gap: 20px; }
-    .shipping-banner { flex-wrap: wrap; gap: 32px; padding: 32px 24px; }
-    .footer-grid { grid-template-columns: 1fr 1fr; gap: 40px; }
-    .modal { grid-template-columns: 1fr; }
-    .modal-img { aspect-ratio: 16/9; }
-    footer { padding: 60px 24px 40px; }
-    .legal-page { padding: 80px 24px 60px; }
-    .legal-close { right: 24px; }
-    .cart-sidebar { width: 100%; }
-    body { cursor: auto; }
-    .cursor, .cursor-ring { display: none; }
-    .checkout-body { padding: 24px; }
-    .checkout-header { padding: 24px; }
-    .form-row { grid-template-columns: 1fr; }
-  }
-
-  @media (max-width: 600px) {
-    .rfid-banner { grid-template-columns: 1fr; }
-    .footer-grid { grid-template-columns: 1fr; }
-    .footer-bottom { flex-direction: column; gap: 16px; text-align: center; }
-    .footer-legal { display: flex; flex-direction: column; gap: 12px; align-items: center; }
-    .footer-legal a { margin-left: 0; }
-  }
+/* ============ RESET & VARIABLES ============ */
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+:root{
+  --black:#0a0a0a;--white:#f5f5f0;--gold:#c9a96e;
+  --gray:#1a1a1a;--mid:#2a2a2a;--light:#333;
+  --muted:#888;--border:rgba(255,255,255,0.08);
+}
+body{background:var(--black);color:var(--white);font-family:'Montserrat',sans-serif;font-weight:300;overflow-x:hidden;cursor:none}
+
+/* ============ CURSOR ============ */
+.cursor{position:fixed;width:8px;height:8px;background:var(--white);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%)}
+.cursor-ring{position:fixed;width:32px;height:32px;border:1px solid rgba(255,255,255,.4);border-radius:50%;pointer-events:none;z-index:9998;transition:width .3s,height .3s,border-color .3s;transform:translate(-50%,-50%)}
+.cursor-ring.hover{width:48px;height:48px;border-color:var(--gold)}
+
+/* ============ HEADER ============ */
+header{position:fixed;top:0;left:0;right:0;z-index:100;height:70px;padding:0 48px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,10,10,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.logo{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;letter-spacing:6px;color:var(--white);text-decoration:none}
+nav{display:flex;gap:36px}
+nav a{color:var(--muted);text-decoration:none;font-size:10px;letter-spacing:3px;text-transform:uppercase;transition:color .3s}
+nav a:hover{color:var(--white)}
+.cart-btn{position:relative;background:none;border:1px solid var(--border);color:var(--white);padding:10px 20px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;cursor:none;transition:all .3s}
+.cart-btn:hover{background:var(--white);color:var(--black)}
+.cart-count{position:absolute;top:-8px;right:-8px;background:var(--gold);color:var(--black);width:18px;height:18px;border-radius:50%;font-size:9px;display:none;align-items:center;justify-content:center;font-weight:600}
+
+/* ============ HERO ============ */
+.hero{min-height:100vh;display:flex;align-items:center;padding:0 48px;position:relative;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 70% 50%,rgba(201,169,110,.06) 0%,transparent 60%)}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:80px 80px;mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%)}
+.hero-content{position:relative;z-index:2;max-width:700px;animation:fadeUp 1.2s ease both}
+.hero-label{font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);margin-bottom:32px;display:flex;align-items:center;gap:16px}
+.hero-label::before{content:'';display:block;width:40px;height:1px;background:var(--gold)}
+.hero h1{font-family:'Cormorant Garamond',serif;font-size:clamp(64px,8vw,110px);font-weight:300;line-height:.95;margin-bottom:32px;letter-spacing:-2px}
+.hero h1 em{font-style:italic;color:var(--gold)}
+.hero p{font-size:13px;line-height:1.9;color:var(--muted);max-width:440px;margin-bottom:48px;letter-spacing:.5px}
+.hero-ctas{display:flex;gap:16px;flex-wrap:wrap}
+.btn-primary{background:var(--white);color:var(--black);padding:16px 36px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;font-weight:600;transition:all .3s;cursor:none;display:inline-block}
+.btn-primary:hover{background:var(--gold)}
+.btn-secondary{border:1px solid rgba(255,255,255,.2);color:var(--white);padding:16px 36px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;transition:all .3s;cursor:none;display:inline-block}
+.btn-secondary:hover{border-color:var(--white);background:rgba(255,255,255,.05)}
+.hero-bg-letter{position:absolute;right:-60px;top:50%;transform:translateY(-50%);font-family:'Cormorant Garamond',serif;font-size:clamp(140px,18vw,260px);font-weight:300;color:rgba(255,255,255,.04);pointer-events:none;line-height:1}
+
+/* ============ RFID BANNER ============ */
+.rfid-banner{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.rfid-item{background:var(--black);padding:48px 36px;display:flex;flex-direction:column;gap:16px}
+.rfid-icon{font-size:28px}
+.rfid-item h3{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400}
+.rfid-item p{font-size:11px;line-height:1.8;color:var(--muted)}
+
+/* ============ PRODUCTS ============ */
+.products-section{padding:120px 48px}
+.section-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:80px}
+.section-label{font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.section-label::before{content:'';display:block;width:30px;height:1px;background:var(--gold)}
+.section-title{font-family:'Cormorant Garamond',serif;font-size:clamp(36px,4vw,54px);font-weight:300;line-height:1.1;letter-spacing:-1px}
+.products-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2px}
+.product-card{background:var(--gray);position:relative;overflow:hidden;cursor:none}
+.product-img-wrap{aspect-ratio:4/3;overflow:hidden;background:#111;position:relative;display:flex;align-items:center;justify-content:center}
+.product-img-wrap img{width:100%;height:100%;object-fit:cover;transition:transform .8s ease;filter:brightness(.85)}
+.product-card:hover .product-img-wrap img{transform:scale(1.05);filter:brightness(1)}
+.product-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#111,#1a1a1a,#0d0d0d);position:relative;overflow:hidden}
+.product-badge{position:absolute;top:20px;left:20px;background:var(--gold);color:var(--black);font-size:8px;letter-spacing:3px;text-transform:uppercase;padding:6px 12px;font-weight:600;z-index:2}
+.product-info{padding:32px 36px 36px;display:flex;flex-direction:column;gap:20px}
+.product-subtitle{font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+.product-name{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;letter-spacing:2px}
+.product-desc{font-size:11px;line-height:1.8;color:var(--muted)}
+.product-specs{display:flex;gap:24px;flex-wrap:wrap}
+.spec-item{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted)}
+.spec-item::before{content:'—';color:var(--gold)}
+.product-footer{display:flex;align-items:center;justify-content:space-between;padding-top:20px;border-top:1px solid var(--border)}
+.price-main{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400}
+.price-discount{font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-top:4px}
+.add-to-cart{background:var(--white);color:var(--black);border:none;padding:14px 28px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;font-weight:600;cursor:none;transition:all .3s}
+.add-to-cart:hover{background:var(--gold)}
+.color-dot{width:18px;height:18px;border-radius:50%;border:2px solid transparent;cursor:none;transition:all .2s}
+.color-dot:hover{border-color:var(--white);transform:scale(1.2)}
+
+/* ============ SHIPPING BANNER ============ */
+.shipping-banner{background:var(--gray);padding:32px 48px;display:flex;justify-content:center;gap:80px;border-top:1px solid var(--border);flex-wrap:wrap}
+.ship-item{display:flex;align-items:center;gap:16px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.ship-item span:first-child{font-size:20px}
+.ship-item strong{color:var(--white);display:block;font-size:11px;letter-spacing:2px}
+
+/* ============ PRODUCT MODAL ============ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;opacity:0;pointer-events:none;transition:opacity .4s;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:40px}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--gray);max-width:900px;width:100%;max-height:90vh;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;border:1px solid var(--border);transform:translateY(20px);transition:transform .4s;position:relative}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-img-col{grid-row:1;grid-column:1;background:#111;overflow:hidden;min-height:280px;display:flex;align-items:center;justify-content:center}
+.modal-img-col img{width:100%;height:100%;object-fit:cover}
+.modal-thumbs{grid-row:2;grid-column:1;display:flex;gap:2px;background:var(--black);padding:4px;flex-wrap:wrap}
+.modal-thumb{width:60px;height:60px;object-fit:cover;border:2px solid transparent;cursor:none;transition:border-color .2s}
+.modal-thumb.active{border-color:var(--gold)}
+.modal-info{grid-row:1/3;grid-column:2;padding:48px 40px;display:flex;flex-direction:column;gap:24px}
+.close-modal{position:absolute;top:16px;right:16px;background:var(--mid);border:none;color:var(--white);width:36px;height:36px;font-size:18px;cursor:none;display:flex;align-items:center;justify-content:center;z-index:10;transition:background .2s}
+.close-modal:hover{background:var(--light)}
+.modal-label{font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:12px}
+.modal-label::before{content:'';display:block;width:24px;height:1px;background:var(--gold)}
+.modal-name{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:400;letter-spacing:3px}
+.modal-specs{display:flex;flex-direction:column;gap:10px}
+.modal-spec{display:flex;gap:12px;font-size:11px;color:var(--muted);line-height:1.6}
+.modal-spec::before{content:'✦';color:var(--gold);font-size:8px;margin-top:3px;flex-shrink:0}
+.modal-color-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.modal-colors{display:flex;gap:10px;flex-wrap:wrap}
+.color-option{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:none}
+.color-swatch{width:28px;height:28px;border-radius:50%;border:2px solid transparent;transition:all .2s}
+.color-option.active .color-swatch,.color-option:hover .color-swatch{border-color:var(--white);transform:scale(1.15)}
+.color-option-name{font-size:8px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;text-align:center}
+.modal-footer-section{margin-top:auto;padding-top:24px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:16px}
+.modal-price{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:400}
+.modal-price-note{font-size:10px;color:var(--gold);letter-spacing:1px;margin-top:-10px}
+.modal-add-btn{background:var(--white);color:var(--black);border:none;padding:16px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:4px;text-transform:uppercase;font-weight:700;cursor:none;transition:all .3s}
+.modal-add-btn:hover{background:var(--gold)}
+
+/* ============ CART SIDEBAR ============ */
+.cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;opacity:0;pointer-events:none;transition:opacity .4s;backdrop-filter:blur(4px)}
+.cart-overlay.open{opacity:1;pointer-events:all}
+.cart-sidebar{position:fixed;top:0;right:0;width:420px;height:100vh;background:var(--gray);z-index:201;transform:translateX(100%);transition:transform .5s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;border-left:1px solid var(--border)}
+.cart-sidebar.open{transform:translateX(0)}
+.cart-header{padding:32px 36px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.cart-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;letter-spacing:3px}
+.close-btn{background:none;border:none;color:var(--muted);font-size:24px;cursor:none;transition:color .2s;line-height:1}
+.close-btn:hover{color:var(--white)}
+.cart-items{flex:1;overflow-y:auto;padding:24px 36px}
+.cart-item{display:flex;gap:16px;padding:20px 0;border-bottom:1px solid var(--border)}
+.cart-item-info{flex:1}
+.cart-item-name{font-family:'Cormorant Garamond',serif;font-size:18px;margin-bottom:4px}
+.cart-item-variant{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
+.cart-controls{display:flex;align-items:center;gap:12px}
+.qty-btn{background:var(--mid);border:none;color:var(--white);width:28px;height:28px;font-size:16px;cursor:none;transition:background .2s;display:flex;align-items:center;justify-content:center}
+.qty-btn:hover{background:var(--light)}
+.qty-val{font-size:14px;min-width:20px;text-align:center}
+.cart-item-price{font-family:'Cormorant Garamond',serif;font-size:20px;white-space:nowrap;align-self:center}
+.remove-item{background:none;border:none;color:var(--muted);cursor:none;font-size:16px;align-self:center;transition:color .2s}
+.remove-item:hover{color:#f55}
+.cart-empty{text-align:center;padding:80px 36px;color:var(--muted)}
+.cart-empty p{font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:8px}
+.cart-empty span{font-size:11px;letter-spacing:2px}
+.cart-footer{padding:24px 36px 36px;border-top:1px solid var(--border)}
+.cart-subtotal{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.cart-subtotal span{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.cart-subtotal strong{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400}
+.cart-ship-note{font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:16px;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.cart-discount-note{font-size:10px;color:var(--muted);margin-bottom:16px;line-height:1.6}
+.go-checkout-btn{width:100%;background:var(--white);color:var(--black);border:none;padding:18px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:4px;text-transform:uppercase;font-weight:700;cursor:none;transition:all .3s;margin-bottom:12px}
+.go-checkout-btn:hover{background:var(--gold)}
+.mp-info{display:flex;align-items:center;justify-content:center;gap:8px;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.mp-info strong{color:#009EE3;font-size:12px;letter-spacing:1px}
+
+/* ============ CHECKOUT PAGE ============ */
+.checkout-page{position:fixed;inset:0;background:var(--black);z-index:500;overflow-y:auto;opacity:0;pointer-events:none;transition:opacity .4s}
+.checkout-page.open{opacity:1;pointer-events:all}
+.co-topbar{height:70px;padding:0 48px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--black);z-index:10}
+.co-back{background:none;border:1px solid var(--border);color:var(--muted);padding:8px 20px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:none;transition:all .2s}
+.co-back:hover{border-color:var(--white);color:var(--white)}
+.co-layout{display:grid;grid-template-columns:1fr 400px;gap:60px;padding:48px 48px 80px;max-width:1200px;margin:0 auto}
+.co-form-title{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;margin-bottom:40px;letter-spacing:-1px}
+.co-step{border:1px solid var(--border);margin-bottom:16px}
+.co-step-head{display:flex;align-items:center;gap:16px;padding:18px 22px;border-bottom:1px solid var(--border);background:var(--gray)}
+.co-num{width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--black);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.co-step-name{font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:600}
+.co-step-body{padding:22px;display:flex;flex-direction:column;gap:14px}
+.co-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.co-field{display:flex;flex-direction:column;gap:7px}
+.co-lbl{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)}
+.co-inp{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:12px 14px;font-family:'Montserrat',sans-serif;font-size:12px;outline:none;transition:border-color .3s;width:100%}
+.co-inp:focus{border-color:var(--gold)}
+.co-inp option{background:var(--gray)}
+.co-textarea{resize:vertical;min-height:72px}
+.co-toggle{display:flex}
+.co-tog-btn{flex:1;padding:11px;text-align:center;border:1px solid var(--border);font-size:11px;letter-spacing:1px;cursor:none;transition:all .2s;color:var(--muted);background:none;font-family:'Montserrat',sans-serif}
+.co-tog-btn.active{background:var(--white);color:var(--black);border-color:var(--white);font-weight:600}
+.co-note{font-size:11px;color:var(--gold);letter-spacing:.5px;line-height:1.7;padding:12px 14px;border:1px solid rgba(201,169,110,.3);background:rgba(201,169,110,.05)}
+.co-consent{display:flex;gap:12px;align-items:flex-start;padding:20px 0;border-top:1px solid var(--border)}
+.co-consent input{margin-top:2px;accent-color:var(--gold);flex-shrink:0}
+.co-consent label{font-size:10px;color:var(--muted);line-height:1.7}
+.co-consent label a{color:var(--gold);text-decoration:none}
+.co-submit{width:100%;background:var(--gold);color:var(--black);border:none;padding:20px;font-family:'Montserrat',sans-serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;font-weight:700;cursor:none;transition:all .3s;margin-bottom:14px}
+.co-submit:hover{background:var(--white)}
+.co-pay-info{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.co-pay-info strong{color:#009EE3;font-size:13px;letter-spacing:1px}
+/* Summary */
+.co-summary-box{background:var(--gray);border:1px solid var(--border);padding:28px;position:sticky;top:90px}
+.co-s-title{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.co-s-item{display:flex;gap:14px;align-items:center;padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.co-s-img{width:52px;height:52px;object-fit:cover;background:var(--mid);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px}
+.co-s-name{font-size:12px;margin-bottom:3px}
+.co-s-variant{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.co-s-price{font-family:'Cormorant Garamond',serif;font-size:18px;white-space:nowrap;margin-left:auto}
+.co-discount-wrap{padding:14px 0;border-bottom:1px solid var(--border);margin-bottom:14px}
+.co-discount-row{display:flex;gap:8px}
+.co-discount-inp{flex:1;background:var(--mid);border:1px solid var(--border);color:var(--white);padding:10px 12px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none}
+.co-discount-btn{background:var(--white);color:var(--black);border:none;padding:10px 14px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;font-weight:700;cursor:none;transition:all .2s;white-space:nowrap}
+.co-discount-btn:hover{background:var(--gold)}
+.co-s-line{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);letter-spacing:.5px;margin-bottom:8px}
+.co-s-total{display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid var(--border);margin-top:4px}
+.co-s-total span:first-child{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);align-self:center}
+.co-s-total span:last-child{font-family:'Cormorant Garamond',serif;font-size:26px}
+
+/* ============ FOOTER ============ */
+footer{background:var(--gray);border-top:1px solid var(--border);padding:80px 48px 40px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:60px;margin-bottom:60px}
+.footer-brand p{font-size:11px;line-height:1.9;color:var(--muted);max-width:280px;margin-top:24px}
+.footer-col h4{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:24px}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:14px}
+.footer-col ul a{color:var(--muted);text-decoration:none;font-size:11px;transition:color .2s}
+.footer-col ul a:hover{color:var(--white)}
+.footer-bottom{border-top:1px solid var(--border);padding-top:32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+.footer-bottom p{font-size:10px;color:var(--muted);letter-spacing:1px}
+.footer-legal{display:flex;gap:24px}
+.footer-legal a{color:var(--muted);text-decoration:none;font-size:10px;letter-spacing:1px;transition:color .2s}
+.footer-legal a:hover{color:var(--white)}
+
+/* ============ LEGAL PAGES ============ */
+.legal-page{display:none;position:fixed;inset:0;background:var(--black);z-index:400;overflow-y:auto;padding:100px 48px 60px}
+.legal-page.active{display:block}
+.legal-close{position:fixed;top:24px;right:48px;background:var(--gray);border:1px solid var(--border);color:var(--white);padding:10px 20px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:2px;cursor:none;transition:all .2s}
+.legal-close:hover{background:var(--white);color:var(--black)}
+.legal-content{max-width:800px;margin:0 auto}
+.legal-content h1{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;margin-bottom:12px}
+.legal-date{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:60px}
+.legal-content h2{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;margin-top:48px;margin-bottom:16px;color:var(--gold)}
+.legal-content p,.legal-content li{font-size:12px;line-height:2;color:var(--muted);margin-bottom:12px}
+.legal-content ul{padding-left:20px}
+
+/* ============ TOAST ============ */
+.toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--white);color:var(--black);padding:16px 32px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;opacity:0;transition:all .4s;z-index:1000;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ============ ANIMATIONS ============ */
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+
+/* ============ RESPONSIVE ============ */
+@media(max-width:900px){
+  header,footer,.products-section,.shipping-banner{padding-left:24px;padding-right:24px}
+  nav{display:none}
+  .hero{padding:0 24px}
+  .hero-bg-letter{display:none}
+  .rfid-banner{grid-template-columns:1fr 1fr}
+  .products-section{padding:80px 24px}
+  .products-grid{grid-template-columns:1fr}
+  .section-header{flex-direction:column;align-items:flex-start;gap:20px}
+  .shipping-banner{gap:32px;padding:32px 24px}
+  .footer-grid{grid-template-columns:1fr 1fr;gap:40px}
+  .modal{grid-template-columns:1fr}
+  .modal-img-col{grid-row:1;grid-column:1;min-height:200px}
+  .modal-thumbs{grid-row:2;grid-column:1}
+  .modal-info{grid-row:3;grid-column:1;padding:28px}
+  footer{padding:60px 24px 40px}
+  .legal-page{padding:80px 24px 60px}
+  .legal-close{right:24px}
+  .cart-sidebar{width:100%}
+  .co-layout{grid-template-columns:1fr;padding:24px}
+  .co-topbar{padding:0 24px}
+  .co-summary-box{position:static}
+  .co-row{grid-template-columns:1fr}
+  body{cursor:auto}
+  .cursor,.cursor-ring{display:none}
+}
+@media(max-width:600px){
+  .rfid-banner{grid-template-columns:1fr}
+  .footer-grid{grid-template-columns:1fr}
+  .footer-bottom{flex-direction:column;text-align:center}
+  .footer-legal{flex-direction:column;align-items:center;gap:12px}
+}
 </style>
 </head>
 <body>
 
-<!-- Custom Cursor -->
 <div class="cursor" id="cursor"></div>
 <div class="cursor-ring" id="cursorRing"></div>
-
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <!-- HEADER -->
@@ -1504,12 +289,10 @@
     <a href="#rfid">Tecnología RFID</a>
     <a href="#envios">Envíos</a>
   </nav>
-  <div class="header-actions">
-    <button class="cart-btn" onclick="toggleCart()">
-      Carrito
-      <span class="cart-count" id="cartCount">0</span>
-    </button>
-  </div>
+  <button class="cart-btn" onclick="toggleCart()">
+    Carrito
+    <span class="cart-count" id="cartCount">0</span>
+  </button>
 </header>
 
 <!-- HERO -->
@@ -1525,31 +308,15 @@
       <a href="#rfid" class="btn-secondary">¿Qué es RFID?</a>
     </div>
   </div>
-  <div class="hero-right">F</div>
+  <div class="hero-bg-letter">F</div>
 </section>
 
-<!-- RFID SECTION -->
+<!-- RFID -->
 <section class="rfid-banner" id="rfid">
-  <div class="rfid-item">
-    <div class="rfid-icon">🛡️</div>
-    <h3>Protección RFID</h3>
-    <p>Blindaje electromagnético que impide la lectura no autorizada de tus tarjetas de crédito, débito y documentos con chip.</p>
-  </div>
-  <div class="rfid-item">
-    <div class="rfid-icon">⚡</div>
-    <h3>Acceso rápido</h3>
-    <p>Botón deslizante lateral que expulsa tus tarjetas al instante. Sin perder tiempo, sin buscar nada.</p>
-  </div>
-  <div class="rfid-item">
-    <div class="rfid-icon">✦</div>
-    <h3>Premium siempre</h3>
-    <p>Eco cuero + estructura de aluminio de alta calidad. Liviana, resistente y con acabado de lujo.</p>
-  </div>
-  <div class="rfid-item">
-    <div class="rfid-icon">📦</div>
-    <h3>Envíos Uruguay</h3>
-    <p>Enviamos a todo el país. Envío gratis en compras desde $2.000 UYU. Pagá con Mercado Pago.</p>
-  </div>
+  <div class="rfid-item"><div class="rfid-icon">🛡️</div><h3>Protección RFID</h3><p>Blindaje electromagnético que impide la lectura no autorizada de tus tarjetas de crédito, débito y documentos con chip.</p></div>
+  <div class="rfid-item"><div class="rfid-icon">⚡</div><h3>Acceso rápido</h3><p>Botón deslizante lateral que expulsa tus tarjetas al instante. Sin perder tiempo, sin buscar nada.</p></div>
+  <div class="rfid-item"><div class="rfid-icon">✦</div><h3>Premium siempre</h3><p>Eco cuero + estructura de aluminio de alta calidad. Liviana, resistente y con acabado de lujo.</p></div>
+  <div class="rfid-item"><div class="rfid-icon">📦</div><h3>Envíos Uruguay</h3><p>Enviamos a todo el país. Envío gratis en compras desde $2.000 UYU. Pagá con Mercado Pago.</p></div>
 </section>
 
 <!-- PRODUCTS -->
@@ -1560,40 +327,20 @@
       <h2 class="section-title">Nuestros<br>modelos</h2>
     </div>
   </div>
-
-  <div class="products-grid" id="productsGrid"></div>
+  <div class="products-grid" id="productsGrid">
+    <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--muted)">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;margin-bottom:12px">Cargando productos...</div>
+      <div style="font-size:10px;letter-spacing:3px">UN MOMENTO</div>
+    </div>
+  </div>
 </section>
 
 <!-- SHIPPING -->
 <div class="shipping-banner" id="envios">
-  <div class="ship-item">
-    <span>🚚</span>
-    <div>
-      <strong>Envíos a todo Uruguay</strong>
-      gratis desde $2.000 UYU
-    </div>
-  </div>
-  <div class="ship-item">
-    <span>💳</span>
-    <div>
-      <strong>Mercado Pago</strong>
-      tarjetas, débito y más
-    </div>
-  </div>
-  <div class="ship-item">
-    <span>💰</span>
-    <div>
-      <strong>10% OFF</strong>
-      en efectivo o transferencia
-    </div>
-  </div>
-  <div class="ship-item">
-    <span>🛡️</span>
-    <div>
-      <strong>Compra segura</strong>
-      datos protegidos
-    </div>
-  </div>
+  <div class="ship-item"><span>🚚</span><div><strong>Envíos a todo Uruguay</strong>gratis desde $2.000 UYU</div></div>
+  <div class="ship-item"><span>💳</span><div><strong>Mercado Pago</strong>tarjetas, débito y más</div></div>
+  <div class="ship-item"><span>💰</span><div><strong>10% OFF</strong>en efectivo o transferencia</div></div>
+  <div class="ship-item"><span>🛡️</span><div><strong>Compra segura</strong>datos protegidos</div></div>
 </div>
 
 <!-- FOOTER -->
@@ -1603,297 +350,155 @@
       <a href="#" class="logo">FOUNDER</a>
       <p>Billeteras y tarjeteros premium con tecnología RFID. Diseñados para quienes cuidan cada detalle. Enviamos a todo Uruguay.</p>
     </div>
-    <div class="footer-col">
-      <h4>Productos</h4>
-      <ul>
-        <li><a href="#productos">Simple</a></li>
-        <li><a href="#productos">Classic</a></li>
-        <li><a href="#productos">Confort</a></li>
-        <li><a href="#productos">Essential</a></li>
-      </ul>
-    </div>
-    <div class="footer-col">
-      <h4>Info</h4>
-      <ul>
-        <li><a href="#rfid">Tecnología RFID</a></li>
-        <li><a href="#envios">Envíos</a></li>
-        <li><a href="https://instagram.com/founder.uy" target="_blank">@founder.uy</a></li>
-        <li><a href="https://wa.me/598098550096" target="_blank">WhatsApp 098 550 096</a></li>
-      </ul>
-    </div>
-    <div class="footer-col">
-      <h4>Legal</h4>
-      <ul>
-        <li><a href="#" onclick="showLegal('privacy')">Política de Privacidad</a></li>
-        <li><a href="#" onclick="showLegal('terms')">Términos y Condiciones</a></li>
-        <li><a href="#" onclick="showLegal('returns')">Cambios y Devoluciones</a></li>
-      </ul>
-    </div>
+    <div class="footer-col"><h4>Productos</h4><ul><li><a href="#productos">Simple</a></li><li><a href="#productos">Classic</a></li><li><a href="#productos">Confort</a></li><li><a href="#productos">Essential</a></li></ul></div>
+    <div class="footer-col"><h4>Info</h4><ul><li><a href="#rfid">Tecnología RFID</a></li><li><a href="#envios">Envíos</a></li><li><a href="https://instagram.com/founder.uy" target="_blank">@founder.uy</a></li><li><a href="https://wa.me/598098550096" target="_blank">WhatsApp</a></li></ul></div>
+    <div class="footer-col"><h4>Legal</h4><ul><li><a href="#" onclick="showLegal('privacy');return false">Política de Privacidad</a></li><li><a href="#" onclick="showLegal('terms');return false">Términos y Condiciones</a></li><li><a href="#" onclick="showLegal('returns');return false">Cambios y Devoluciones</a></li></ul></div>
   </div>
   <div class="footer-bottom">
     <p>© 2025 Founder.uy — Todos los derechos reservados</p>
-    <div class="footer-legal">
-      <a href="#" onclick="showLegal('privacy')">Privacidad</a>
-      <a href="#" onclick="showLegal('terms')">Términos</a>
-    </div>
+    <div class="footer-legal"><a href="#" onclick="showLegal('privacy');return false">Privacidad</a><a href="#" onclick="showLegal('terms');return false">Términos</a></div>
   </div>
 </footer>
 
-<!-- CART SIDEBAR -->
+<!-- CART -->
 <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
 <div class="cart-sidebar" id="cartSidebar">
   <div class="cart-header">
     <span class="cart-title">Mi Carrito</span>
-    <button class="close-cart" onclick="toggleCart()">✕</button>
+    <button class="close-btn" onclick="toggleCart()">✕</button>
   </div>
   <div class="cart-items" id="cartItems">
-    <div class="cart-empty">
-      <p>Tu carrito está vacío</p>
-      <span>Agregá productos para continuar</span>
-    </div>
+    <div class="cart-empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>
   </div>
   <div class="cart-footer" id="cartFooter" style="display:none">
-    <div class="cart-subtotal">
-      <span>Subtotal</span>
-      <strong id="cartTotal">$0</strong>
-    </div>
-    <div class="cart-note" id="shippingNote"></div>
-    <div class="discount-note">💰 Pagando en efectivo o transferencia obtenés un <strong>10% de descuento</strong> adicional.</div>
-    <button class="checkout-btn" onclick="openCheckout()">Finalizar compra</button>
-    <div class="mp-logos">
-      <span>Pagás con</span>
-      <span style="color:#009EE3;font-weight:700;font-size:12px;letter-spacing:1px;">Mercado Pago</span>
-    </div>
+    <div class="cart-subtotal"><span>Subtotal</span><strong id="cartTotal">$0</strong></div>
+    <div class="cart-ship-note" id="cartShipNote"></div>
+    <div class="cart-discount-note">💰 Pagando en efectivo o transferencia obtenés un <strong>10% de descuento</strong>.</div>
+    <button class="go-checkout-btn" onclick="openCheckout()">Finalizar compra</button>
+    <div class="mp-info"><span>Pagás con</span><strong>Mercado Pago</strong></div>
   </div>
 </div>
 
 <!-- PRODUCT MODAL -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-  <div class="modal" id="productModal">
-    <div class="modal-img">
-      <img id="modalImg" src="" alt="">
-    </div>
-    <div id="modalThumbs" style="display:none;gap:4px;padding:4px;background:var(--black);flex-wrap:wrap"></div>
-    <div class="modal-content">
-      <button class="close-modal" onclick="closeModalDirect()">✕</button>
-      <div>
-        <div class="section-label" style="margin-bottom:8px">FOUNDER</div>
-        <div class="modal-name" id="modalName"></div>
-      </div>
+<div class="modal-overlay" id="modalOverlay" onclick="handleModalBg(event)">
+  <div class="modal">
+    <div class="modal-img-col"><img id="modalImg" src="" alt=""></div>
+    <div class="modal-thumbs" id="modalThumbs" style="display:none"></div>
+    <div class="modal-info">
+      <button class="close-modal" onclick="closeModal()">✕</button>
+      <div><div class="modal-label">FOUNDER</div><div class="modal-name" id="modalName"></div></div>
       <div class="modal-specs" id="modalSpecs"></div>
-      <div class="modal-color-section">
-        <h4>Color seleccionado: <span id="selectedColorName"></span></h4>
+      <div>
+        <div class="modal-color-label">Color: <span id="selectedColorName" style="color:var(--white)"></span></div>
         <div class="modal-colors" id="modalColors"></div>
       </div>
-      <div class="modal-footer">
-        <div>
-          <div class="modal-price" id="modalPrice"></div>
-          <div class="modal-price-note">10% OFF pagando en efectivo o transferencia</div>
-        </div>
-        <button class="modal-add-cart" onclick="addFromModal()">Agregar al carrito</button>
+      <div class="modal-footer-section">
+        <div><div class="modal-price" id="modalPrice"></div><div class="modal-price-note">10% OFF en efectivo o transferencia</div></div>
+        <button class="modal-add-btn" onclick="addFromModal()">Agregar al carrito</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- CHECKOUT PAGE -->
-<div class="checkout-overlay" id="checkoutOverlay">
-  <div class="checkout-page">
+<!-- CHECKOUT -->
+<div class="checkout-page" id="checkoutPage">
+  <div class="co-topbar">
+    <a href="#" class="logo" onclick="closeCheckout();return false">FOUNDER</a>
+    <button class="co-back" onclick="closeCheckout()">← Volver</button>
+  </div>
+  <div class="co-layout">
+    <div>
+      <div class="co-form-title">Checkout</div>
 
-    <!-- CHECKOUT HEADER -->
-    <div class="checkout-topbar">
-      <a href="#" class="logo" onclick="closeCheckout();return false;">FOUNDER</a>
-      <button class="checkout-close-btn" onclick="closeCheckout()">✕ Volver</button>
+      <div class="co-step">
+        <div class="co-step-head"><div class="co-num">1</div><div class="co-step-name">Datos personales</div></div>
+        <div class="co-step-body">
+          <div class="co-row">
+            <div class="co-field"><div class="co-lbl">Nombre *</div><input type="text" class="co-inp" id="coNombre" placeholder="Tu nombre"></div>
+            <div class="co-field"><div class="co-lbl">Apellido *</div><input type="text" class="co-inp" id="coApellido" placeholder="Tu apellido"></div>
+          </div>
+          <div class="co-row">
+            <div class="co-field"><div class="co-lbl">Celular *</div><input type="tel" class="co-inp" id="coCelular" placeholder="Ej: 099123456"></div>
+            <div class="co-field"><div class="co-lbl">Email *</div><input type="email" class="co-inp" id="coEmail" placeholder="tu@email.com"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="co-step">
+        <div class="co-step-head"><div class="co-num">2</div><div class="co-step-name">Forma de entrega</div></div>
+        <div class="co-step-body">
+          <div class="co-toggle">
+            <button class="co-tog-btn active" id="btnEnvio" onclick="setEntrega('envio')">🚚 Envío</button>
+            <button class="co-tog-btn" id="btnRetiro" onclick="setEntrega('retiro')">🏪 Retiro</button>
+          </div>
+          <div id="envioFields" style="display:flex;flex-direction:column;gap:14px">
+            <div class="co-row">
+              <div class="co-field">
+                <div class="co-lbl">Departamento *</div>
+                <select class="co-inp" id="coDepartamento">
+                  <option value="">Seleccionar...</option>
+                  <option>Artigas</option><option>Canelones</option><option>Cerro Largo</option>
+                  <option>Colonia</option><option>Durazno</option><option>Flores</option>
+                  <option>Florida</option><option>Lavalleja</option><option>Maldonado</option>
+                  <option>Montevideo</option><option>Paysandú</option><option>Río Negro</option>
+                  <option>Rivera</option><option>Rocha</option><option>Salto</option>
+                  <option>San José</option><option>Soriano</option><option>Tacuarembó</option>
+                  <option>Treinta y Tres</option>
+                </select>
+              </div>
+              <div class="co-field"><div class="co-lbl">Barrio / Localidad</div><input type="text" class="co-inp" id="coBarrio" placeholder="Barrio o localidad"></div>
+            </div>
+            <div class="co-row">
+              <div class="co-field"><div class="co-lbl">Dirección *</div><input type="text" class="co-inp" id="coDireccion" placeholder="Calle"></div>
+              <div class="co-field"><div class="co-lbl">Nro / Apto</div><input type="text" class="co-inp" id="coNroPuerta" placeholder="Ej: 1234 / Apto 5"></div>
+            </div>
+            <div class="co-field"><div class="co-lbl">Observaciones</div><textarea class="co-inp co-textarea" id="coObsEnvio" placeholder="Instrucciones de entrega (opcional)"></textarea></div>
+          </div>
+          <div id="retiroFields" style="display:none;flex-direction:column;gap:14px">
+            <div class="co-row">
+              <div class="co-field"><div class="co-lbl">Nombre de quien retira *</div><input type="text" class="co-inp" id="coNombreRetira" placeholder="Nombre completo"></div>
+              <div class="co-field"><div class="co-lbl">CI de quien retira *</div><input type="text" class="co-inp" id="coCIRetira" placeholder="Ej: 1.234.567-8"></div>
+            </div>
+            <div class="co-field"><div class="co-lbl">Observaciones</div><textarea class="co-inp co-textarea" id="coObsRetiro" placeholder="Comentarios (opcional)"></textarea></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="co-step">
+        <div class="co-step-head"><div class="co-num">3</div><div class="co-step-name">Método de pago</div></div>
+        <div class="co-step-body">
+          <div class="co-toggle">
+            <button class="co-tog-btn" id="btnTransfer" onclick="setPago('transfer')">Transferencia</button>
+            <button class="co-tog-btn active" id="btnMP" onclick="setPago('mercadopago')">Pago en línea (MercadoPago)</button>
+          </div>
+          <div id="transferNote" class="co-note" style="display:none">💰 Pagando por transferencia obtenés un <strong>10% de descuento</strong>. Te enviaremos los datos bancarios por WhatsApp.</div>
+        </div>
+      </div>
+
+      <div class="co-consent">
+        <input type="checkbox" id="coConsent">
+        <label for="coConsent">Acepto la <a href="#" onclick="showLegal('privacy')">Política de Privacidad</a> y los <a href="#" onclick="showLegal('terms')">Términos y Condiciones</a>. Autorizo el tratamiento de mis datos según la Ley N° 18.331 de Uruguay.</label>
+      </div>
+
+      <button class="co-submit" id="coSubmitBtn" onclick="processOrder()">Continuar al pago (Mercado Pago)</button>
+      <div class="co-pay-info"><span>Aceptamos</span><strong>Mercado Pago</strong><span>· Visa · Mastercard · OCA · Prex</span></div>
     </div>
 
-    <div class="checkout-layout">
-
-      <!-- LEFT — FORM -->
-      <div class="checkout-form-col">
-        <h1 class="checkout-main-title">Checkout</h1>
-
-        <!-- STEP 1 — DATOS PERSONALES -->
-        <div class="checkout-step">
-          <div class="checkout-step-header">
-            <div class="step-number">1</div>
-            <div class="step-title">Datos personales</div>
+    <!-- SUMMARY -->
+    <div>
+      <div class="co-summary-box">
+        <div class="co-s-title">Resumen del pedido</div>
+        <div id="coSummaryItems"></div>
+        <div class="co-discount-wrap">
+          <div class="co-lbl" style="margin-bottom:8px">Código de descuento</div>
+          <div class="co-discount-row">
+            <input type="text" class="co-discount-inp" id="coDiscountCode" placeholder="Código">
+            <button class="co-discount-btn" onclick="applyDiscount()">Aplicar</button>
           </div>
-          <div class="checkout-step-body">
-            <div class="co-form-row">
-              <div class="co-form-group">
-                <label class="co-label">Nombre *</label>
-                <input type="text" class="co-input" id="coNombre" placeholder="Tu nombre">
-              </div>
-              <div class="co-form-group">
-                <label class="co-label">Apellido *</label>
-                <input type="text" class="co-input" id="coApellido" placeholder="Tu apellido">
-              </div>
-            </div>
-            <div class="co-form-row">
-              <div class="co-form-group">
-                <label class="co-label">Celular *</label>
-                <input type="tel" class="co-input" id="coCelular" placeholder="Ej: 099123456">
-              </div>
-              <div class="co-form-group">
-                <label class="co-label">Email *</label>
-                <input type="email" class="co-input" id="coEmail" placeholder="tu@email.com">
-              </div>
-            </div>
-          </div>
+          <div id="coDiscountMsg" style="display:none;font-size:10px;margin-top:6px;letter-spacing:1px;color:var(--muted)"></div>
         </div>
-
-        <!-- STEP 2 — FORMA DE ENTREGA -->
-        <div class="checkout-step">
-          <div class="checkout-step-header">
-            <div class="step-number">2</div>
-            <div class="step-title">Forma de entrega</div>
-          </div>
-          <div class="checkout-step-body">
-            <div class="co-toggle-row">
-              <label class="co-toggle-btn" id="btnEnvio">
-                <input type="radio" name="entrega" value="envio" checked onchange="toggleEntrega('envio')">
-                Envío
-              </label>
-              <label class="co-toggle-btn" id="btnRetiro">
-                <input type="radio" name="entrega" value="retiro" onchange="toggleEntrega('retiro')">
-                Retiro
-              </label>
-            </div>
-
-            <!-- ENVÍO FIELDS -->
-            <div id="envioFields">
-              <div class="co-form-row">
-                <div class="co-form-group">
-                  <label class="co-label">Departamento *</label>
-                  <select class="co-input" id="coDepartamento">
-                    <option value="">Seleccionar...</option>
-                    <option>Artigas</option>
-                    <option>Canelones</option>
-                    <option>Cerro Largo</option>
-                    <option>Colonia</option>
-                    <option>Durazno</option>
-                    <option>Flores</option>
-                    <option>Florida</option>
-                    <option>Lavalleja</option>
-                    <option>Maldonado</option>
-                    <option>Montevideo</option>
-                    <option>Paysandú</option>
-                    <option>Río Negro</option>
-                    <option>Rivera</option>
-                    <option>Rocha</option>
-                    <option>Salto</option>
-                    <option>San José</option>
-                    <option>Soriano</option>
-                    <option>Tacuarembó</option>
-                    <option>Treinta y Tres</option>
-                  </select>
-                </div>
-                <div class="co-form-group">
-                  <label class="co-label">Barrio / Localidad *</label>
-                  <input type="text" class="co-input" id="coBarrio" placeholder="Barrio o localidad">
-                </div>
-              </div>
-              <div class="co-form-row">
-                <div class="co-form-group">
-                  <label class="co-label">Dirección *</label>
-                  <input type="text" class="co-input" id="coDireccion" placeholder="Calle">
-                </div>
-                <div class="co-form-group">
-                  <label class="co-label">Nro Puerta / Apto</label>
-                  <input type="text" class="co-input" id="coNroPuerta" placeholder="Ej: 1234 / Apto 5">
-                </div>
-              </div>
-              <div class="co-form-group">
-                <label class="co-label">Observaciones</label>
-                <textarea class="co-input co-textarea" id="coObsEnvio" placeholder="Comentarios sobre tu pedido (opcional)"></textarea>
-              </div>
-            </div>
-
-            <!-- RETIRO FIELDS -->
-            <div id="retiroFields" style="display:none">
-              <div class="co-form-row">
-                <div class="co-form-group">
-                  <label class="co-label">Nombre de quien retira *</label>
-                  <input type="text" class="co-input" id="coNombreRetira" placeholder="Nombre completo">
-                </div>
-                <div class="co-form-group">
-                  <label class="co-label">CI de quien retira *</label>
-                  <input type="text" class="co-input" id="coCIRetira" placeholder="Ej: 1.234.567-8">
-                </div>
-              </div>
-              <div class="co-form-group">
-                <label class="co-label">Observaciones</label>
-                <textarea class="co-input co-textarea" id="coObsRetiro" placeholder="Comentarios sobre tu pedido (opcional)"></textarea>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- STEP 3 — MÉTODO DE PAGO -->
-        <div class="checkout-step">
-          <div class="checkout-step-header">
-            <div class="step-number">3</div>
-            <div class="step-title">Método de pago</div>
-          </div>
-          <div class="checkout-step-body">
-            <div class="co-toggle-row">
-              <label class="co-toggle-btn" id="btnTransfer">
-                <input type="radio" name="pago" value="transfer" onchange="updateCheckoutTotal()">
-                Transferencia
-              </label>
-              <label class="co-toggle-btn active" id="btnMP">
-                <input type="radio" name="pago" value="mercadopago" checked onchange="updateCheckoutTotal()">
-                Pago en línea (MercadoPago)
-              </label>
-            </div>
-            <div id="transferNote" style="display:none" class="co-note">
-              💰 Pagando por transferencia obtenés un <strong>10% de descuento</strong>. Te enviaremos los datos bancarios por WhatsApp.
-            </div>
-          </div>
-        </div>
-
-        <!-- CONSENT -->
-        <div class="co-consent">
-          <input type="checkbox" id="coConsent">
-          <label for="coConsent">
-            Acepto la <a href="#" onclick="showLegal('privacy')">Política de Privacidad</a> y los
-            <a href="#" onclick="showLegal('terms')">Términos y Condiciones</a>.
-            Autorizo el tratamiento de mis datos según la Ley N° 18.331 de Uruguay.
-          </label>
-        </div>
-
-        <!-- SUBMIT -->
-        <button class="co-submit-btn" onclick="processOrder()">
-          Continuar al pago (Mercado Pago)
-        </button>
-        <div class="co-cards-row">
-          <span style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase">Aceptamos</span>
-          <span style="color:#009EE3;font-weight:700;font-size:13px;letter-spacing:1px">Mercado Pago</span>
-          <span style="font-size:11px;color:var(--text-muted)">· Visa · Mastercard · OCA · Prex</span>
-        </div>
+        <div id="coSummaryLines"></div>
       </div>
-
-      <!-- RIGHT — ORDER SUMMARY -->
-      <div class="checkout-summary-col">
-        <div class="co-summary-box">
-          <div class="co-summary-title">Resumen del pedido</div>
-
-          <div id="coSummaryItems"></div>
-
-          <!-- DISCOUNT CODE -->
-          <div class="co-discount-section">
-            <div class="co-label" style="margin-bottom:8px">Código de descuento o regalo</div>
-            <div style="display:flex;gap:8px">
-              <input type="text" class="co-input" id="coDiscountCode" placeholder="Código" style="flex:1">
-              <button class="co-apply-btn" onclick="applyDiscount()">Aplicar</button>
-            </div>
-            <div id="coDiscountMsg" style="display:none;font-size:10px;color:var(--gold);margin-top:6px;letter-spacing:1px"></div>
-          </div>
-
-          <div class="co-summary-lines" id="coSummaryLines"></div>
-        </div>
-      </div>
-
     </div>
   </div>
 </div>
@@ -1902,340 +507,153 @@
 <div class="legal-page" id="legalPrivacy">
   <button class="legal-close" onclick="hideLegal('privacy')">✕ Cerrar</button>
   <div class="legal-content">
-    <h1>Política de Privacidad</h1>
-    <p class="legal-date">Vigente desde: Enero 2025</p>
-
-    <h2>1. Responsable del tratamiento</h2>
-    <p>Founder (en adelante "Founder.uy"), con presencia comercial en la República Oriental del Uruguay, es el responsable del tratamiento de los datos personales recabados a través de este sitio web.</p>
-
-    <h2>2. Marco legal</h2>
-    <p>El tratamiento de datos personales se realiza en cumplimiento de la Ley N° 18.331 de Protección de Datos Personales y Acción de Habeas Data, su Decreto Reglamentario N° 414/009, y demás normativa aplicable en Uruguay.</p>
-
-    <h2>3. Datos que recopilamos</h2>
-    <p>Recopilamos los siguientes datos personales cuando realizás una compra:</p>
-    <ul>
-      <li>Nombre y apellido</li>
-      <li>Dirección de correo electrónico</li>
-      <li>Número de teléfono</li>
-      <li>Dirección de entrega (departamento, ciudad, calle)</li>
-      <li>Información de pago procesada por Mercado Pago (no almacenamos datos de tarjetas)</li>
-    </ul>
-
-    <h2>4. Finalidad del tratamiento</h2>
-    <p>Tus datos personales son utilizados exclusivamente para:</p>
-    <ul>
-      <li>Procesar y coordinar tu pedido</li>
-      <li>Gestionar el envío de productos</li>
-      <li>Comunicarnos con vos en relación a tu compra</li>
-      <li>Cumplir obligaciones legales y comerciales</li>
-    </ul>
-
-    <h2>5. Consentimiento</h2>
-    <p>Al completar el formulario de compra y tildar la casilla de aceptación, otorgás tu consentimiento libre, expreso e informado para el tratamiento de tus datos personales según lo establecido en esta política, de conformidad con el artículo 9 de la Ley N° 18.331.</p>
-
-    <h2>6. Seguridad</h2>
-    <p>Implementamos medidas técnicas y organizativas adecuadas para proteger tus datos personales contra accesos no autorizados, pérdida o destrucción accidental.</p>
-
-    <h2>7. Compartir datos con terceros</h2>
-    <p>No compartimos tus datos personales con terceros salvo cuando sea estrictamente necesario para el cumplimiento del servicio (empresa de logística/envíos) o por obligación legal. Mercado Pago gestiona los datos de pago bajo sus propias políticas de privacidad.</p>
-
-    <h2>8. Plazo de conservación</h2>
-    <p>Conservamos tus datos durante el tiempo necesario para cumplir con las finalidades descritas y las obligaciones legales vigentes, no superando los 5 años desde la última transacción.</p>
-
-    <h2>9. Tus derechos</h2>
-    <p>De acuerdo al artículo 13 de la Ley N° 18.331, tenés derecho a:</p>
-    <ul>
-      <li><strong>Acceso:</strong> conocer qué datos tuyos tenemos registrados</li>
-      <li><strong>Rectificación:</strong> corregir datos inexactos o incompletos</li>
-      <li><strong>Supresión:</strong> solicitar la eliminación de tus datos</li>
-      <li><strong>Impugnación:</strong> oponerte al tratamiento en determinadas circunstancias</li>
-    </ul>
-    <p>Para ejercer estos derechos, contactanos por Instagram @founder.uy.</p>
-
-    <h2>10. Cambios a esta política</h2>
-    <p>Nos reservamos el derecho de actualizar esta política. Te notificaremos sobre cambios significativos a través de nuestros canales de comunicación.</p>
+    <h1>Política de Privacidad</h1><p class="legal-date">Vigente desde: Enero 2025</p>
+    <h2>1. Responsable del tratamiento</h2><p>Founder (Founder.uy), con presencia comercial en la República Oriental del Uruguay, es el responsable del tratamiento de los datos personales recabados a través de este sitio web.</p>
+    <h2>2. Marco legal</h2><p>El tratamiento de datos personales se realiza en cumplimiento de la Ley N° 18.331 de Protección de Datos Personales y Acción de Habeas Data, su Decreto Reglamentario N° 414/009, y demás normativa aplicable en Uruguay.</p>
+    <h2>3. Datos que recopilamos</h2><ul><li>Nombre y apellido</li><li>Correo electrónico</li><li>Número de teléfono</li><li>Dirección de entrega</li><li>Información de pago procesada por Mercado Pago</li></ul>
+    <h2>4. Finalidad</h2><p>Tus datos se usan exclusivamente para procesar tu pedido, gestionar el envío y cumplir obligaciones legales.</p>
+    <h2>5. Consentimiento</h2><p>Al completar el formulario de compra y aceptar esta política, otorgás tu consentimiento libre e informado conforme al artículo 9 de la Ley N° 18.331.</p>
+    <h2>6. Seguridad</h2><p>Implementamos medidas técnicas y organizativas adecuadas para proteger tus datos contra accesos no autorizados.</p>
+    <h2>7. Tus derechos</h2><p>Tenés derecho a acceso, rectificación, supresión e impugnación de tus datos. Contactanos por Instagram @founder.uy.</p>
   </div>
 </div>
 
 <div class="legal-page" id="legalTerms">
   <button class="legal-close" onclick="hideLegal('terms')">✕ Cerrar</button>
   <div class="legal-content">
-    <h1>Términos y Condiciones</h1>
-    <p class="legal-date">Vigente desde: Enero 2025</p>
-
-    <h2>1. Aceptación</h2>
-    <p>Al realizar una compra en Founder.uy, aceptás estos Términos y Condiciones en su totalidad. Si no estás de acuerdo, no realices la compra.</p>
-
-    <h2>2. Productos</h2>
-    <p>Todos los productos Founder incluyen tecnología RFID y están fabricados con eco cuero y aluminio de alta calidad. Las fotografías son referenciales; los colores reales pueden variar levemente según la pantalla.</p>
-
-    <h2>3. Precios</h2>
-    <p>Los precios están expresados en Pesos Uruguayos (UYU) e incluyen IVA. Founder.uy se reserva el derecho de modificar precios sin previo aviso. Se aplica el precio vigente al momento de confirmar el pedido.</p>
-
-    <h2>4. Descuentos</h2>
-    <p>Se aplica un descuento del 10% para pagos en efectivo o transferencia bancaria. Este descuento no es acumulable con otras promociones.</p>
-
-    <h2>5. Proceso de compra</h2>
-    <p>Al confirmar el pedido, nos contactaremos con vos por email o WhatsApp para coordinar el pago y el envío. El pedido se considera confirmado una vez que el pago es acreditado.</p>
-
-    <h2>6. Envíos</h2>
-    <ul>
-      <li>Enviamos a todo el territorio nacional uruguayo</li>
-      <li>Envío gratis en compras desde $2.000 UYU</li>
-      <li>El plazo de entrega es de 3 a 7 días hábiles según el departamento</li>
-      <li>Founder.uy no se responsabiliza por demoras causadas por la empresa de logística</li>
-    </ul>
-
-    <h2>7. Cambios y devoluciones</h2>
-    <p>Ver nuestra Política de Cambios y Devoluciones para más información.</p>
-
-    <h2>8. Propiedad intelectual</h2>
-    <p>Todo el contenido de este sitio (imágenes, textos, logo, diseño) es propiedad de Founder.uy y está protegido por las leyes de propiedad intelectual vigentes en Uruguay.</p>
-
-    <h2>9. Jurisdicción</h2>
-    <p>Ante cualquier controversia, las partes se someten a la jurisdicción de los Tribunales de la República Oriental del Uruguay.</p>
+    <h1>Términos y Condiciones</h1><p class="legal-date">Vigente desde: Enero 2025</p>
+    <h2>1. Aceptación</h2><p>Al realizar una compra en Founder.uy, aceptás estos Términos y Condiciones en su totalidad.</p>
+    <h2>2. Productos</h2><p>Todos los productos incluyen tecnología RFID y están fabricados con eco cuero y aluminio de alta calidad.</p>
+    <h2>3. Precios</h2><p>Los precios están expresados en Pesos Uruguayos (UYU). Se aplica el precio vigente al momento de confirmar el pedido.</p>
+    <h2>4. Descuentos</h2><p>Se aplica un descuento del 10% para pagos en efectivo o transferencia bancaria. No acumulable con otras promociones.</p>
+    <h2>5. Envíos</h2><ul><li>Enviamos a todo el territorio nacional uruguayo</li><li>Envío gratis en compras desde $2.000 UYU</li><li>Plazo de entrega: 3 a 7 días hábiles</li></ul>
+    <h2>6. Jurisdicción</h2><p>Ante cualquier controversia, las partes se someten a la jurisdicción de los Tribunales de la República Oriental del Uruguay.</p>
   </div>
 </div>
 
 <div class="legal-page" id="legalReturns">
   <button class="legal-close" onclick="hideLegal('returns')">✕ Cerrar</button>
   <div class="legal-content">
-    <h1>Cambios y Devoluciones</h1>
-    <p class="legal-date">Vigente desde: Enero 2025</p>
-
-    <h2>Política de cambios</h2>
-    <p>Aceptamos cambios dentro de los 7 días corridos de recibido el producto, siempre que:</p>
-    <ul>
-      <li>El producto esté sin uso, en su estado original</li>
-      <li>Conserve el empaque y etiquetas originales</li>
-      <li>Se presente el comprobante de compra</li>
-    </ul>
-
-    <h2>Cambio por defecto de fábrica</h2>
-    <p>Si el producto tiene un defecto de fábrica, lo cambiamos o reintegramos el importe sin costo adicional para vos. El plazo para reclamar es de 30 días desde la recepción.</p>
-
-    <h2>Cómo solicitar un cambio</h2>
-    <p>Contactanos por Instagram @founder.uy indicando tu número de pedido y el motivo del cambio. Te responderemos en un plazo máximo de 48 horas hábiles.</p>
-
-    <h2>Costos de envío en cambios</h2>
-    <p>Los gastos de envío para cambios por gusto o error en el pedido (color, modelo) corren por cuenta del comprador. En caso de defecto de fábrica, Founder.uy cubre los costos de envío.</p>
-
-    <h2>Devolución de dinero</h2>
-    <p>Las devoluciones de dinero se procesan dentro de los 10 días hábiles de aprobado el cambio, por el mismo medio de pago utilizado originalmente.</p>
+    <h1>Cambios y Devoluciones</h1><p class="legal-date">Vigente desde: Enero 2025</p>
+    <h2>Política de cambios</h2><p>Aceptamos cambios dentro de los 7 días corridos de recibido el producto, sin uso, en su estado original y con comprobante de compra.</p>
+    <h2>Defecto de fábrica</h2><p>Si el producto tiene un defecto de fábrica, lo cambiamos o reintegramos el importe sin costo. Plazo: 30 días desde la recepción.</p>
+    <h2>Cómo solicitar un cambio</h2><p>Contactanos por Instagram @founder.uy indicando tu número de pedido y el motivo. Respondemos en 48 horas hábiles.</p>
   </div>
 </div>
 
 <script>
-// ============ CONFIG ============
-const SHEET_ID = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
-const SHEET_URL       = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`;
-const SHEET_FOTOS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`;
+// ============ CONFIG — UN SOLO LUGAR ============
+const SHEET_ID        = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
+const SHEET_PRODUCTOS = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`;
+const SHEET_FOTOS     = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`;
+const WA_NUMBER       = '598098550096';
+const FREE_SHIPPING   = 2000;
+const SHIPPING_COST   = 150;
 
 const COLOR_MAP = {
-  'Negro':         { hex: '#1a1a1a' },
-  'Marrón':        { hex: '#8b4513' },
-  'Marrón Oscuro': { hex: '#3d2010' },
-  'Gris Oscuro':   { hex: '#4a4a5a' },
-  'Azul':          { hex: '#1a3a5c' },
-  'Rosa':          { hex: '#d4a0a0' },
-  'Rojo':          { hex: '#8b1a1a' },
-  'Crema':         { hex: '#d4c8a8' },
-  'Carbon':        { hex: '#2a2a2a', pattern: true },
-  'Verde Oliva':   { hex: '#4a5a2a' },
+  'Negro':{hex:'#1a1a1a'},'Marrón':{hex:'#8b4513'},'Marrón Oscuro':{hex:'#3d2010'},
+  'Gris Oscuro':{hex:'#4a4a5a'},'Azul':{hex:'#1a3a5c'},'Rosa':{hex:'#d4a0a0'},
+  'Rojo':{hex:'#8b1a1a'},'Crema':{hex:'#d4c8a8'},'Carbon':{hex:'#2a2a2a',pattern:true},
+  'Verde Oliva':{hex:'#4a5a2a'}
 };
 
-// ============ DATA ============
-let products = [];
-// photoMap[modelo][color] = [foto1, foto2, foto3, foto4, foto5]
-let photoMap = {};
+// ============ STATE ============
+let products = [], photoMap = {}, cart = [];
+let currentProduct = null, currentColor = null;
+let entregaMode = 'envio', pagoMode = 'mercadopago';
 
-async function loadProductsFromSheets() {
-  document.getElementById('productsGrid').innerHTML = `
-    <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--text-muted)">
-      <div style="font-family:'Cormorant Garamond',serif;font-size:28px;margin-bottom:12px">Cargando productos...</div>
-      <div style="font-size:10px;letter-spacing:3px">UN MOMENTO</div>
-    </div>
-  `;
-
+// ============ INIT ============
+async function init() {
   try {
-    // Load both sheets in parallel
-    const [resProducts, resFotos] = await Promise.all([
-      fetch(SHEET_URL + '&t=' + Date.now()),
-      fetch(SHEET_FOTOS_URL + '&t=' + Date.now())
+    const [rP, rF] = await Promise.all([
+      fetch(SHEET_PRODUCTOS + '&t=' + Date.now()),
+      fetch(SHEET_FOTOS     + '&t=' + Date.now())
     ]);
+    const [tP, tF] = [await rP.text(), await rF.text()];
+    const jP = JSON.parse(tP.substring(47, tP.length - 2));
+    const jF = JSON.parse(tF.substring(47, tF.length - 2));
 
-    const textProducts = await resProducts.text();
-    const textFotos    = await resFotos.text();
-
-    const jsonProducts = JSON.parse(textProducts.substring(47, textProducts.length - 2));
-    const jsonFotos    = JSON.parse(textFotos.substring(47, textFotos.length - 2));
-
-    // Build photoMap from fotos sheet
+    // Build photoMap
     photoMap = {};
-    if (jsonFotos.table.rows) {
-      jsonFotos.table.rows.forEach(row => {
-        const modelo = row.c[0]?.v || '';
-        const color  = row.c[1]?.v || '';
-        const fotos  = [
-          row.c[2]?.v || null,
-          row.c[3]?.v || null,
-          row.c[4]?.v || null,
-          row.c[5]?.v || null,
-          row.c[6]?.v || null,
-        ].filter(f => f);
-        if (modelo && color) {
-          if (!photoMap[modelo]) photoMap[modelo] = {};
-          photoMap[modelo][color] = fotos;
-        }
-      });
-    }
-
-    // Build products
-    products = jsonProducts.table.rows.map((row, i) => {
-      const nombre     = row.c[0]?.v || '';
-      const precio     = parseInt(row.c[1]?.v) || 0;
-      const desc       = row.c[2]?.v || '';
-      const coloresStr = row.c[3]?.v || '';
-      const specsStr   = row.c[4]?.v || '';
-
-      const colores = coloresStr.split(',').map(c => {
-        const n = c.trim();
-        return { name: n, ...(COLOR_MAP[n] || { hex: '#555' }) };
-      });
-
-      const specs = specsStr.split('|').map(s => s.trim());
-
-      // Main image = first photo of first color that has photos
-      let mainImage = null;
-      if (photoMap[nombre]) {
-        const firstColorWithPhoto = colores.find(c => photoMap[nombre][c.name]?.length > 0);
-        if (firstColorWithPhoto) mainImage = photoMap[nombre][firstColorWithPhoto.name][0];
+    (jF.table.rows || []).forEach(row => {
+      const modelo = row.c[0]?.v || '', color = row.c[1]?.v || '';
+      const fotos  = [row.c[2]?.v,row.c[3]?.v,row.c[4]?.v,row.c[5]?.v,row.c[6]?.v].filter(Boolean);
+      if (modelo && color) {
+        if (!photoMap[modelo]) photoMap[modelo] = {};
+        photoMap[modelo][color] = fotos;
       }
-
-      return { id: i+1, name: nombre, subtitle: specs[0]||'', price: precio,
-               description: desc, specs, colors: colores, image: mainImage };
     });
 
-    renderProducts();
+    // Build products
+    products = (jP.table.rows || []).map((row, i) => ({
+      id: i + 1,
+      name:   row.c[0]?.v || '',
+      price:  parseInt(row.c[1]?.v) || 0,
+      desc:   row.c[2]?.v || '',
+      colors: (row.c[3]?.v || '').split(',').map(c => { const n = c.trim(); return { name: n, ...(COLOR_MAP[n] || {hex:'#555'}) }; }),
+      specs:  (row.c[4]?.v || '').split('|').map(s => s.trim())
+    }));
 
-  } catch (err) {
-    console.error(err);
-    document.getElementById('productsGrid').innerHTML = `
-      <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--text-muted)">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;margin-bottom:12px">Error al cargar productos</div>
-        <div style="font-size:11px;letter-spacing:1px">Verificá tu conexión e intentá de nuevo</div>
-      </div>
-    `;
+    renderProducts();
+    // Observe cards after render
+    document.querySelectorAll('.product-card,.rfid-item').forEach(el => revealObserver.observe(el));
+  } catch(e) {
+    document.getElementById('productsGrid').innerHTML =
+      '<div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--muted)"><div style="font-family:\'Cormorant Garamond\',serif;font-size:28px">Error al cargar. Recargá la página.</div></div>';
   }
 }
 
-// Get photos for a product+color combination
-function getPhotos(modelName, colorName) {
-  return (photoMap[modelName] && photoMap[modelName][colorName]) || [];
+function getPhotos(model, color) {
+  return (photoMap[model]?.[color]) || [];
 }
-
-// ============ STATE ============
-let cart = [];
-let currentProduct = null;
-let currentColor = null;
 
 // ============ RENDER PRODUCTS ============
 function renderProducts() {
-  const grid = document.getElementById('productsGrid');
-  grid.innerHTML = products.map(p => `
+  document.getElementById('productsGrid').innerHTML = products.map(p => {
+    const firstPhoto = Object.values(photoMap[p.name] || {}).flat()[0] || null;
+    const swatches   = p.colors.slice(0, 4).map(c => `
+      <div style="width:36px;height:52px;border-radius:3px;box-shadow:0 4px 20px rgba(0,0,0,.5);background:${
+        c.pattern ? 'repeating-linear-gradient(45deg,#1a1a1a 0,#1a1a1a 4px,#222 4px,#222 8px)' : c.hex
+      }"></div>`).join('');
+
+    return `
     <div class="product-card">
       <div class="product-img-wrap" onclick="openModal(${p.id})">
-        ${p.image ? `
-          <img src="${p.image}" alt="Founder ${p.name}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.8s ease;filter:brightness(0.85);" onmouseover="this.style.transform='scale(1.05)';this.style.filter='brightness(1)'" onmouseout="this.style.transform='scale(1)';this.style.filter='brightness(0.85)'">
-        ` : `
-        <div style="
-          width:100%;height:100%;
-          display:flex;align-items:center;justify-content:center;
-          background: linear-gradient(135deg, #111 0%, #1a1a1a 50%, #0d0d0d 100%);
-          position:relative;overflow:hidden;
-        ">
-          <div style="
-            font-family:'Cormorant Garamond',serif;
-            font-size:clamp(80px,12vw,140px);
-            font-weight:300;
-            color:rgba(255,255,255,0.04);
-            letter-spacing:-4px;
-            position:absolute;
-            right:-10px;bottom:-20px;
-            line-height:1;
-          ">${p.name.toUpperCase()}</div>
-          <div style="
-            display:flex;flex-direction:column;align-items:center;
-            gap:20px;position:relative;z-index:2;
-          ">
-            <div style="
-              display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 20px;
-            ">
-              ${p.colors.slice(0,4).map(c => `
-                <div style="
-                  width:36px;height:52px;
-                  background:${c.hex};
-                  border-radius:3px;
-                  box-shadow:0 4px 20px rgba(0,0,0,0.5);
-                  ${c.pattern ? 'background:repeating-linear-gradient(45deg,#1a1a1a 0px,#1a1a1a 4px,#222 4px,#222 8px);' : ''}
-                "></div>
-              `).join('')}
-            </div>
-            <div style="
-              font-family:'Cormorant Garamond',serif;
-              font-size:14px;
-              letter-spacing:4px;
-              color:rgba(255,255,255,0.3);
-              text-transform:uppercase;
-            ">FOUNDER</div>
-          </div>
-        </div>
-        `}
+        ${firstPhoto
+          ? `<img src="${firstPhoto}" alt="Founder ${p.name}">`
+          : `<div class="product-placeholder">
+               <div style="font-family:'Cormorant Garamond',serif;font-size:clamp(60px,10vw,120px);font-weight:300;color:rgba(255,255,255,.04);position:absolute;right:-5px;bottom:-15px;line-height:1">${p.name.toUpperCase()}</div>
+               <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 20px;position:relative;z-index:1">${swatches}</div>
+             </div>`}
         <div class="product-badge">RFID</div>
       </div>
       <div class="product-info">
+        <div><div class="product-subtitle">Billetera / Tarjetero RFID</div><div class="product-name">Founder ${p.name}</div></div>
+        <div class="product-desc">${p.desc}</div>
+        <div class="product-specs">${p.specs.slice(0,3).map(s=>`<div class="spec-item">${s}</div>`).join('')}</div>
         <div>
-          <div style="font-size:9px;letter-spacing:3px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">${p.subtitle}</div>
-          <div class="product-name">Founder ${p.name}</div>
-        </div>
-        <div class="product-desc">${p.description}</div>
-        <div class="product-specs">
-          ${p.specs.slice(0,3).map(s => `<div class="spec-item">${s}</div>`).join('')}
-        </div>
-        <div>
-          <div class="colors-label">Colores disponibles</div>
-          <div class="product-colors" style="margin-top:8px">
-            ${p.colors.map(c => `
-              <div class="color-dot" 
-                   style="background:${c.hex};${c.pattern ? 'background:repeating-linear-gradient(45deg,#1a1a1a 0px,#1a1a1a 3px,#222 3px,#222 6px);' : ''}" 
-                   title="${c.name}"></div>
-            `).join('')}
-          </div>
+          <div class="colors-label" style="margin-bottom:8px">Colores disponibles</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">${p.colors.map(c=>`
+            <div class="color-dot" title="${c.name}" style="background:${
+              c.pattern ? 'repeating-linear-gradient(45deg,#1a1a1a 0,#1a1a1a 3px,#222 3px,#222 6px)' : c.hex
+            }"></div>`).join('')}</div>
         </div>
         <div class="product-footer">
-          <div class="product-price">
-            <div class="price-main">$${p.price.toLocaleString('es-UY')} UYU</div>
-            <div class="price-discount">10% OFF efectivo/transferencia</div>
-          </div>
+          <div><div class="price-main">$${p.price.toLocaleString('es-UY')} UYU</div><div class="price-discount">10% OFF efectivo/transferencia</div></div>
           <button class="add-to-cart" onclick="openModal(${p.id})">Ver detalles</button>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
-// ============ MODAL ============
+// ============ PRODUCT MODAL ============
 function openModal(id) {
   currentProduct = products.find(p => p.id === id);
-  currentColor = currentProduct.colors[0];
-
-  document.getElementById('modalName').textContent = `Founder ${currentProduct.name}`;
-  document.getElementById('modalSpecs').innerHTML = currentProduct.specs.map(s =>
-    `<div class="modal-spec">${s}</div>`
-  ).join('');
+  currentColor   = currentProduct.colors[0];
+  document.getElementById('modalName').textContent  = `Founder ${currentProduct.name}`;
   document.getElementById('modalPrice').textContent = `$${currentProduct.price.toLocaleString('es-UY')} UYU`;
-  document.getElementById('selectedColorName').textContent = currentColor.name;
-
+  document.getElementById('modalSpecs').innerHTML   = currentProduct.specs.map(s=>`<div class="modal-spec">${s}</div>`).join('');
   updateModalGallery();
   renderModalColors();
   document.getElementById('modalOverlay').classList.add('open');
@@ -2244,446 +662,278 @@ function openModal(id) {
 
 function updateModalGallery() {
   const photos = getPhotos(currentProduct.name, currentColor.name);
-  const mainImg = document.getElementById('modalImg');
+  const img    = document.getElementById('modalImg');
+  const thumbs = document.getElementById('modalThumbs');
 
-  if (photos.length > 0) {
-    mainImg.src = photos[0];
-    mainImg.style.background = '';
-  } else {
-    mainImg.src = '';
-    mainImg.style.background = 'linear-gradient(135deg, #111, #1a1a1a)';
-  }
+  img.src = photos[0] || '';
+  img.style.background  = photos.length ? '' : 'linear-gradient(135deg,#111,#1a1a1a)';
+  img.style.minHeight   = photos.length ? '' : '280px';
 
-  // Thumbnails
-  const thumbsContainer = document.getElementById('modalThumbs');
   if (photos.length > 1) {
-    thumbsContainer.style.display = 'flex';
-    thumbsContainer.innerHTML = photos.map((p, i) => `
-      <div onclick="setModalMainPhoto('${p}', this)"
-           style="
-             width:60px;height:60px;flex-shrink:0;
-             border:2px solid ${i===0 ? 'var(--gold)' : 'transparent'};
-             cursor:pointer;overflow:hidden;background:#111;
-             transition:border-color 0.2s;
-           ">
-        <img src="${p}" style="width:100%;height:100%;object-fit:cover">
-      </div>
-    `).join('');
+    thumbs.style.display = 'flex';
+    thumbs.innerHTML = photos.map((p,i) =>
+      `<img src="${p}" class="modal-thumb ${i===0?'active':''}" onclick="setMainPhoto('${p}',this)">`).join('');
   } else {
-    thumbsContainer.style.display = 'none';
-    thumbsContainer.innerHTML = '';
+    thumbs.style.display = 'none';
   }
 }
 
-function setModalMainPhoto(src, el) {
+function setMainPhoto(src, el) {
   document.getElementById('modalImg').src = src;
-  document.querySelectorAll('#modalThumbs > div').forEach(d => d.style.borderColor = 'transparent');
-  el.style.borderColor = 'var(--gold)';
+  document.querySelectorAll('.modal-thumb').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
 }
 
 function renderModalColors() {
-  const container = document.getElementById('modalColors');
-  container.innerHTML = currentProduct.colors.map((c, i) => `
+  document.getElementById('selectedColorName').textContent = currentColor.name;
+  document.getElementById('modalColors').innerHTML = currentProduct.colors.map((c,i) => `
     <div class="color-option ${c.name === currentColor.name ? 'active' : ''}" onclick="selectColor(${i})">
-      <div class="color-swatch" style="background:${c.hex};${c.pattern ? 'background:repeating-linear-gradient(45deg,#1a1a1a 0px,#1a1a1a 3px,#222 3px,#222 6px);' : ''}"></div>
-      <div class="color-name-label">${c.name}</div>
-    </div>
-  `).join('');
+      <div class="color-swatch" style="background:${c.pattern
+        ? 'repeating-linear-gradient(45deg,#1a1a1a 0,#1a1a1a 3px,#222 3px,#222 6px)' : c.hex}"></div>
+      <div class="color-option-name">${c.name}</div>
+    </div>`).join('');
 }
 
-function selectColor(index) {
-  currentColor = currentProduct.colors[index];
-  document.getElementById('selectedColorName').textContent = currentColor.name;
+function selectColor(i) {
+  currentColor = currentProduct.colors[i];
   updateModalGallery();
   renderModalColors();
 }
 
-function closeModal(e) {
-  if (e.target === document.getElementById('modalOverlay')) closeModalDirect();
-}
-
-function closeModalDirect() {
-  document.getElementById('modalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
-}
-
+function handleModalBg(e) { if (e.target.id === 'modalOverlay') closeModal(); }
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); document.body.style.overflow=''; }
 function addFromModal() {
   if (!currentColor) { showToast('Seleccioná un color'); return; }
   addToCart(currentProduct, currentColor);
-  closeModalDirect();
+  closeModal();
 }
 
 // ============ CART ============
 function addToCart(product, color) {
-  const existing = cart.find(i => i.id === product.id && i.color === color.name);
-  if (existing) {
-    existing.qty++;
-  } else {
-    cart.push({ id: product.id, name: product.name, color: color.name, price: product.price, qty: 1 });
-  }
+  const ex = cart.find(i => i.id === product.id && i.color === color.name);
+  if (ex) ex.qty++;
+  else cart.push({ id:product.id, name:product.name, color:color.name, price:product.price, qty:1 });
   updateCart();
   showToast(`Founder ${product.name} — ${color.name} agregado`);
 }
 
 function updateCart() {
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const count = cart.reduce((s, i) => s + i.qty, 0);
+  const total = cart.reduce((s,i) => s + i.price * i.qty, 0);
+  const count = cart.reduce((s,i) => s + i.qty, 0);
 
-  // Count badge
   const badge = document.getElementById('cartCount');
   badge.style.display = count > 0 ? 'flex' : 'none';
-  badge.textContent = count;
+  badge.textContent   = count;
 
-  // Items
-  const container = document.getElementById('cartItems');
+  const items  = document.getElementById('cartItems');
   const footer = document.getElementById('cartFooter');
 
-  if (cart.length === 0) {
-    container.innerHTML = '<div class="cart-empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>';
+  if (!cart.length) {
+    items.innerHTML = '<div class="cart-empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>';
     footer.style.display = 'none';
     return;
   }
 
   footer.style.display = 'block';
-  container.innerHTML = cart.map((item, idx) => `
+  items.innerHTML = cart.map((item,idx) => `
     <div class="cart-item">
       <div class="cart-item-info">
         <div class="cart-item-name">Founder ${item.name}</div>
         <div class="cart-item-variant">${item.color}</div>
-        <div class="cart-item-controls">
-          <button class="qty-btn" onclick="changeQty(${idx}, -1)">−</button>
-          <span class="qty-display">${item.qty}</span>
-          <button class="qty-btn" onclick="changeQty(${idx}, 1)">+</button>
+        <div class="cart-controls">
+          <button class="qty-btn" onclick="changeQty(${idx},-1)">−</button>
+          <span class="qty-val">${item.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px">
-        <div class="cart-item-price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
+        <div class="cart-item-price">$${(item.price*item.qty).toLocaleString('es-UY')}</div>
         <button class="remove-item" onclick="removeItem(${idx})">✕</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 
   document.getElementById('cartTotal').textContent = `$${total.toLocaleString('es-UY')} UYU`;
-
-  const shippingNote = document.getElementById('shippingNote');
-  if (total >= 2000) {
-    shippingNote.textContent = '🎉 ¡Tenés envío gratis!';
-    shippingNote.style.color = 'var(--gold)';
-  } else {
-    const remaining = 2000 - total;
-    shippingNote.textContent = `Agregá $${remaining.toLocaleString('es-UY')} más para envío gratis`;
-    shippingNote.style.color = 'var(--text-muted)';
-  }
+  const note = document.getElementById('cartShipNote');
+  if (total >= FREE_SHIPPING) { note.textContent='🎉 ¡Tenés envío gratis!'; note.style.color='var(--gold)'; }
+  else { note.textContent=`Agregá $${(FREE_SHIPPING-total).toLocaleString('es-UY')} más para envío gratis`; note.style.color='var(--muted)'; }
 }
 
-function changeQty(idx, delta) {
-  cart[idx].qty += delta;
-  if (cart[idx].qty <= 0) cart.splice(idx, 1);
-  updateCart();
-}
-
-function removeItem(idx) {
-  cart.splice(idx, 1);
-  updateCart();
-}
+function changeQty(idx, d) { cart[idx].qty += d; if(cart[idx].qty<=0) cart.splice(idx,1); updateCart(); }
+function removeItem(idx)    { cart.splice(idx,1); updateCart(); }
 
 function toggleCart() {
-  const sidebar = document.getElementById('cartSidebar');
-  const overlay = document.getElementById('cartOverlay');
-  sidebar.classList.toggle('open');
-  overlay.classList.toggle('open');
-  document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : '';
+  document.getElementById('cartSidebar').classList.toggle('open');
+  document.getElementById('cartOverlay').classList.toggle('open');
+  document.body.style.overflow = document.getElementById('cartSidebar').classList.contains('open') ? 'hidden' : '';
 }
 
 // ============ CHECKOUT ============
 function openCheckout() {
-  if (cart.length === 0) return;
+  if (!cart.length) return;
   toggleCart();
-  renderCheckoutSummary();
-  document.getElementById('checkoutOverlay').classList.add('open');
+  renderSummary();
+  document.getElementById('checkoutPage').classList.add('open');
   document.body.style.overflow = 'hidden';
-  window.scrollTo(0,0);
 }
 
 function closeCheckout() {
-  document.getElementById('checkoutOverlay').classList.remove('open');
+  document.getElementById('checkoutPage').classList.remove('open');
   document.body.style.overflow = '';
 }
 
-function toggleEntrega(tipo) {
-  const envioFields  = document.getElementById('envioFields');
-  const retiroFields = document.getElementById('retiroFields');
-  const btnEnvio     = document.getElementById('btnEnvio');
-  const btnRetiro    = document.getElementById('btnRetiro');
-
-  if (tipo === 'envio') {
-    envioFields.style.display  = 'flex';
-    envioFields.style.flexDirection = 'column';
-    envioFields.style.gap = '16px';
-    retiroFields.style.display = 'none';
-    btnEnvio.classList.add('active');
-    btnRetiro.classList.remove('active');
-  } else {
-    envioFields.style.display  = 'none';
-    retiroFields.style.display = 'flex';
-    retiroFields.style.flexDirection = 'column';
-    retiroFields.style.gap = '16px';
-    btnRetiro.classList.add('active');
-    btnEnvio.classList.remove('active');
-  }
-  renderCheckoutSummary();
+function setEntrega(mode) {
+  entregaMode = mode;
+  document.getElementById('envioFields').style.display  = mode==='envio' ? 'flex' : 'none';
+  document.getElementById('retiroFields').style.display = mode==='retiro' ? 'flex' : 'none';
+  document.getElementById('btnEnvio').classList.toggle('active',  mode==='envio');
+  document.getElementById('btnRetiro').classList.toggle('active', mode==='retiro');
+  renderSummary();
 }
 
-function updateCheckoutTotal() {
-  const method = document.querySelector('input[name="pago"]:checked')?.value;
-  const transferNote = document.getElementById('transferNote');
-  const submitBtn = document.querySelector('.co-submit-btn');
-
-  if (method === 'transfer') {
-    transferNote.style.display = 'block';
-    if (submitBtn) submitBtn.textContent = 'Confirmar pedido (Transferencia)';
-  } else {
-    transferNote.style.display = 'none';
-    if (submitBtn) submitBtn.textContent = 'Continuar al pago (Mercado Pago)';
-  }
-  renderCheckoutSummary();
+function setPago(mode) {
+  pagoMode = mode;
+  document.getElementById('btnMP').classList.toggle('active',       mode==='mercadopago');
+  document.getElementById('btnTransfer').classList.toggle('active', mode==='transfer');
+  document.getElementById('transferNote').style.display = mode==='transfer' ? 'block' : 'none';
+  document.getElementById('coSubmitBtn').textContent    = mode==='transfer'
+    ? 'Confirmar pedido (Transferencia)' : 'Continuar al pago (Mercado Pago)';
+  renderSummary();
 }
 
 function applyDiscount() {
-  const code = document.getElementById('coDiscountCode').value.trim().toUpperCase();
+  const code = document.getElementById('coDiscountCode').value.trim();
   const msg  = document.getElementById('coDiscountMsg');
-  // Placeholder — códigos reales se agregarán después
-  if (code) {
-    msg.style.display = 'block';
-    msg.textContent = '⚠️ Código no válido. Los códigos de descuento estarán disponibles próximamente.';
-    msg.style.color = 'var(--text-muted)';
-  }
+  if (code) { msg.style.display='block'; msg.textContent='⚠️ Los códigos de descuento estarán disponibles próximamente.'; }
 }
 
-function renderCheckoutSummary() {
-  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const method   = document.querySelector('input[name="pago"]:checked')?.value;
-  const discount = method === 'transfer' ? 0.10 : 0;
-  const entrega  = document.querySelector('input[name="entrega"]:checked')?.value;
-  const shipping = subtotal >= 2000 ? 0 : (entrega === 'retiro' ? 0 : 150);
-  const total    = Math.round(subtotal * (1 - discount)) + shipping;
+function renderSummary() {
+  const subtotal = cart.reduce((s,i) => s + i.price * i.qty, 0);
+  const discount = pagoMode==='transfer' ? 0.10 : 0;
+  const shipping = entregaMode==='retiro' ? 0 : (subtotal>=FREE_SHIPPING ? 0 : SHIPPING_COST);
+  const total    = Math.round(subtotal * (1-discount)) + shipping;
 
-  // Items
-  const itemsContainer = document.getElementById('coSummaryItems');
-  if (itemsContainer) {
-    itemsContainer.innerHTML = cart.map(item => {
-      const product = products.find(p => p.name === item.name);
-      const photos  = product ? getPhotos(product.name, item.color) : [];
-      const imgSrc  = photos[0] || '';
-      return `
-        <div class="co-summary-item">
-          ${imgSrc
-            ? `<img src="${imgSrc}" class="co-summary-item-img" alt="${item.name}">`
-            : `<div class="co-summary-item-img" style="display:flex;align-items:center;justify-content:center;font-size:20px">👜</div>`
-          }
-          <div class="co-summary-item-info">
-            <div class="co-summary-item-name">Founder ${item.name} × ${item.qty}</div>
-            <div class="co-summary-item-variant">${item.color}</div>
-          </div>
-          <div class="co-summary-item-price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
-        </div>
-      `;
-    }).join('');
-  }
+  document.getElementById('coSummaryItems').innerHTML = cart.map(item => {
+    const p     = products.find(x => x.name===item.name);
+    const photo = p ? (getPhotos(p.name, item.color)[0] || null) : null;
+    return `
+      <div class="co-s-item">
+        ${photo ? `<img src="${photo}" class="co-s-img" alt="">` : `<div class="co-s-img">👜</div>`}
+        <div style="flex:1"><div class="co-s-name">Founder ${item.name} × ${item.qty}</div><div class="co-s-variant">${item.color}</div></div>
+        <div class="co-s-price">$${(item.price*item.qty).toLocaleString('es-UY')}</div>
+      </div>`;
+  }).join('');
 
-  // Lines
-  const linesContainer = document.getElementById('coSummaryLines');
-  if (linesContainer) {
-    let html = `<div class="co-summary-line"><span>Subtotal</span><span>$${subtotal.toLocaleString('es-UY')}</span></div>`;
-    if (discount > 0) html += `<div class="co-summary-line"><span>Descuento transferencia</span><span style="color:var(--gold)">−$${(subtotal * discount).toLocaleString('es-UY')}</span></div>`;
-    html += `<div class="co-summary-line"><span>Envío</span><span>${shipping === 0 ? 'Gratis' : '$' + shipping.toLocaleString('es-UY')}</span></div>`;
-    html += `<div class="co-summary-line total"><span>Total</span><span>$${total.toLocaleString('es-UY')} UYU</span></div>`;
-    linesContainer.innerHTML = html;
-  }
-}
-
-// ============ SHEETS CONFIG ============
-const STORE_SHEET_ID = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
-
-async function saveOrderToSheets(orderData) {
-  try {
-    // Get current number of rows to determine next row
-    const checkUrl = `https://docs.google.com/spreadsheets/d/${STORE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=pedidos&t=${Date.now()}`;
-    const res  = await fetch(checkUrl);
-    const text = await res.text();
-    const json = JSON.parse(text.substring(47, text.length - 2));
-    const nextRow = (json.table.rows?.length || 0) + 2;
-
-    // Save using public append — no auth needed for public sheet writes via form
-    // We'll use a Google Form submission approach via fetch to Apps Script
-    // For now save via the sheet's public API trick
-    const values = [
-      orderData.id, orderData.fecha, orderData.nombre, orderData.apellido,
-      orderData.celular, orderData.email, orderData.entrega, orderData.direccion,
-      orderData.productos, orderData.subtotal, orderData.descuento,
-      orderData.envio, orderData.total, orderData.pago, 'Pendiente', orderData.notas
-    ];
-
-    // Store in localStorage as backup (accessible by admin on same browser)
-    const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
-    stored.push(orderData);
-    localStorage.setItem('founder_pedidos', JSON.stringify(stored));
-
-  } catch(e) {
-    console.log('Sheets save skipped:', e);
-  }
+  let html = `<div class="co-s-line"><span>Subtotal</span><span>$${subtotal.toLocaleString('es-UY')}</span></div>`;
+  if (discount>0) html += `<div class="co-s-line"><span>Descuento 10%</span><span style="color:var(--gold)">−$${Math.round(subtotal*discount).toLocaleString('es-UY')}</span></div>`;
+  html += `<div class="co-s-line"><span>Envío</span><span>${shipping===0 ? '🎉 Gratis' : '$'+shipping.toLocaleString('es-UY')}</span></div>`;
+  html += `<div class="co-s-total"><span>Total</span><span>$${total.toLocaleString('es-UY')} UYU</span></div>`;
+  document.getElementById('coSummaryLines').innerHTML = html;
 }
 
 function processOrder() {
-  const nombre   = document.getElementById('coNombre')?.value.trim();
-  const apellido = document.getElementById('coApellido')?.value.trim();
-  const celular  = document.getElementById('coCelular')?.value.trim();
-  const email    = document.getElementById('coEmail')?.value.trim();
-  const entrega  = document.querySelector('input[name="entrega"]:checked')?.value;
-  const pago     = document.querySelector('input[name="pago"]:checked')?.value;
-  const consent  = document.getElementById('coConsent')?.checked;
+  const nombre   = document.getElementById('coNombre').value.trim();
+  const apellido = document.getElementById('coApellido').value.trim();
+  const celular  = document.getElementById('coCelular').value.trim();
+  const email    = document.getElementById('coEmail').value.trim();
 
-  if (!nombre || !apellido || !celular || !email) {
-    showToast('Completá todos los datos personales'); return;
-  }
+  if (!nombre||!apellido||!celular||!email) { showToast('Completá todos los datos personales'); return; }
 
-  if (entrega === 'envio') {
-    const depto = document.getElementById('coDepartamento')?.value;
-    const dir   = document.getElementById('coDireccion')?.value.trim();
-    if (!depto || !dir) { showToast('Completá los datos de envío'); return; }
+  if (entregaMode==='envio') {
+    if (!document.getElementById('coDepartamento').value || !document.getElementById('coDireccion').value.trim())
+      { showToast('Completá los datos de envío'); return; }
   } else {
-    const nombreRetira = document.getElementById('coNombreRetira')?.value.trim();
-    const ci           = document.getElementById('coCIRetira')?.value.trim();
-    if (!nombreRetira || !ci) { showToast('Completá los datos de retiro'); return; }
+    if (!document.getElementById('coNombreRetira').value.trim() || !document.getElementById('coCIRetira').value.trim())
+      { showToast('Completá los datos de retiro'); return; }
   }
 
-  if (!consent) { showToast('Debés aceptar la política de privacidad'); return; }
+  if (!document.getElementById('coConsent').checked) { showToast('Debés aceptar la política de privacidad'); return; }
 
-  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const discount = pago === 'transfer' ? 0.10 : 0;
-  const shipping = subtotal >= 2000 ? 0 : (entrega === 'retiro' ? 0 : 150);
-  const total    = Math.round(subtotal * (1 - discount)) + shipping;
+  const subtotal = cart.reduce((s,i) => s + i.price * i.qty, 0);
+  const discount = pagoMode==='transfer' ? 0.10 : 0;
+  const shipping = entregaMode==='retiro' ? 0 : (subtotal>=FREE_SHIPPING ? 0 : SHIPPING_COST);
+  const total    = Math.round(subtotal * (1-discount)) + shipping;
 
-  const orderLines     = cart.map(i => `Founder ${i.name} (${i.color}) x${i.qty}`).join(' | ');
-  const orderLinesWA   = cart.map(i => `- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price*i.qty).toLocaleString('es-UY')}`).join('\n');
+  const lines = cart.map(i=>`- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price*i.qty).toLocaleString('es-UY')}`).join('\n');
 
   let entregaInfo = '';
-  let direccion   = '';
-  let notas       = '';
-
-  if (entrega === 'envio') {
-    const depto  = document.getElementById('coDepartamento')?.value;
-    const barrio = document.getElementById('coBarrio')?.value;
-    const dir    = document.getElementById('coDireccion')?.value;
-    const nro    = document.getElementById('coNroPuerta')?.value;
-    notas        = document.getElementById('coObsEnvio')?.value || '';
-    direccion    = `${dir} ${nro}, ${barrio}, ${depto}`;
-    entregaInfo  = `📍 *Envío a:* ${direccion}\n${notas ? `📝 Obs: ${notas}` : ''}`;
+  if (entregaMode==='envio') {
+    const d=document.getElementById('coDepartamento').value, b=document.getElementById('coBarrio').value,
+          dir=document.getElementById('coDireccion').value, n=document.getElementById('coNroPuerta').value,
+          obs=document.getElementById('coObsEnvio').value;
+    entregaInfo = `📍 *Envío:* ${dir} ${n}, ${b}, ${d}${obs?'\n📝 '+obs:''}`;
   } else {
-    const quienRetira = document.getElementById('coNombreRetira')?.value;
-    const ci          = document.getElementById('coCIRetira')?.value;
-    notas             = document.getElementById('coObsRetiro')?.value || '';
-    direccion         = `Retiro — ${quienRetira} (CI: ${ci})`;
-    entregaInfo       = `🏪 *Retiro en tienda*\nRetira: ${quienRetira} (CI: ${ci})\n${notas ? `📝 Obs: ${notas}` : ''}`;
+    const q=document.getElementById('coNombreRetira').value, ci=document.getElementById('coCIRetira').value,
+          obs=document.getElementById('coObsRetiro').value;
+    entregaInfo = `🏪 *Retiro en tienda*\nRetira: ${q} (CI: ${ci})${obs?'\n📝 '+obs:''}`;
   }
 
-  // Build order object
-  const orderId   = 'F' + Date.now().toString().slice(-6);
-  const orderData = {
-    id: orderId,
-    fecha: new Date().toLocaleString('es-UY'),
+  // Save to localStorage for admin panel
+  const orderId = 'F' + Date.now().toString().slice(-6);
+  const order   = {
+    id:orderId, fecha:new Date().toLocaleString('es-UY'),
     nombre, apellido, celular, email,
-    entrega: entrega === 'envio' ? 'Envío' : 'Retiro',
-    direccion,
-    productos: orderLines,
-    subtotal, descuento: Math.round(subtotal * discount),
-    envio: shipping, total,
-    pago: pago === 'mercadopago' ? 'Mercado Pago' : 'Transferencia',
-    estado: pago === 'transfer' ? 'Pendiente pago' : 'Pendiente confirmación',
-    notas
+    entrega: entregaMode==='envio' ? 'Envío' : 'Retiro',
+    direccion: entregaMode==='envio'
+      ? `${document.getElementById('coDireccion').value}, ${document.getElementById('coBarrio').value}, ${document.getElementById('coDepartamento').value}`
+      : `Retiro — ${document.getElementById('coNombreRetira').value}`,
+    productos: cart.map(i=>`Founder ${i.name} (${i.color}) x${i.qty}`).join(' | '),
+    subtotal, descuento:Math.round(subtotal*discount), envio:shipping, total,
+    pago: pagoMode==='mercadopago' ? 'Mercado Pago' : 'Transferencia',
+    estado: pagoMode==='transfer' ? 'Pendiente pago' : 'Pendiente confirmación',
+    notas: ''
   };
+  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+  stored.push(order);
+  localStorage.setItem('founder_pedidos', JSON.stringify(stored));
 
-  // Save to localStorage (admin panel reads from here)
-  saveOrderToSheets(orderData);
-
-  // Send WhatsApp
-  const waMsg = encodeURIComponent(
-    `🛍️ *NUEVO PEDIDO FOUNDER — ${orderId}*\n\n` +
-    `👤 *${nombre} ${apellido}*\n📱 ${celular}\n📧 ${email}\n\n` +
-    `🛒 *PRODUCTOS:*\n${orderLinesWA}\n\n` +
-    `${entregaInfo}\n\n` +
-    `💳 *Pago:* ${pago === 'mercadopago' ? 'Mercado Pago' : 'Transferencia (-10%)'}\n` +
-    `💰 *Total:* $${total.toLocaleString('es-UY')} UYU\n\n` +
-    `🔖 *ID:* ${orderId}`
-  );
-
-  window.open(`https://wa.me/598098550096?text=${waMsg}`, '_blank');
+  // WhatsApp
+  window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
+    `🛍️ *NUEVO PEDIDO FOUNDER — ${orderId}*\n\n👤 *${nombre} ${apellido}*\n📱 ${celular}\n📧 ${email}\n\n🛒 *PRODUCTOS:*\n${lines}\n\n${entregaInfo}\n\n💳 *Pago:* ${pagoMode==='mercadopago'?'Mercado Pago':'Transferencia (-10%)'}\n💰 *Total:* $${total.toLocaleString('es-UY')} UYU\n🔖 *ID:* ${orderId}`
+  )}`, '_blank');
 
   cart = [];
   updateCart();
   closeCheckout();
-  showToast(`¡Pedido ${orderId} enviado! Te contactaremos pronto 🎉`);
+  showToast(`¡Pedido ${orderId} enviado! 🎉`);
 }
 
 // ============ LEGAL ============
-function showLegal(page) {
-  const pages = { privacy: 'legalPrivacy', terms: 'legalTerms', returns: 'legalReturns' };
-  document.getElementById(pages[page]).classList.add('active');
-  document.body.style.overflow = 'hidden';
-}
-
-function hideLegal(page) {
-  const pages = { privacy: 'legalPrivacy', terms: 'legalTerms', returns: 'legalReturns' };
-  document.getElementById(pages[page]).classList.remove('active');
-  document.body.style.overflow = '';
-}
+function showLegal(p) { const m={privacy:'legalPrivacy',terms:'legalTerms',returns:'legalReturns'}; document.getElementById(m[p]).classList.add('active'); document.body.style.overflow='hidden'; }
+function hideLegal(p) { const m={privacy:'legalPrivacy',terms:'legalTerms',returns:'legalReturns'}; document.getElementById(m[p]).classList.remove('active'); document.body.style.overflow=''; }
 
 // ============ TOAST ============
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
 // ============ CURSOR ============
 const cursor = document.getElementById('cursor');
-const ring = document.getElementById('cursorRing');
-let mx = 0, my = 0, rx = 0, ry = 0;
-
-document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-
-function animateCursor() {
-  cursor.style.left = mx + 'px';
-  cursor.style.top = my + 'px';
-  rx += (mx - rx) * 0.12;
-  ry += (my - ry) * 0.12;
-  ring.style.left = rx + 'px';
-  ring.style.top = ry + 'px';
-  requestAnimationFrame(animateCursor);
-}
-animateCursor();
-
-document.querySelectorAll('a, button, .product-card, .color-dot, .color-option, .payment-option').forEach(el => {
+const ring   = document.getElementById('cursorRing');
+let mx=0, my=0, rx=0, ry=0;
+document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; });
+(function animate() {
+  cursor.style.left=mx+'px'; cursor.style.top=my+'px';
+  rx+=(mx-rx)*.12; ry+=(my-ry)*.12;
+  ring.style.left=rx+'px'; ring.style.top=ry+'px';
+  requestAnimationFrame(animate);
+})();
+document.querySelectorAll('a,button,.product-card,.color-dot,.color-option').forEach(el => {
   el.addEventListener('mouseenter', () => ring.classList.add('hover'));
   el.addEventListener('mouseleave', () => ring.classList.remove('hover'));
 });
 
-// ============ INIT ============
-loadProductsFromSheets();
-updateCart();
-
-// Scroll reveal
-const observer = new IntersectionObserver(entries => {
+// ============ SCROLL REVEAL ============
+const revealObserver = new IntersectionObserver(entries => {
   entries.forEach(e => {
-    if (e.isIntersecting) {
-      e.target.style.animation = 'fadeUp 0.8s ease both';
-      observer.unobserve(e.target);
-    }
+    if (e.isIntersecting) { e.target.style.animation='fadeUp .8s ease both'; revealObserver.unobserve(e.target); }
   });
 }, { threshold: 0.1 });
+document.querySelectorAll('.rfid-item').forEach(el => revealObserver.observe(el));
 
-document.querySelectorAll('.product-card, .rfid-item').forEach(el => observer.observe(el));
+// ============ START ============
+init();
 </script>
 </body>
 </html>
