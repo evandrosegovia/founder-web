@@ -420,6 +420,14 @@ a { color: inherit; text-decoration: none; }
   text-transform: uppercase; font-weight: 700; cursor: none; transition: all var(--transition-base);
 }
 .modal__add-btn:hover { background: var(--color-gold); }
+.modal__detail-link {
+  display: block; text-align: center;
+  font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--color-muted); text-decoration: none;
+  padding: 10px; border: 1px solid var(--color-border);
+  transition: all var(--transition-base);
+}
+.modal__detail-link:hover { color: var(--color-gold); border-color: var(--color-gold); }
 
 /* ── CART SIDEBAR ─────────────────────────────────────────── */
 .cart-overlay {
@@ -679,7 +687,7 @@ a { color: inherit; text-decoration: none; }
       <a href="#" class="logo" aria-label="Founder - Inicio">FOUNDER</a>
       <p>Billeteras y tarjeteros premium con tecnología RFID. Diseñados para quienes cuidan cada detalle. Enviamos a todo Uruguay.</p>
     </div>
-    <div class="footer__col"><h4>Productos</h4><ul><li><a href="#productos">Simple</a></li><li><a href="#productos">Classic</a></li><li><a href="#productos">Confort</a></li><li><a href="#productos">Essential</a></li></ul></div>
+    <div class="footer__col"><h4>Productos</h4><ul><li><a href="producto.html?p=Simple">Simple</a></li><li><a href="producto.html?p=Classic">Classic</a></li><li><a href="producto.html?p=Confort">Confort</a></li><li><a href="producto.html?p=Essential">Essential</a></li></ul></div>
     <div class="footer__col"><h4>Info</h4><ul><li><a href="#rfid">Tecnología RFID</a></li><li><a href="#envios">Envíos</a></li><li><a href="https://instagram.com/founder.uy" target="_blank" rel="noopener">@founder.uy</a></li><li><a href="https://wa.me/598098550096" target="_blank" rel="noopener">WhatsApp</a></li></ul></div>
     <div class="footer__col"><h4>Legal</h4><ul><li><a href="#" onclick="showLegal('privacy');return false">Política de Privacidad</a></li><li><a href="#" onclick="showLegal('terms');return false">Términos y Condiciones</a></li><li><a href="#" onclick="showLegal('returns');return false">Cambios y Devoluciones</a></li></ul></div>
   </div>
@@ -728,6 +736,7 @@ a { color: inherit; text-decoration: none; }
       <div class="modal__footer">
         <div><div class="modal__price" id="modalPrice"></div><div class="modal__price-note">10% OFF en efectivo o transferencia</div></div>
         <button class="modal__add-btn" onclick="addFromModal()">Agregar al carrito</button>
+        <a id="modalDetailLink" href="#" class="modal__detail-link">Ver página completa →</a>
       </div>
     </div>
   </div>
@@ -1021,7 +1030,7 @@ function renderProductCard(p) {
             <div class="price">$${p.price.toLocaleString('es-UY')} UYU</div>
             <div class="price-note">10% OFF efectivo/transferencia</div>
           </div>
-          <a href="producto.html?p=${encodeURIComponent(p.name)}" class="btn btn--primary btn--sm">Ver detalles</a>
+          <button class="btn btn--primary btn--sm" onclick="openModal(p.id)">Vista rápida</button>
         </div>
       </div>
     </article>`;
@@ -1036,6 +1045,10 @@ function openModal(id) {
   setText('modalName',  `Founder ${state.currentProduct.name}`);
   setText('modalPrice', `$${state.currentProduct.price.toLocaleString('es-UY')} UYU`);
   setHTML('modalSpecs',  state.currentProduct.specs.map(s => `<div class="modal__spec">${s}</div>`).join(''));
+
+  // Actualizar link "Ver página completa"
+  const detailLink = $('modalDetailLink');
+  if (detailLink) detailLink.href = `producto.html?p=${encodeURIComponent(state.currentProduct.name)}`;
 
   updateModalGallery();
   renderModalColors();
