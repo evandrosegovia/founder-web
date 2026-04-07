@@ -368,28 +368,12 @@ textarea.fi{resize:vertical;min-height:70px}
           </div>
         </div>
         <div class="card" style="margin-top:14px">
-          <div class="card-head"><div class="card-title">Código a agregar en index.html</div></div>
-          <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
-            <div class="fhint" style="line-height:1.9">
-              Para que el banner funcione en el sitio público, pegá este código al final del <code style="color:var(--gold)">&lt;script&gt;</code> principal de tu <strong>index.html</strong>, antes del cierre <code style="color:var(--gold)">&lt;/script&gt;</code>:
+          <div class="card-head"><div class="card-title">✅ Integración automática</div></div>
+          <div class="card-body">
+            <div class="info-box">
+              El banner se guarda directamente en <strong>Google Sheets</strong> y se carga automáticamente en el sitio para <strong>todos los visitantes</strong> en todos los navegadores.<br><br>
+              No necesitás tocar ningún código. Subí la imagen, hacé click en <strong>Guardar banner</strong> y listo.
             </div>
-            <div style="background:var(--mid);border:1px solid var(--border);padding:14px;font-size:10px;font-family:monospace;color:var(--gold);line-height:1.8;word-break:break-all">
-              // Cargar banner desde admin<br>
-              (function(){<br>
-              &nbsp;&nbsp;const bUrl = localStorage.getItem('founder_banner_url');<br>
-              &nbsp;&nbsp;if(bUrl){<br>
-              &nbsp;&nbsp;&nbsp;&nbsp;const hero = document.querySelector('.hero');<br>
-              &nbsp;&nbsp;&nbsp;&nbsp;if(hero){<br>
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const img = document.createElement('img');<br>
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;img.src = bUrl;<br>
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.35;pointer-events:none;';<br>
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hero.style.position='relative';<br>
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hero.insertBefore(img, hero.firstChild);<br>
-              &nbsp;&nbsp;&nbsp;&nbsp;}<br>
-              &nbsp;&nbsp;}<br>
-              })();
-            </div>
-            <button class="btn btn-secondary btn-sm" onclick="copyBannerCode()" style="align-self:flex-start">📋 Copiar código</button>
           </div>
         </div>
       </div>
@@ -498,7 +482,7 @@ textarea.fi{resize:vertical;min-height:70px}
     <button class="drive-gate-btn" id="driveGateBtn" onclick="connectDriveGate()">
       <span>Conectar con Google</span>
     </button>
-    <div class="drive-gate-hint">Usá la cuenta <strong>founder.uy@gmail.com</strong></div>
+    <div class="drive-gate-hint">Usá la cuenta <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fe98918b909a9b8cd08b87be99939f9792d09d9193">[email&#160;protected]</a></strong></div>
     <button class="drive-gate-skip" onclick="skipDriveGate()">Continuar sin conectar (solo lectura)</button>
   </div>
 </div>
@@ -516,7 +500,7 @@ textarea.fi{resize:vertical;min-height:70px}
   </div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ============================================================
 // CONFIG
 // ============================================================
@@ -1362,20 +1346,28 @@ function changeOrderStatus(id, newStatus) {
 // ============================================================
 // BANNER
 // ============================================================
-function loadBannerPreview() {
-  const url = localStorage.getItem('founder_banner_url');
-  const prev = document.getElementById('bannerPreview');
-  const empty = document.getElementById('bannerPreviewEmpty');
-  if (url) {
-    empty.style.display = 'none';
-    let img = prev.querySelector('img');
-    if (!img) { img = document.createElement('img'); prev.appendChild(img); }
-    img.src = url;
-    document.getElementById('bannerInput').value = url;
-  } else {
-    empty.style.display = 'block';
-    const img = prev.querySelector('img');
-    if (img) img.remove();
+async function loadBannerPreview() {
+  // Leer banner desde Sheets columna F2
+  try {
+    const r = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos&t=` + Date.now());
+    const t = await r.text();
+    const j = JSON.parse(t.substring(47, t.length - 2));
+    const url = j.table.rows?.[0]?.c?.[5]?.v || '';
+    const prev = document.getElementById('bannerPreview');
+    const empty = document.getElementById('bannerPreviewEmpty');
+    if (url) {
+      empty.style.display = 'none';
+      let img = prev.querySelector('img');
+      if (!img) { img = document.createElement('img'); prev.appendChild(img); }
+      img.src = url;
+      document.getElementById('bannerInput').value = url;
+    } else {
+      empty.style.display = 'block';
+      const img = prev.querySelector('img');
+      if (img) img.remove();
+    }
+  } catch(e) {
+    console.error('Error cargando banner:', e);
   }
 }
 
@@ -1390,22 +1382,48 @@ function previewBanner() {
   toast('Vista previa cargada');
 }
 
-function saveBanner() {
+async function saveBanner() {
   const url = document.getElementById('bannerInput').value.trim();
   if (!url) { toast('Ingresá un link de imagen', true); return; }
-  localStorage.setItem('founder_banner_url', url);
-  previewBanner();
-  toast('✅ Banner guardado');
+  if (!driveReady) { toast('Conectate a Drive para guardar el banner', true); return; }
+  try {
+    // Guardar en Sheets columna F2 de la hoja productos
+    await writeBannerToSheet(url);
+    previewBanner();
+    toast('✅ Banner guardado en Sheets — visible en todos los navegadores');
+  } catch(e) {
+    toast('Error al guardar banner', true);
+    console.error(e);
+  }
 }
 
-function clearBanner() {
-  localStorage.removeItem('founder_banner_url');
-  document.getElementById('bannerInput').value = '';
-  const prev = document.getElementById('bannerPreview');
-  const img = prev.querySelector('img');
-  if (img) img.remove();
-  document.getElementById('bannerPreviewEmpty').style.display = 'block';
-  toast('Banner removido');
+async function clearBanner() {
+  if (!driveReady) { toast('Conectate a Drive para quitar el banner', true); return; }
+  if (!confirm('¿Estás seguro de quitar el banner? Se eliminará para todos los visitantes.')) return;
+  try {
+    await writeBannerToSheet('');
+    document.getElementById('bannerInput').value = '';
+    const prev = document.getElementById('bannerPreview');
+    const img = prev.querySelector('img');
+    if (img) img.remove();
+    document.getElementById('bannerPreviewEmpty').style.display = 'block';
+    toast('✅ Banner eliminado de Sheets');
+  } catch(e) {
+    toast('Error al quitar banner', true);
+    console.error(e);
+  }
+}
+
+// Escribe o borra el banner en la celda F2 de la hoja productos
+async function writeBannerToSheet(url) {
+  const range = 'productos!F2';
+  const sheetUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+  const res = await fetch(sheetUrl, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [[url]] })
+  });
+  if (!res.ok) throw new Error(await res.text());
 }
 
 function pickBannerFile() {
@@ -1435,9 +1453,10 @@ function pickBannerFile() {
       });
       const link = `https://lh3.googleusercontent.com/d/${fileId}`;
       document.getElementById('bannerInput').value = link;
-      localStorage.setItem('founder_banner_url', link);
+      // Guardar en Sheets automáticamente
+      await writeBannerToSheet(link);
       previewBanner();
-      toast('✅ Banner subido y guardado');
+      toast('✅ Banner subido y guardado en Sheets');
     } catch(e) {
       toast('Error al subir la imagen', true);
       console.error(e);
@@ -1446,10 +1465,7 @@ function pickBannerFile() {
   f.click();
 }
 
-function copyBannerCode() {
-  const code = `// Cargar banner desde admin\n(function(){\n  const bUrl = localStorage.getItem('founder_banner_url');\n  if(bUrl){\n    const hero = document.querySelector('.hero');\n    if(hero){\n      const img = document.createElement('img');\n      img.src = bUrl;\n      img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.35;pointer-events:none;';\n      hero.style.position='relative';\n      hero.insertBefore(img, hero.firstChild);\n    }\n  }\n})();`;
-  navigator.clipboard.writeText(code).then(() => toast('📋 Código copiado')).catch(() => toast('No se pudo copiar', true));
-}
+// copyBannerCode — removido, banner ahora usa Sheets directamente
 
 // ============================================================
 // CONVERSOR DE LINKS
@@ -1505,14 +1521,4 @@ function toast(msg, isErr = false) {
 // ============================================================
 window.onload = () => {
   // Si el script de Google ya está cargado, iniciar token client
-  if (typeof google !== 'undefined' && google.accounts) {
-    initGoogleClient();
-  }
-};
-</script>
-
-<!-- Google Identity Services -->
-<script src="https://accounts.google.com/gsi/client" onload="initGoogleClient()" async defer></script>
-
-</body>
-</html>
+  if (typeof google !==
