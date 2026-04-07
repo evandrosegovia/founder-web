@@ -996,7 +996,7 @@ function renderProductCard(p) {
 
   return `
     <article class="product-card" role="listitem">
-      <div class="product-card__img-wrap" onclick="openModal(${p.id})">
+      <a class="product-card__img-wrap" href="producto.html?p=${encodeURIComponent(p.name)}" aria-label="Ver Founder ${p.name}">
         ${firstPhoto
           ? `<img src="${firstPhoto}" alt="Founder ${p.name}" loading="lazy">`
           : `<div class="product-card__placeholder">
@@ -1004,7 +1004,7 @@ function renderProductCard(p) {
                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 20px;position:relative;z-index:1">${swatches}</div>
              </div>`}
         <div class="product-card__badge">RFID</div>
-      </div>
+      </a>
       <div class="product-card__body">
         <div>
           <div class="product-card__subtitle">Billetera / Tarjetero RFID</div>
@@ -1021,7 +1021,7 @@ function renderProductCard(p) {
             <div class="price">$${p.price.toLocaleString('es-UY')} UYU</div>
             <div class="price-note">10% OFF efectivo/transferencia</div>
           </div>
-          <button class="btn btn--primary btn--sm" onclick="openModal(${p.id})">Ver detalles</button>
+          <a href="producto.html?p=${encodeURIComponent(p.name)}" class="btn btn--primary btn--sm">Ver detalles</a>
         </div>
       </div>
     </article>`;
