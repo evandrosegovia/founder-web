@@ -1030,7 +1030,7 @@ function renderProductCard(p) {
             <div class="price">$${p.price.toLocaleString('es-UY')} UYU</div>
             <div class="price-note">10% OFF efectivo/transferencia</div>
           </div>
-          <button class="btn btn--primary btn--sm" onclick="openModal(p.id)">Vista rápida</button>
+          <button class="btn btn--primary btn--sm" onclick="openModal(${p.id});event.preventDefault();event.stopPropagation()">Vista rápida</button>
         </div>
       </div>
     </article>`;
@@ -1038,6 +1038,7 @@ function renderProductCard(p) {
 
 // ── MODAL ─────────────────────────────────────────────────────
 function openModal(id) {
+  id = parseInt(id);
   state.currentProduct = state.products.find(p => p.id === id);
   if (!state.currentProduct) return;
   state.currentColor = state.currentProduct.colors[0];
