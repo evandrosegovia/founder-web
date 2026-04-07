@@ -317,10 +317,17 @@ textarea.fi{resize:vertical;min-height:70px}
               <strong>Formato recomendado:</strong> imagen apaisada (1920×600px), oscura o con texto blanco encima. Funciona mejor con imágenes de Google Drive convertidas.
             </div>
             <div class="fg">
-              <div class="fl">Link de imagen (Google Drive convertido o directo)</div>
-              <div class="conv-row">
-                <input type="text" class="conv-inp" id="bannerInput" placeholder="https://lh3.googleusercontent.com/d/...">
-                <button class="conv-btn" onclick="previewBanner()">Vista previa</button>
+              <div class="fl">Subir imagen desde tu computadora</div>
+              <button class="btn btn-primary" onclick="pickBannerFile()" style="align-self:flex-start">📁 Elegir imagen del equipo</button>
+              <div class="fhint" style="margin-top:4px">Requiere estar conectado a Google Drive. La imagen se sube automáticamente y se guarda como banner.</div>
+            </div>
+            <div style="border-top:1px solid var(--border);padding-top:14px">
+              <div class="fg">
+                <div class="fl">O pegá un link de Google Drive convertido</div>
+                <div class="conv-row">
+                  <input type="text" class="conv-inp" id="bannerInput" placeholder="https://lh3.googleusercontent.com/d/...">
+                  <button class="conv-btn" onclick="previewBanner()">Vista previa</button>
+                </div>
               </div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -425,7 +432,7 @@ textarea.fi{resize:vertical;min-height:70px}
         <div class="fl">Colores disponibles</div>
         <div id="colorsEditor"></div>
         <button class="add-color-btn" onclick="addColorRow()">+ Agregar color</button>
-        <div class="fhint" style="margin-top:5px">Nombres válidos: Negro, Marrón, Marrón Oscuro, Gris Oscuro, Azul, Rosa, Rojo, Crema, Carbon, Verde Oliva</div>
+        <div class="fhint" style="margin-top:5px">Nombres válidos: Negro, Camel, Marrón, Gris Oscuro, Azul, Rosa, Rojo, Crema, Carbon, Verde Oliva</div>
       </div>
       <div id="colorPhotosSection"></div>
     </div>
@@ -461,7 +468,7 @@ const CLIENT_ID = '595122743548-mr52ug4qc2l6fkumfsf2vbnbaqsv9tpc.apps.googleuser
 const SCOPES    = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
 
 const COLOR_MAP = {
-  'Negro':'#1a1a1a','Marrón':'#8b4513','Marrón Oscuro':'#3d2010',
+  'Negro':'#222831','Camel':'#c19a6b','Marrón':'#3d2010',
   'Gris Oscuro':'#4a4a5a','Azul':'#1a3a5c','Rosa':'#d4a0a0',
   'Rojo':'#8b1a1a','Crema':'#d4c8a8','Carbon':'#2a2a2a','Verde Oliva':'#4a5a2a'
 };
@@ -1067,6 +1074,44 @@ function clearBanner() {
   if (img) img.remove();
   document.getElementById('bannerPreviewEmpty').style.display = 'block';
   toast('Banner removido');
+}
+
+function pickBannerFile() {
+  if (!driveReady) { toast('Primero conectate a Google Drive', true); return; }
+  const f = document.createElement('input');
+  f.type = 'file'; f.accept = 'image/*';
+  f.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    toast('⏳ Subiendo imagen...');
+    try {
+      const folderId = await findOrCreateFolder();
+      const meta = { name: `banner-${Date.now()}.jpg`, parents: [folderId] };
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+      form.append('file', file);
+      const upRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: form
+      });
+      const { id: fileId } = await upRes.json();
+      await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'reader', type: 'anyone' })
+      });
+      const link = `https://lh3.googleusercontent.com/d/${fileId}`;
+      document.getElementById('bannerInput').value = link;
+      localStorage.setItem('founder_banner_url', link);
+      previewBanner();
+      toast('✅ Banner subido y guardado');
+    } catch(e) {
+      toast('Error al subir la imagen', true);
+      console.error(e);
+    }
+  };
+  f.click();
 }
 
 function copyBannerCode() {
