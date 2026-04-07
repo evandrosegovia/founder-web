@@ -1520,8 +1520,7 @@ function toast(msg, isErr = false) {
 // GOOGLE IDENTITY INIT
 // ============================================================
 window.onload = () => {
-  // Si el script de Google ya está cargado, iniciar token client
-  if (typeof google !==  if (typeof google !== 'undefined' && google.accounts) {
+  if (typeof google !== 'undefined' && google.accounts) {
     initGoogleClient();
   }
 };
