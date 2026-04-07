@@ -174,6 +174,24 @@ textarea.fi{resize:vertical;min-height:70px}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--white);color:var(--black);padding:12px 24px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;opacity:0;transition:all .4s;z-index:9999;white-space:nowrap;pointer-events:none}
 .toast.err{background:var(--red);color:var(--white)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* DRIVE GATE */
+.drive-gate-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(12px)}
+.drive-gate-overlay.open{display:flex}
+.drive-gate-box{background:var(--gray);border:1px solid rgba(201,169,110,.3);padding:48px 40px;width:420px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;animation:fadeUp .4s ease both}
+.drive-gate-logo{font-family:'Cormorant Garamond',serif;font-size:18px;letter-spacing:8px;color:var(--gold);margin-bottom:4px}
+.drive-gate-icon{font-size:48px;margin-bottom:4px}
+.drive-gate-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300}
+.drive-gate-msg{font-size:11px;color:var(--muted);line-height:1.9;max-width:320px}
+.drive-gate-btn{background:var(--white);color:var(--black);border:none;padding:16px 32px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;cursor:pointer;width:100%;margin-top:8px;transition:background .3s;display:flex;align-items:center;justify-content:center;gap:10px}
+.drive-gate-btn:hover{background:var(--gold)}
+.drive-gate-btn:disabled{opacity:.5;cursor:not-allowed}
+.drive-gate-hint{font-size:9px;color:var(--muted);letter-spacing:1px}
+.drive-gate-skip{background:none;border:none;color:var(--muted);font-size:9px;letter-spacing:1px;cursor:pointer;text-decoration:underline;margin-top:4px;font-family:'Montserrat',sans-serif;transition:color .2s}
+.drive-gate-skip:hover{color:var(--white)}
+
+/* Bloqueo de panel cuando no hay Drive */
+.panel-blocked{pointer-events:none;opacity:.4;user-select:none}
 /* BANNER PREVIEW */
 .banner-preview{background:var(--black);border:1px solid var(--border);padding:24px;text-align:center;margin-bottom:6px;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 .banner-preview img{max-width:100%;max-height:200px;object-fit:cover}
@@ -253,6 +271,18 @@ textarea.fi{resize:vertical;min-height:70px}
           <div class="card-head"><div class="card-title">Productos activos</div><button class="btn btn-primary btn-sm" onclick="nav('productos',document.querySelectorAll('.nav-item')[2])">Gestionar</button></div>
           <div id="dashProductList" style="min-height:60px;padding:0 18px"><div style="padding:32px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px">Cargando...</div></div>
         </div>
+        <div class="card" style="margin-top:14px">
+          <div class="card-head">
+            <div class="card-title">Configuración inicial</div>
+          </div>
+          <div class="card-body">
+            <div class="info-box" style="margin-bottom:12px">
+              <strong>Una sola vez:</strong> Si es la primera vez que usás la hoja de pedidos, hacé click en el botón de abajo para crear los encabezados. Requiere estar conectado a Drive.
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="initPedidosHeaders()">⚙️ Inicializar hoja Pedidos</button>
+          </div>
+        </div>
+
         <div class="card" style="margin-top:14px">
           <div class="card-head"><div class="card-title">Accesos rápidos</div></div>
           <div class="card-body">
@@ -455,6 +485,24 @@ textarea.fi{resize:vertical;min-height:70px}
   </div>
 </div>
 
+<!-- DRIVE CONNECT MODAL — obligatorio al ingresar -->
+<div class="drive-gate-overlay" id="driveGateOverlay">
+  <div class="drive-gate-box">
+    <div class="drive-gate-logo">FOUNDER</div>
+    <div class="drive-gate-icon">☁️</div>
+    <div class="drive-gate-title">Conectar Google Drive</div>
+    <div class="drive-gate-msg">
+      Para acceder al panel necesitás conectar tu cuenta de Google.<br>
+      Esto permite guardar productos, fotos y pedidos en tiempo real.
+    </div>
+    <button class="drive-gate-btn" id="driveGateBtn" onclick="connectDriveGate()">
+      <span>Conectar con Google</span>
+    </button>
+    <div class="drive-gate-hint">Usá la cuenta <strong>founder.uy@gmail.com</strong></div>
+    <button class="drive-gate-skip" onclick="skipDriveGate()">Continuar sin conectar (solo lectura)</button>
+  </div>
+</div>
+
 <!-- CONFIRM DELETE MODAL -->
 <div class="confirm-overlay" id="confirmModal">
   <div class="confirm-box">
@@ -501,12 +549,44 @@ function login() {
   if (document.getElementById('passwordInput').value === PASSWORD) {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('adminPanel').style.display  = 'block';
-    loadData();
-    loadBannerPreview();
+    // Mostrar gate de Drive obligatorio
+    openDriveGate();
   } else {
     document.getElementById('loginError').style.display = 'block';
     document.getElementById('passwordInput').value = '';
   }
+}
+
+function openDriveGate() {
+  document.getElementById('driveGateOverlay').classList.add('open');
+  // Bloquear el panel hasta que se conecte
+  document.querySelector('.body-layout').classList.add('panel-blocked');
+}
+
+function closeDriveGate() {
+  document.getElementById('driveGateOverlay').classList.remove('open');
+  document.querySelector('.body-layout').classList.remove('panel-blocked');
+  // Cargar datos ahora que Drive está conectado
+  loadData();
+  loadBannerPreview();
+}
+
+function connectDriveGate() {
+  const btn = document.getElementById('driveGateBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳ Conectando...</span>';
+  if (!tokenClient) {
+    toast('Cargando Google...', true);
+    btn.disabled = false;
+    btn.innerHTML = '<span>Conectar con Google</span>';
+    return;
+  }
+  tokenClient.requestAccessToken();
+}
+
+function skipDriveGate() {
+  if (!confirm('Sin Drive conectado no podrás guardar cambios ni ver todos los pedidos. ¿Continuar de todas formas?')) return;
+  closeDriveGate();
 }
 function logout() {
   document.getElementById('loginScreen').style.display = 'flex';
@@ -902,15 +982,43 @@ function initGoogleClient() {
     client_id: CLIENT_ID,
     scope: SCOPES,
     callback: resp => {
-      if (resp.error) { toast('Error al conectar con Google Drive', true); return; }
+      if (resp.error) {
+        toast('Error al conectar con Google Drive', true);
+        const btn = document.getElementById('driveGateBtn');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<span>Reintentar conexión</span>'; }
+        return;
+      }
       accessToken = resp.access_token;
       driveReady  = true;
-      toast('✅ Conectado a Google Drive');
+      // Actualizar topbar
       document.getElementById('driveStatus').textContent = '✅ Conectado';
       document.getElementById('driveStatus').style.color = 'var(--green)';
       document.getElementById('connectDriveBtn').style.display = 'none';
+      // Si el gate estaba abierto, cerrarlo y cargar datos
+      const gate = document.getElementById('driveGateOverlay');
+      if (gate && gate.classList.contains('open')) {
+        closeDriveGate();
+        toast('✅ Conectado — bienvenido al panel');
+      } else {
+        toast('✅ Conectado a Google Drive');
+      }
     }
   });
+}
+
+// Inicializar encabezados de la hoja pedidos (correr una sola vez)
+async function initPedidosHeaders() {
+  if (!driveReady) { toast('Conectate a Drive primero', true); return; }
+  try {
+    const values = [['id','fecha','nombre','apellido','celular','email','entrega','direccion','productos','subtotal','descuento','envio','total','pago','estado','notas']];
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('pedidos!A1')}?valueInputOption=RAW`;
+    await fetch(url, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values })
+    });
+    toast('✅ Encabezados de pedidos creados');
+  } catch(e) { toast('Error', true); }
 }
 
 function connectDrive() {
@@ -967,14 +1075,154 @@ async function findOrCreateFolder() {
 }
 
 // ============================================================
-// ORDERS
+// ORDERS — Lee desde Google Sheets + sincroniza pendientes
 // ============================================================
-function loadOrders() {
+const SHEET_PEDIDOS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=pedidos`;
+
+// Columnas en la hoja pedidos:
+// A=id, B=fecha, C=nombre, D=apellido, E=celular, F=email,
+// G=entrega, H=direccion, I=productos, J=subtotal, K=descuento,
+// L=envio, M=total, N=pago, O=estado, P=notas
+
+async function loadOrders() {
+  const btn = document.querySelector('#page-pedidos .btn-primary');
+  if (btn) { btn.textContent = '⏳ Cargando...'; btn.disabled = true; }
+
+  try {
+    // 1. Sincronizar pedidos pendientes a Sheets (si hay Drive conectado)
+    await syncPendingOrders();
+
+    // 2. Leer pedidos desde Sheets
+    const r = await fetch(SHEET_PEDIDOS_URL + '&t=' + Date.now());
+    const t = await r.text();
+    const j = JSON.parse(t.substring(47, t.length - 2));
+
+    const rows = (j.table.rows || []);
+    if (rows.length === 0) {
+      // No hay pedidos en Sheets, usar localStorage como fallback
+      const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+      allOrders = [...stored].reverse();
+    } else {
+      allOrders = rows.map(row => ({
+        id:        row.c[0]?.v || '',
+        fecha:     row.c[1]?.v || '',
+        nombre:    row.c[2]?.v || '',
+        apellido:  row.c[3]?.v || '',
+        celular:   row.c[4]?.v || '',
+        email:     row.c[5]?.v || '',
+        entrega:   row.c[6]?.v || '',
+        direccion: row.c[7]?.v || '',
+        productos: row.c[8]?.v || '',
+        subtotal:  parseInt(row.c[9]?.v)  || 0,
+        descuento: parseInt(row.c[10]?.v) || 0,
+        envio:     parseInt(row.c[11]?.v) || 0,
+        total:     parseInt(row.c[12]?.v) || 0,
+        pago:      row.c[13]?.v || '',
+        estado:    row.c[14]?.v || '',
+        notas:     row.c[15]?.v || ''
+      })).filter(o => o.id).reverse();
+    }
+
+    filterOrders(currentFilter, null);
+    const el = document.getElementById('statPedidos');
+    if (el) el.textContent = allOrders.length;
+
+  } catch(e) {
+    // Fallback a localStorage si Sheets falla
+    const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+    allOrders = [...stored].reverse();
+    filterOrders(currentFilter, null);
+    toast('⚠️ Usando datos locales — conectate a Drive para ver todos los pedidos', true);
+  } finally {
+    if (btn) { btn.textContent = '↻ Actualizar'; btn.disabled = false; }
+  }
+}
+
+// Sincronizar pedidos pendientes (guardados por clientes) a Google Sheets
+async function syncPendingOrders() {
+  if (!driveReady) return;
+  const pending = JSON.parse(localStorage.getItem('founder_pedidos_pending') || '[]');
+  if (!pending.length) return;
+
+  try {
+    // Leer cuántas filas tiene la hoja pedidos actualmente
+    const r = await fetch(SHEET_PEDIDOS_URL + '&t=' + Date.now());
+    const t = await r.text();
+    const j = JSON.parse(t.substring(47, t.length - 2));
+    const currentRows = (j.table.rows || []).filter(r => r.c[0]?.v).length;
+
+    // Escribir cada pedido pendiente en la siguiente fila disponible
+    for (let i = 0; i < pending.length; i++) {
+      const o = pending[i];
+      const sheetRow = currentRows + i + 2; // +2 por header
+      await writeOrderToSheet(o, sheetRow);
+    }
+
+    // Limpiar la cola de pendientes
+    localStorage.removeItem('founder_pedidos_pending');
+    if (pending.length > 0) toast(`✅ ${pending.length} pedido(s) sincronizado(s) a Sheets`);
+
+  } catch(e) {
+    console.error('Error sincronizando pedidos:', e);
+  }
+}
+
+async function writeOrderToSheet(o, row) {
+  const values = [
+    o.id, o.fecha, o.nombre, o.apellido, o.celular, o.email,
+    o.entrega, o.direccion, o.productos,
+    o.subtotal, o.descuento, o.envio, o.total,
+    o.pago, o.estado, o.notas || ''
+  ];
+  const range = `pedidos!A${row}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [values] })
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+async function changeOrderStatus(id, newStatus) {
+  // Actualizar en allOrders local
+  const o = allOrders.find(x => x.id === id);
+  if (!o) return;
+  o.estado = newStatus;
+
+  // Actualizar en localStorage
   const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
-  allOrders = [...stored].reverse();
+  const idx = stored.findIndex(x => x.id === id);
+  if (idx >= 0) { stored[idx].estado = newStatus; localStorage.setItem('founder_pedidos', JSON.stringify(stored)); }
+
+  // Actualizar en Sheets si Drive conectado
+  if (driveReady) {
+    try {
+      // Buscar la fila en Sheets
+      const r = await fetch(SHEET_PEDIDOS_URL + '&t=' + Date.now());
+      const t = await r.text();
+      const j = JSON.parse(t.substring(47, t.length - 2));
+      const rows = j.table.rows || [];
+      const sheetIdx = rows.findIndex(row => row.c[0]?.v === id);
+      if (sheetIdx >= 0) {
+        const sheetRow = sheetIdx + 2;
+        const range = `pedidos!O${sheetRow}`; // columna O = estado
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+        await fetch(url, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: [[newStatus]] })
+        });
+        toast('✅ Estado actualizado en Sheets');
+      }
+    } catch(e) {
+      toast('Estado actualizado localmente', false);
+    }
+  } else {
+    toast('Estado actualizado (conectate a Drive para guardar en Sheets)');
+  }
+
   filterOrders(currentFilter, null);
-  const el = document.getElementById('statPedidos');
-  if (el) el.textContent = stored.length;
 }
 
 function filterOrders(filter, btn) {
