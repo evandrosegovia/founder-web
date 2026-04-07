@@ -270,6 +270,41 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 600px) {
   .related-grid { grid-template-columns: 1fr; }
 }
+
+/* ── CHECKOUT PAGE ────────────────────────────────────────── */
+.checkout-page { position: fixed; inset: 0; background: var(--color-bg); z-index: calc(var(--z-modal) + 10); overflow-y: auto; opacity: 0; pointer-events: none; transition: opacity .4s; }
+.checkout-page.is-open { opacity: 1; pointer-events: all; }
+.co-topbar { height: 60px; padding: 0 var(--space-lg); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-border); position: sticky; top: 0; background: var(--color-bg); z-index: 10; }
+.co-back { background: none; border: none; color: var(--color-muted); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: none; transition: color var(--transition-fast); }
+.co-back:hover { color: var(--color-text); }
+.co-layout { display: grid; grid-template-columns: 1fr 380px; gap: var(--space-xl); padding: var(--space-xl) var(--space-lg); max-width: 1100px; margin: 0 auto; align-items: start; }
+.co-title { font-family: var(--font-serif); font-size: 36px; font-weight: 300; margin-bottom: var(--space-md); }
+.co-step { border: 1px solid var(--color-border); margin-bottom: 16px; }
+.co-step__head { padding: 18px 22px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; gap: 14px; }
+.co-step__num { width: 28px; height: 28px; border: 1px solid var(--color-gold); color: var(--color-gold); display: flex; align-items: center; justify-content: center; font-size: 12px; letter-spacing: 1px; flex-shrink: 0; }
+.co-step__name { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; }
+.co-step__body { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.co-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.co-field { display: flex; flex-direction: column; gap: 6px; }
+.co-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
+.co-inp { background: var(--color-surface2); border: 1px solid var(--color-border); color: var(--color-text); padding: 12px 14px; font-family: var(--font-sans); font-size: 12px; outline: none; width: 100%; transition: border-color var(--transition-fast); }
+.co-inp:focus { border-color: var(--color-gold); }
+.co-inp option { background: var(--color-surface); }
+.co-textarea { resize: vertical; min-height: 70px; }
+.co-toggle { display: flex; gap: 2px; margin-bottom: 14px; }
+.co-toggle-btn { flex: 1; background: var(--color-surface2); border: 1px solid var(--color-border); color: var(--color-muted); padding: 12px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; cursor: none; transition: all var(--transition-fast); }
+.co-toggle-btn.is-active { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
+.co-note { background: rgba(201,169,110,.08); border: 1px solid rgba(201,169,110,.2); padding: 12px 16px; font-size: 10px; color: var(--color-muted); line-height: 1.8; }
+.co-consent { display: flex; align-items: flex-start; gap: 10px; font-size: 10px; color: var(--color-muted); line-height: 1.7; }
+.co-consent a { color: var(--color-gold); }
+.co-submit-btn { width: 100%; background: var(--color-text); color: var(--color-bg); border: none; padding: 18px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; cursor: none; transition: background var(--transition-base); }
+.co-submit-btn:hover { background: var(--color-gold); }
+.co-summary { background: var(--color-surface); border: 1px solid var(--color-border); padding: 28px; position: sticky; top: 80px; }
+.co-summary__title { font-family: var(--font-serif); font-size: 22px; margin-bottom: 20px; }
+.co-summary__item { display: flex; justify-content: space-between; font-size: 11px; color: var(--color-muted); margin-bottom: 10px; }
+.co-summary__total { display: flex; justify-content: space-between; border-top: 1px solid var(--color-border); padding-top: 14px; margin-top: 14px; }
+.co-summary__total-label { font-family: var(--font-serif); font-size: 18px; }
+.co-summary__total-value { font-family: var(--font-serif); font-size: 22px; color: var(--color-gold); }
 </style>
 </head>
 <body>
@@ -474,9 +509,81 @@ a { color: inherit; text-decoration: none; }
   </div>
   <div class="cart__footer" id="cartFooter" style="display:none">
     <div class="cart__subtotal"><span>Subtotal</span><strong id="cartTotal">$0</strong></div>
-    <button class="cart__checkout-btn" onclick="goCheckout()">Finalizar compra por WhatsApp</button>
+    <button class="cart__checkout-btn" onclick="openCheckout()">Finalizar compra por WhatsApp</button>
   </div>
 </aside>
+
+<!-- ── CHECKOUT ──────────────────────────────────────────────── -->
+<div class="checkout-page" id="checkoutPage" role="dialog" aria-modal="true" aria-label="Finalizar compra">
+  <div class="co-topbar">
+    <a href="#" class="logo" onclick="closeCheckout();return false" style="font-size:18px">FOUNDER</a>
+    <button class="co-back" onclick="closeCheckout()" aria-label="Volver al carrito">← Volver</button>
+  </div>
+  <div class="co-layout">
+    <div>
+      <div class="co-title">Checkout</div>
+      <div class="co-step">
+        <div class="co-step__head"><div class="co-step__num">1</div><div class="co-step__name">Datos personales</div></div>
+        <div class="co-step__body">
+          <div class="co-row">
+            <div class="co-field"><label class="co-lbl" for="coNombre">Nombre *</label><input type="text" class="co-inp" id="coNombre" placeholder="Tu nombre" autocomplete="given-name"></div>
+            <div class="co-field"><label class="co-lbl" for="coApellido">Apellido *</label><input type="text" class="co-inp" id="coApellido" placeholder="Tu apellido" autocomplete="family-name"></div>
+          </div>
+          <div class="co-row">
+            <div class="co-field"><label class="co-lbl" for="coCelular">Celular *</label><input type="tel" class="co-inp" id="coCelular" placeholder="09X XXX XXX" autocomplete="tel"></div>
+            <div class="co-field"><label class="co-lbl" for="coEmail">Email *</label><input type="email" class="co-inp" id="coEmail" placeholder="tu@email.com" autocomplete="email"></div>
+          </div>
+        </div>
+      </div>
+      <div class="co-step">
+        <div class="co-step__head"><div class="co-step__num">2</div><div class="co-step__name">Entrega</div></div>
+        <div class="co-step__body">
+          <div class="co-toggle">
+            <button class="co-toggle-btn is-active" id="btnEnvio" onclick="setEntrega('envio')" type="button">Envío a domicilio</button>
+            <button class="co-toggle-btn" id="btnRetiro" onclick="setEntrega('retiro')" type="button">Retiro en local</button>
+          </div>
+          <div id="envioFields" style="display:flex;flex-direction:column;gap:14px">
+            <div class="co-row">
+              <div class="co-field"><label class="co-lbl" for="coDepartamento">Departamento *</label><select class="co-inp" id="coDepartamento"><option value="">Seleccioná</option><option>Montevideo</option><option>Canelones</option><option>Maldonado</option><option>Colonia</option><option>San José</option><option>Salto</option><option>Paysandú</option><option>Rivera</option><option>Tacuarembó</option><option>Cerro Largo</option><option>Artigas</option><option>Durazno</option><option>Flores</option><option>Florida</option><option>Lavalleja</option><option>Río Negro</option><option>Rocha</option><option>Soriano</option><option>Treinta y Tres</option></select></div>
+              <div class="co-field"><label class="co-lbl" for="coBarrio">Barrio / Localidad</label><input type="text" class="co-inp" id="coBarrio" placeholder="Barrio o localidad"></div>
+            </div>
+            <div class="co-row">
+              <div class="co-field"><label class="co-lbl" for="coDireccion">Dirección *</label><input type="text" class="co-inp" id="coDireccion" placeholder="Calle" autocomplete="street-address"></div>
+              <div class="co-field"><label class="co-lbl" for="coNroPuerta">Nro / Apto</label><input type="text" class="co-inp" id="coNroPuerta" placeholder="Ej: 1234 / Apto 5"></div>
+            </div>
+            <div class="co-field"><label class="co-lbl" for="coObsEnvio">Observaciones</label><textarea class="co-inp co-textarea" id="coObsEnvio" placeholder="Instrucciones de entrega (opcional)"></textarea></div>
+          </div>
+          <div id="retiroFields" style="display:none;flex-direction:column;gap:14px">
+            <div class="co-row">
+              <div class="co-field"><label class="co-lbl" for="coNombreRetira">Nombre de quien retira *</label><input type="text" class="co-inp" id="coNombreRetira" placeholder="Nombre completo"></div>
+              <div class="co-field"><label class="co-lbl" for="coCIRetira">CI de quien retira *</label><input type="text" class="co-inp" id="coCIRetira" placeholder="Ej: 1.234.567-8"></div>
+            </div>
+            <div class="co-field"><label class="co-lbl" for="coObsRetiro">Observaciones</label><textarea class="co-inp co-textarea" id="coObsRetiro" placeholder="Comentarios (opcional)"></textarea></div>
+          </div>
+        </div>
+      </div>
+      <div class="co-step">
+        <div class="co-step__head"><div class="co-step__num">3</div><div class="co-step__name">Método de pago</div></div>
+        <div class="co-step__body">
+          <div class="co-toggle">
+            <button class="co-toggle-btn" id="btnTransfer" onclick="setPago('transfer')" type="button">Transferencia</button>
+            <button class="co-toggle-btn is-active" id="btnMP" onclick="setPago('mercadopago')" type="button">Pago en línea (MercadoPago)</button>
+          </div>
+          <div id="transferNote" class="co-note" style="display:none">💰 Pagando por transferencia obtenés un <strong>10% de descuento</strong>. Te enviaremos los datos bancarios por WhatsApp.</div>
+        </div>
+      </div>
+      <div class="co-consent">
+        <input type="checkbox" id="coConsent">
+        <label for="coConsent">Acepto la <a href="#" onclick="showLegal('privacy')">Política de Privacidad</a> y los <a href="#" onclick="showLegal('terms')">Términos y Condiciones</a>.</label>
+      </div>
+      <button class="co-submit-btn" id="coSubmitBtn" onclick="processOrder()" style="margin-top:20px">Continuar al pago (Mercado Pago)</button>
+    </div>
+    <div class="co-summary">
+      <div class="co-summary__title">Tu pedido</div>
+      <div id="coSummaryLines"></div>
+    </div>
+  </div>
+</div>
 
 <!-- ── LEGAL PAGES ────────────────────────────────────────────── -->
 <div class="legal-page" id="legalPrivacy" role="dialog" aria-modal="true">
@@ -560,6 +667,8 @@ const state = {
   selectedColor: null,  // color seleccionado
   activePhoto:   0,     // índice de foto activa
   cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
+  entregaMode:   'envio',       // para checkout
+  pagoMode:      'mercadopago', // para checkout
 };
 
 // ── DOM HELPERS ───────────────────────────────────────────────
@@ -954,13 +1063,143 @@ function toggleCart() {
   document.body.style.overflow = isOpen ? 'hidden' : '';
 }
 
-function goCheckout() {
+// ── CHECKOUT ──────────────────────────────────────────────────
+function openCheckout() {
+  if (!state.cart.length) return;
+  toggleCart();
+  renderSummary();
+  $('checkoutPage').classList.add('is-open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCheckout() {
+  $('checkoutPage').classList.remove('is-open');
+  document.body.style.overflow = '';
+}
+
+function setEntrega(mode) {
+  state.entregaMode = mode;
+  $('envioFields').style.display  = mode === 'envio'   ? 'flex' : 'none';
+  $('retiroFields').style.display = mode === 'retiro'  ? 'flex' : 'none';
+  toggle($('btnEnvio'),  'is-active', mode === 'envio');
+  toggle($('btnRetiro'), 'is-active', mode === 'retiro');
+  renderSummary();
+}
+
+function setPago(mode) {
+  state.pagoMode = mode;
+  toggle($('btnMP'),       'is-active', mode === 'mercadopago');
+  toggle($('btnTransfer'), 'is-active', mode === 'transfer');
+  $('transferNote').style.display = mode === 'transfer' ? 'block' : 'none';
+  $('coSubmitBtn').textContent    = mode === 'transfer'
+    ? 'Confirmar pedido (Transferencia)' : 'Continuar al pago (Mercado Pago)';
+  renderSummary();
+}
+
+function applyDiscount() {
+  const code = $('coDiscountCode')?.value.trim();
+  const msg  = $('coDiscountMsg');
+  if (code && msg) { msg.style.display = 'block'; msg.textContent = '⚠️ Los códigos de descuento estarán disponibles próximamente.'; }
+}
+
+function renderSummary() {
+  const subtotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const discount = state.pagoMode === 'transfer' ? 0.10 : 0;
+  const shipping = state.entregaMode === 'retiro' ? 0 : (subtotal >= CONFIG.FREE_SHIPPING ? 0 : CONFIG.SHIPPING_COST);
+  const total    = Math.round(subtotal * (1 - discount)) + shipping;
+
+  let html = state.cart.map(item => {
+    const p     = state.allProducts.find(x => x.name === item.name);
+    const photo = p ? (getPhotos(p.name, item.color)[0] || null) : null;
+    return `
+      <div class="co-summary__item" style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+        ${photo ? `<img src="${photo}" style="width:40px;height:40px;object-fit:cover;border:1px solid var(--color-border);flex-shrink:0" alt="" loading="lazy">` : ''}
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--color-text)">Founder ${item.name} (${item.color})</div>
+          <div style="font-size:10px;color:var(--color-muted)">x${item.qty}</div>
+        </div>
+        <div>$${(item.price * item.qty).toLocaleString('es-UY')}</div>
+      </div>`;
+  }).join('');
+
+  if (discount) html += `<div class="co-summary__item"><span>Descuento 10%</span><span style="color:var(--color-success)">-$${Math.round(subtotal*discount).toLocaleString('es-UY')}</span></div>`;
+  html += `<div class="co-summary__item"><span>Envío</span><span>${shipping === 0 ? 'Gratis 🎁' : '$'+shipping.toLocaleString('es-UY')}</span></div>`;
+  html += `<div class="co-summary__total"><span class="co-summary__total-label">Total</span><span class="co-summary__total-value">$${total.toLocaleString('es-UY')} UYU</span></div>`;
+
+  setHTML('coSummaryLines', html);
+}
+
+// ── PROCESS ORDER ─────────────────────────────────────────────
+function processOrder() {
+  const nombre   = $('coNombre').value.trim();
+  const apellido = $('coApellido').value.trim();
+  const celular  = $('coCelular').value.trim();
+  const email    = $('coEmail').value.trim();
+
+  if (!nombre || !apellido || !celular || !email) { showToast('Completá todos los datos personales'); return; }
+
+  if (state.entregaMode === 'envio') {
+    if (!$('coDepartamento').value || !$('coDireccion').value.trim()) { showToast('Completá los datos de envío'); return; }
+  } else {
+    if (!$('coNombreRetira').value.trim() || !$('coCIRetira').value.trim()) { showToast('Completá los datos de retiro'); return; }
+  }
+
+  if (!$('coConsent').checked) { showToast('Debés aceptar la política de privacidad'); return; }
+
+  const subtotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const discount = state.pagoMode === 'transfer' ? 0.10 : 0;
+  const shipping = state.entregaMode === 'retiro' ? 0 : (subtotal >= CONFIG.FREE_SHIPPING ? 0 : CONFIG.SHIPPING_COST);
+  const total    = Math.round(subtotal * (1 - discount)) + shipping;
+
   const lines = state.cart.map(i => `- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price*i.qty).toLocaleString('es-UY')}`).join('\n');
-  const total = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const msg   = encodeURIComponent(
-    `🛍️ *NUEVO PEDIDO FOUNDER*\n\n${lines}\n\n💰 Total: $${total.toLocaleString('es-UY')} UYU\n\n¿Me ayudás a completar el pedido?`
-  );
-  window.open(`https://wa.me/${CONFIG.WA_NUMBER}?text=${msg}`, '_blank');
+
+  let entregaInfo = '', direccionTexto = '';
+  if (state.entregaMode === 'envio') {
+    const d = $('coDepartamento').value, b = $('coBarrio').value,
+          dir = $('coDireccion').value, n = $('coNroPuerta').value, obs = $('coObsEnvio').value;
+    entregaInfo    = `📍 *Envío:* ${dir} ${n}, ${b}, ${d}${obs ? '\n📝 ' + obs : ''}`;
+    direccionTexto = `${dir} ${n}, ${b}, ${d}`;
+  } else {
+    const q = $('coNombreRetira').value, ci = $('coCIRetira').value, obs = $('coObsRetiro').value;
+    entregaInfo    = `🏪 *Retiro en tienda*\nRetira: ${q} (CI: ${ci})${obs ? '\n📝 ' + obs : ''}`;
+    direccionTexto = `Retiro — ${q} (CI: ${ci})`;
+  }
+
+  const orderId  = 'F' + Date.now().toString().slice(-6);
+  const fechaStr = new Date().toLocaleString('es-UY');
+  const pagoStr  = state.pagoMode === 'mercadopago' ? 'Mercado Pago' : 'Transferencia';
+  const estadoStr = state.pagoMode === 'transfer' ? 'Pendiente pago' : 'Pendiente confirmación';
+
+  const order = {
+    id: orderId, fecha: fechaStr, nombre, apellido, celular, email,
+    entrega: state.entregaMode === 'envio' ? 'Envío' : 'Retiro',
+    direccion: direccionTexto,
+    productos: state.cart.map(i => `Founder ${i.name} (${i.color}) x${i.qty}`).join(' | '),
+    subtotal, descuento: Math.round(subtotal * discount), envio: shipping, total,
+    pago: pagoStr, estado: estadoStr, notas: ''
+  };
+
+  // Guardar localmente + cola de sync
+  try {
+    const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+    stored.push(order);
+    localStorage.setItem('founder_pedidos', JSON.stringify(stored));
+    const pending = JSON.parse(localStorage.getItem('founder_pedidos_pending') || '[]');
+    pending.push(order);
+    localStorage.setItem('founder_pedidos_pending', JSON.stringify(pending));
+  } catch (e) {
+    console.warn('[Founder] No se pudo guardar pedido localmente:', e);
+  }
+
+  window.open(`https://wa.me/${CONFIG.WA_NUMBER}?text=${encodeURIComponent(
+    `🛍️ *NUEVO PEDIDO FOUNDER — ${orderId}*\n\n👤 *${nombre} ${apellido}*\n📱 ${celular}\n📧 ${email}\n\n🛒 *PRODUCTOS:*\n${lines}\n\n${entregaInfo}\n\n💳 *Pago:* ${pagoStr}\n💰 *Total:* $${total.toLocaleString('es-UY')} UYU\n🔖 *ID:* ${orderId}`
+  )}`, '_blank');
+
+  state.cart = [];
+  saveCartToStorage(); // limpiar carrito persistido al confirmar pedido
+  updateCart();
+  closeCheckout();
+  showToast(`¡Pedido ${orderId} enviado! 🎉`);
 }
 
 // ── LEGAL ─────────────────────────────────────────────────────
