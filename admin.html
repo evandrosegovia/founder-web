@@ -409,6 +409,18 @@ textarea.fi{resize:vertical;min-height:70px}
   </div><!-- /body-layout -->
 </div><!-- /adminPanel -->
 
+<!-- ORDER DETAIL MODAL -->
+<div class="modal-overlay" id="orderDetailModal">
+  <div class="modal" style="max-width:680px;display:block;padding:0">
+    <div class="modal-head">
+      <div class="modal-title">Detalle del pedido</div>
+      <button class="modal-x" onclick="closeOrderDetail()">✕</button>
+    </div>
+    <div class="modal-body" id="orderDetailContent" style="max-height:80vh;overflow-y:auto">
+    </div>
+  </div>
+</div>
+
 <!-- PRODUCT MODAL -->
 <div class="modal-overlay" id="productModal">
   <div class="modal">
@@ -990,23 +1002,25 @@ function renderOrders(orders) {
       'Confirmado':'status-confirmado','Entregado':'status-entregado','Cancelado':'status-cancelado'
     };
     const cls = statusMap[o.estado] || '';
+    // Compatibilidad: productos puede ser string (nuevo) o items array (viejo)
+    const prodsText = o.productos || (o.items||[]).map(it=>`${it.name} (${it.color}) x${it.qty}`).join(' | ') || '—';
     return `<div class="order-card">
       <div class="order-head">
         <div class="order-id">#${o.id || '—'}</div>
         <div class="order-status ${cls}">${o.estado}</div>
       </div>
       <div class="order-body">
-        <div class="order-name">${o.nombre || '—'}</div>
+        <div class="order-name">${o.nombre || '—'} ${o.apellido || ''}</div>
         <div class="order-info">
-          <strong>${o.telefono || ''}</strong><br>
-          ${o.entrega === 'retiro' ? 'Retiro en local' : (o.departamento || '') + ' — ' + (o.direccion || '')}<br>
+          <strong>${o.celular || o.telefono || ''}</strong> · ${o.email || ''}<br>
+          ${o.entrega || ''} — ${o.direccion || ''}<br>
           ${o.pago || ''}
         </div>
-        <div class="order-prods">${(o.items || []).map(it => `${it.qty}× ${it.name} (${it.color})`).join('<br>')}</div>
-        <div class="order-total">$${(o.total || 0).toLocaleString('es-UY')}</div>
-        <div class="order-pago">${o.pago || ''}</div>
+        <div class="order-prods">${prodsText}</div>
+        <div class="order-total">$${(o.total || 0).toLocaleString('es-UY')} <span style="font-size:11px;color:var(--muted)">UYU</span></div>
       </div>
       <div class="order-foot">
+        <button class="btn btn-secondary btn-sm" onclick="viewOrder('${o.id}')">👁 Ver detalle</button>
         ${['Pendiente pago','Pendiente confirmación','Confirmado','Entregado','Cancelado'].map(s =>
           `<button class="btn btn-sm ${o.estado === s ? 'btn-primary' : 'btn-secondary'}"
             onclick="changeOrderStatus('${o.id}','${s}')">${s}</button>`
@@ -1015,6 +1029,76 @@ function renderOrders(orders) {
     </div>`;
   }).join('');
 }
+
+// ============================================================
+// VER DETALLE DE PEDIDO
+// ============================================================
+function viewOrder(id) {
+  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+  const o = stored.find(x => x.id === id);
+  if (!o) { toast('Pedido no encontrado', true); return; }
+
+  const prodsText = o.productos || (o.items||[]).map(it=>`Founder ${it.name} (${it.color}) x${it.qty}`).join('<br>') || '—';
+  const statusMap = {
+    'Pendiente pago':'status-pendiente-pago','Pendiente confirmación':'status-pendiente-mp',
+    'Confirmado':'status-confirmado','Entregado':'status-entregado','Cancelado':'status-cancelado'
+  };
+  const cls = statusMap[o.estado] || '';
+
+  document.getElementById('orderDetailContent').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:28px">Pedido #${o.id}</div>
+      <div class="order-status ${cls}" style="font-size:11px;padding:6px 14px">${o.estado}</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="card">
+        <div class="card-head"><div class="card-title">👤 Datos del comprador</div></div>
+        <div class="card-body" style="font-size:12px;line-height:2;color:var(--muted)">
+          <strong style="color:var(--white)">${o.nombre || ''} ${o.apellido || ''}</strong><br>
+          📱 ${o.celular || o.telefono || '—'}<br>
+          📧 ${o.email || '—'}<br>
+          📅 ${o.fecha || '—'}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">📍 Entrega</div></div>
+        <div class="card-body" style="font-size:12px;line-height:2;color:var(--muted)">
+          <strong style="color:var(--white)">${o.entrega || '—'}</strong><br>
+          ${o.direccion || '—'}
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head"><div class="card-title">🛍️ Productos</div></div>
+      <div class="card-body" style="font-size:12px;line-height:2;color:var(--muted)">${prodsText}</div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-head"><div class="card-title">💰 Resumen de pago</div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:8px;font-size:12px">
+        <div style="display:flex;justify-content:space-between;color:var(--muted)"><span>Subtotal</span><span>$${(o.subtotal||0).toLocaleString('es-UY')}</span></div>
+        ${o.descuento ? `<div style="display:flex;justify-content:space-between;color:var(--green)"><span>Descuento 10%</span><span>-$${o.descuento.toLocaleString('es-UY')}</span></div>` : ''}
+        ${o.envio ? `<div style="display:flex;justify-content:space-between;color:var(--muted)"><span>Envío</span><span>$${o.envio.toLocaleString('es-UY')}</span></div>` : `<div style="display:flex;justify-content:space-between;color:var(--green)"><span>Envío</span><span>Gratis</span></div>`}
+        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
+          <span style="font-family:'Cormorant Garamond',serif;font-size:18px">Total</span>
+          <span style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold)">$${(o.total||0).toLocaleString('es-UY')} UYU</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px">Método: ${o.pago || '—'}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${['Pendiente pago','Pendiente confirmación','Confirmado','Entregado','Cancelado'].map(s =>
+        `<button class="btn btn-sm ${o.estado === s ? 'btn-primary' : 'btn-secondary'}"
+          onclick="changeOrderStatus('${o.id}','${s}');viewOrder('${o.id}')">${s}</button>`
+      ).join('')}
+    </div>
+  `;
+  document.getElementById('orderDetailModal').classList.add('open');
+}
+function closeOrderDetail() { document.getElementById('orderDetailModal').classList.remove('open'); }
 
 function changeOrderStatus(id, newStatus) {
   const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
