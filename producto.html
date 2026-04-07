@@ -543,14 +543,24 @@ const COLOR_MAP = Object.freeze({
 });
 
 // ── STATE ─────────────────────────────────────────────────────
+const CART_KEY = 'founder_cart'; // clave compartida con index.html
+
 const state = {
   product:      null,   // producto actual
   allProducts:  [],     // todos los productos (para relacionados)
   photoMap:     {},     // { modelo: { color: [urls] } }
   selectedColor: null,  // color seleccionado
   activePhoto:   0,     // índice de foto activa
-  cart:          [],    // items del carrito
+  cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
 };
+
+function loadCartFromStorage() {
+  try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
+}
+
+function saveCartToStorage() {
+  try { localStorage.setItem(CART_KEY, JSON.stringify(state.cart)); } catch {}
+}
 
 // ── DOM HELPERS ───────────────────────────────────────────────
 const $        = id => document.getElementById(id);
@@ -885,6 +895,7 @@ function buyNow() {
 }
 
 function updateCart() {
+  saveCartToStorage(); // persistir carrito para compartir con index.html
   const total  = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
   const count  = state.cart.reduce((s, i) => s + i.qty, 0);
   const badge  = $('cartCount');
@@ -990,6 +1001,7 @@ function showToast(msg) {
 })();
 
 // ── BOOT ──────────────────────────────────────────────────────
+updateCart(); // reflejar carrito persistido (puede venir de index.html)
 init();
 </script>
 </body>
