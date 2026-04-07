@@ -676,7 +676,10 @@ function login() {
   if (document.getElementById('passwordInput').value === PASSWORD) {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('adminPanel').style.display  = 'block';
-    // Mostrar gate de Drive obligatorio
+    // Cargar datos de inmediato (lectura pública, sin necesitar Drive)
+    loadData();
+    loadBannerPreview();
+    // Sugerir conectar Drive (no bloqueante)
     openDriveGate();
   } else {
     document.getElementById('loginError').style.display = 'block';
@@ -686,16 +689,12 @@ function login() {
 
 function openDriveGate() {
   document.getElementById('driveGateOverlay').classList.add('open');
-  // Bloquear el panel hasta que se conecte
-  document.querySelector('.body-layout').classList.add('panel-blocked');
+  // El panel NO se bloquea — Drive es opcional para leer datos
 }
 
 function closeDriveGate() {
   document.getElementById('driveGateOverlay').classList.remove('open');
   document.querySelector('.body-layout').classList.remove('panel-blocked');
-  // Cargar datos ahora que Drive está conectado
-  loadData();
-  loadBannerPreview();
 }
 
 function connectDriveGate() {
@@ -703,17 +702,24 @@ function connectDriveGate() {
   btn.disabled = true;
   btn.innerHTML = '<span>⏳ Conectando...</span>';
   if (!tokenClient) {
-    toast('Cargando Google...', true);
-    btn.disabled = false;
-    btn.innerHTML = '<span>Conectar con Google</span>';
+    // Google todavía no cargó — reintentamos en 1.5s
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<span>Conectar con Google</span>';
+      if (tokenClient) {
+        tokenClient.requestAccessToken();
+      } else {
+        toast('Error al cargar Google. Recargá la página.', true);
+      }
+    }, 1500);
     return;
   }
   tokenClient.requestAccessToken();
 }
 
 function skipDriveGate() {
-  if (!confirm('Sin Drive conectado no podrás guardar cambios ni ver todos los pedidos. ¿Continuar de todas formas?')) return;
   closeDriveGate();
+  toast('Modo solo lectura — conectá Drive para guardar cambios');
 }
 function logout() {
   document.getElementById('loginScreen').style.display = 'flex';
@@ -1831,11 +1837,8 @@ function toast(msg, isErr = false) {
 // ============================================================
 // GOOGLE IDENTITY INIT
 // ============================================================
-window.onload = () => {
-  if (typeof google !== 'undefined' && google.accounts) {
-    initGoogleClient();
-  }
-};
+// initGoogleClient se llama SOLO desde el onload del script de Google
+// para evitar la doble inicialización que causaba que tokenClient quedara null
 </script>
 
 <!-- Google Identity Services -->
