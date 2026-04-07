@@ -871,7 +871,7 @@ function addToCart() {
   if (ex) {
     ex.qty++;
   } else {
-    state.cart.push({ name: p.name, color, price: p.price, qty: 1 });
+    state.cart.push({ id: p.name, name: p.name, color, price: p.price, qty: 1 }); // id=name para compatibilidad con index.html
   }
 
   updateCart();
