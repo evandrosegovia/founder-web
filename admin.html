@@ -500,7 +500,7 @@ textarea.fi{resize:vertical;min-height:70px}
   </div>
 </div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script>
 // ============================================================
 // CONFIG
 // ============================================================
@@ -1521,4 +1521,14 @@ function toast(msg, isErr = false) {
 // ============================================================
 window.onload = () => {
   // Si el script de Google ya está cargado, iniciar token client
-  if (typeof google !==
+  if (typeof google !==  if (typeof google !== 'undefined' && google.accounts) {
+    initGoogleClient();
+  }
+};
+</script>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" onload="initGoogleClient()" async defer></script>
+
+</body>
+</html>
