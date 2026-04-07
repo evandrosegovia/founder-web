@@ -85,6 +85,23 @@
   --z-modal:    300;
   --z-toast:    9999;
   --z-cursor:   9998;
+  /* Colores de productos — definidos aquí para renderizado consistente en todos los dispositivos */
+  --swatch-negro:       #3a3f4a;
+  --swatch-camel:       #d4a96e;
+  --swatch-marron:      #6b3820;
+  --swatch-gris-oscuro: #6a6a7a;
+  --swatch-azul:        #2a5a8c;
+  --swatch-rosa:        #e8b8b8;
+  --swatch-rojo:        #b52a2a;
+  --swatch-crema:       #e4d8b8;
+  --swatch-carbon:      #3a3a3a;
+  --swatch-verde-oliva: #6a7a3a;
+}
+/* Forzar renderizado de color nativo — sin ajuste automático del navegador móvil */
+.color-dot, .color-swatch, .color-option .color-swatch {
+  color-scheme: only light;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 /* ── RESET ────────────────────────────────────────────────── */
@@ -873,16 +890,16 @@ const CONFIG = Object.freeze({
 });
 
 const COLOR_MAP = Object.freeze({
-  'Negro':        { hex: '#3a3f4a' },
-  'Camel':        { hex: '#d4a96e' },
-  'Marrón':       { hex: '#6b3820' },
-  'Gris Oscuro':  { hex: '#6a6a7a' },
-  'Azul':         { hex: '#2a5a8c' },
-  'Rosa':         { hex: '#e8b8b8' },
-  'Rojo':         { hex: '#b52a2a' },
-  'Crema':        { hex: '#e4d8b8' },
-  'Carbon':       { hex: '#3a3a3a', pattern: true },
-  'Verde Oliva':  { hex: '#6a7a3a' },
+  'Negro':        { hex: '#3a3f4a', css: 'var(--swatch-negro)' },
+  'Camel':        { hex: '#d4a96e', css: 'var(--swatch-camel)' },
+  'Marrón':       { hex: '#6b3820', css: 'var(--swatch-marron)' },
+  'Gris Oscuro':  { hex: '#6a6a7a', css: 'var(--swatch-gris-oscuro)' },
+  'Azul':         { hex: '#2a5a8c', css: 'var(--swatch-azul)' },
+  'Rosa':         { hex: '#e8b8b8', css: 'var(--swatch-rosa)' },
+  'Rojo':         { hex: '#b52a2a', css: 'var(--swatch-rojo)' },
+  'Crema':        { hex: '#e4d8b8', css: 'var(--swatch-crema)' },
+  'Carbon':       { hex: '#3a3a3a', css: 'var(--swatch-carbon)', pattern: true },
+  'Verde Oliva':  { hex: '#6a7a3a', css: 'var(--swatch-verde-oliva)' },
 });
 
 // ── STATE ──────────────────────────────────────────────────────
@@ -1021,7 +1038,7 @@ function renderProductCard(p) {
 
   const colorDots = p.colors.map(c => `
     <div class="color-dot" title="${c.name}" style="background:${
-      c.pattern ? 'repeating-linear-gradient(45deg,#1a1a1a 0,#1a1a1a 3px,#222 3px,#222 6px)' : c.hex
+      c.pattern ? 'repeating-linear-gradient(45deg,var(--swatch-carbon) 0,var(--swatch-carbon) 4px,#4a4a4a 4px,#4a4a4a 8px)' : (c.css || c.hex)
     }"></div>`).join('');
 
   return `
@@ -1130,7 +1147,7 @@ function renderModalColors() {
   setHTML('modalColors', state.currentProduct.colors.map((c, i) => `
     <div class="color-option ${c.name === state.currentColor.name ? 'is-active' : ''}" onclick="selectColor(${i})">
       <div class="color-swatch" style="background:${
-        c.pattern ? 'repeating-linear-gradient(45deg,#1a1a1a 0,#1a1a1a 3px,#222 3px,#222 6px)' : c.hex
+        c.pattern ? 'repeating-linear-gradient(45deg,var(--swatch-carbon) 0,var(--swatch-carbon) 4px,#4a4a4a 4px,#4a4a4a 8px)' : (c.css || c.hex)
       }"></div>
       <div class="color-option__name">${c.name}</div>
     </div>`).join(''));
