@@ -323,7 +323,7 @@ footer{background:var(--gray);border-top:1px solid var(--border);padding:80px 48
 <section class="products-section" id="productos">
   <div class="section-header">
     <div>
-      <div class="section-label">Colección 2025</div>
+      <div class="section-label">Colección 2026</div>
       <h2 class="section-title">Nuestros<br>modelos</h2>
     </div>
   </div>
@@ -355,7 +355,7 @@ footer{background:var(--gray);border-top:1px solid var(--border);padding:80px 48
     <div class="footer-col"><h4>Legal</h4><ul><li><a href="#" onclick="showLegal('privacy');return false">Política de Privacidad</a></li><li><a href="#" onclick="showLegal('terms');return false">Términos y Condiciones</a></li><li><a href="#" onclick="showLegal('returns');return false">Cambios y Devoluciones</a></li></ul></div>
   </div>
   <div class="footer-bottom">
-    <p>© 2025 Founder.uy — Todos los derechos reservados</p>
+    <p>© 2026 Founder.uy — Todos los derechos reservados</p>
     <div class="footer-legal"><a href="#" onclick="showLegal('privacy');return false">Privacidad</a><a href="#" onclick="showLegal('terms');return false">Términos</a></div>
   </div>
 </footer>
@@ -507,7 +507,7 @@ footer{background:var(--gray);border-top:1px solid var(--border);padding:80px 48
 <div class="legal-page" id="legalPrivacy">
   <button class="legal-close" onclick="hideLegal('privacy')">✕ Cerrar</button>
   <div class="legal-content">
-    <h1>Política de Privacidad</h1><p class="legal-date">Vigente desde: Enero 2025</p>
+    <h1>Política de Privacidad</h1><p class="legal-date">Vigente desde: Enero 2026</p>
     <h2>1. Responsable del tratamiento</h2><p>Founder (Founder.uy), con presencia comercial en la República Oriental del Uruguay, es el responsable del tratamiento de los datos personales recabados a través de este sitio web.</p>
     <h2>2. Marco legal</h2><p>El tratamiento de datos personales se realiza en cumplimiento de la Ley N° 18.331 de Protección de Datos Personales y Acción de Habeas Data, su Decreto Reglamentario N° 414/009, y demás normativa aplicable en Uruguay.</p>
     <h2>3. Datos que recopilamos</h2><ul><li>Nombre y apellido</li><li>Correo electrónico</li><li>Número de teléfono</li><li>Dirección de entrega</li><li>Información de pago procesada por Mercado Pago</li></ul>
@@ -521,7 +521,7 @@ footer{background:var(--gray);border-top:1px solid var(--border);padding:80px 48
 <div class="legal-page" id="legalTerms">
   <button class="legal-close" onclick="hideLegal('terms')">✕ Cerrar</button>
   <div class="legal-content">
-    <h1>Términos y Condiciones</h1><p class="legal-date">Vigente desde: Enero 2025</p>
+    <h1>Términos y Condiciones</h1><p class="legal-date">Vigente desde: Enero 2026</p>
     <h2>1. Aceptación</h2><p>Al realizar una compra en Founder.uy, aceptás estos Términos y Condiciones en su totalidad.</p>
     <h2>2. Productos</h2><p>Todos los productos incluyen tecnología RFID y están fabricados con eco cuero y aluminio de alta calidad.</p>
     <h2>3. Precios</h2><p>Los precios están expresados en Pesos Uruguayos (UYU). Se aplica el precio vigente al momento de confirmar el pedido.</p>
@@ -534,7 +534,7 @@ footer{background:var(--gray);border-top:1px solid var(--border);padding:80px 48
 <div class="legal-page" id="legalReturns">
   <button class="legal-close" onclick="hideLegal('returns')">✕ Cerrar</button>
   <div class="legal-content">
-    <h1>Cambios y Devoluciones</h1><p class="legal-date">Vigente desde: Enero 2025</p>
+    <h1>Cambios y Devoluciones</h1><p class="legal-date">Vigente desde: Enero 2026</p>
     <h2>Política de cambios</h2><p>Aceptamos cambios dentro de los 7 días corridos de recibido el producto, sin uso, en su estado original y con comprobante de compra.</p>
     <h2>Defecto de fábrica</h2><p>Si el producto tiene un defecto de fábrica, lo cambiamos o reintegramos el importe sin costo. Plazo: 30 días desde la recepción.</p>
     <h2>Cómo solicitar un cambio</h2><p>Contactanos por Instagram @founder.uy indicando tu número de pedido y el motivo. Respondemos en 48 horas hábiles.</p>
@@ -551,7 +551,7 @@ const FREE_SHIPPING   = 2000;
 const SHIPPING_COST   = 150;
 
 const COLOR_MAP = {
-  'Negro':{hex:'#1a1a1a'},'Marrón':{hex:'#8b4513'},'Marrón Oscuro':{hex:'#3d2010'},
+  'Negro':{hex:'#222831'},'Camel':{hex:'#c19a6b'},'Marrón':{hex:'#3d2010'},
   'Gris Oscuro':{hex:'#4a4a5a'},'Azul':{hex:'#1a3a5c'},'Rosa':{hex:'#d4a0a0'},
   'Rojo':{hex:'#8b1a1a'},'Crema':{hex:'#d4c8a8'},'Carbon':{hex:'#2a2a2a',pattern:true},
   'Verde Oliva':{hex:'#4a5a2a'}
@@ -934,6 +934,21 @@ document.querySelectorAll('.rfid-item').forEach(el => revealObserver.observe(el)
 
 // ============ START ============
 init();
+
+// ============ BANNER DE INICIO ============
+(function(){
+  const bUrl = localStorage.getItem('founder_banner_url');
+  if(bUrl){
+    const hero = document.querySelector('.hero');
+    if(hero){
+      const img = document.createElement('img');
+      img.src = bUrl;
+      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.35;pointer-events:none;z-index:1;';
+      hero.insertBefore(img, hero.firstChild);
+    }
+  }
+})();
+
 </script>
 </body>
 </html>
