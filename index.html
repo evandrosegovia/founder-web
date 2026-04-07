@@ -989,6 +989,15 @@ function getPhotos(model, color) {
 function renderProducts() {
   setHTML('productsGrid', state.products.map(renderProductCard).join(''));
   document.querySelectorAll('.product-card').forEach(el => revealObserver.observe(el));
+
+  // Event delegation para botones Vista rápida (evita problemas con onclick en template strings)
+  document.getElementById('productsGrid').addEventListener('click', function(e) {
+    const btn = e.target.closest('.quick-view-btn');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openModal(parseInt(btn.dataset.id));
+  });
 }
 
 function renderProductCard(p) {
@@ -1030,7 +1039,7 @@ function renderProductCard(p) {
             <div class="price">$${p.price.toLocaleString('es-UY')} UYU</div>
             <div class="price-note">10% OFF efectivo/transferencia</div>
           </div>
-          <button class="btn btn--primary btn--sm" onclick="openModal(${p.id});event.preventDefault();event.stopPropagation()">Vista rápida</button>
+          <button class="btn btn--primary btn--sm quick-view-btn" data-id="${p.id}" type="button">Vista rápida</button>
         </div>
       </div>
     </article>`;
