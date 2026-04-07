@@ -619,7 +619,7 @@ textarea.fi{resize:vertical;min-height:70px}
     <button class="drive-gate-btn" id="driveGateBtn" onclick="connectDriveGate()">
       <span>Conectar con Google</span>
     </button>
-    <div class="drive-gate-hint">Usá la cuenta <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fe98918b909a9b8cd08b87be99939f9792d09d9193">[email&#160;protected]</a></strong></div>
+    <div class="drive-gate-hint">Usá la cuenta de Google asociada a este proyecto</div>
     <button class="drive-gate-skip" onclick="skipDriveGate()">Continuar sin conectar (solo lectura)</button>
   </div>
 </div>
@@ -651,7 +651,7 @@ const PASSWORD  = 'nerito20';
 const SHEET_ID  = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`;
 const FOTOS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`;
-const CLIENT_ID = '595122743548-mr52ug4qc2l6fkumfsf2vbnbaqsv9tpc.apps.googleusercontent.com';
+const CLIENT_ID = '733837099876-opi6t9ohpru1c7su1hbgj8kqrvmqp1nh.apps.googleusercontent.com';
 const SCOPES    = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
 
 const COLOR_MAP = {
@@ -1062,12 +1062,16 @@ function getColors() {
 // ============================================================
 // PHOTO EDITOR
 // ============================================================
+// Sanitiza un string para usarlo como parte de un id HTML (sin espacios ni caracteres especiales)
+function sanitizeId(str) { return str.replace(/[^a-zA-Z0-9]/g, '_'); }
+
 function renderColorPhotos(modelo, cols) {
   const c = document.getElementById('colorPhotosSection');
   if (!cols.length) { c.innerHTML = ''; return; }
   c.innerHTML = `<div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Fotos por color (hasta 5 por cada color)</div>` +
     cols.map(color => {
       const fotos = getFotos(modelo, color);
+      const sid   = sanitizeId(`${modelo}_${color}`); // id seguro sin espacios
       return `<div class="photo-block">
         <div class="photo-head">
           <div class="photo-dot" style="background:${COLOR_MAP[color] || '#555'}"></div>
@@ -1077,30 +1081,33 @@ function renderColorPhotos(modelo, cols) {
           ${fotos.map((f, fi) => `
             <div class="photo-slot">
               <div class="slot-label">Foto ${fi + 1}</div>
-              <input type="text" id="foto_${modelo}_${color}_${fi}" value="${f}" placeholder="Link" class="slot-input">
+              <input type="text" id="foto_${sid}_${fi}" value="${f}" placeholder="Link" class="slot-input">
               <div class="slot-btns">
                 <button class="slot-btn conv" onclick="convPhoto('${modelo}','${color}',${fi})">Conv.</button>
                 <button class="slot-btn up" onclick="pickFile('${modelo}','${color}',${fi})">📁</button>
               </div>
-              ${f ? `<img src="${f}" class="slot-prev" id="prev_${modelo}_${color}_${fi}">` : `<div class="slot-empty" id="prev_${modelo}_${color}_${fi}">📷</div>`}
+              ${f ? `<img src="${f}" class="slot-prev" id="prev_${sid}_${fi}">` : `<div class="slot-empty" id="prev_${sid}_${fi}">📷</div>`}
             </div>`).join('')}
         </div>
       </div>`;
     }).join('');
+    }).join('');
 }
 
 function convPhoto(m, c, fi) {
-  const inp = document.getElementById(`foto_${m}_${c}_${fi}`);
+  const sid = sanitizeId(`${m}_${c}`);
+  const inp = document.getElementById(`foto_${sid}_${fi}`);
   const id  = extractDriveId(inp.value.trim());
   if (id) { inp.value = convertToDirectLink(id); refreshPrev(m, c, fi, inp.value); toast('Convertido ✓'); }
 }
 
 function refreshPrev(m, c, fi, url) {
-  const el = document.getElementById(`prev_${m}_${c}_${fi}`);
+  const sid = sanitizeId(`${m}_${c}`);
+  const el = document.getElementById(`prev_${sid}_${fi}`);
   if (!el) return;
   el.outerHTML = url
-    ? `<img src="${url}" class="slot-prev" id="prev_${m}_${c}_${fi}">`
-    : `<div class="slot-empty" id="prev_${m}_${c}_${fi}">📷</div>`;
+    ? `<img src="${url}" class="slot-prev" id="prev_${sid}_${fi}">`
+    : `<div class="slot-empty" id="prev_${sid}_${fi}">📷</div>`;
 }
 
 function pickFile(m, c, fi) {
@@ -1165,8 +1172,9 @@ async function saveProduct() {
     const colsArr = colores.split(',').map(c => c.trim()).filter(c => c);
     for (const color of colsArr) {
       const fotos = [];
+      const sid = sanitizeId(`${nombre}_${color}`);
       for (let fi = 0; fi < 5; fi++) {
-        const inp = document.getElementById(`foto_${nombre}_${color}_${fi}`);
+        const inp = document.getElementById(`foto_${sid}_${fi}`);
         fotos.push(inp ? inp.value.trim() : '');
       }
 
@@ -1340,7 +1348,8 @@ async function uploadToDrive(file, modelo, color, fotoNum) {
       body: JSON.stringify({ role: 'reader', type: 'anyone' })
     });
     const link = `https://lh3.googleusercontent.com/d/${fileId}`;
-    const inp = document.getElementById(`foto_${modelo}_${color}_${fotoNum}`);
+    const sid = sanitizeId(`${modelo}_${color}`);
+    const inp = document.getElementById(`foto_${sid}_${fotoNum}`);
     if (inp) inp.value = link;
     refreshPrev(modelo, color, fotoNum, link);
     toast(`Foto ${fotoNum + 1} subida ✅`);
@@ -1576,8 +1585,12 @@ function renderOrders(orders) {
 // VER DETALLE DE PEDIDO
 // ============================================================
 function viewOrder(id) {
-  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
-  const o = stored.find(x => x.id === id);
+  // Buscar primero en allOrders (fuente de verdad), luego en localStorage como fallback
+  let o = allOrders.find(x => x.id === id);
+  if (!o) {
+    const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+    o = stored.find(x => x.id === id);
+  }
   if (!o) { toast('Pedido no encontrado', true); return; }
 
   const prodsText = o.productos || (o.items||[]).map(it=>`Founder ${it.name} (${it.color}) x${it.qty}`).join('<br>') || '—';
