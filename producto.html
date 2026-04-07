@@ -545,6 +545,14 @@ const COLOR_MAP = Object.freeze({
 // ── STATE ─────────────────────────────────────────────────────
 const CART_KEY = 'founder_cart'; // clave compartida con index.html
 
+// Estas funciones deben estar ANTES de state para que loadCartFromStorage() funcione
+function loadCartFromStorage() {
+  try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
+}
+function saveCartToStorage() {
+  try { localStorage.setItem(CART_KEY, JSON.stringify(state.cart)); } catch {}
+}
+
 const state = {
   product:      null,   // producto actual
   allProducts:  [],     // todos los productos (para relacionados)
@@ -553,14 +561,6 @@ const state = {
   activePhoto:   0,     // índice de foto activa
   cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
 };
-
-function loadCartFromStorage() {
-  try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
-}
-
-function saveCartToStorage() {
-  try { localStorage.setItem(CART_KEY, JSON.stringify(state.cart)); } catch {}
-}
 
 // ── DOM HELPERS ───────────────────────────────────────────────
 const $        = id => document.getElementById(id);
