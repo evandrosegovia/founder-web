@@ -138,8 +138,10 @@ nav a:hover{color:var(--white)}
 .close-btn{background:none;border:none;color:var(--muted);font-size:24px;cursor:none;transition:color .2s;line-height:1}
 .close-btn:hover{color:var(--white)}
 .cart-items{flex:1;overflow-y:auto;padding:24px 36px}
-.cart-item{display:flex;gap:16px;padding:20px 0;border-bottom:1px solid var(--border)}
-.cart-item-info{flex:1}
+.cart-item{display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.cart-item-img{width:56px;height:56px;min-width:56px;min-height:56px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;background:var(--mid)}
+.cart-item-img-placeholder{width:56px;height:56px;min-width:56px;min-height:56px;background:var(--mid);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px}
+.cart-item-info{flex:1;min-width:0}
 .cart-item-name{font-family:'Cormorant Garamond',serif;font-size:18px;margin-bottom:4px}
 .cart-item-variant{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
 .cart-controls{display:flex;align-items:center;gap:12px}
