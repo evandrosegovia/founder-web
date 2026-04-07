@@ -26,7 +26,6 @@ html,body{height:100%;background:#0a0a0a;color:#f5f5f0;font-family:'Montserrat',
 .login-err{font-size:10px;color:var(--red);text-align:center;display:none}
 /* PANEL */
 #adminPanel{display:none}
-#adminPanel.visible{display:block}
 /* TOPBAR */
 .topbar{height:60px;background:var(--gray);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 32px;position:sticky;top:0;z-index:100}
 .topbar-left{display:flex;align-items:center;gap:12px}
@@ -59,42 +58,45 @@ html,body{height:100%;background:#0a0a0a;color:#f5f5f0;font-family:'Montserrat',
 .btn{padding:9px 18px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:600;cursor:pointer;border:none;transition:all .3s;display:inline-block}
 .btn-primary{background:var(--white);color:var(--black)}.btn-primary:hover{background:var(--gold)}
 .btn-secondary{background:var(--mid);color:var(--white)}.btn-secondary:hover{background:var(--light)}
-.btn-success{background:rgba(76,175,130,.15);color:var(--green);border:1px solid rgba(76,175,130,.3)}.btn-success:hover{background:var(--green);color:var(--black)}
 .btn-danger{background:rgba(224,85,85,.15);color:var(--red);border:1px solid rgba(224,85,85,.3)}.btn-danger:hover{background:var(--red);color:var(--white)}
 .btn-sm{padding:6px 12px;font-size:8px}
 /* STATS */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
 .stat-card{background:var(--gray);border:1px solid var(--border);padding:18px}
 .stat-icon{font-size:20px;margin-bottom:6px}
-.stat-value{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400}
-.stat-label{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:3px}
-/* CARD */
-.card{background:var(--gray);border:1px solid var(--border);margin-bottom:14px}
-.card-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.card-title{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:400}
+.stat-value{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300}
+.stat-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+/* CARDS */
+.card{background:var(--gray);border:1px solid var(--border)}
+.card-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
 .card-body{padding:18px}
-/* PRODUCT ROWS */
-.product-row{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--gray);transition:background .2s}
-.product-row:hover{background:var(--mid)}
-.prod-img{width:50px;height:50px;object-fit:cover;background:var(--mid);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px}
-.prod-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400}
-.prod-meta{font-size:10px;color:var(--muted);letter-spacing:.5px;margin-top:2px}
-.prod-price{font-family:'Cormorant Garamond',serif;font-size:18px;white-space:nowrap;margin-left:auto;padding-left:12px}
+/* LINKS GRID */
+.links-grid{display:flex;flex-wrap:wrap;gap:8px}
+.link-btn{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:9px 14px;font-size:10px;letter-spacing:1px;text-decoration:none;transition:all .2s}
+.link-btn:hover{border-color:var(--gold);color:var(--gold)}
+/* PRODUCT ROW */
+.product-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
+.product-row:last-child{border-bottom:none}
+.prod-img{width:48px;height:48px;object-fit:cover;background:var(--mid);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.prod-name{font-family:'Cormorant Garamond',serif;font-size:17px}
+.prod-meta{font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:2px}
+.prod-price{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--gold);margin-left:auto;margin-right:16px}
 .prod-actions{display:flex;gap:6px;flex-shrink:0}
 /* ORDERS */
-.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
-.filter-btn{background:var(--mid);border:1px solid var(--border);color:var(--muted);padding:6px 12px;font-family:'Montserrat',sans-serif;font-size:8px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s}
-.filter-btn.active,.filter-btn:hover{background:var(--white);color:var(--black);border-color:var(--white)}
-.orders-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+.filter-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:6px 14px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.filter-btn.active{border-color:var(--gold);color:var(--gold)}
+.orders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
 .order-card{background:var(--gray);border:1px solid var(--border)}
-.order-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.order-id{font-size:10px;letter-spacing:1px;color:var(--muted)}
-.order-badge{font-size:8px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;font-weight:700}
-.badge-pago{background:rgba(224,85,85,.2);color:var(--red);border:1px solid rgba(224,85,85,.3)}
-.badge-mp{background:rgba(201,169,110,.2);color:var(--gold);border:1px solid rgba(201,169,110,.3)}
-.badge-ok{background:rgba(76,175,130,.2);color:var(--green);border:1px solid rgba(76,175,130,.3)}
-.badge-done{background:rgba(100,100,255,.2);color:#8888ff;border:1px solid rgba(100,100,255,.3)}
-.badge-cancel{background:rgba(100,100,100,.2);color:var(--muted);border:1px solid var(--border)}
+.order-head{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.order-id{font-size:9px;letter-spacing:2px;color:var(--muted)}
+.order-status{font-size:8px;letter-spacing:2px;text-transform:uppercase;padding:3px 8px;border-radius:2px}
+.status-pendiente-pago{background:rgba(201,169,110,.12);color:var(--gold)}
+.status-pendiente-mp{background:rgba(100,100,200,.12);color:#8888ff}
+.status-confirmado{background:rgba(76,175,130,.12);color:var(--green)}
+.status-entregado{background:rgba(76,175,130,.2);color:var(--green)}
+.status-cancelado{background:rgba(224,85,85,.12);color:var(--red)}
 .order-body{padding:12px 16px;display:flex;flex-direction:column;gap:7px}
 .order-name{font-family:'Cormorant Garamond',serif;font-size:17px}
 .order-info{font-size:10px;color:var(--muted);line-height:1.8}
@@ -126,94 +128,113 @@ textarea.fi{resize:vertical;min-height:70px}
 .photo-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}
 .photo-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);flex-shrink:0}
 .photo-color-name{font-size:9px;letter-spacing:2px;text-transform:uppercase}
-.photo-slots{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
-.photo-slot{display:flex;flex-direction:column;gap:3px}
-.slot-label{font-size:8px;color:var(--muted);letter-spacing:1px}
-.slot-input{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:4px 5px;font-size:8px;outline:none;width:100%}
-.slot-btns{display:flex;gap:2px}
-.slot-btn{flex:1;border:none;padding:3px 0;font-family:'Montserrat',sans-serif;font-size:7px;letter-spacing:1px;cursor:pointer;font-weight:700;text-transform:uppercase}
-.slot-btn.conv{background:var(--gold);color:var(--black)}
-.slot-btn.up{background:var(--light);color:var(--white)}
-.slot-prev{width:100%;height:38px;object-fit:cover;border:1px solid var(--border)}
-.slot-empty{width:100%;height:38px;background:var(--mid);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px}
-/* CONVERTER */
-.conv-row{display:flex;gap:7px}
-.conv-inp{flex:1;background:var(--mid);border:1px solid var(--border);color:var(--white);padding:9px 12px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none}
-.conv-btn{background:var(--gold);color:var(--black);border:none;padding:9px 14px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;font-weight:700;cursor:pointer;white-space:nowrap}
-.conv-result{background:var(--mid);border:1px solid var(--green);color:var(--green);padding:9px 12px;font-size:10px;word-break:break-all;cursor:pointer;margin-top:8px}
-/* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;display:flex;align-items:center;justify-content:center;padding:28px;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(4px)}
+.photo-slots{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.photo-slot{display:flex;flex-direction:column;gap:4px}
+.slot-label{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.slot-input{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:5px 7px;font-family:'Montserrat',sans-serif;font-size:9px;outline:none;width:100%}
+.slot-input:focus{border-color:var(--gold)}
+.slot-btns{display:flex;gap:3px}
+.slot-btn{flex:1;border:none;padding:5px 3px;font-family:'Montserrat',sans-serif;font-size:8px;letter-spacing:1px;cursor:pointer;text-transform:uppercase}
+.slot-btn.conv{background:var(--mid);color:var(--muted)}.slot-btn.conv:hover{color:var(--gold)}
+.slot-btn.up{background:rgba(76,175,130,.12);color:var(--green)}.slot-btn.up:hover{background:var(--green);color:var(--black)}
+.slot-prev{width:100%;height:60px;object-fit:cover;border:1px solid var(--border)}
+.slot-empty{width:100%;height:60px;background:var(--mid);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px}
+/* MODAL (product editor) */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;opacity:0;pointer-events:none;transition:opacity .3s;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{opacity:1;pointer-events:all}
-.modal{background:var(--gray);width:100%;max-width:660px;max-height:88vh;overflow-y:auto;border:1px solid var(--border)}
-.modal-head{padding:22px 26px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--gray);z-index:5}
-.modal-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400}
-.modal-x{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;transition:color .2s}
-.modal-x:hover{color:var(--white)}
-.modal-body{padding:24px;display:flex;flex-direction:column;gap:18px}
-.modal-foot{padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--gray)}
-/* LINKS */
-.links-grid{display:flex;gap:8px;flex-wrap:wrap}
-.link-btn{background:var(--mid);border:1px solid var(--border);padding:12px 18px;text-decoration:none;color:var(--white);font-size:11px;letter-spacing:1px;transition:border-color .2s;display:inline-flex;align-items:center;gap:8px}
-.link-btn:hover{border-color:var(--gold)}
+.modal{background:var(--gray);border:1px solid var(--border);width:100%;max-width:740px;max-height:90vh;overflow-y:auto;transform:translateY(16px);transition:transform .3s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--gray);z-index:1}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:22px}
+.modal-x{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;transition:color .2s}.modal-x:hover{color:var(--white)}
+.modal-body{padding:22px;display:flex;flex-direction:column;gap:18px}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;gap:9px;justify-content:flex-end;position:sticky;bottom:0;background:var(--gray)}
+/* CONFIRM MODAL */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:300;display:none;align-items:center;justify-content:center}
+.confirm-overlay.open{display:flex}
+.confirm-box{background:var(--gray);border:1px solid rgba(224,85,85,.4);padding:32px;width:380px;text-align:center;display:flex;flex-direction:column;gap:18px}
+.confirm-icon{font-size:36px}
+.confirm-title{font-family:'Cormorant Garamond',serif;font-size:22px}
+.confirm-msg{font-size:11px;color:var(--muted);line-height:1.7}
+.confirm-btns{display:flex;gap:10px;justify-content:center;margin-top:4px}
+/* BANNER MODAL */
+.banner-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.banner-modal-overlay.open{display:flex}
+.banner-modal{background:var(--gray);border:1px solid var(--border);width:100%;max-width:600px;max-height:90vh;overflow-y:auto}
+.banner-modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;sticky:top 0;background:var(--gray)}
+.banner-modal-body{padding:22px;display:flex;flex-direction:column;gap:18px}
+.banner-modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;gap:9px;justify-content:flex-end}
+/* CONVERSOR */
+.conv-row{display:flex;gap:8px}
+.conv-inp{flex:1;background:var(--mid);border:1px solid var(--border);color:var(--white);padding:10px 13px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none}
+.conv-inp:focus{border-color:var(--gold)}
+.conv-btn{background:var(--white);color:var(--black);border:none;padding:10px 16px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s}.conv-btn:hover{background:var(--gold)}
+.conv-result{background:var(--mid);border:1px solid rgba(76,175,130,.3);padding:10px;font-size:10px;word-break:break-all;cursor:pointer;transition:background .2s}.conv-result:hover{background:var(--light)}
 /* TOAST */
-.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:600;opacity:0;transform:translateY(6px);transition:all .4s;z-index:9999;background:var(--green);color:var(--black)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--white);color:var(--black);padding:12px 24px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;opacity:0;transition:all .4s;z-index:9999;white-space:nowrap;pointer-events:none}
 .toast.err{background:var(--red);color:var(--white)}
-.toast.show{opacity:1;transform:translateY(0)}
-@media(max-width:768px){
-  .stats{grid-template-columns:1fr 1fr}
-  .orders-grid{grid-template-columns:1fr}
-  .form-grid{grid-template-columns:1fr}
-  .sidebar{display:none}
-  .photo-slots{grid-template-columns:repeat(3,1fr)}
-}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* BANNER PREVIEW */
+.banner-preview{background:var(--black);border:1px solid var(--border);padding:24px;text-align:center;margin-bottom:6px;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.banner-preview img{max-width:100%;max-height:200px;object-fit:cover}
+.banner-preview-empty{color:var(--muted);font-size:11px;letter-spacing:2px}
+/* INFO BOX */
+.info-box{background:rgba(201,169,110,.06);border:1px solid rgba(201,169,110,.2);padding:12px 16px;font-size:10px;color:var(--muted);line-height:1.8}
+.info-box strong{color:var(--gold)}
 </style>
 </head>
 <body>
 
+<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <!-- LOGIN -->
 <div id="loginScreen">
   <div class="login-box">
     <div class="login-logo">FOUNDER</div>
-    <div class="login-sub">Panel de Administración</div>
-    <div>
-      <input type="password" class="login-input" id="passwordInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
-      <div class="login-err" id="loginError">Contraseña incorrecta</div>
-    </div>
+    <div class="login-sub">Panel de administración</div>
+    <input type="password" class="login-input" id="passwordInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+    <div class="login-err" id="loginError">Contraseña incorrecta</div>
     <button class="login-btn" onclick="login()">Ingresar</button>
   </div>
 </div>
 
 <!-- ADMIN PANEL -->
 <div id="adminPanel">
+
+  <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-logo">FOUNDER</div>
-      <div class="topbar-badge">Admin</div>
+      <div class="topbar-badge">ADMIN</div>
     </div>
     <div class="topbar-right">
-      <span class="drive-status" id="driveStatus">⚪ Drive desconectado</span>
+      <span class="drive-status" id="driveStatus">⬜ Sin conectar</span>
       <button class="tbtn green" id="connectDriveBtn" onclick="connectDrive()">Conectar Drive</button>
       <a href="https://founder-web-gules.vercel.app" target="_blank" class="tbtn">Ver sitio →</a>
-      <button class="tbtn" style="border-color:rgba(224,85,85,.3);color:var(--red)" onclick="logout()">Salir</button>
+      <button class="tbtn" onclick="logout()">Salir</button>
     </div>
   </div>
 
+  <!-- BODY -->
   <div class="body-layout">
+
+    <!-- SIDEBAR -->
     <div class="sidebar">
       <div class="nav-section">Principal</div>
       <div class="nav-item active" onclick="nav('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</div>
       <div class="nav-item" onclick="nav('pedidos',this)"><span class="nav-icon">📦</span>Pedidos</div>
       <div class="nav-item" onclick="nav('productos',this)"><span class="nav-icon">👜</span>Productos</div>
       <div class="nav-section">Herramientas</div>
-      <div class="nav-item" onclick="nav('imagenes',this)"><span class="nav-icon">🖼️</span>Conversor imágenes</div>
+      <div class="nav-item" onclick="nav('banner',this)"><span class="nav-icon">🖼️</span>Banner inicio</div>
+      <div class="nav-item" onclick="nav('imagenes',this)"><span class="nav-icon">🔗</span>Conversor imágenes</div>
       <div class="nav-section">Accesos</div>
       <div class="nav-item" onclick="window.open('https://founder-web-gules.vercel.app','_blank')"><span class="nav-icon">🌐</span>Ver tienda</div>
       <div class="nav-item" onclick="window.open('https://docs.google.com/spreadsheets/d/1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8','_blank')"><span class="nav-icon">📋</span>Planilla</div>
       <div class="nav-item" onclick="window.open('https://drive.google.com','_blank')"><span class="nav-icon">📁</span>Google Drive</div>
     </div>
 
+    <!-- MAIN -->
     <div class="main-content">
 
       <!-- DASHBOARD -->
@@ -230,7 +251,7 @@ textarea.fi{resize:vertical;min-height:70px}
         </div>
         <div class="card">
           <div class="card-head"><div class="card-title">Productos activos</div><button class="btn btn-primary btn-sm" onclick="nav('productos',document.querySelectorAll('.nav-item')[2])">Gestionar</button></div>
-          <div id="dashProductList" style="min-height:60px"><div style="padding:32px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px">Cargando...</div></div>
+          <div id="dashProductList" style="min-height:60px;padding:0 18px"><div style="padding:32px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px">Cargando...</div></div>
         </div>
         <div class="card" style="margin-top:14px">
           <div class="card-head"><div class="card-title">Accesos rápidos</div></div>
@@ -273,10 +294,70 @@ textarea.fi{resize:vertical;min-height:70px}
           <div><div class="ph-title">Productos</div><div class="ph-sub">Editá precios, descripciones, colores e imágenes</div></div>
           <button class="btn btn-primary btn-sm" onclick="openNewProduct()">+ Nuevo</button>
         </div>
+        <div class="info-box" style="margin-bottom:18px">
+          <strong>💡 Importante:</strong> Conectate a Google Drive antes de guardar cambios. Cada vez que editás un producto, los datos se sincronizan directamente con la planilla. No cierres la ventana mientras se guarda.
+        </div>
         <div id="productListAdmin"><div style="padding:32px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px">Cargando...</div></div>
       </div>
 
-      <!-- IMAGENES -->
+      <!-- BANNER -->
+      <div class="page" id="page-banner">
+        <div class="ph">
+          <div><div class="ph-title">Banner de inicio</div><div class="ph-sub">Imagen de fondo de la sección hero</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Vista previa actual</div></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+            <div class="banner-preview" id="bannerPreview">
+              <div class="banner-preview-empty" id="bannerPreviewEmpty">Sin imagen de banner — se usa el fondo degradado por defecto</div>
+            </div>
+            <div class="info-box">
+              <strong>¿Cómo funciona?</strong><br>
+              El banner se guarda en el navegador (localStorage). Si querés que todos los visitantes lo vean, necesitás editar el archivo <strong>index.html</strong> directamente con el link de la imagen.<br><br>
+              <strong>Formato recomendado:</strong> imagen apaisada (1920×600px), oscura o con texto blanco encima. Funciona mejor con imágenes de Google Drive convertidas.
+            </div>
+            <div class="fg">
+              <div class="fl">Link de imagen (Google Drive convertido o directo)</div>
+              <div class="conv-row">
+                <input type="text" class="conv-inp" id="bannerInput" placeholder="https://lh3.googleusercontent.com/d/...">
+                <button class="conv-btn" onclick="previewBanner()">Vista previa</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="saveBanner()">💾 Guardar banner</button>
+              <button class="btn btn-secondary" onclick="clearBanner()">✕ Quitar banner</button>
+            </div>
+            <div class="fhint">El banner guardado se muestra en index.html si tenés el código de integración activo (ver más abajo).</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <div class="card-head"><div class="card-title">Código a agregar en index.html</div></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+            <div class="fhint" style="line-height:1.9">
+              Para que el banner funcione en el sitio público, pegá este código al final del <code style="color:var(--gold)">&lt;script&gt;</code> principal de tu <strong>index.html</strong>, antes del cierre <code style="color:var(--gold)">&lt;/script&gt;</code>:
+            </div>
+            <div style="background:var(--mid);border:1px solid var(--border);padding:14px;font-size:10px;font-family:monospace;color:var(--gold);line-height:1.8;word-break:break-all">
+              // Cargar banner desde admin<br>
+              (function(){<br>
+              &nbsp;&nbsp;const bUrl = localStorage.getItem('founder_banner_url');<br>
+              &nbsp;&nbsp;if(bUrl){<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;const hero = document.querySelector('.hero');<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;if(hero){<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const img = document.createElement('img');<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;img.src = bUrl;<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.35;pointer-events:none;';<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hero.style.position='relative';<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;hero.insertBefore(img, hero.firstChild);<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+              &nbsp;&nbsp;}<br>
+              })();
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="copyBannerCode()" style="align-self:flex-start">📋 Copiar código</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONVERSOR IMAGENES -->
       <div class="page" id="page-imagenes">
         <div class="ph"><div><div class="ph-title">Conversor de imágenes</div><div class="ph-sub">Convertí links de Google Drive al formato correcto</div></div></div>
         <div class="card">
@@ -317,9 +398,9 @@ textarea.fi{resize:vertical;min-height:70px}
         </div>
       </div>
 
-    </div>
-  </div>
-</div>
+    </div><!-- /main-content -->
+  </div><!-- /body-layout -->
+</div><!-- /adminPanel -->
 
 <!-- PRODUCT MODAL -->
 <div class="modal-overlay" id="productModal">
@@ -355,281 +436,706 @@ textarea.fi{resize:vertical;min-height:70px}
   </div>
 </div>
 
-<script>
-const PASSWORD='nerito20';
-const SHEET_ID='1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
-const SHEET_URL=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`;
-const FOTOS_URL=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`;
-const CLIENT_ID='733837099876-opi6t9ohpru1c7su1hbgj8kqrvmqp1nh.apps.googleusercontent.com';
-const SCOPES='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
-const COLOR_MAP={'Negro':'#1a1a1a','Marrón':'#8b4513','Marrón Oscuro':'#3d2010','Gris Oscuro':'#4a4a5a','Azul':'#1a3a5c','Rosa':'#d4a0a0','Rojo':'#8b1a1a','Crema':'#d4c8a8','Carbon':'#2a2a2a','Verde Oliva':'#4a5a2a'};
-let products=[],fotosData=[],allOrders=[],currentFilter='todos';
-let tokenClient,accessToken=null,driveReady=false;
+<!-- CONFIRM DELETE MODAL -->
+<div class="confirm-overlay" id="confirmModal">
+  <div class="confirm-box">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title">Eliminar producto</div>
+    <div class="confirm-msg" id="confirmMsg">¿Estás seguro de que querés eliminar este producto? Esta acción no se puede deshacer. Se eliminarán también todas sus fotos de la planilla.</div>
+    <div class="confirm-btns">
+      <button class="btn btn-secondary" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn" onclick="executeDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>
 
-function login(){
-  if(document.getElementById('passwordInput').value===PASSWORD){
-    document.getElementById('loginScreen').style.display='none';
-    document.getElementById('adminPanel').style.display='block';
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const PASSWORD  = 'nerito20';
+const SHEET_ID  = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`;
+const FOTOS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`;
+const CLIENT_ID = '733837099876-oadpi6t9ohpru1c7su1hbgj8kqrvmqp1nh.apps.googleusercontent.com';
+const SCOPES    = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
+
+const COLOR_MAP = {
+  'Negro':'#1a1a1a','Marrón':'#8b4513','Marrón Oscuro':'#3d2010',
+  'Gris Oscuro':'#4a4a5a','Azul':'#1a3a5c','Rosa':'#d4a0a0',
+  'Rojo':'#8b1a1a','Crema':'#d4c8a8','Carbon':'#2a2a2a','Verde Oliva':'#4a5a2a'
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let products  = [];   // array de {rowIndex, nombre, precio, desc, colores, specs}
+let fotosData = [];   // array de {rowIndex, modelo, color, fotos:[]}
+let allOrders = [], currentFilter = 'todos';
+let tokenClient, accessToken = null, driveReady = false;
+let pendingDeleteIndex = -1; // índice en products[] del producto a eliminar
+
+// ============================================================
+// AUTH
+// ============================================================
+function login() {
+  if (document.getElementById('passwordInput').value === PASSWORD) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminPanel').style.display  = 'block';
     loadData();
-  }else{document.getElementById('loginError').style.display='block';document.getElementById('passwordInput').value='';}
+    loadBannerPreview();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('passwordInput').value = '';
+  }
 }
-function logout(){
-  document.getElementById('loginScreen').style.display='flex';
-  document.getElementById('adminPanel').style.display='none';
-  document.getElementById('passwordInput').value='';
+function logout() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('adminPanel').style.display  = 'none';
+  document.getElementById('passwordInput').value = '';
+  accessToken = null; driveReady = false;
+  document.getElementById('driveStatus').textContent = '⬜ Sin conectar';
+  document.getElementById('connectDriveBtn').style.display = 'inline-flex';
 }
-function nav(page,el){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
-  if(el)el.classList.add('active');
-  if(page==='pedidos')loadOrders();
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function nav(page, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  if (el) el.classList.add('active');
+  if (page === 'pedidos') loadOrders();
 }
-async function loadData(){
-  try{
-    const[rP,rF]=await Promise.all([fetch(SHEET_URL+'&t='+Date.now()),fetch(FOTOS_URL+'&t='+Date.now())]);
-    const tP=await rP.text(),tF=await rF.text();
-    const jP=JSON.parse(tP.substring(47,tP.length-2));
-    const jF=JSON.parse(tF.substring(47,tF.length-2));
-    products=(jP.table.rows||[]).map((r,i)=>({rowIndex:i+2,nombre:r.c[0]?.v||'',precio:parseInt(r.c[1]?.v)||0,desc:r.c[2]?.v||'',colores:r.c[3]?.v||'',specs:r.c[4]?.v||''}));
-    fotosData=(jF.table.rows||[]).map((r,i)=>({rowIndex:i+2,modelo:r.c[0]?.v||'',color:r.c[1]?.v||'',fotos:[r.c[2]?.v||'',r.c[3]?.v||'',r.c[4]?.v||'',r.c[5]?.v||'',r.c[6]?.v||'']}));
-    renderDashboard();renderProductList();loadOrders();
-  }catch(e){toast('Error al cargar datos',true);}
+
+// ============================================================
+// DATA LOADING — con deduplicación robusta
+// ============================================================
+async function loadData() {
+  try {
+    const [rP, rF] = await Promise.all([
+      fetch(SHEET_URL + '&t=' + Date.now()),
+      fetch(FOTOS_URL + '&t=' + Date.now())
+    ]);
+    const tP = await rP.text(), tF = await rF.text();
+    const jP = JSON.parse(tP.substring(47, tP.length - 2));
+    const jF = JSON.parse(tF.substring(47, tF.length - 2));
+
+    // ---- PRODUCTOS: eliminar duplicados por nombre (quedarse con la primera aparición) ----
+    const seenProductos = new Set();
+    products = [];
+    (jP.table.rows || []).forEach((r, i) => {
+      const nombre = (r.c[0]?.v || '').trim();
+      if (!nombre) return;                   // fila vacía, ignorar
+      if (seenProductos.has(nombre)) return; // duplicado, ignorar
+      seenProductos.add(nombre);
+      products.push({
+        rowIndex: i + 2,
+        nombre,
+        precio: parseInt(r.c[1]?.v) || 0,
+        desc:   r.c[2]?.v || '',
+        colores: r.c[3]?.v || '',
+        specs:  r.c[4]?.v || ''
+      });
+    });
+
+    // ---- FOTOS: eliminar duplicados por modelo+color (primera aparición gana) ----
+    const seenFotos = new Set();
+    fotosData = [];
+    (jF.table.rows || []).forEach((r, i) => {
+      const modelo = (r.c[0]?.v || '').trim();
+      const color  = (r.c[1]?.v || '').trim();
+      if (!modelo || !color) return;
+      const key = `${modelo}__${color}`;
+      if (seenFotos.has(key)) return; // duplicado ignorado
+      seenFotos.add(key);
+      fotosData.push({
+        rowIndex: i + 2,
+        modelo, color,
+        fotos: [
+          r.c[2]?.v || '', r.c[3]?.v || '', r.c[4]?.v || '',
+          r.c[5]?.v || '', r.c[6]?.v || ''
+        ]
+      });
+    });
+
+    renderDashboard();
+    renderProductList();
+    loadOrders();
+  } catch(e) {
+    toast('Error al cargar datos', true);
+    console.error(e);
+  }
 }
-function getFotos(m,c){return fotosData.find(f=>f.modelo===m&&f.color===c)?.fotos||['','','','',''];}
-function renderDashboard(){
-  document.getElementById('statProductos').textContent=products.length;
-  document.getElementById('statColores').textContent=products.reduce((s,p)=>s+(p.colores?p.colores.split(',').length:0),0);
-  document.getElementById('statImagenes').textContent=fotosData.filter(f=>f.fotos.some(x=>x)).length+' sets';
-  const stored=JSON.parse(localStorage.getItem('founder_pedidos')||'[]');
-  document.getElementById('statPedidos').textContent=stored.length;
-  document.getElementById('dashProductList').innerHTML=products.map(p=>{
-    const foto=fotosData.find(f=>f.modelo===p.nombre&&f.fotos.some(x=>x))?.fotos.find(x=>x);
-    const sets=fotosData.filter(f=>f.modelo===p.nombre&&f.fotos.some(x=>x)).length;
-    return`<div class="product-row">${foto?`<img src="${foto}" class="prod-img" style="object-fit:cover">`:`<div class="prod-img">👜</div>`}<div style="flex:1"><div class="prod-name">Founder ${p.nombre}</div><div class="prod-meta">${p.colores?p.colores.split(',').length:0} colores · ${sets} sets fotos</div></div><div class="prod-price">$${p.precio.toLocaleString('es-UY')}</div></div>`;
+
+function getFotos(m, c) {
+  return fotosData.find(f => f.modelo === m && f.color === c)?.fotos || ['','','','',''];
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard() {
+  document.getElementById('statProductos').textContent = products.length;
+  document.getElementById('statColores').textContent   = products.reduce((s, p) => s + (p.colores ? p.colores.split(',').length : 0), 0);
+  document.getElementById('statImagenes').textContent  = fotosData.filter(f => f.fotos.some(x => x)).length + ' sets';
+  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+  document.getElementById('statPedidos').textContent = stored.length;
+
+  document.getElementById('dashProductList').innerHTML = products.map(p => {
+    const foto = fotosData.find(f => f.modelo === p.nombre && f.fotos.some(x => x))?.fotos.find(x => x);
+    const sets = fotosData.filter(f => f.modelo === p.nombre && f.fotos.some(x => x)).length;
+    return `<div class="product-row">
+      ${foto ? `<img src="${foto}" class="prod-img" style="object-fit:cover">` : `<div class="prod-img">👜</div>`}
+      <div style="flex:1">
+        <div class="prod-name">Founder ${p.nombre}</div>
+        <div class="prod-meta">${p.colores ? p.colores.split(',').length : 0} colores · ${sets} sets fotos</div>
+      </div>
+      <div class="prod-price">$${p.precio.toLocaleString('es-UY')}</div>
+    </div>`;
   }).join('');
 }
-function renderProductList(){
-  document.getElementById('productListAdmin').innerHTML=products.map((p,i)=>{
-    const foto=fotosData.find(f=>f.modelo===p.nombre&&f.fotos.some(x=>x))?.fotos.find(x=>x);
-    const sets=fotosData.filter(f=>f.modelo===p.nombre&&f.fotos.some(x=>x)).length;
-    return`<div class="product-row">${foto?`<img src="${foto}" class="prod-img" style="object-fit:cover">`:`<div class="prod-img">👜</div>`}<div style="flex:1"><div class="prod-name">Founder ${p.nombre}</div><div class="prod-meta">$${p.precio.toLocaleString('es-UY')} · ${p.colores?p.colores.split(',').length:0} colores · ${sets>0?'✅ '+sets+' sets':'⚠️ Sin fotos'}</div></div><div class="prod-actions"><button class="btn btn-secondary btn-sm" onclick="editProduct(${i})">✏️ Editar</button></div></div>`;
-  }).join('');
-}
-function editProduct(i){
-  const p=products[i];
-  document.getElementById('modalTitle').textContent=`Editar — Founder ${p.nombre}`;
-  document.getElementById('editingRow').value=i;
-  document.getElementById('editNombre').value=p.nombre;
-  document.getElementById('editPrecio').value=p.precio;
-  document.getElementById('editDesc').value=p.desc;
-  document.getElementById('editSpecs').value=p.specs;
-  const cols=p.colores?p.colores.split(',').map(c=>c.trim()):[];
-  renderColorRows(cols);renderColorPhotos(p.nombre,cols);
-  document.getElementById('productModal').classList.add('open');
-}
-function openNewProduct(){
-  document.getElementById('modalTitle').textContent='Nuevo producto';
-  document.getElementById('editingRow').value=-1;
-  ['editNombre','editPrecio','editDesc','editSpecs'].forEach(id=>document.getElementById(id).value='');
-  renderColorRows([]);document.getElementById('colorPhotosSection').innerHTML='';
-  document.getElementById('productModal').classList.add('open');
-}
-function closeModal(){document.getElementById('productModal').classList.remove('open');}
-function renderColorRows(cols){
-  document.getElementById('colorsEditor').innerHTML=cols.map((c,i)=>`
-    <div class="color-row" id="cr${i}">
-      <div class="color-dot" id="cd${i}" style="background:${COLOR_MAP[c]||'#555'}"></div>
-      <input type="text" class="color-name-in" value="${c}" placeholder="Nombre del color" oninput="updDot(${i},this.value)" id="cn${i}">
-      <button class="rem-color" onclick="remRow(${i})">✕</button>
-    </div>`).join('');
-}
-function addColorRow(){
-  const e=document.getElementById('colorsEditor'),i=e.children.length,d=document.createElement('div');
-  d.className='color-row';d.id=`cr${i}`;
-  d.innerHTML=`<div class="color-dot" id="cd${i}" style="background:#555"></div><input type="text" class="color-name-in" placeholder="Nombre del color" oninput="updDot(${i},this.value)" id="cn${i}"><button class="rem-color" onclick="remRow(${i})">✕</button>`;
-  e.appendChild(d);
-}
-function remRow(i){const r=document.getElementById(`cr${i}`);if(r)r.remove();}
-function updDot(i,v){const d=document.getElementById(`cd${i}`);if(d)d.style.background=COLOR_MAP[v.trim()]||'#555';}
-function getColors(){return Array.from(document.querySelectorAll('#colorsEditor .color-name-in')).map(i=>i.value.trim()).filter(v=>v).join(',');}
-function renderColorPhotos(modelo,cols){
-  const c=document.getElementById('colorPhotosSection');
-  if(!cols.length){c.innerHTML='';return;}
-  c.innerHTML=`<div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Fotos por color (5 por cada color)</div>`+
-  cols.map(color=>{
-    const fotos=getFotos(modelo,color);
-    return`<div class="photo-block">
-      <div class="photo-head"><div class="photo-dot" style="background:${COLOR_MAP[color]||'#555'}"></div><div class="photo-color-name">${color}</div></div>
-      <div class="photo-slots">${fotos.map((f,fi)=>`
-        <div class="photo-slot">
-          <div class="slot-label">Foto ${fi+1}</div>
-          <input type="text" id="foto_${modelo}_${color}_${fi}" value="${f}" placeholder="Link" class="slot-input">
-          <div class="slot-btns">
-            <button class="slot-btn conv" onclick="convPhoto('${modelo}','${color}',${fi})">Conv.</button>
-            <button class="slot-btn up" onclick="pickFile('${modelo}','${color}',${fi})">📁</button>
-          </div>
-          ${f?`<img src="${f}" class="slot-prev" id="prev_${modelo}_${color}_${fi}">`:`<div class="slot-empty" id="prev_${modelo}_${color}_${fi}">📷</div>`}
-        </div>`).join('')}
+
+// ============================================================
+// PRODUCT LIST — con botones Editar y Eliminar
+// ============================================================
+function renderProductList() {
+  document.getElementById('productListAdmin').innerHTML = products.map((p, i) => {
+    const foto = fotosData.find(f => f.modelo === p.nombre && f.fotos.some(x => x))?.fotos.find(x => x);
+    const sets = fotosData.filter(f => f.modelo === p.nombre && f.fotos.some(x => x)).length;
+    return `<div class="product-row">
+      ${foto ? `<img src="${foto}" class="prod-img" style="object-fit:cover">` : `<div class="prod-img">👜</div>`}
+      <div style="flex:1">
+        <div class="prod-name">Founder ${p.nombre}</div>
+        <div class="prod-meta">$${p.precio.toLocaleString('es-UY')} · ${p.colores ? p.colores.split(',').length : 0} colores · ${sets > 0 ? '✅ ' + sets + ' sets' : '⚠️ Sin fotos'}</div>
+      </div>
+      <div class="prod-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editProduct(${i})">✏️ Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDelete(${i})">🗑️ Eliminar</button>
       </div>
     </div>`;
   }).join('');
 }
-function convPhoto(m,c,fi){
-  const inp=document.getElementById(`foto_${m}_${c}_${fi}`);
-  const id=extractDriveId(inp.value.trim());
-  if(id){inp.value=convertToDirectLink(id);refreshPrev(m,c,fi,inp.value);toast('Convertido ✓');}
+
+// ============================================================
+// EDIT PRODUCT
+// ============================================================
+function editProduct(i) {
+  const p = products[i];
+  document.getElementById('modalTitle').textContent = `Editar — Founder ${p.nombre}`;
+  document.getElementById('editingRow').value = i;
+  document.getElementById('editNombre').value = p.nombre;
+  document.getElementById('editPrecio').value = p.precio;
+  document.getElementById('editDesc').value   = p.desc;
+  document.getElementById('editSpecs').value  = p.specs;
+  const cols = p.colores ? p.colores.split(',').map(c => c.trim()) : [];
+  renderColorRows(cols);
+  renderColorPhotos(p.nombre, cols);
+  document.getElementById('productModal').classList.add('open');
 }
-function refreshPrev(m,c,fi,url){
-  const el=document.getElementById(`prev_${m}_${c}_${fi}`);if(!el)return;
-  el.outerHTML=url?`<img src="${url}" class="slot-prev" id="prev_${m}_${c}_${fi}">`:`<div class="slot-empty" id="prev_${m}_${c}_${fi}">📷</div>`;
+
+function openNewProduct() {
+  document.getElementById('modalTitle').textContent = 'Nuevo producto';
+  document.getElementById('editingRow').value = -1;
+  ['editNombre','editPrecio','editDesc','editSpecs'].forEach(id => document.getElementById(id).value = '');
+  renderColorRows([]);
+  document.getElementById('colorPhotosSection').innerHTML = '';
+  document.getElementById('productModal').classList.add('open');
 }
-function pickFile(m,c,fi){
-  const f=document.createElement('input');f.type='file';f.accept='image/*';
-  f.onchange=async e=>{const file=e.target.files[0];if(file)await uploadToDrive(file,m,c,fi);};f.click();
-}
-async function saveProduct(){
-  const nombre=document.getElementById('editNombre').value.trim();
-  const precio=document.getElementById('editPrecio').value.trim();
-  if(!nombre||!precio){toast('Nombre y precio son obligatorios',true);return;}
-  const colores=getColors(),specs=document.getElementById('editSpecs').value.trim(),desc=document.getElementById('editDesc').value.trim();
-  const rowIdx=parseInt(document.getElementById('editingRow').value);
-  const sheetRow=rowIdx===-1?products.length+2:products[rowIdx].rowIndex;
-  if(rowIdx===-1)products.push({nombre,precio:parseInt(precio),desc,colores,specs,rowIndex:sheetRow});
-  else products[rowIdx]={...products[rowIdx],nombre,precio:parseInt(precio),desc,colores,specs};
-  const sb=document.getElementById('saveBtn');sb.textContent='⏳ Guardando...';sb.disabled=true;
-  if(!driveReady){
-    closeModal();navigator.clipboard.writeText([nombre,precio,desc,colores,specs].join('\t'));
-    toast('⚠️ Conectate a Drive para guardar automático. Datos copiados.');
-    renderDashboard();renderProductList();sb.textContent='💾 Guardar';sb.disabled=false;return;
-  }
-  try{
-    await updateSheetCell('productos',sheetRow,[nombre,precio,desc,colores,specs]);
-    const colsArr=colores.split(',').map(c=>c.trim()).filter(c=>c);
-    for(const color of colsArr){
-      const fotos=[];
-      for(let fi=0;fi<5;fi++){const inp=document.getElementById(`foto_${nombre}_${color}_${fi}`);fotos.push(inp?inp.value.trim():'');}
-      const ex=fotosData.find(f=>f.modelo===nombre&&f.color===color);
-      const fotaRow=ex?ex.rowIndex:fotosData.length+2;
-      await updateSheetCell('fotos',fotaRow,[nombre,color,...fotos]);
-      if(!ex)fotosData.push({rowIndex:fotaRow,modelo:nombre,color,fotos});else ex.fotos=fotos;
-    }
-    closeModal();toast('✅ Guardado en Google Sheets');renderDashboard();renderProductList();
-  }catch(e){toast('Error al guardar',true);console.error(e);}
-  finally{sb.textContent='💾 Guardar';sb.disabled=false;}
-}
-async function updateSheetCell(sheet,row,values){
-  const range=`${sheet}!A${row}`;
-  const url=`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
-  const res=await fetch(url,{method:'PUT',headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({values:[values]})});
-  if(!res.ok)throw new Error(await res.text());
-}
-function loadOrders(){
-  const stored=JSON.parse(localStorage.getItem('founder_pedidos')||'[]');
-  allOrders=[...stored].reverse();
-  filterOrders(currentFilter,null);
-  const el=document.getElementById('statPedidos');if(el)el.textContent=stored.length;
-}
-function filterOrders(filter,btn){
-  currentFilter=filter;
-  if(btn){document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
-  const list=filter==='todos'?allOrders:allOrders.filter(o=>o.estado===filter);
-  renderOrders(list);
-}
-function renderOrders(orders){
-  const g=document.getElementById('ordersGrid');
-  if(!orders.length){g.innerHTML=`<div style="grid-column:1/-1;padding:48px;text-align:center;color:var(--muted)"><div style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:6px">No hay pedidos</div><div style="font-size:10px;letter-spacing:2px">en esta categoría</div></div>`;return;}
-  const bm={'Pendiente pago':'badge-pago','Pendiente confirmación':'badge-mp','Confirmado':'badge-ok','Entregado':'badge-done','Cancelado':'badge-cancel'};
-  g.innerHTML=orders.map(o=>`
-    <div class="order-card" id="order-${o.id}">
-      <div class="order-head"><div class="order-id">${o.id} · ${o.fecha}</div><div class="order-badge ${bm[o.estado]||'badge-pago'}">${o.estado}</div></div>
-      <div class="order-body">
-        <div class="order-name">${o.nombre} ${o.apellido}</div>
-        <div class="order-info"><strong>Entrega:</strong> ${o.entrega}<br><strong>Dirección:</strong> ${o.direccion}<br><strong>Correo:</strong> ${o.email}<br><strong>Celular:</strong> ${o.celular}</div>
-        <div class="order-prods">${o.productos.replace(/\|/g,'<br>')}</div>
-        <div><div class="order-pago">${o.pago}</div><div class="order-total">$${Number(o.total).toLocaleString('es-UY')} UYU</div></div>
-      </div>
-      <div class="order-foot">
-        <button class="btn btn-success btn-sm" onclick="updOrder('${o.id}','Confirmado')">✅ Confirmar</button>
-        <button class="btn btn-primary btn-sm" onclick="updOrder('${o.id}','Entregado')">📦 Entregado</button>
-        <a href="https://wa.me/598${(o.celular||'').replace(/\D/g,'')}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">💬 WhatsApp</a>
-        <button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕ Cancelar</button>
-      </div>
+
+function closeModal() { document.getElementById('productModal').classList.remove('open'); }
+
+// ============================================================
+// COLOR EDITOR
+// ============================================================
+function renderColorRows(cols) {
+  document.getElementById('colorsEditor').innerHTML = cols.map((c, i) => `
+    <div class="color-row" id="cr${i}">
+      <div class="color-dot" id="cd${i}" style="background:${COLOR_MAP[c] || '#555'}"></div>
+      <input type="text" class="color-name-in" value="${c}" placeholder="Nombre del color"
+        oninput="updDot(${i},this.value)" id="cn${i}">
+      <button class="rem-color" onclick="remRow(${i})">✕</button>
     </div>`).join('');
 }
-function updOrder(id,status){
-  const stored=JSON.parse(localStorage.getItem('founder_pedidos')||'[]');
-  const o=stored.find(x=>x.id===id);
-  if(o){o.estado=status;localStorage.setItem('founder_pedidos',JSON.stringify(stored));loadOrders();toast(`Pedido ${id} → ${status}`);}
+
+function addColorRow() {
+  const e = document.getElementById('colorsEditor');
+  const i = e.children.length;
+  const d = document.createElement('div');
+  d.className = 'color-row'; d.id = `cr${i}`;
+  d.innerHTML = `<div class="color-dot" id="cd${i}" style="background:#555"></div>
+    <input type="text" class="color-name-in" placeholder="Nombre del color"
+      oninput="updDot(${i},this.value)" id="cn${i}">
+    <button class="rem-color" onclick="remRow(${i})">✕</button>`;
+  e.appendChild(d);
 }
-function cancelOrder(id){if(confirm(`¿Cancelar el pedido ${id}?`))updOrder(id,'Cancelado');}
-function initGoogleAuth(){
-  tokenClient=google.accounts.oauth2.initTokenClient({
-    client_id:CLIENT_ID,scope:SCOPES,
-    callback:resp=>{
-      if(resp.error){toast('Error al conectar con Google Drive',true);return;}
-      accessToken=resp.access_token;driveReady=true;
+
+function remRow(i) { const r = document.getElementById(`cr${i}`); if (r) r.remove(); }
+function updDot(i, v) { const d = document.getElementById(`cd${i}`); if (d) d.style.background = COLOR_MAP[v.trim()] || '#555'; }
+function getColors() {
+  return Array.from(document.querySelectorAll('#colorsEditor .color-name-in'))
+    .map(i => i.value.trim()).filter(v => v).join(',');
+}
+
+// ============================================================
+// PHOTO EDITOR
+// ============================================================
+function renderColorPhotos(modelo, cols) {
+  const c = document.getElementById('colorPhotosSection');
+  if (!cols.length) { c.innerHTML = ''; return; }
+  c.innerHTML = `<div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Fotos por color (hasta 5 por cada color)</div>` +
+    cols.map(color => {
+      const fotos = getFotos(modelo, color);
+      return `<div class="photo-block">
+        <div class="photo-head">
+          <div class="photo-dot" style="background:${COLOR_MAP[color] || '#555'}"></div>
+          <div class="photo-color-name">${color}</div>
+        </div>
+        <div class="photo-slots">
+          ${fotos.map((f, fi) => `
+            <div class="photo-slot">
+              <div class="slot-label">Foto ${fi + 1}</div>
+              <input type="text" id="foto_${modelo}_${color}_${fi}" value="${f}" placeholder="Link" class="slot-input">
+              <div class="slot-btns">
+                <button class="slot-btn conv" onclick="convPhoto('${modelo}','${color}',${fi})">Conv.</button>
+                <button class="slot-btn up" onclick="pickFile('${modelo}','${color}',${fi})">📁</button>
+              </div>
+              ${f ? `<img src="${f}" class="slot-prev" id="prev_${modelo}_${color}_${fi}">` : `<div class="slot-empty" id="prev_${modelo}_${color}_${fi}">📷</div>`}
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+}
+
+function convPhoto(m, c, fi) {
+  const inp = document.getElementById(`foto_${m}_${c}_${fi}`);
+  const id  = extractDriveId(inp.value.trim());
+  if (id) { inp.value = convertToDirectLink(id); refreshPrev(m, c, fi, inp.value); toast('Convertido ✓'); }
+}
+
+function refreshPrev(m, c, fi, url) {
+  const el = document.getElementById(`prev_${m}_${c}_${fi}`);
+  if (!el) return;
+  el.outerHTML = url
+    ? `<img src="${url}" class="slot-prev" id="prev_${m}_${c}_${fi}">`
+    : `<div class="slot-empty" id="prev_${m}_${c}_${fi}">📷</div>`;
+}
+
+function pickFile(m, c, fi) {
+  const f = document.createElement('input');
+  f.type = 'file'; f.accept = 'image/*';
+  f.onchange = async e => { const file = e.target.files[0]; if (file) await uploadToDrive(file, m, c, fi); };
+  f.click();
+}
+
+// ============================================================
+// SAVE PRODUCT — con lógica anti-duplicados mejorada
+// ============================================================
+async function saveProduct() {
+  const nombre = document.getElementById('editNombre').value.trim();
+  const precio = document.getElementById('editPrecio').value.trim();
+  if (!nombre || !precio) { toast('Nombre y precio son obligatorios', true); return; }
+
+  const colores  = getColors();
+  const specs    = document.getElementById('editSpecs').value.trim();
+  const desc     = document.getElementById('editDesc').value.trim();
+  const rowIdx   = parseInt(document.getElementById('editingRow').value);
+
+  // Calcular la fila real en la hoja
+  const sheetRow = rowIdx === -1 ? products.length + 2 : products[rowIdx].rowIndex;
+
+  // Actualizar estado local
+  if (rowIdx === -1) {
+    products.push({ nombre, precio: parseInt(precio), desc, colores, specs, rowIndex: sheetRow });
+  } else {
+    products[rowIdx] = { ...products[rowIdx], nombre, precio: parseInt(precio), desc, colores, specs };
+  }
+
+  const sb = document.getElementById('saveBtn');
+  sb.textContent = '⏳ Guardando...'; sb.disabled = true;
+
+  if (!driveReady) {
+    closeModal();
+    navigator.clipboard.writeText([nombre, precio, desc, colores, specs].join('\t')).catch(()=>{});
+    toast('⚠️ Conectate a Drive para guardar automático.');
+    sb.textContent = '💾 Guardar'; sb.disabled = false;
+    renderDashboard(); renderProductList();
+    return;
+  }
+
+  try {
+    // 1. Guardar producto en hoja "productos"
+    await updateSheetCell('productos', sheetRow, [nombre, precio, desc, colores, specs]);
+
+    // 2. Guardar fotos — CRÍTICO: siempre buscar la fila real actual desde fotosData
+    const colsArr = colores.split(',').map(c => c.trim()).filter(c => c);
+    for (const color of colsArr) {
+      const fotos = [];
+      for (let fi = 0; fi < 5; fi++) {
+        const inp = document.getElementById(`foto_${nombre}_${color}_${fi}`);
+        fotos.push(inp ? inp.value.trim() : '');
+      }
+
+      // Buscar entrada existente EXACTA por modelo+color
+      const ex = fotosData.find(f => f.modelo === nombre && f.color === color);
+
+      if (ex) {
+        // Actualizar fila existente (nunca crear duplicado)
+        await updateSheetCell('fotos', ex.rowIndex, [nombre, color, ...fotos]);
+        ex.fotos = fotos;
+      } else {
+        // Nueva combinación — calcular fila al final de la hoja
+        const newRow = fotosData.length + 2;
+        await updateSheetCell('fotos', newRow, [nombre, color, ...fotos]);
+        fotosData.push({ rowIndex: newRow, modelo: nombre, color, fotos });
+      }
+    }
+
+    closeModal();
+    toast('✅ Guardado correctamente');
+    renderDashboard();
+    renderProductList();
+  } catch(e) {
+    toast('Error al guardar — revisá la conexión', true);
+    console.error(e);
+  } finally {
+    sb.textContent = '💾 Guardar'; sb.disabled = false;
+  }
+}
+
+// ============================================================
+// DELETE PRODUCT — con confirmación
+// ============================================================
+function confirmDelete(i) {
+  pendingDeleteIndex = i;
+  const p = products[i];
+  document.getElementById('confirmMsg').textContent =
+    `¿Estás seguro de que querés eliminar "Founder ${p.nombre}"? Esta acción no se puede deshacer. Se borrarán sus datos de la planilla.`;
+  document.getElementById('confirmModal').classList.add('open');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmModal').classList.remove('open');
+  pendingDeleteIndex = -1;
+}
+
+async function executeDelete() {
+  if (pendingDeleteIndex < 0) return;
+  const i = pendingDeleteIndex;
+  const p = products[i];
+
+  const btn = document.getElementById('confirmDeleteBtn');
+  btn.textContent = '⏳ Eliminando...'; btn.disabled = true;
+
+  if (!driveReady) {
+    closeConfirm();
+    toast('⚠️ Conectate a Drive para eliminar en la planilla', true);
+    btn.textContent = 'Eliminar'; btn.disabled = false;
+    return;
+  }
+
+  try {
+    // Borrar fila del producto en la hoja (reemplazar con valores vacíos)
+    await updateSheetCell('productos', p.rowIndex, ['', '', '', '', '']);
+
+    // Borrar también sus filas de fotos
+    const fotasDelProducto = fotosData.filter(f => f.modelo === p.nombre);
+    for (const fila of fotasDelProducto) {
+      await updateSheetCell('fotos', fila.rowIndex, ['', '', '', '', '', '', '']);
+    }
+
+    // Actualizar estado local
+    products.splice(i, 1);
+    fotosData = fotosData.filter(f => f.modelo !== p.nombre);
+
+    closeConfirm();
+    toast(`✅ "${p.nombre}" eliminado`);
+    renderDashboard();
+    renderProductList();
+  } catch(e) {
+    toast('Error al eliminar', true);
+    console.error(e);
+  } finally {
+    btn.textContent = 'Eliminar'; btn.disabled = false;
+  }
+}
+
+// ============================================================
+// GOOGLE SHEETS API
+// ============================================================
+async function updateSheetCell(sheet, row, values) {
+  const range = `${sheet}!A${row}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [values] })
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+// ============================================================
+// GOOGLE DRIVE UPLOAD
+// ============================================================
+function initGoogleClient() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: resp => {
+      if (resp.error) { toast('Error al conectar con Google Drive', true); return; }
+      accessToken = resp.access_token;
+      driveReady  = true;
       toast('✅ Conectado a Google Drive');
-      document.getElementById('driveStatus').textContent='✅ Conectado';
-      document.getElementById('driveStatus').style.color='var(--green)';
-      document.getElementById('connectDriveBtn').style.display='none';
+      document.getElementById('driveStatus').textContent = '✅ Conectado';
+      document.getElementById('driveStatus').style.color = 'var(--green)';
+      document.getElementById('connectDriveBtn').style.display = 'none';
     }
   });
 }
-function connectDrive(){if(!tokenClient){toast('Cargando Google...',true);return;}tokenClient.requestAccessToken();}
-async function uploadToDrive(file,modelo,color,fotoNum){
-  if(!driveReady){toast('Primero conectate a Google Drive',true);return null;}
-  try{
-    const folderId=await findOrCreateFolder();
-    const meta={name:`${modelo}-${color}-foto${fotoNum+1}-${Date.now()}.jpg`,parents:[folderId]};
-    const form=new FormData();
-    form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
-    form.append('file',file);
-    const upRes=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:`Bearer ${accessToken}`},body:form});
-    const{id:fileId}=await upRes.json();
-    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,{method:'POST',headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({role:'reader',type:'anyone'})});
-    const link=`https://lh3.googleusercontent.com/d/${fileId}`;
-    const inp=document.getElementById(`foto_${modelo}_${color}_${fotoNum}`);if(inp)inp.value=link;
-    refreshPrev(modelo,color,fotoNum,link);toast(`Foto ${fotoNum+1} subida ✅`);return link;
-  }catch(e){toast('Error al subir foto',true);return null;}
+
+function connectDrive() {
+  if (!tokenClient) { toast('Cargando Google...', true); return; }
+  tokenClient.requestAccessToken();
 }
-async function findOrCreateFolder(){
-  const s=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='founder-imagenes' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`,{headers:{Authorization:`Bearer ${accessToken}`}});
-  const{files}=await s.json();
-  if(files&&files.length)return files[0].id;
-  const c=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({name:'founder-imagenes',mimeType:'application/vnd.google-apps.folder'})});
-  return(await c.json()).id;
+
+async function uploadToDrive(file, modelo, color, fotoNum) {
+  if (!driveReady) { toast('Primero conectate a Google Drive', true); return null; }
+  try {
+    const folderId = await findOrCreateFolder();
+    const meta = { name: `${modelo}-${color}-foto${fotoNum + 1}-${Date.now()}.jpg`, parents: [folderId] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+    form.append('file', file);
+    const upRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: form
+    });
+    const { id: fileId } = await upRes.json();
+    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' })
+    });
+    const link = `https://lh3.googleusercontent.com/d/${fileId}`;
+    const inp = document.getElementById(`foto_${modelo}_${color}_${fotoNum}`);
+    if (inp) inp.value = link;
+    refreshPrev(modelo, color, fotoNum, link);
+    toast(`Foto ${fotoNum + 1} subida ✅`);
+    return link;
+  } catch(e) {
+    toast('Error al subir foto', true);
+    console.error(e);
+    return null;
+  }
 }
-function extractDriveId(url){const m=url.match(/\/d\/([a-zA-Z0-9_-]+)/);return m?m[1]:null;}
-function convertToDirectLink(id){return`https://lh3.googleusercontent.com/d/${id}`;}
-function convertDriveLink(){
-  const url=document.getElementById('driveInput').value.trim();
-  const id=extractDriveId(url);
-  if(!id){toast('Link inválido',true);return;}
-  const conv=convertToDirectLink(id);
-  document.getElementById('convertedLink').textContent=conv;
-  document.getElementById('convertedPreview').src=conv;
-  document.getElementById('convertResult').style.display='block';
+
+async function findOrCreateFolder() {
+  const s = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name='founder-imagenes' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  const d = await s.json();
+  if (d.files?.length) return d.files[0].id;
+  const c = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'founder-imagenes', mimeType: 'application/vnd.google-apps.folder' })
+  });
+  const f = await c.json();
+  return f.id;
 }
-function copyConverted(){navigator.clipboard.writeText(document.getElementById('convertedLink').textContent).then(()=>toast('Copiado al portapapeles'));}
-function convertBulk(){
-  const lines=document.getElementById('bulkInput').value.trim().split('\n').filter(l=>l.trim());
-  const res=document.getElementById('bulkResult');res.style.display='flex';res.style.flexDirection='column';
-  res.innerHTML=lines.map((url,i)=>{
-    const id=extractDriveId(url.trim());
-    if(!id)return`<div style="color:var(--red);font-size:11px">❌ Link ${i+1}: inválido</div>`;
-    const conv=convertToDirectLink(id);
-    return`<div style="display:flex;gap:7px;align-items:center"><div style="font-size:10px;color:var(--muted);min-width:50px">Link ${i+1}</div><div style="flex:1;background:var(--mid);border:1px solid var(--green);color:var(--green);padding:7px 10px;font-size:10px;word-break:break-all;cursor:pointer" onclick="navigator.clipboard.writeText('${conv}').then(()=>toast('Copiado'))">${conv}</div></div>`;
+
+// ============================================================
+// ORDERS
+// ============================================================
+function loadOrders() {
+  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+  allOrders = [...stored].reverse();
+  filterOrders(currentFilter, null);
+  const el = document.getElementById('statPedidos');
+  if (el) el.textContent = stored.length;
+}
+
+function filterOrders(filter, btn) {
+  currentFilter = filter;
+  if (btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  const list = filter === 'todos' ? allOrders : allOrders.filter(o => o.estado === filter);
+  renderOrders(list);
+}
+
+function renderOrders(orders) {
+  const g = document.getElementById('ordersGrid');
+  if (!orders.length) {
+    g.innerHTML = `<div style="grid-column:1/-1;padding:48px;text-align:center;color:var(--muted)">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:6px">No hay pedidos</div>
+      <div style="font-size:10px;letter-spacing:2px">Aplicá otro filtro o esperá nuevas compras</div>
+    </div>`;
+    return;
+  }
+  g.innerHTML = orders.map(o => {
+    const statusMap = {
+      'Pendiente pago':'status-pendiente-pago','Pendiente confirmación':'status-pendiente-mp',
+      'Confirmado':'status-confirmado','Entregado':'status-entregado','Cancelado':'status-cancelado'
+    };
+    const cls = statusMap[o.estado] || '';
+    return `<div class="order-card">
+      <div class="order-head">
+        <div class="order-id">#${o.id || '—'}</div>
+        <div class="order-status ${cls}">${o.estado}</div>
+      </div>
+      <div class="order-body">
+        <div class="order-name">${o.nombre || '—'}</div>
+        <div class="order-info">
+          <strong>${o.telefono || ''}</strong><br>
+          ${o.entrega === 'retiro' ? 'Retiro en local' : (o.departamento || '') + ' — ' + (o.direccion || '')}<br>
+          ${o.pago || ''}
+        </div>
+        <div class="order-prods">${(o.items || []).map(it => `${it.qty}× ${it.name} (${it.color})`).join('<br>')}</div>
+        <div class="order-total">$${(o.total || 0).toLocaleString('es-UY')}</div>
+        <div class="order-pago">${o.pago || ''}</div>
+      </div>
+      <div class="order-foot">
+        ${['Pendiente pago','Pendiente confirmación','Confirmado','Entregado','Cancelado'].map(s =>
+          `<button class="btn btn-sm ${o.estado === s ? 'btn-primary' : 'btn-secondary'}"
+            onclick="changeOrderStatus('${o.id}','${s}')">${s}</button>`
+        ).join('')}
+      </div>
+    </div>`;
   }).join('');
 }
-function toast(msg,err=false){
-  const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${err?'err':''} show`;
-  setTimeout(()=>t.classList.remove('show'),4000);
+
+function changeOrderStatus(id, newStatus) {
+  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+  const idx = stored.findIndex(o => o.id === id);
+  if (idx >= 0) {
+    stored[idx].estado = newStatus;
+    localStorage.setItem('founder_pedidos', JSON.stringify(stored));
+    loadOrders();
+    toast('Estado actualizado');
+  }
 }
-document.getElementById('passwordInput').focus();
-window.onload=()=>{
-  const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=initGoogleAuth;document.head.appendChild(s);
+
+// ============================================================
+// BANNER
+// ============================================================
+function loadBannerPreview() {
+  const url = localStorage.getItem('founder_banner_url');
+  const prev = document.getElementById('bannerPreview');
+  const empty = document.getElementById('bannerPreviewEmpty');
+  if (url) {
+    empty.style.display = 'none';
+    let img = prev.querySelector('img');
+    if (!img) { img = document.createElement('img'); prev.appendChild(img); }
+    img.src = url;
+    document.getElementById('bannerInput').value = url;
+  } else {
+    empty.style.display = 'block';
+    const img = prev.querySelector('img');
+    if (img) img.remove();
+  }
+}
+
+function previewBanner() {
+  const url = document.getElementById('bannerInput').value.trim();
+  if (!url) { toast('Ingresá un link de imagen', true); return; }
+  const prev = document.getElementById('bannerPreview');
+  document.getElementById('bannerPreviewEmpty').style.display = 'none';
+  let img = prev.querySelector('img');
+  if (!img) { img = document.createElement('img'); prev.appendChild(img); }
+  img.src = url;
+  toast('Vista previa cargada');
+}
+
+function saveBanner() {
+  const url = document.getElementById('bannerInput').value.trim();
+  if (!url) { toast('Ingresá un link de imagen', true); return; }
+  localStorage.setItem('founder_banner_url', url);
+  previewBanner();
+  toast('✅ Banner guardado');
+}
+
+function clearBanner() {
+  localStorage.removeItem('founder_banner_url');
+  document.getElementById('bannerInput').value = '';
+  const prev = document.getElementById('bannerPreview');
+  const img = prev.querySelector('img');
+  if (img) img.remove();
+  document.getElementById('bannerPreviewEmpty').style.display = 'block';
+  toast('Banner removido');
+}
+
+function copyBannerCode() {
+  const code = `// Cargar banner desde admin\n(function(){\n  const bUrl = localStorage.getItem('founder_banner_url');\n  if(bUrl){\n    const hero = document.querySelector('.hero');\n    if(hero){\n      const img = document.createElement('img');\n      img.src = bUrl;\n      img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.35;pointer-events:none;';\n      hero.style.position='relative';\n      hero.insertBefore(img, hero.firstChild);\n    }\n  }\n})();`;
+  navigator.clipboard.writeText(code).then(() => toast('📋 Código copiado')).catch(() => toast('No se pudo copiar', true));
+}
+
+// ============================================================
+// CONVERSOR DE LINKS
+// ============================================================
+function extractDriveId(url) {
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]{15,})/);
+  return m ? m[1] : (url.match(/^[a-zA-Z0-9_-]{15,}$/) ? url : null);
+}
+function convertToDirectLink(id) { return `https://lh3.googleusercontent.com/d/${id}`; }
+
+function convertDriveLink() {
+  const val = document.getElementById('driveInput').value.trim();
+  const id  = extractDriveId(val);
+  if (!id) { toast('Link inválido', true); return; }
+  const link = convertToDirectLink(id);
+  document.getElementById('convertedLink').textContent = link;
+  document.getElementById('convertedPreview').src = link;
+  document.getElementById('convertResult').style.display = 'block';
+}
+
+function copyConverted() {
+  const txt = document.getElementById('convertedLink').textContent;
+  navigator.clipboard.writeText(txt).then(() => toast('📋 Copiado')).catch(() => toast('No se pudo copiar', true));
+}
+
+function convertBulk() {
+  const lines = document.getElementById('bulkInput').value.split('\n').map(l => l.trim()).filter(l => l);
+  const res = document.getElementById('bulkResult');
+  if (!lines.length) return;
+  res.style.display = 'flex';
+  res.innerHTML = lines.map(line => {
+    const id = extractDriveId(line);
+    if (!id) return `<div style="font-size:10px;color:var(--red)">❌ Inválido: ${line}</div>`;
+    const link = convertToDirectLink(id);
+    return `<div class="conv-result" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Copiado'))">${link}</div>`;
+  }).join('');
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+let toastTimer;
+function toast(msg, isErr = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isErr ? ' err' : '') + ' show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ============================================================
+// GOOGLE IDENTITY INIT
+// ============================================================
+window.onload = () => {
+  // Si el script de Google ya está cargado, iniciar token client
+  if (typeof google !== 'undefined' && google.accounts) {
+    initGoogleClient();
+  }
 };
 </script>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" onload="initGoogleClient()" async defer></script>
+
 </body>
 </html>
