@@ -719,7 +719,7 @@ const CONFIG = Object.freeze({
   THUMBS_VISIBLE: 5,
   get SHEET_PRODUCTOS() { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`; },
   get SHEET_FOTOS()     { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`; },
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycby6KyN99yAWh5yQ4wet4g4T5RNofjKBolAr4crCFq_a2DspnxPW4clSd3XQKbRft0YD/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx8LByXXY7QwzHEB0RyvP0Ejbmqyw099F4ntbbwRIdkRv8JlUDaryn_vQj2aL9kANA/exec',
 });
 
 const COLOR_MAP = Object.freeze({
@@ -1046,16 +1046,15 @@ function updateCart() {
   const badge  = $('cartCount');
   const footer = $('cartFooter');
 
-  badge.textContent = count;
-  toggle(badge, 'is-visible', count > 0);
+  if (badge) { badge.textContent = count; toggle(badge, 'is-visible', count > 0); }
 
   if (!state.cart.length) {
     setHTML('cartItems', '<div class="cart__empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>');
-    footer.style.display = 'none';
+    if (footer) footer.style.display = 'none';
     return;
   }
 
-  footer.style.display = 'block';
+  if (footer) footer.style.display = 'block';
   setHTML('cartItems', state.cart.map((item, idx) => {
     // Busca foto directo en photoMap (funciona antes y después de cargar productos)
     const photo = getPhotos(item.name, item.color)[0] || null;
@@ -1137,9 +1136,14 @@ function showToast(msg) {
     requestAnimationFrame(animate);
   })();
 
-  document.querySelectorAll('a, button, .product-card, .color-dot, .color-option').forEach(el => {
-    el.addEventListener('mouseenter', () => ring.classList.add('is-hovering'));
-    el.addEventListener('mouseleave', () => ring.classList.remove('is-hovering'));
+  // Event delegation — funciona también con elementos generados dinámicamente
+  document.addEventListener('mouseover', e => {
+    if (e.target.closest('a, button, .product-card, .color-dot, .color-option, .color-swatch'))
+      ring.classList.add('is-hovering');
+  });
+  document.addEventListener('mouseout', e => {
+    if (!e.relatedTarget?.closest('a, button, .product-card, .color-dot, .color-option, .color-swatch'))
+      ring.classList.remove('is-hovering');
   });
 })();
 
