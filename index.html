@@ -84,7 +84,6 @@
   --z-cart:     200;
   --z-modal:    300;
   --z-toast:    9999;
-  --z-cursor:   9998;
   /* Colores de productos — definidos aquí para renderizado consistente en todos los dispositivos */
   --swatch-negro:       #3a3f4a;
   --swatch-camel:       #d4a96e;
@@ -113,27 +112,10 @@ body {
   font-family: var(--font-sans);
   font-weight: 300;
   overflow-x: hidden;
-  cursor: none;
 }
 img { display: block; max-width: 100%; }
 button { font-family: var(--font-sans); }
 a { color: inherit; text-decoration: none; }
-
-/* ── SHARED — Cursor (desktop only) ─────────────────────────── */
-.cursor {
-  position: fixed; width: 8px; height: 8px;
-  background: var(--color-text); border-radius: 50%;
-  pointer-events: none; z-index: var(--z-cursor);
-  transform: translate(-50%,-50%);
-}
-.cursor-ring {
-  position: fixed; width: 32px; height: 32px;
-  border: 1px solid rgba(255,255,255,.4); border-radius: 50%;
-  pointer-events: none; z-index: calc(var(--z-cursor) - 1);
-  transition: width var(--transition-base), height var(--transition-base), border-color var(--transition-base);
-  transform: translate(-50%,-50%);
-}
-.cursor-ring.is-hovering { width: 48px; height: 48px; border-color: var(--color-gold); }
 
 /* ── SHARED — Header ─────────────────────────────────────────── */
 .header {
@@ -161,7 +143,7 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid var(--color-border); color: var(--color-text);
   padding: 10px 20px; font-size: 10px;
   letter-spacing: 3px; text-transform: uppercase;
-  cursor: none; transition: all var(--transition-base);
+  cursor: pointer; transition: all var(--transition-base);
 }
 .cart-btn:hover { background: var(--color-text); color: var(--color-bg); }
 .cart-count {
@@ -234,7 +216,7 @@ a { color: inherit; text-decoration: none; }
   font-size: 10px; letter-spacing: 3px;
   text-transform: uppercase; font-weight: 600;
   padding: 16px 36px; transition: all var(--transition-base);
-  cursor: none; border: none;
+  cursor: pointer; border: none;
 }
 .btn--primary { background: var(--color-text); color: var(--color-bg); }
 .btn--primary:hover { background: var(--color-gold); }
@@ -288,7 +270,7 @@ a { color: inherit; text-decoration: none; }
 /* ── PRODUCT CARD ─────────────────────────────────────────── */
 .product-card {
   background: var(--color-surface);
-  position: relative; overflow: hidden; cursor: none;
+  position: relative; overflow: hidden; cursor: pointer;
 }
 .product-card__img-wrap {
   aspect-ratio: 4/3; overflow: hidden; background: #111;
@@ -340,7 +322,7 @@ a { color: inherit; text-decoration: none; }
 }
 .color-dot {
   width: 14px; height: 22px; border-radius: 3px;
-  border: 2px solid transparent; cursor: none; transition: all var(--transition-fast);
+  border: 2px solid transparent; cursor: pointer; transition: all var(--transition-fast);
 }
 .color-dot:hover { border-color: var(--color-text); transform: scale(1.15); }
 
@@ -383,7 +365,7 @@ a { color: inherit; text-decoration: none; }
 .modal__thumbs-track { display: flex; gap: 6px; flex: 1; overflow: hidden; justify-content: center; }
 .modal__thumb {
   width: 58px; height: 58px; object-fit: cover;
-  border: 2px solid transparent; cursor: none;
+  border: 2px solid transparent; cursor: pointer;
   transition: all var(--transition-fast); flex-shrink: 0;
 }
 .modal__thumb.is-active { border-color: var(--color-gold); }
@@ -392,7 +374,7 @@ a { color: inherit; text-decoration: none; }
   background: rgba(255,255,255,.08); border: 1px solid var(--color-border);
   color: var(--color-text); width: 28px; height: 58px;
   display: flex; align-items: center; justify-content: center;
-  cursor: none; font-size: 12px; transition: all var(--transition-fast);
+  cursor: pointer; font-size: 12px; transition: all var(--transition-fast);
   flex-shrink: 0; user-select: none;
 }
 .thumb-arrow:hover { background: rgba(255,255,255,.18); }
@@ -404,7 +386,7 @@ a { color: inherit; text-decoration: none; }
 .modal__close {
   position: absolute; top: 16px; right: 16px;
   background: var(--color-surface2); border: none; color: var(--color-text);
-  width: 36px; height: 36px; font-size: 18px; cursor: none;
+  width: 36px; height: 36px; font-size: 18px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   z-index: 10; transition: background var(--transition-fast);
 }
@@ -420,7 +402,7 @@ a { color: inherit; text-decoration: none; }
 .modal__spec::before { content: '✦'; color: var(--color-gold); font-size: 8px; margin-top: 3px; flex-shrink: 0; }
 .modal__color-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-muted); margin-bottom: 12px; }
 .modal__colors { display: flex; gap: 10px; flex-wrap: wrap; }
-.color-option { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: none; }
+.color-option { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
 .color-swatch {
   width: 20px; height: 32px; border-radius: 3px;
   border: 2px solid transparent; transition: all var(--transition-fast);
@@ -434,7 +416,7 @@ a { color: inherit; text-decoration: none; }
 .modal__add-btn {
   background: var(--color-text); color: var(--color-bg); border: none;
   padding: 16px; font-size: 10px; letter-spacing: 4px;
-  text-transform: uppercase; font-weight: 700; cursor: none; transition: all var(--transition-base);
+  text-transform: uppercase; font-weight: 700; cursor: pointer; transition: all var(--transition-base);
 }
 .modal__add-btn:hover { background: var(--color-gold); }
 .modal__detail-link {
@@ -465,7 +447,7 @@ a { color: inherit; text-decoration: none; }
   display: flex; justify-content: space-between; align-items: center;
 }
 .cart__title { font-family: var(--font-serif); font-size: 24px; font-weight: 400; letter-spacing: 3px; }
-.cart__close { background: none; border: none; color: var(--color-muted); font-size: 24px; cursor: none; transition: color var(--transition-fast); line-height: 1; }
+.cart__close { background: none; border: none; color: var(--color-muted); font-size: 24px; cursor: pointer; transition: color var(--transition-fast); line-height: 1; }
 .cart__close:hover { color: var(--color-text); }
 .cart__items { flex: 1; overflow-y: auto; padding: 24px 36px; }
 .cart-item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--color-border); align-items: flex-start; }
@@ -475,11 +457,11 @@ a { color: inherit; text-decoration: none; }
 .cart-item__name { font-family: var(--font-serif); font-size: 18px; margin-bottom: 4px; }
 .cart-item__variant { font-size: 10px; color: var(--color-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
 .cart-item__controls { display: flex; align-items: center; gap: 12px; }
-.qty-btn { background: var(--color-surface2); border: none; color: var(--color-text); width: 28px; height: 28px; font-size: 16px; cursor: none; transition: background var(--transition-fast); display: flex; align-items: center; justify-content: center; }
+.qty-btn { background: var(--color-surface2); border: none; color: var(--color-text); width: 28px; height: 28px; font-size: 16px; cursor: pointer; transition: background var(--transition-fast); display: flex; align-items: center; justify-content: center; }
 .qty-btn:hover { background: var(--color-surface3); }
 .qty-val { font-size: 14px; min-width: 20px; text-align: center; }
 .cart-item__price { font-family: var(--font-serif); font-size: 20px; white-space: nowrap; align-self: center; }
-.cart-item__remove { background: none; border: none; color: var(--color-muted); cursor: none; font-size: 16px; align-self: center; transition: color var(--transition-fast); }
+.cart-item__remove { background: none; border: none; color: var(--color-muted); cursor: pointer; font-size: 16px; align-self: center; transition: color var(--transition-fast); }
 .cart-item__remove:hover { color: var(--color-danger); }
 .cart__empty { text-align: center; padding: 80px 36px; color: var(--color-muted); }
 .cart__empty p { font-family: var(--font-serif); font-size: 22px; margin-bottom: 8px; }
@@ -490,7 +472,7 @@ a { color: inherit; text-decoration: none; }
 .cart__subtotal strong { font-family: var(--font-serif); font-size: 28px; font-weight: 400; }
 .cart__ship-note { font-size: 10px; color: var(--color-gold); letter-spacing: 1px; margin-bottom: 12px; }
 .cart__discount-note { font-size: 10px; color: var(--color-muted); letter-spacing: .5px; line-height: 1.6; margin-bottom: 16px; }
-.cart__checkout-btn { width: 100%; background: var(--color-text); color: var(--color-bg); border: none; padding: 18px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; cursor: none; transition: background var(--transition-base); }
+.cart__checkout-btn { width: 100%; background: var(--color-text); color: var(--color-bg); border: none; padding: 18px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: background var(--transition-base); }
 .cart__checkout-btn:hover { background: var(--color-gold); }
 .cart__mp-info { text-align: center; margin-top: 12px; font-size: 9px; letter-spacing: 2px; color: var(--color-muted); }
 .cart__mp-info strong { color: var(--color-text); letter-spacing: 3px; }
@@ -539,8 +521,6 @@ a { color: inherit; text-decoration: none; }
   .co-topbar { padding: 0 24px; }
   .co-summary { position: static; }
   .co-row { grid-template-columns: 1fr; }
-  body { cursor: auto; }
-  .cursor, .cursor-ring { display: none; }
 }
 
 @media (max-width: 600px) {
@@ -556,8 +536,6 @@ a { color: inherit; text-decoration: none; }
 <!-- Accesibilidad: skip link -->
 <a href="#productos" style="position:absolute;top:-999px;left:-999px;z-index:9999;background:var(--color-gold);color:var(--color-bg);padding:8px 16px;font-size:11px;letter-spacing:2px" onfocus="this.style.top='8px';this.style.left='8px'" onblur="this.style.top='-999px';this.style.left='-999px'">Ir al contenido principal</a>
 
-<div class="cursor" id="cursor" aria-hidden="true"></div>
-<div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
 <div class="toast" id="toast" role="alert" aria-live="polite"></div>
 
 <!-- ── HEADER ──────────────────────────────────────────────── -->
@@ -567,6 +545,7 @@ a { color: inherit; text-decoration: none; }
     <a href="#productos" class="nav__link">Productos</a>
     <a href="#rfid" class="nav__link">Tecnología RFID</a>
     <a href="#envios" class="nav__link">Envíos</a>
+    <a href="seguimiento.html" class="nav__link">Seguimiento</a>
   </nav>
   <button class="cart-btn" onclick="toggleCart()" aria-label="Abrir carrito">
     Carrito
@@ -647,7 +626,7 @@ a { color: inherit; text-decoration: none; }
       <p>Billeteras y tarjeteros premium con tecnología RFID. Diseñados para quienes cuidan cada detalle. Enviamos a todo Uruguay.</p>
     </div>
     <div class="footer__col"><h4>Productos</h4><ul><li><a href="producto.html?p=Simple">Simple</a></li><li><a href="producto.html?p=Classic">Classic</a></li><li><a href="producto.html?p=Confort">Confort</a></li><li><a href="producto.html?p=Essential">Essential</a></li></ul></div>
-    <div class="footer__col"><h4>Info</h4><ul><li><a href="#rfid">Tecnología RFID</a></li><li><a href="#envios">Envíos</a></li><li><a href="https://instagram.com/founder.uy" target="_blank" rel="noopener">@founder.uy</a></li><li><a href="https://wa.me/598098550096" target="_blank" rel="noopener">WhatsApp</a></li></ul></div>
+    <div class="footer__col"><h4>Info</h4><ul><li><a href="#rfid">Tecnología RFID</a></li><li><a href="#envios">Envíos</a></li><li><a href="seguimiento.html">Seguimiento de pedido</a></li><li><a href="https://instagram.com/founder.uy" target="_blank" rel="noopener">@founder.uy</a></li><li><a href="https://wa.me/598098550096" target="_blank" rel="noopener">WhatsApp</a></li></ul></div>
     <div class="footer__col"><h4>Legal</h4><ul><li><a href="#" onclick="showLegal('privacy');return false">Política de Privacidad</a></li><li><a href="#" onclick="showLegal('terms');return false">Términos y Condiciones</a></li><li><a href="#" onclick="showLegal('returns');return false">Cambios y Devoluciones</a></li></ul></div>
   </div>
   <div class="footer__bottom">
@@ -1120,22 +1099,7 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('is-visible'), 3000);
 }
 
-// ── SHARED UI — Cursor ──────────────────────────────────────────
-(function initCursor() {
-  const cursor = $('cursor');
-  const ring   = $('cursorRing');
-  if (!cursor || !ring) return;
-
-  let mx = 0, my = 0, rx = 0, ry = 0;
-
-  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-
-  (function animate() {
-    cursor.style.left = mx + 'px'; cursor.style.top = my + 'px';
-    rx += (mx - rx) * .12; ry += (my - ry) * .12;
-    ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
-    requestAnimationFrame(animate);
-  })();
+// ── SHARED UI — Cursor (eliminado) ─────────────────────────────
 
   // Event delegation — funciona también con elementos generados dinámicamente
   document.addEventListener('mouseover', e => {
@@ -1162,5 +1126,18 @@ const revealObserver = new IntersectionObserver(entries => {
 updateCart(); // reflejar carrito persistido (puede venir de producto.html)
 init();
 </script>
+
+<!-- ── WHATSAPP FLOTANTE ─────────────────────────────────────── -->
+<a href="https://wa.me/598098550096" target="_blank" rel="noopener" class="wa-float" aria-label="Contactar por WhatsApp">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.554 4.122 1.526 5.857L0 24l6.335-1.482A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.844 0-3.574-.468-5.083-1.29l-.365-.214-3.76.879.935-3.666-.236-.38A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+  </svg>
+</a>
+<style>
+.wa-float { position:fixed; bottom:28px; right:28px; width:56px; height:56px; background:#25D366; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; z-index:9000; box-shadow:0 4px 20px rgba(37,211,102,0.4); transition:transform .2s,box-shadow .2s; cursor:pointer; }
+.wa-float:hover { transform:scale(1.1); box-shadow:0 6px 28px rgba(37,211,102,0.55); }
+@media(max-width:600px){ .wa-float { bottom:80px; right:18px; width:50px; height:50px; } }
+</style>
 </body>
 </html>
