@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seguimiento de Pedido — FOUNDER.UY</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --color-bg: #141414;
+      --color-surface: #222222;
+      --color-surface2: #2e2e2e;
+      --color-text: #f8f8f4;
+      --color-muted: #9a9a9a;
+      --color-gold: #c9a96e;
+      --color-gold-dim: rgba(201,169,110,0.15);
+      --color-gold-border: rgba(201,169,110,0.3);
+      --color-error: #e07070;
+      --color-error-bg: rgba(224,112,112,0.1);
+      --color-success: #7ec88a;
+      --font-serif: 'Cormorant Garamond', serif;
+      --font-sans: 'Montserrat', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    .site-header {
+      padding: 24px 40px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .site-logo {
+      font-family: var(--font-serif);
+      font-size: 1.6rem;
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      color: var(--color-gold);
+      text-decoration: none;
+    }
+    .site-logo span { font-style: italic; }
+    .header-sub {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      color: var(--color-muted);
+      text-transform: uppercase;
+    }
+
+    /* ── MAIN ── */
+    main {
+      flex: 1;
+      padding: 60px 20px;
+      max-width: 780px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .page-title {
+      font-family: var(--font-serif);
+      font-size: 2.8rem;
+      font-weight: 300;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+    .page-title em { font-style: italic; color: var(--color-gold); }
+    .page-subtitle {
+      color: var(--color-muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+    }
+
+    /* ── FORMULARIO DE BÚSQUEDA ── */
+    .search-card {
+      background: var(--color-surface);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 4px;
+      padding: 36px;
+      margin-bottom: 40px;
+    }
+    .search-card h2 {
+      font-family: var(--font-serif);
+      font-size: 1.3rem;
+      font-weight: 400;
+      margin-bottom: 24px;
+      color: var(--color-gold);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .form-group label {
+      font-size: 0.68rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+    }
+    .form-group input {
+      background: var(--color-surface2);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 3px;
+      padding: 12px 14px;
+      color: var(--color-text);
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus { border-color: var(--color-gold); }
+    .form-group input::placeholder { color: var(--color-muted); }
+
+    .btn-buscar {
+      width: 100%;
+      background: var(--color-gold);
+      color: #141414;
+      border: none;
+      border-radius: 3px;
+      padding: 14px;
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-buscar:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-buscar:active { transform: translateY(0); }
+    .btn-buscar:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .error-msg {
+      background: var(--color-error-bg);
+      border: 1px solid rgba(224,112,112,0.3);
+      border-radius: 3px;
+      padding: 12px 16px;
+      color: var(--color-error);
+      font-size: 0.8rem;
+      margin-top: 14px;
+      display: none;
+    }
+    .error-msg.visible { display: block; }
+
+    /* ── RESULTADO ── */
+    #resultado { display: none; }
+    #resultado.visible { display: block; }
+
+    /* Encabezado del pedido */
+    .pedido-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .pedido-id {
+      font-family: var(--font-serif);
+      font-size: 2rem;
+      font-weight: 300;
+    }
+    .pedido-id span { color: var(--color-gold); font-style: italic; }
+    .pedido-fecha {
+      font-size: 0.72rem;
+      color: var(--color-muted);
+      letter-spacing: 0.1em;
+      margin-top: 4px;
+    }
+    .badge-cancelado {
+      background: rgba(224,112,112,0.12);
+      border: 1px solid rgba(224,112,112,0.4);
+      color: var(--color-error);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    /* ── LÍNEA DE PROGRESO ── */
+    .progress-section {
+      background: var(--color-surface);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 4px;
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+    .progress-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 28px;
+    }
+    .progress-track {
+      display: flex;
+      align-items: flex-start;
+      position: relative;
+    }
+    .progress-track::before {
+      content: '';
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+      height: 2px;
+      background: var(--color-surface2);
+      z-index: 0;
+    }
+    .progress-fill {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      height: 2px;
+      background: var(--color-gold);
+      z-index: 1;
+      transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+    }
+    .progress-step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      z-index: 2;
+    }
+    .step-dot {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--color-surface2);
+      background: var(--color-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      transition: all 0.4s ease;
+      flex-shrink: 0;
+    }
+    .step-dot.active {
+      border-color: var(--color-gold);
+      background: var(--color-gold);
+      color: #141414;
+      box-shadow: 0 0 0 4px var(--color-gold-dim);
+    }
+    .step-dot.done {
+      border-color: var(--color-gold);
+      background: var(--color-gold-dim);
+      color: var(--color-gold);
+    }
+    .step-name {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      text-align: center;
+      line-height: 1.4;
+      transition: color 0.3s;
+    }
+    .progress-step.active .step-name,
+    .progress-step.done .step-name { color: var(--color-gold); }
+
+    /* ── DATOS ── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .info-card {
+      background: var(--color-surface);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 4px;
+      padding: 24px;
+    }
+    .info-card h3 {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 14px;
+    }
+    .info-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .info-row:last-child { margin-bottom: 0; }
+    .info-row .lbl {
+      font-size: 0.68rem;
+      color: var(--color-muted);
+    }
+    .info-row .val {
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    /* ── PRODUCTOS ── */
+    .productos-section {
+      background: var(--color-surface);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 4px;
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+    .productos-section h3 {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 20px;
+    }
+    .producto-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .producto-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .producto-item:first-child { padding-top: 0; }
+    .producto-foto {
+      width: 60px;
+      height: 60px;
+      border-radius: 3px;
+      object-fit: cover;
+      background: var(--color-surface2);
+      flex-shrink: 0;
+    }
+    .producto-foto-placeholder {
+      width: 60px;
+      height: 60px;
+      border-radius: 3px;
+      background: var(--color-surface2);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+    .producto-info { flex: 1; }
+    .producto-nombre {
+      font-family: var(--font-serif);
+      font-size: 1rem;
+      font-weight: 400;
+      margin-bottom: 3px;
+    }
+    .producto-detalle {
+      font-size: 0.72rem;
+      color: var(--color-muted);
+    }
+    .producto-precio {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--color-gold);
+      white-space: nowrap;
+    }
+
+    /* ── TOTALES ── */
+    .totales-section {
+      background: var(--color-surface);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 4px;
+      padding: 24px 28px;
+      margin-bottom: 32px;
+    }
+    .totales-section h3 {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 16px;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      font-size: 0.83rem;
+      color: var(--color-muted);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .total-row:last-child { border-bottom: none; }
+    .total-row.final {
+      color: var(--color-text);
+      font-weight: 600;
+      font-size: 1rem;
+      padding-top: 14px;
+      margin-top: 4px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .total-row .descuento-val { color: var(--color-success); }
+
+    /* ── BOTÓN VOLVER ── */
+    .btn-volver {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--color-muted);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 3px;
+      padding: 10px 18px;
+      transition: color 0.2s, border-color 0.2s;
+      cursor: pointer;
+      background: none;
+      font-family: var(--font-sans);
+    }
+    .btn-volver:hover { color: var(--color-text); border-color: rgba(255,255,255,0.25); }
+
+    /* ── LOADING ── */
+    .loading-spinner {
+      display: none;
+      text-align: center;
+      padding: 40px;
+      color: var(--color-muted);
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+    }
+    .loading-spinner.visible { display: block; }
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 2px solid rgba(201,169,110,0.2);
+      border-top-color: var(--color-gold);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 24px 40px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--color-muted);
+      letter-spacing: 0.08em;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .site-header { padding: 18px 20px; }
+      main { padding: 40px 16px; }
+      .page-title { font-size: 2rem; }
+      .search-card { padding: 24px 20px; }
+      .form-row { grid-template-columns: 1fr; }
+      .info-grid { grid-template-columns: 1fr; }
+      .progress-section { padding: 24px 16px; }
+      .step-name { font-size: 0.58rem; }
+      .step-dot { width: 30px; height: 30px; font-size: 0.75rem; }
+      .progress-track::before { top: 15px; }
+      .progress-fill { top: 15px; }
+      footer { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <a href="index.html" class="site-logo">FOUNDER<span>.UY</span></a>
+    <span class="header-sub">Seguimiento de pedido</span>
+  </header>
+
+  <main>
+    <h1 class="page-title">Seguí tu <em>pedido</em></h1>
+    <p class="page-subtitle">Ingresá tus datos para ver el estado</p>
+
+    <!-- FORMULARIO -->
+    <div class="search-card" id="searchCard">
+      <h2>Consultar pedido</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="inputPedido">Número de pedido</label>
+          <input type="text" id="inputPedido" placeholder="ej: FND-0042" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="inputEmail">Correo electrónico</label>
+          <input type="email" id="inputEmail" placeholder="tu@email.com" autocomplete="email" />
+        </div>
+      </div>
+      <button class="btn-buscar" id="btnBuscar" onclick="buscarPedido()">Consultar estado</button>
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <!-- LOADING -->
+    <div class="loading-spinner" id="loadingSpinner">
+      <div class="spinner"></div>
+      Buscando tu pedido...
+    </div>
+
+    <!-- RESULTADO -->
+    <div id="resultado">
+
+      <!-- Encabezado del pedido -->
+      <div class="pedido-header">
+        <div>
+          <div class="pedido-id">Pedido <span id="rPedidoId"></span></div>
+          <div class="pedido-fecha" id="rFecha"></div>
+        </div>
+        <div id="rBadgeCancelado"></div>
+      </div>
+
+      <!-- Progreso -->
+      <div class="progress-section" id="progressSection">
+        <div class="progress-label">Estado del pedido</div>
+        <div class="progress-track" id="progressTrack">
+          <div class="progress-fill" id="progressFill" style="width:0%"></div>
+          <div class="progress-step" id="step-pendiente">
+            <div class="step-dot" id="dot-pendiente">🕐</div>
+            <div class="step-name">Pendiente</div>
+          </div>
+          <div class="progress-step" id="step-preparacion">
+            <div class="step-dot" id="dot-preparacion">📦</div>
+            <div class="step-name">En preparación</div>
+          </div>
+          <div class="progress-step" id="step-camino">
+            <div class="step-dot" id="dot-camino">🚚</div>
+            <div class="step-name">En camino</div>
+          </div>
+          <div class="progress-step" id="step-entregado">
+            <div class="step-dot" id="dot-entregado">✅</div>
+            <div class="step-name">Entregado</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info grid -->
+      <div class="info-grid">
+        <div class="info-card">
+          <h3>Datos del comprador</h3>
+          <div class="info-row">
+            <span class="lbl">Nombre</span>
+            <span class="val" id="rNombre"></span>
+          </div>
+          <div class="info-row">
+            <span class="lbl">Teléfono</span>
+            <span class="val" id="rTelefono"></span>
+          </div>
+          <div class="info-row">
+            <span class="lbl">Email</span>
+            <span class="val" id="rEmail"></span>
+          </div>
+        </div>
+        <div class="info-card">
+          <h3>Entrega</h3>
+          <div class="info-row">
+            <span class="lbl">Modalidad</span>
+            <span class="val" id="rEntrega"></span>
+          </div>
+          <div class="info-row" id="rowDireccion">
+            <span class="lbl">Dirección</span>
+            <span class="val" id="rDireccion"></span>
+          </div>
+          <div class="info-row">
+            <span class="lbl">Método de pago</span>
+            <span class="val" id="rPago"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Productos -->
+      <div class="productos-section">
+        <h3>Productos</h3>
+        <div id="rProductos"></div>
+      </div>
+
+      <!-- Totales -->
+      <div class="totales-section">
+        <h3>Resumen de pago</h3>
+        <div id="rTotales"></div>
+      </div>
+
+      <!-- Volver -->
+      <button class="btn-volver" onclick="resetear()">← Nueva consulta</button>
+
+    </div>
+  </main>
+
+  <footer>
+    © 2025 FOUNDER.UY — Todos los derechos reservados
+  </footer>
+
+<script>
+  const SHEET_ID = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8LByXXY7QwzHEB0RyvP0Ejbmqyw099F4ntbbwRIdkRv8JlUDaryn_vQj2aL9kANA/exec';
+
+  // Mapa de estados → índice (0 a 3)
+  const ESTADOS_PROGRESO = {
+    'pendiente':    0,
+    'en preparación': 1,
+    'preparacion':  1,
+    'en camino':    2,
+    'camino':       2,
+    'entregado':    3,
+  };
+  const IDS_PASOS = ['pendiente','preparacion','camino','entregado'];
+
+  // Porcentaje de la barra para cada paso
+  const PROGRESO_PCT = ['8%', '36%', '64%', '92%'];
+
+  function normalizar(str) {
+    return (str || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
+  function mostrarError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+
+  function ocultarError() {
+    document.getElementById('errorMsg').classList.remove('visible');
+  }
+
+  async function buscarPedido() {
+    const pedidoRaw = document.getElementById('inputPedido').value.trim();
+    const emailRaw  = document.getElementById('inputEmail').value.trim();
+
+    ocultarError();
+
+    if (!pedidoRaw || !emailRaw) {
+      mostrarError('Por favor completá ambos campos para continuar.');
+      return;
+    }
+
+    // Normalizar el número de pedido (quitar FND- si lo escribieron)
+    const pedidoNorm = pedidoRaw.toUpperCase().replace(/^FND-?0*/,'');
+    const emailNorm  = emailRaw.toLowerCase();
+
+    const btn = document.getElementById('btnBuscar');
+    btn.disabled = true;
+    btn.textContent = 'Consultando...';
+    document.getElementById('loadingSpinner').classList.add('visible');
+
+    try {
+      // Leer hoja pedidos via GViz (no requiere auth)
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=pedidos&tqx=out:json`;
+      const res  = await fetch(url);
+      const text = await res.text();
+
+      // GViz devuelve JSONP — extraemos el JSON
+      const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
+      const rows = json.table.rows;
+
+      // Columnas: A=id B=fecha C=nombre D=apellido E=celular F=email G=entrega H=direccion I=productos J=subtotal K=descuento L=envio M=total N=pago O=estado P=notas
+      const pedido = rows.find(r => {
+        const id    = normalizar(r.c[0]?.v ?? '');
+        const email = normalizar(r.c[5]?.v ?? '');
+        // El ID en el Sheet puede ser "FND-0042" o solo "42" — comparamos número
+        const idNum = id.replace(/^fnd-?0*/,'');
+        return idNum === pedidoNorm.toLowerCase() && email === emailNorm;
+      });
+
+      document.getElementById('loadingSpinner').classList.remove('visible');
+      btn.disabled = false;
+      btn.textContent = 'Consultar estado';
+
+      if (!pedido) {
+        mostrarError('No encontramos ningún pedido con esos datos. Verificá el número de pedido y el email ingresados.');
+        return;
+      }
+
+      mostrarResultado(pedido);
+
+    } catch (err) {
+      document.getElementById('loadingSpinner').classList.remove('visible');
+      btn.disabled = false;
+      btn.textContent = 'Consultar estado';
+      mostrarError('Ocurrió un error al consultar. Por favor intentá de nuevo en unos segundos.');
+      console.error(err);
+    }
+  }
+
+  function mostrarResultado(r) {
+    const c = r.c;
+    const get = (i) => (c[i]?.v ?? '').toString().trim();
+
+    const id        = get(0);
+    const fecha     = get(1);
+    const nombre    = get(2);
+    const apellido  = get(3);
+    const celular   = get(4);
+    const email     = get(5);
+    const entrega   = get(6);
+    const direccion = get(7);
+    const productos = get(8);
+    const subtotal  = get(9);
+    const descuento = get(10);
+    const envio     = get(11);
+    const total     = get(12);
+    const pago      = get(13);
+    const estado    = get(14);
+    const notas     = get(15);
+
+    // ID formateado
+    document.getElementById('rPedidoId').textContent = id.toUpperCase().startsWith('FND') ? id : `FND-${id}`;
+    document.getElementById('rFecha').textContent = fecha ? `Realizado el ${fecha}` : '';
+
+    // Datos comprador
+    document.getElementById('rNombre').textContent    = `${nombre} ${apellido}`.trim();
+    document.getElementById('rTelefono').textContent  = celular || '—';
+    document.getElementById('rEmail').textContent     = email || '—';
+
+    // Entrega
+    document.getElementById('rEntrega').textContent = entrega || '—';
+    if (direccion && entrega.toLowerCase().includes('envío')) {
+      document.getElementById('rDireccion').textContent = direccion;
+      document.getElementById('rowDireccion').style.display = '';
+    } else {
+      document.getElementById('rowDireccion').style.display = 'none';
+    }
+    document.getElementById('rPago').textContent = pago || '—';
+
+    // Estado → progreso
+    const estadoNorm = normalizar(estado);
+    const cancelado  = estadoNorm.includes('cancel');
+
+    if (cancelado) {
+      document.getElementById('progressSection').style.display = 'none';
+      document.getElementById('rBadgeCancelado').innerHTML = '<span class="badge-cancelado">❌ Cancelado</span>';
+    } else {
+      document.getElementById('progressSection').style.display = '';
+      document.getElementById('rBadgeCancelado').innerHTML = '';
+
+      // Buscar índice del estado actual
+      let idxActual = 0;
+      for (const [key, val] of Object.entries(ESTADOS_PROGRESO)) {
+        if (estadoNorm.includes(key)) { idxActual = val; break; }
+      }
+
+      // Actualizar pasos
+      IDS_PASOS.forEach((paso, i) => {
+        const stepEl = document.getElementById(`step-${paso}`);
+        const dotEl  = document.getElementById(`dot-${paso}`);
+        stepEl.classList.remove('active','done');
+        dotEl.classList.remove('active','done');
+        if (i < idxActual) {
+          stepEl.classList.add('done');
+          dotEl.classList.add('done');
+        } else if (i === idxActual) {
+          stepEl.classList.add('active');
+          dotEl.classList.add('active');
+        }
+      });
+
+      // Animar barra (con delay para que se vea la animación)
+      const fill = document.getElementById('progressFill');
+      fill.style.width = '0%';
+      setTimeout(() => { fill.style.width = PROGRESO_PCT[idxActual]; }, 100);
+    }
+
+    // Productos
+    renderProductos(productos);
+
+    // Totales
+    renderTotales(subtotal, descuento, envio, total, pago);
+
+    // Mostrar resultado
+    document.getElementById('searchCard').style.display = 'none';
+    document.getElementById('resultado').classList.add('visible');
+
+    // Scroll suave arriba
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function renderProductos(productosStr) {
+    const container = document.getElementById('rProductos');
+    container.innerHTML = '';
+
+    if (!productosStr) {
+      container.innerHTML = '<p style="color:var(--color-muted);font-size:0.82rem;">Sin detalle de productos.</p>';
+      return;
+    }
+
+    // Formato esperado en Sheets: "Nombre (Color) x2 — $1.400 | Otro (Negro) x1 — $700"
+    // Intentamos parsear ese formato. Si el contenido es diferente, mostramos como texto.
+    const items = productosStr.split('|').map(s => s.trim()).filter(Boolean);
+
+    if (items.length === 0) {
+      container.innerHTML = `<p style="color:var(--color-muted);font-size:0.82rem;">${productosStr}</p>`;
+      return;
+    }
+
+    items.forEach(item => {
+      // Intentar extraer nombre, color, cantidad, precio
+      // Ejemplo: "Billetera Clásica (Carbon) x2 — $1.400"
+      const match = item.match(/^(.+?)(?:\((.+?)\))?\s*x?(\d+)\s*(?:—|-|–)?\s*(\$[\d.,]+)?/i);
+      let nombre = item, color = '', cantidad = '', precio = '';
+      if (match) {
+        nombre   = match[1]?.trim() || item;
+        color    = match[2]?.trim() || '';
+        cantidad = match[3] || '1';
+        precio   = match[4]?.trim() || '';
+      }
+
+      const div = document.createElement('div');
+      div.className = 'producto-item';
+      div.innerHTML = `
+        <div class="producto-foto-placeholder">🛍️</div>
+        <div class="producto-info">
+          <div class="producto-nombre">${nombre}</div>
+          <div class="producto-detalle">${[color, cantidad > 1 ? `x${cantidad}` : ''].filter(Boolean).join(' · ')}</div>
+        </div>
+        ${precio ? `<div class="producto-precio">${precio}</div>` : ''}
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function formatPesos(val) {
+    const num = parseFloat((val+'').replace(/[^0-9.-]/g,''));
+    if (isNaN(num)) return val;
+    return '$' + num.toLocaleString('es-UY');
+  }
+
+  function renderTotales(subtotal, descuento, envio, total, pago) {
+    const container = document.getElementById('rTotales');
+    let html = '';
+
+    if (subtotal) html += `<div class="total-row"><span>Subtotal</span><span>${formatPesos(subtotal)}</span></div>`;
+
+    const desc = parseFloat((descuento+'').replace(/[^0-9.-]/g,''));
+    if (desc > 0) html += `<div class="total-row"><span>Descuento</span><span class="descuento-val">−${formatPesos(descuento)}</span></div>`;
+
+    const env = parseFloat((envio+'').replace(/[^0-9.-]/g,''));
+    if (!isNaN(env)) {
+      html += `<div class="total-row"><span>Envío</span><span>${env === 0 ? '🎁 Gratis' : formatPesos(envio)}</span></div>`;
+    }
+
+    if (total) html += `<div class="total-row final"><span>Total</span><span>${formatPesos(total)}</span></div>`;
+
+    container.innerHTML = html || '<p style="color:var(--color-muted);font-size:0.82rem;">Sin detalle de totales.</p>';
+  }
+
+  function resetear() {
+    document.getElementById('resultado').classList.remove('visible');
+    document.getElementById('searchCard').style.display = '';
+    document.getElementById('inputPedido').value = '';
+    document.getElementById('inputEmail').value  = '';
+    ocultarError();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Enter en los inputs → buscar
+  ['inputPedido','inputEmail'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') buscarPedido();
+    });
+  });
+</script>
+</body>
+</html>
