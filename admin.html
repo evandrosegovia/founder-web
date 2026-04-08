@@ -241,6 +241,28 @@ textarea.fi{resize:vertical;min-height:70px}
 /* INFO BOX */
 .info-box{background:rgba(201,169,110,.06);border:1px solid rgba(201,169,110,.2);padding:12px 16px;font-size:10px;color:var(--muted);line-height:1.8}
 .info-box strong{color:var(--gold)}
+/* CUPONES */
+.cupones-layout{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
+.cupones-table{width:100%;border-collapse:collapse;font-size:11px}
+.cupones-table th{background:var(--mid);color:var(--muted);font-size:8px;letter-spacing:2px;text-transform:uppercase;padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);font-weight:500}
+.cupones-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.cupones-table tr:last-child td{border-bottom:none}
+.cupones-table tr:hover td{background:rgba(255,255,255,.02)}
+.cupon-code{font-family:'Cormorant Garamond',serif;font-size:15px;letter-spacing:1px}
+.cupon-badge{display:inline-block;font-size:8px;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:2px}
+.cupon-badge.activo{background:rgba(76,175,130,.15);color:var(--green);border:1px solid rgba(76,175,130,.3)}
+.cupon-badge.inactivo{background:rgba(224,85,85,.12);color:var(--red);border:1px solid rgba(224,85,85,.25)}
+.cupon-form-card{background:var(--gray);border:1px solid var(--border);padding:22px;position:sticky;top:80px}
+.cupon-form-title{font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:18px}
+.cupon-form-grid{display:flex;flex-direction:column;gap:14px}
+.cf{display:flex;flex-direction:column;gap:6px}
+.cl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
+.ci{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:10px 12px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;width:100%;transition:border-color .2s}
+.ci:focus{border-color:var(--gold)}
+.ci option{background:var(--gray)}
+.cupon-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.no-cupones{padding:40px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px}
+@media(max-width:900px){.cupones-layout{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -286,6 +308,7 @@ textarea.fi{resize:vertical;min-height:70px}
       <div class="nav-item" onclick="nav('pedidos',this)"><span class="nav-icon">📦</span>Pedidos</div>
       <div class="nav-item" onclick="nav('productos',this)"><span class="nav-icon">👜</span>Productos</div>
       <div class="nav-section">Herramientas</div>
+      <div class="nav-item" onclick="nav('cupones',this)"><span class="nav-icon">🏷️</span>Cupones</div>
       <div class="nav-item" onclick="nav('banner',this)"><span class="nav-icon">🖼️</span>Banner inicio</div>
       <div class="nav-item" onclick="nav('imagenes',this)"><span class="nav-icon">🔗</span>Conversor imágenes</div>
       <div class="nav-section">Accesos</div>
@@ -374,6 +397,7 @@ textarea.fi{resize:vertical;min-height:70px}
               <strong>Una sola vez:</strong> Si es la primera vez que usás la hoja de pedidos, hacé click en el botón de abajo para crear los encabezados. Requiere estar conectado a Drive.
             </div>
             <button class="btn btn-secondary btn-sm" onclick="initPedidosHeaders()">⚙️ Inicializar hoja Pedidos</button>
+            <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="initCuponesHeaders()">⚙️ Inicializar hoja Cupones</button>
           </div>
         </div>
 
@@ -467,6 +491,78 @@ textarea.fi{resize:vertical;min-height:70px}
             <div class="info-box">
               El banner se guarda directamente en <strong>Google Sheets</strong> y se carga automáticamente en el sitio para <strong>todos los visitantes</strong> en todos los navegadores.<br><br>
               No necesitás tocar ningún código. Subí la imagen, hacé click en <strong>Guardar banner</strong> y listo.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CUPONES DE DESCUENTO -->
+      <div class="page" id="page-cupones">
+        <div class="ph">
+          <div><div class="ph-title">Cupones de descuento</div><div class="ph-sub">Creá y gestioná códigos promocionales</div></div>
+          <button class="btn btn-primary btn-sm" onclick="loadCupones()">↻ Actualizar</button>
+        </div>
+        <div class="cupones-layout">
+          <!-- Tabla de cupones -->
+          <div>
+            <div class="card">
+              <div class="card-head"><div class="card-title">Códigos activos</div></div>
+              <div id="cuponesTableWrap" style="overflow-x:auto">
+                <div class="no-cupones">Cargando cupones...</div>
+              </div>
+            </div>
+          </div>
+          <!-- Formulario crear cupón -->
+          <div class="cupon-form-card">
+            <div class="cupon-form-title">Nuevo cupón</div>
+            <div class="cupon-form-grid">
+              <div class="cf">
+                <div class="cl">Código *</div>
+                <input type="text" class="ci" id="cpCodigo" placeholder="Ej: PROMO20" maxlength="30" oninput="this.value=this.value.toUpperCase()">
+              </div>
+              <div class="cupon-row2">
+                <div class="cf">
+                  <div class="cl">Tipo de descuento</div>
+                  <select class="ci" id="cpTipo">
+                    <option value="porcentaje">Porcentaje (%)</option>
+                    <option value="fijo">Monto fijo ($)</option>
+                  </select>
+                </div>
+                <div class="cf">
+                  <div class="cl">Valor *</div>
+                  <input type="number" class="ci" id="cpValor" placeholder="Ej: 20" min="1">
+                </div>
+              </div>
+              <div class="cf">
+                <div class="cl">Uso del código</div>
+                <select class="ci" id="cpUso">
+                  <option value="multiuso">Multiuso (ilimitado)</option>
+                  <option value="unico">Único uso (se desactiva al usarse)</option>
+                  <option value="por-email">Único uso por comprador (por email)</option>
+                </select>
+              </div>
+              <div class="cf">
+                <div class="cl">Mínimo de compra (UYU)</div>
+                <input type="number" class="ci" id="cpMinCompra" placeholder="0 = sin mínimo" min="0">
+              </div>
+              <div class="cupon-row2">
+                <div class="cf">
+                  <div class="cl">Disponible desde</div>
+                  <input type="date" class="ci" id="cpDesde">
+                </div>
+                <div class="cf">
+                  <div class="cl">Disponible hasta</div>
+                  <input type="date" class="ci" id="cpHasta">
+                </div>
+              </div>
+              <div class="cf">
+                <div class="cl">Estado inicial</div>
+                <select class="ci" id="cpActivo">
+                  <option value="true">✅ Activo</option>
+                  <option value="false">⏸️ Inactivo</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" id="cpSaveBtn" onclick="saveCupon()" style="margin-top:4px">Crear cupón</button>
             </div>
           </div>
         </div>
@@ -732,6 +828,7 @@ function nav(page, el) {
   document.getElementById('page-' + page).classList.add('active');
   if (el) el.classList.add('active');
   if (page === 'pedidos') loadOrders();
+  if (page === 'cupones') loadCupones();
 }
 
 // ── CARGA DE DATOS — con deduplicación robusta ───────────────────
@@ -1314,6 +1411,20 @@ async function initPedidosHeaders() {
   } catch(e) { toast('Error', true); }
 }
 
+async function initCuponesHeaders() {
+  if (!driveReady) { toast('Conectate a Drive primero', true); return; }
+  try {
+    const values = [['codigo','tipo','valor','uso','minCompra','activo','usos','emails_usados','desde','hasta']];
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent('cupones!A1')}?valueInputOption=RAW`;
+    await fetch(url, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values }),
+    });
+    toast('✅ Hoja cupones inicializada');
+  } catch(e) { toast('Error', true); }
+}
+
 function connectDrive() {
   if (!tokenClient) { toast('Cargando Google...', true); return; }
   tokenClient.requestAccessToken();
@@ -1797,6 +1908,127 @@ function convertBulk() {
     const link = convertToDirectLink(id);
     return `<div class="conv-result" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Copiado'))">${link}</div>`;
   }).join('');
+}
+
+// ── CUPONES DE DESCUENTO ──────────────────────────────────────
+const CUPONES_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=cupones`;
+let cuponesData = [];
+
+function parseCupones(rows) {
+  return (rows || []).map(r => ({
+    codigo:       (r.c[0]?.v || '').trim(),
+    tipo:         (r.c[1]?.v || 'fijo').trim(),
+    valor:        parseFloat(r.c[2]?.v) || 0,
+    uso:          (r.c[3]?.v || 'multiuso').trim(),
+    minCompra:    parseFloat(r.c[4]?.v) || 0,
+    activo:       String(r.c[5]?.v).toLowerCase() === 'true',
+    usos:         parseInt(r.c[6]?.v) || 0,
+    emailsUsados: (r.c[7]?.v || ''),
+    desde:        r.c[8]?.v || '',
+    hasta:        r.c[9]?.v || '',
+  })).filter(c => c.codigo);
+}
+
+async function loadCupones() {
+  try {
+    const r = await fetch(CUPONES_SHEET_URL + '&t=' + Date.now());
+    const t = await r.text();
+    const j = JSON.parse(t.substring(47, t.length - 2));
+    cuponesData = parseCupones(j.table.rows || []);
+    renderCuponesTable();
+  } catch(e) {
+    document.getElementById('cuponesTableWrap').innerHTML = '<div class="no-cupones">Error al cargar cupones</div>';
+    console.error(e);
+  }
+}
+
+function renderCuponesTable() {
+  const wrap = document.getElementById('cuponesTableWrap');
+  if (!wrap) return;
+  if (!cuponesData.length) {
+    wrap.innerHTML = '<div class="no-cupones">No hay cupones creados todavía</div>';
+    return;
+  }
+  const rows = cuponesData.map((c, i) => {
+    const usoLabel  = { multiuso: 'Multiuso', unico: 'Único uso', 'por-email': 'Por comprador' }[c.uso] || c.uso;
+    const descLabel = c.tipo === 'porcentaje' ? `${c.valor}%` : `$${c.valor.toLocaleString('es-UY')}`;
+    const minLabel  = c.minCompra > 0 ? `$${c.minCompra.toLocaleString('es-UY')}` : '—';
+    return `<tr>
+      <td><div class="cupon-code">${c.codigo}</div></td>
+      <td>${descLabel}</td>
+      <td style="font-size:10px;color:var(--muted)">${usoLabel}</td>
+      <td style="font-size:10px;color:var(--muted)">${minLabel}</td>
+      <td style="font-size:10px;color:var(--muted)">${c.desde || '—'} → ${c.hasta || '—'}</td>
+      <td style="text-align:center">${c.usos}</td>
+      <td><span class="cupon-badge ${c.activo ? 'activo' : 'inactivo'}">${c.activo ? 'Activo' : 'Inactivo'}</span></td>
+      <td>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-sm ${c.activo ? 'btn-secondary' : 'btn-primary'}" onclick="toggleCupon(${i})">${c.activo ? '⏸️ Pausar' : '▶️ Activar'}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCupon(${i})">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table class="cupones-table">
+    <thead><tr>
+      <th>Código</th><th>Descuento</th><th>Uso</th><th>Mín. compra</th>
+      <th>Vigencia</th><th>Usos</th><th>Estado</th><th>Acciones</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+async function saveCupon() {
+  if (!driveReady) { toast('Conectate a Drive para guardar cupones', true); return; }
+  const codigo    = document.getElementById('cpCodigo').value.trim().toUpperCase();
+  const tipo      = document.getElementById('cpTipo').value;
+  const valor     = document.getElementById('cpValor').value.trim();
+  const uso       = document.getElementById('cpUso').value;
+  const minCompra = document.getElementById('cpMinCompra').value.trim() || '0';
+  const desde     = document.getElementById('cpDesde').value;
+  const hasta     = document.getElementById('cpHasta').value;
+  const activo    = document.getElementById('cpActivo').value;
+  if (!codigo || !valor) { toast('Código y valor son obligatorios', true); return; }
+  if (cuponesData.find(c => c.codigo === codigo)) { toast('Ya existe un cupón con ese código', true); return; }
+  const btn = document.getElementById('cpSaveBtn');
+  btn.textContent = '⏳ Guardando...'; btn.disabled = true;
+  try {
+    const newRow = cuponesData.length + 2;
+    const fmtDate = iso => { if (!iso) return ''; const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; };
+    const values  = [codigo, tipo, parseFloat(valor), uso, parseFloat(minCompra), activo, 0, '', fmtDate(desde), fmtDate(hasta)];
+    await updateSheetCell('cupones', newRow, values);
+    cuponesData.push({ codigo, tipo, valor: parseFloat(valor), uso, minCompra: parseFloat(minCompra), activo: activo === 'true', usos: 0, emailsUsados: '', desde: fmtDate(desde), hasta: fmtDate(hasta) });
+    renderCuponesTable();
+    ['cpCodigo','cpValor','cpMinCompra','cpDesde','cpHasta'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    toast(`✅ Cupón ${codigo} creado`);
+  } catch(e) { toast('Error al guardar el cupón', true); console.error(e); }
+  finally { btn.textContent = 'Crear cupón'; btn.disabled = false; }
+}
+
+async function toggleCupon(i) {
+  if (!driveReady) { toast('Conectate a Drive primero', true); return; }
+  const c = cuponesData[i];
+  const newActivo = !c.activo;
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`cupones!F${i+2}`)}?valueInputOption=RAW`;
+    await fetch(url, { method:'PUT', headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'}, body:JSON.stringify({values:[[String(newActivo)]]}) });
+    cuponesData[i].activo = newActivo;
+    renderCuponesTable();
+    toast(`Cupón ${c.codigo} ${newActivo ? 'activado' : 'pausado'}`);
+  } catch(e) { toast('Error al actualizar', true); }
+}
+
+async function deleteCupon(i) {
+  if (!driveReady) { toast('Conectate a Drive primero', true); return; }
+  const c = cuponesData[i];
+  if (!confirm(`¿Eliminar el cupón "${c.codigo}"? Esta acción no se puede deshacer.`)) return;
+  try {
+    await updateSheetCell('cupones', i + 2, ['','','','','','','','','','']);
+    cuponesData.splice(i, 1);
+    renderCuponesTable();
+    toast(`Cupón ${c.codigo} eliminado`);
+  } catch(e) { toast('Error al eliminar', true); }
 }
 
 // ── TOAST ────────────────────────────────────────────────────────
