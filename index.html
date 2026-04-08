@@ -119,7 +119,7 @@ img { display: block; max-width: 100%; }
 button { font-family: var(--font-sans); }
 a { color: inherit; text-decoration: none; }
 
-/* ── CURSOR (desktop only) ────────────────────────────────── */
+/* ── SHARED — Cursor (desktop only) ─────────────────────────── */
 .cursor {
   position: fixed; width: 8px; height: 8px;
   background: var(--color-text); border-radius: 50%;
@@ -135,7 +135,7 @@ a { color: inherit; text-decoration: none; }
 }
 .cursor-ring.is-hovering { width: 48px; height: 48px; border-color: var(--color-gold); }
 
-/* ── HEADER ───────────────────────────────────────────────── */
+/* ── SHARED — Header ─────────────────────────────────────────── */
 .header {
   position: fixed; top: 0; left: 0; right: 0;
   z-index: var(--z-header); height: 70px;
@@ -446,7 +446,7 @@ a { color: inherit; text-decoration: none; }
 }
 .modal__detail-link:hover { color: var(--color-gold); border-color: var(--color-gold); }
 
-/* ── CART SIDEBAR ─────────────────────────────────────────── */
+/* ── SHARED — Carrito lateral ───────────────────────────────── */
 .cart-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.7);
   z-index: var(--z-cart); opacity: 0; pointer-events: none;
@@ -495,7 +495,7 @@ a { color: inherit; text-decoration: none; }
 .cart__mp-info { text-align: center; margin-top: 12px; font-size: 9px; letter-spacing: 2px; color: var(--color-muted); }
 .cart__mp-info strong { color: var(--color-text); letter-spacing: 3px; }
 
-/* ── CHECKOUT PAGE ────────────────────────────────────────── */
+/* ── SHARED — Checkout ──────────────────────────────────────── */
 .checkout-page { position: fixed; inset: 0; background: var(--color-bg); z-index: calc(var(--z-modal) + 10); overflow-y: auto; opacity: 0; pointer-events: none; transition: opacity .4s; }
 .checkout-page.is-open { opacity: 1; pointer-events: all; }
 .co-topbar { height: 60px; padding: 0 var(--space-lg); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-border); position: sticky; top: 0; background: var(--color-bg); z-index: 10; }
@@ -543,7 +543,7 @@ a { color: inherit; text-decoration: none; }
 .footer__legal a { color: var(--color-muted); font-size: 10px; transition: color var(--transition-fast); }
 .footer__legal a:hover { color: var(--color-text); }
 
-/* ── LEGAL PAGES ──────────────────────────────────────────── */
+/* ── SHARED — Páginas legales ───────────────────────────────── */
 .legal-page { position: fixed; inset: 0; background: var(--color-bg); z-index: calc(var(--z-modal) + 20); overflow-y: auto; display: none; padding: 100px var(--space-lg) 60px; }
 .legal-page.is-active { display: block; }
 .legal-close { position: fixed; top: 24px; right: var(--space-lg); background: var(--color-surface2); border: none; color: var(--color-text); padding: 10px 20px; font-family: var(--font-sans); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; cursor: none; z-index: 10; transition: background var(--transition-fast); }
@@ -555,7 +555,7 @@ a { color: inherit; text-decoration: none; }
 .legal-content p, .legal-content li { font-size: 13px; line-height: 1.9; color: var(--color-muted); }
 .legal-content ul { padding-left: 20px; }
 
-/* ── TOAST ────────────────────────────────────────────────── */
+/* ── SHARED — Toast de notificación ────────────────────────── */
 .toast {
   position: fixed; bottom: 24px; left: 50%;
   transform: translateX(-50%) translateY(12px);
@@ -737,7 +737,7 @@ a { color: inherit; text-decoration: none; }
 </aside>
 
 <!-- ── PRODUCT MODAL ─────────────────────────────────────────── -->
-<div class="modal-overlay" id="modalOverlay" onclick="handleModalBg(event)" role="dialog" aria-modal="true" aria-label="Detalle del producto">
+<div class="modal-overlay" id="modalOverlay" onclick="handleModalOverlayClick(event)" role="dialog" aria-modal="true" aria-label="Detalle del producto">
   <div class="modal">
     <div class="modal__gallery"><img id="modalImg" src="" alt="Foto del producto" loading="lazy"></div>
     <div class="modal__thumbs" id="modalThumbs" style="display:none">
@@ -878,7 +878,7 @@ a { color: inherit; text-decoration: none; }
    Config → State → API → UI → Cart → Checkout → Utils
    ============================================================= */
 
-// ── CONFIG (single source of truth) ───────────────────────────
+// ── SHARED CONFIG — única fuente de verdad. Actualizar también en producto.html ──
 const CONFIG = Object.freeze({
   SHEET_ID:       '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8',
   WA_NUMBER:      '598098550096',
@@ -902,7 +902,16 @@ const COLOR_MAP = Object.freeze({
   'Verde Oliva':  { hex: '#6a7a3a', css: 'var(--swatch-verde-oliva)' },
 });
 
-// ── STATE ──────────────────────────────────────────────────────
+/** Genera el valor CSS de background para un color de producto.
+ *  Centraliza la lógica del patrón de Carbon en un solo lugar. */
+function swatchBackground(color) {
+  if (color.pattern) {
+    return 'repeating-linear-gradient(45deg,var(--swatch-carbon) 0,var(--swatch-carbon) 4px,#4a4a4a 4px,#4a4a4a 8px)';
+  }
+  return color.css || color.hex;
+}
+
+// ── SHARED STATE + PAGE STATE ────────────────────────────────────
 const CART_KEY = 'founder_cart'; // clave compartida con producto.html
 
 // Estas funciones deben estar ANTES de state para que loadCartFromStorage() funcione
@@ -924,14 +933,14 @@ const state = {
   thumbOffset:    0,
 };
 
-// ── DOM HELPERS ────────────────────────────────────────────────
+// ── SHARED DOM HELPERS ────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 const setHTML = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
 const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
 
 const toggle  = (el, cls, force) => el?.classList.toggle(cls, force);
 
-// ── API — Google Sheets ────────────────────────────────────────
+// ── SHARED API — Google Sheets ──────────────────────────────────
 async function fetchSheet(url) {
   const res  = await fetch(`${url}&t=${Date.now()}`);
   const text = await res.text();
@@ -968,7 +977,7 @@ function parsePhotoMap(rows) {
   return map;
 }
 
-// ── BANNER ────────────────────────────────────────────────────
+// ── INDEX — Banner del hero ─────────────────────────────────────
 function applyBanner(url) {
   const container = $('heroBannerImg');
   if (!container) return;
@@ -985,7 +994,7 @@ function applyBanner(url) {
   }
 }
 
-// ── INIT ──────────────────────────────────────────────────────
+// ── INDEX — Inicialización ───────────────────────────────────────
 async function init() {
   try {
     const [jP, jF] = await Promise.all([
@@ -1014,7 +1023,7 @@ function getPhotos(model, color) {
   return state.photoMap[model]?.[color] || [];
 }
 
-// ── RENDER PRODUCTS ───────────────────────────────────────────
+// ── INDEX — Grilla de productos ─────────────────────────────────
 function renderProducts() {
   setHTML('productsGrid', state.products.map(renderProductCard).join(''));
   document.querySelectorAll('.product-card').forEach(el => revealObserver.observe(el));
@@ -1033,12 +1042,12 @@ function renderProductCard(p) {
   const firstPhoto = Object.values(state.photoMap[p.name] || {}).flat()[0] || null;
   const swatches   = p.colors.slice(0, 4).map(c => `
     <div style="width:36px;height:52px;border-radius:3px;box-shadow:0 4px 20px rgba(0,0,0,.5);background:${
-      c.pattern ? 'repeating-linear-gradient(45deg,#1a1a1a 0,#1a1a1a 4px,#222 4px,#222 8px)' : c.hex
+      swatchBackground(c)
     }"></div>`).join('');
 
   const colorDots = p.colors.map(c => `
     <div class="color-dot" title="${c.name}" style="background:${
-      c.pattern ? 'repeating-linear-gradient(45deg,var(--swatch-carbon) 0,var(--swatch-carbon) 4px,#4a4a4a 4px,#4a4a4a 8px)' : (c.css || c.hex)
+      swatchBackground(c)
     }"></div>`).join('');
 
   return `
@@ -1074,7 +1083,7 @@ function renderProductCard(p) {
     </article>`;
 }
 
-// ── MODAL ─────────────────────────────────────────────────────
+// ── INDEX — Modal de vista rápida ───────────────────────────────
 function openModal(id) {
   id = parseInt(id);
   state.currentProduct = state.products.find(p => p.id === id);
@@ -1110,7 +1119,7 @@ function updateModalGallery() {
     thumbs.style.display = 'flex';
     track.innerHTML = photos.map((p, i) => `
       <img src="${p}" class="modal__thumb ${i===0 ? 'is-active' : ''}"
-        onclick="setMainPhoto('${p}', this)" alt="Foto ${i+1}" loading="lazy">`
+        onclick="setModalMainPhoto('${p}', this)" alt="Foto ${i+1}" loading="lazy">`
     ).join('');
     updateThumbArrows(photos.length);
   } else {
@@ -1118,7 +1127,7 @@ function updateModalGallery() {
   }
 }
 
-function setMainPhoto(src, el) {
+function setModalMainPhoto(src, el) {
   $('modalImg').src = src;
   document.querySelectorAll('.modal__thumb').forEach(t => t.classList.remove('is-active'));
   el.classList.add('is-active');
@@ -1147,7 +1156,7 @@ function renderModalColors() {
   setHTML('modalColors', state.currentProduct.colors.map((c, i) => `
     <div class="color-option ${c.name === state.currentColor.name ? 'is-active' : ''}" onclick="selectColor(${i})">
       <div class="color-swatch" style="background:${
-        c.pattern ? 'repeating-linear-gradient(45deg,var(--swatch-carbon) 0,var(--swatch-carbon) 4px,#4a4a4a 4px,#4a4a4a 8px)' : (c.css || c.hex)
+        swatchBackground(c)
       }"></div>
       <div class="color-option__name">${c.name}</div>
     </div>`).join(''));
@@ -1159,13 +1168,13 @@ function selectColor(i) {
   renderModalColors();
 }
 
-function handleModalBg(e) { if (e.target.id === 'modalOverlay') closeModal(); }
+function handleModalOverlayClick(e) { if (e.target.id === 'modalOverlay') closeModal(); }
 function closeModal() {
   $('modalOverlay').classList.remove('is-open');
   document.body.style.overflow = '';
 }
 
-// ── CART ──────────────────────────────────────────────────────
+// ── SHARED CART ─────────────────────────────────────────────────
 function addFromModal() {
   if (!state.currentColor) { showToast('Seleccioná un color'); return; }
   addToCart(state.currentProduct, state.currentColor);
@@ -1190,7 +1199,8 @@ function addToCart(product, color) {
 }
 
 function updateCart() {
-  saveCartToStorage(); // persistir carrito para compartir con producto.html
+  // Persistir en localStorage para sincronizar con producto.html
+  saveCartToStorage();
   const total  = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
   const count  = state.cart.reduce((s, i) => s + i.qty, 0);
   const badge  = $('cartCount');
@@ -1260,11 +1270,11 @@ function toggleCart() {
   document.body.style.overflow = isOpen ? 'hidden' : '';
 }
 
-// ── CHECKOUT ──────────────────────────────────────────────────
+// ── SHARED CHECKOUT ─────────────────────────────────────────────
 function openCheckout() {
   if (!state.cart.length) return;
   toggleCart();
-  renderSummary();
+  renderOrderSummary();
   $('checkoutPage').classList.add('is-open');
   document.body.style.overflow = 'hidden';
 }
@@ -1280,7 +1290,7 @@ function setEntrega(mode) {
   $('retiroFields').style.display = mode === 'retiro'  ? 'flex' : 'none';
   toggle($('btnEnvio'),  'is-active', mode === 'envio');
   toggle($('btnRetiro'), 'is-active', mode === 'retiro');
-  renderSummary();
+  renderOrderSummary();
 }
 
 function setPago(mode) {
@@ -1290,20 +1300,23 @@ function setPago(mode) {
   $('transferNote').style.display = mode === 'transfer' ? 'block' : 'none';
   $('coSubmitBtn').textContent    = mode === 'transfer'
     ? 'Confirmar pedido (Transferencia)' : 'Continuar al pago (Mercado Pago)';
-  renderSummary();
+  renderOrderSummary();
 }
 
-function applyDiscount() {
-  const code = $('coDiscountCode')?.value.trim();
-  const msg  = $('coDiscountMsg');
-  if (code && msg) { msg.style.display = 'block'; msg.textContent = '⚠️ Los códigos de descuento estarán disponibles próximamente.'; }
-}
 
-function renderSummary() {
+/** Calcula los totales del pedido según modo de entrega y pago.
+ *  Función compartida entre renderSummary y processOrder. */
+function calculateOrderTotals() {
   const subtotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
   const discount = state.pagoMode === 'transfer' ? 0.10 : 0;
-  const shipping = state.entregaMode === 'retiro' ? 0 : (subtotal >= CONFIG.FREE_SHIPPING ? 0 : CONFIG.SHIPPING_COST);
-  const total    = Math.round(subtotal * (1 - discount)) + shipping;
+  const shipping = state.entregaMode === 'retiro' ? 0
+    : (subtotal >= CONFIG.FREE_SHIPPING ? 0 : CONFIG.SHIPPING_COST);
+  const total = Math.round(subtotal * (1 - discount)) + shipping;
+  return { subtotal, discount, shipping, total };
+}
+
+function renderOrderSummary() {
+  const { subtotal, discount, shipping, total } = calculateOrderTotals();
 
   let html = state.cart.map(item => {
     const p     = state.products.find(x => x.name === item.name);
@@ -1326,7 +1339,7 @@ function renderSummary() {
   setHTML('coSummaryLines', html);
 }
 
-// ── PROCESS ORDER ─────────────────────────────────────────────
+// ── SHARED — Procesar pedido ─────────────────────────────────────
 function processOrder() {
   const nombre   = $('coNombre').value.trim();
   const apellido = $('coApellido').value.trim();
@@ -1343,10 +1356,7 @@ function processOrder() {
 
   if (!$('coConsent').checked) { showToast('Debés aceptar la política de privacidad'); return; }
 
-  const subtotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const discount = state.pagoMode === 'transfer' ? 0.10 : 0;
-  const shipping = state.entregaMode === 'retiro' ? 0 : (subtotal >= CONFIG.FREE_SHIPPING ? 0 : CONFIG.SHIPPING_COST);
-  const total    = Math.round(subtotal * (1 - discount)) + shipping;
+  const { subtotal, discount, shipping, total } = calculateOrderTotals();
 
   const lines = state.cart.map(i => `- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price*i.qty).toLocaleString('es-UY')}`).join('\n');
 
@@ -1399,7 +1409,7 @@ function processOrder() {
   showToast(`¡Pedido ${orderId} enviado! 🎉`);
 }
 
-// ── LEGAL ─────────────────────────────────────────────────────
+// ── SHARED UI — Legal ───────────────────────────────────────────
 const LEGAL_IDS = { privacy: 'legalPrivacy', terms: 'legalTerms', returns: 'legalReturns' };
 function showLegal(key) {
   const el = $(LEGAL_IDS[key]);
@@ -1410,7 +1420,7 @@ function hideLegal(key) {
   if (el) { el.classList.remove('is-active'); document.body.style.overflow = ''; }
 }
 
-// ── TOAST ─────────────────────────────────────────────────────
+// ── SHARED UI — Toast ───────────────────────────────────────────
 let toastTimer;
 function showToast(msg) {
   const t = $('toast');
@@ -1420,7 +1430,7 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('is-visible'), 3000);
 }
 
-// ── CURSOR ────────────────────────────────────────────────────
+// ── SHARED UI — Cursor ──────────────────────────────────────────
 (function initCursor() {
   const cursor = $('cursor');
   const ring   = $('cursorRing');
@@ -1443,7 +1453,7 @@ function showToast(msg) {
   });
 })();
 
-// ── SCROLL REVEAL ─────────────────────────────────────────────
+// ── SHARED UI — Scroll reveal ────────────────────────────────────
 const revealObserver = new IntersectionObserver(entries => {
   entries.forEach(e => {
     if (e.isIntersecting) {
@@ -1453,7 +1463,7 @@ const revealObserver = new IntersectionObserver(entries => {
   });
 }, { threshold: 0.1 });
 
-// ── BOOT ──────────────────────────────────────────────────────
+// ── BOOT ────────────────────────────────────────────────────────
 updateCart(); // reflejar carrito persistido (puede venir de producto.html)
 init();
 </script>
