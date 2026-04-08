@@ -1915,7 +1915,8 @@ const CUPONES_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gv
 let cuponesData = [];
 
 function parseCupones(rows) {
-  return (rows || []).map(r => ({
+  if (!rows || !rows.length) return [];
+  return rows.map(r => ({
     codigo:       (r.c[0]?.v || '').trim(),
     tipo:         (r.c[1]?.v || 'fijo').trim(),
     valor:        parseFloat(r.c[2]?.v) || 0,
@@ -1930,15 +1931,19 @@ function parseCupones(rows) {
 }
 
 async function loadCupones() {
+  const wrap = document.getElementById('cuponesTableWrap');
+  if (wrap) wrap.innerHTML = '<div class="no-cupones">Cargando...</div>';
   try {
     const r = await fetch(CUPONES_SHEET_URL + '&t=' + Date.now());
     const t = await r.text();
+    // La respuesta GViz puede fallar si la hoja no existe o está vacía
+    if (!t.includes('google.visualization')) throw new Error('Respuesta inesperada de Sheets');
     const j = JSON.parse(t.substring(47, t.length - 2));
-    cuponesData = parseCupones(j.table.rows || []);
+    cuponesData = parseCupones((j.table && j.table.rows) || []);
     renderCuponesTable();
   } catch(e) {
-    document.getElementById('cuponesTableWrap').innerHTML = '<div class="no-cupones">Error al cargar cupones</div>';
-    console.error(e);
+    if (wrap) wrap.innerHTML = '<div class="no-cupones">⚠️ No se pudo cargar. Verificá que la hoja "cupones" existe y tiene encabezados. <button class="btn btn-sm btn-secondary" onclick="loadCupones()" style="margin-top:8px">Reintentar</button></div>';
+    console.error('[Founder Admin] loadCupones:', e);
   }
 }
 
