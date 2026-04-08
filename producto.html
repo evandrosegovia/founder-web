@@ -669,6 +669,7 @@ const CONFIG = Object.freeze({
   SHIPPING_COST: 150,
   get SHEET_PRODUCTOS() { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`; },
   get SHEET_FOTOS()     { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`; },
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycby6KyN99yAWh5yQ4wet4g4T5RNofjKBolAr4crCFq_a2DspnxPW4clSd3XQKbRft0YD/exec',
 });
 
 const COLOR_MAP = Object.freeze({
@@ -1202,17 +1203,22 @@ function processOrder() {
     pago: pagoStr, estado: estadoStr, notas: ''
   };
 
-  // Guardar localmente + cola de sync
+  // 1. Guardar en localStorage como respaldo inmediato
   try {
     const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
     stored.push(order);
     localStorage.setItem('founder_pedidos', JSON.stringify(stored));
-    const pending = JSON.parse(localStorage.getItem('founder_pedidos_pending') || '[]');
-    pending.push(order);
-    localStorage.setItem('founder_pedidos_pending', JSON.stringify(pending));
   } catch (e) {
-    console.warn('[Founder] No se pudo guardar pedido localmente:', e);
+    console.warn('[Founder] No se pudo guardar pedido en localStorage:', e);
   }
+
+  // 2. Enviar directamente a Google Sheets via Apps Script
+  fetch(CONFIG.APPS_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(order),
+  }).catch(err => console.warn('[Founder] Error enviando a Sheets:', err));
 
   window.open(`https://wa.me/${CONFIG.WA_NUMBER}?text=${encodeURIComponent(
     `🛍️ *NUEVO PEDIDO FOUNDER — ${orderId}*\n\n👤 *${nombre} ${apellido}*\n📱 ${celular}\n📧 ${email}\n\n🛒 *PRODUCTOS:*\n${lines}\n\n${entregaInfo}\n\n💳 *Pago:* ${pagoStr}\n💰 *Total:* $${total.toLocaleString('es-UY')} UYU\n🔖 *ID:* ${orderId}`
