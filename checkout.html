@@ -114,6 +114,15 @@ a      { color: inherit; text-decoration: none; }
 .co-summary { background: var(--color-surface); border: 1px solid var(--color-border); padding: 28px; position: sticky; top: 80px; }
 .co-summary__title { font-family: var(--font-serif); font-size: 22px; margin-bottom: 20px; }
 .co-summary__item  { display: flex; justify-content: space-between; font-size: 11px; color: var(--color-muted); margin-bottom: 10px; }
+.co-summary__product { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--color-border); }
+.co-summary__product:last-of-type { margin-bottom: 0; }
+.co-summary__product-img { width: 52px; height: 52px; min-width: 52px; object-fit: cover; border: 1px solid var(--color-border); background: var(--color-surface2); }
+.co-summary__product-placeholder { width: 52px; height: 52px; min-width: 52px; background: var(--color-surface2); border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.co-summary__product-info { flex: 1; min-width: 0; }
+.co-summary__product-name { font-family: var(--font-serif); font-size: 16px; margin-bottom: 2px; }
+.co-summary__product-variant { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--color-muted); margin-bottom: 4px; }
+.co-summary__product-qty { font-size: 9px; color: var(--color-muted); }
+.co-summary__product-price { font-family: var(--font-serif); font-size: 18px; white-space: nowrap; align-self: center; }
 .co-summary__total { display: flex; justify-content: space-between; border-top: 1px solid var(--color-border); padding-top: 14px; margin-top: 14px; }
 .co-summary__total-label { font-family: var(--font-serif); font-size: 18px; }
 .co-summary__total-value { font-family: var(--font-serif); font-size: 22px; color: var(--color-gold); }
@@ -252,7 +261,7 @@ a      { color: inherit; text-decoration: none; }
               <span style="font-size:18px;flex-shrink:0">📍</span>
               <div>
                 <div style="color:var(--color-gold);font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Zona de retiro — Prado, Montevideo</div>
-                <div style="line-height:1.8">El retiro se realiza con <strong style="color:var(--color-text)">previa coordinación</strong>. Una vez confirmado tu pedido, te contactaremos por WhatsApp para acordar el día y horario. Es importante que te comuniques con nosotros antes de acercarte.</div>
+                <div style="line-height:1.8">El retiro se realiza con <strong style="color:var(--color-text)">previa coordinación de día y hora</strong>. Una vez confirmado tu pedido, es importante que te comuniques con nosotros vía <strong style="color:var(--color-text)">WhatsApp</strong> antes de acercarte.</div>
               </div>
             </div>
             <div class="co-row">
@@ -391,14 +400,42 @@ const setText = (id, text) => { const el = $(id); if (el) el.textContent = text;
 const toggle  = (el, cls, force) => el?.classList.toggle(cls, force);
 
 // ── INICIALIZACIÓN ────────────────────────────────────────────
+// Mapa de fotos cargado desde Sheets (modelo → color → [urls])
+let photoMap = {};
+
+async function loadPhotos() {
+  try {
+    const FOTOS_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos&t=${Date.now()}`;
+    const res  = await fetch(FOTOS_URL);
+    const text = await res.text();
+    const data = JSON.parse(text.substring(47, text.length - 2));
+    (data.table.rows || []).forEach(row => {
+      const model = (row.c[0]?.v || '').trim();
+      const color = (row.c[1]?.v || '').trim();
+      const fotos = [row.c[2]?.v, row.c[3]?.v, row.c[4]?.v, row.c[5]?.v, row.c[6]?.v].filter(Boolean);
+      if (model && color) {
+        if (!photoMap[model]) photoMap[model] = {};
+        photoMap[model][color] = fotos;
+      }
+    });
+    renderOrderSummary(); // re-renderizar con fotos
+  } catch (e) {
+    console.warn('[Founder] No se pudieron cargar fotos:', e);
+  }
+}
+
+function getPhoto(name, color) {
+  return photoMap[name]?.[color]?.[0] || null;
+}
+
 function init() {
   if (!state.cart.length) {
-    // Sin items: ocultar formulario y mostrar estado vacío
     $('checkoutForm').style.display = 'none';
     $('emptyCart').style.display    = 'flex';
     return;
   }
-  renderOrderSummary();
+  renderOrderSummary(); // render inmediato sin fotos
+  loadPhotos();         // luego actualiza con fotos reales
 }
 
 // ── NAVEGACIÓN ────────────────────────────────────────────────
@@ -446,14 +483,21 @@ function calculateOrderTotals() {
 function renderOrderSummary() {
   const { subtotal, discount, shipping, total } = calculateOrderTotals();
 
-  let html = state.cart.map(item => `
-    <div class="co-summary__item" style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
-      <div style="flex:1">
-        <div style="font-size:12px;color:var(--color-text)">Founder ${item.name} (${item.color})</div>
-        <div style="font-size:10px;color:var(--color-muted)">x${item.qty}</div>
+  let html = state.cart.map(item => {
+    const photo = getPhoto(item.name, item.color);
+    return `
+    <div class="co-summary__product">
+      ${photo
+        ? `<img src="${photo}" class="co-summary__product-img" alt="Founder ${item.name}" loading="lazy">`
+        : `<div class="co-summary__product-placeholder">👜</div>`}
+      <div class="co-summary__product-info">
+        <div class="co-summary__product-name">Founder ${item.name}</div>
+        <div class="co-summary__product-variant">${item.color}</div>
+        <div class="co-summary__product-qty">x${item.qty}</div>
       </div>
-      <div>$${(item.price * item.qty).toLocaleString('es-UY')}</div>
-    </div>`).join('');
+      <div class="co-summary__product-price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
+    </div>`;
+  }).join('');
 
   if (discount) {
     html += `<div class="co-summary__item"><span>Descuento 10%</span><span style="color:var(--color-success)">-$${Math.round(subtotal * discount).toLocaleString('es-UY')}</span></div>`;
