@@ -164,6 +164,24 @@ a      { color: inherit; text-decoration: none; }
 .legal-content p, .legal-content li { font-size: 13px; line-height: 1.9; color: var(--color-muted); }
 .legal-content ul { padding-left: 20px; }
 
+/* ── CUPÓN DE DESCUENTO ─────────────────────────────────────── */
+.coupon-wrap { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--color-border); }
+.coupon-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); margin-bottom: 8px; }
+.coupon-row { display: flex; gap: 6px; }
+.coupon-inp { flex: 1; background: var(--color-surface2); border: 1px solid var(--color-border); color: var(--color-text); padding: 10px 12px; font-family: var(--font-sans); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; outline: none; transition: border-color var(--transition-fast); }
+.coupon-inp:focus { border-color: var(--color-gold); }
+.coupon-btn { background: var(--color-surface2); border: 1px solid var(--color-border); color: var(--color-text); padding: 10px 16px; font-family: var(--font-sans); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all var(--transition-fast); white-space: nowrap; }
+.coupon-btn:hover { border-color: var(--color-gold); color: var(--color-gold); }
+.coupon-btn:disabled { opacity: .5; cursor: not-allowed; }
+.coupon-feedback { margin-top: 8px; font-size: 10px; letter-spacing: .5px; line-height: 1.5; display: none; }
+.coupon-feedback.ok  { color: var(--color-success); display: block; }
+.coupon-feedback.err { color: var(--color-danger);  display: block; }
+/* display:none por defecto; .is-visible lo activa */
+.coupon-applied { display: none; justify-content: space-between; align-items: center; background: rgba(76,175,130,.08); border: 1px solid rgba(76,175,130,.25); padding: 8px 12px; margin-top: 6px; font-size: 10px; color: var(--color-success); }
+.coupon-applied.is-visible { display: flex; }
+.coupon-remove { background: none; border: none; color: var(--color-muted); cursor: pointer; font-size: 14px; padding: 0 4px; transition: color var(--transition-fast); }
+.coupon-remove:hover { color: var(--color-danger); }
+
 /* ── TOAST ───────────────────────────────────────────────────── */
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--color-text); color: var(--color-bg); padding: 12px 24px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; opacity: 0; transition: all .4s; z-index: var(--z-toast); white-space: nowrap; pointer-events: none; }
 .toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -202,7 +220,7 @@ a      { color: inherit; text-decoration: none; }
 
     <!-- Columna izquierda: formulario -->
     <div>
-      <div class="co-title">Checkout</div>
+      <h1 class="co-title">Checkout</h1>
 
       <!-- Paso 1: datos personales -->
       <div class="co-step">
@@ -279,6 +297,20 @@ a      { color: inherit; text-decoration: none; }
     <div class="co-summary">
       <div class="co-summary__title">Tu pedido</div>
       <div id="coSummaryLines"></div>
+
+      <!-- Campo de cupón de descuento -->
+      <div class="coupon-wrap">
+        <div class="coupon-label">¿Tenés un cupón de descuento?</div>
+        <div class="coupon-row">
+          <input type="text" class="coupon-inp" id="couponInput" placeholder="CÓDIGO" maxlength="30" oninput="this.value=this.value.toUpperCase()">
+          <button class="coupon-btn" id="couponBtn" onclick="applyCoupon()">Aplicar</button>
+        </div>
+        <div class="coupon-feedback" id="couponFeedback"></div>
+        <div class="coupon-applied" id="couponApplied">
+          <span id="couponAppliedText"></span>
+          <button class="coupon-remove" onclick="removeCoupon()" aria-label="Quitar cupón">✕</button>
+        </div>
+      </div>
 
       <!-- Paso 3: método de pago — va debajo del resumen -->
       <div style="border-top:1px solid var(--color-border);margin-top:20px;padding-top:20px">
@@ -371,7 +403,7 @@ const CONFIG = Object.freeze({
   WA_NUMBER:      '598098550096',
   FREE_SHIPPING:  2000,
   SHIPPING_COST:  150,
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycby6KyN99yAWh5yQ4wet4g4T5RNofjKBolAr4crCFq_a2DspnxPW4clSd3XQKbRft0YD/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx8LByXXY7QwzHEB0RyvP0Ejbmqyw099F4ntbbwRIdkRv8JlUDaryn_vQj2aL9kANA/exec',
 });
 
 // ── CARRITO DESDE LOCALSTORAGE ────────────────────────────────
@@ -391,6 +423,8 @@ const state = {
   cart:        loadCart(),
   entregaMode: 'envio',
   pagoMode:    'mercadopago',
+  // Cupón aplicado (null si no hay)
+  coupon: null, // { codigo, tipo:'fijo'|'porcentaje', valor, uso, minCompra }
 };
 
 // ── DOM HELPERS ───────────────────────────────────────────────
@@ -405,8 +439,7 @@ let photoMap = {};
 
 async function loadPhotos() {
   try {
-    const FOTOS_URL = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos&t=${Date.now()}`;
-    const res  = await fetch(FOTOS_URL);
+    const res  = await fetch(`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos&t=${Date.now()}`);
     const text = await res.text();
     const data = JSON.parse(text.substring(47, text.length - 2));
     (data.table.rows || []).forEach(row => {
@@ -471,18 +504,34 @@ function setPago(mode) {
 
 // ── CÁLCULO DE TOTALES ────────────────────────────────────────
 function calculateOrderTotals() {
-  const subtotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const discount = state.pagoMode === 'transfer' ? 0.10 : 0;
+  const subtotal     = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const transferDisc = state.pagoMode === 'transfer' ? 0.10 : 0;
+
+  // Descuento del cupón (no acumulable con transferencia — se aplica el mayor)
+  let couponAmount = 0;
+  if (state.coupon) {
+    if (state.coupon.tipo === 'porcentaje') {
+      couponAmount = Math.round(subtotal * state.coupon.valor / 100);
+    } else {
+      couponAmount = Math.min(state.coupon.valor, subtotal);
+    }
+  }
+
+  // Se usa el descuento que más beneficia al cliente
+  const transferAmount = Math.round(subtotal * transferDisc);
+  const discountAmount = Math.max(couponAmount, transferAmount);
+  const discountSource = couponAmount >= transferAmount && couponAmount > 0 ? 'cupon' : (transferAmount > 0 ? 'transfer' : 'none');
+
+  const subtotalConDesc = subtotal - discountAmount;
   const shipping = state.entregaMode === 'retiro' ? 0
-    : (subtotal >= CONFIG.FREE_SHIPPING ? 0 : CONFIG.SHIPPING_COST);
-  const total = Math.round(subtotal * (1 - discount)) + shipping;
-  return { subtotal, discount, shipping, total };
+    : (subtotalConDesc >= CONFIG.FREE_SHIPPING ? 0 : CONFIG.SHIPPING_COST);
+  const total = subtotalConDesc + shipping;
+
+  return { subtotal, discountAmount, discountSource, shipping, total };
 }
 
 // ── RESUMEN DEL PEDIDO ────────────────────────────────────────
 function renderOrderSummary() {
-  const { subtotal, discount, shipping, total } = calculateOrderTotals();
-
   let html = state.cart.map(item => {
     const photo = getPhoto(item.name, item.color);
     return `
@@ -499,13 +548,141 @@ function renderOrderSummary() {
     </div>`;
   }).join('');
 
-  if (discount) {
-    html += `<div class="co-summary__item"><span>Descuento 10%</span><span style="color:var(--color-success)">-$${Math.round(subtotal * discount).toLocaleString('es-UY')}</span></div>`;
+  const { subtotal, discountAmount, discountSource, shipping, total } = calculateOrderTotals();
+
+  if (discountAmount > 0) {
+    const label = discountSource === 'cupon'
+      ? `Cupón ${state.coupon.codigo}`
+      : 'Descuento transferencia 10%';
+    html += `<div class="co-summary__item"><span>${label}</span><span style="color:var(--color-success)">-$${discountAmount.toLocaleString('es-UY')}</span></div>`;
   }
   html += `<div class="co-summary__item"><span>Envío</span><span>${shipping === 0 ? 'Gratis 🎁' : '$' + shipping.toLocaleString('es-UY')}</span></div>`;
   html += `<div class="co-summary__total"><span class="co-summary__total-label">Total</span><span class="co-summary__total-value">$${total.toLocaleString('es-UY')} UYU</span></div>`;
 
   setHTML('coSummaryLines', html);
+}
+
+// ── SISTEMA DE CUPONES ────────────────────────────────────────
+/** Lee todos los cupones de Sheets y devuelve el que coincide con el código */
+async function fetchCupon(codigo) {
+  const url  = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=cupones&t=${Date.now()}`;
+  const res  = await fetch(url);
+  const text = await res.text();
+  const data = JSON.parse(text.substring(47, text.length - 2));
+  const rows = data.table.rows || [];
+
+  // Estructura hoja cupones:
+  // A=codigo B=tipo(fijo/porcentaje) C=valor D=uso E=minCompra F=activo G=usos H=emails_usados I=desde J=hasta
+  for (const row of rows) {
+    const cod = (row.c[0]?.v || '').trim().toUpperCase();
+    if (cod !== codigo.toUpperCase()) continue;
+    return {
+      codigo:        cod,
+      tipo:          (row.c[1]?.v || 'fijo').trim(),
+      valor:         parseFloat(row.c[2]?.v) || 0,
+      uso:           (row.c[3]?.v || 'multiuso').trim(),
+      minCompra:     parseFloat(row.c[4]?.v) || 0,
+      activo:        String(row.c[5]?.v).toLowerCase() === 'true',
+      usos:          parseInt(row.c[6]?.v) || 0,
+      emailsUsados:  (row.c[7]?.v || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean),
+      desde:         row.c[8]?.v || '',
+      hasta:         row.c[9]?.v || '',
+    };
+  }
+  return null;
+}
+
+async function applyCoupon() {
+  const input  = $('couponInput');
+  const btn    = $('couponBtn');
+  const codigo = input.value.trim().toUpperCase();
+
+  if (!codigo) { showFeedback('Ingresá un código', false); return; }
+
+  // Email necesario para validar uso por comprador
+  const email = $('coEmail').value.trim().toLowerCase();
+
+  btn.disabled    = true;
+  btn.textContent = '...';
+  showFeedback('', false);
+
+  try {
+    const cupon = await fetchCupon(codigo);
+
+    // Validaciones en cadena — cada una sale temprano con mensaje claro
+    if (!cupon)         { showFeedback('Código no válido', false); return; }
+    if (!cupon.activo)  { showFeedback('Este código ya no está disponible', false); return; }
+
+    // Validar fechas (formato DD/MM/YYYY guardado en Sheets)
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    if (cupon.desde) {
+      const [d, m, a] = cupon.desde.split('/');
+      if (hoy < new Date(+a, +m - 1, +d)) {
+        showFeedback('Este código todavía no está disponible', false); return;
+      }
+    }
+    if (cupon.hasta) {
+      const [d, m, a] = cupon.hasta.split('/');
+      if (hoy > new Date(+a, +m - 1, +d)) {
+        showFeedback('Este código ha expirado', false); return;
+      }
+    }
+
+    // Validar mínimo de compra — reusar calculateOrderTotals para consistencia
+    const { subtotal } = calculateOrderTotals();
+    if (cupon.minCompra > 0 && subtotal < cupon.minCompra) {
+      showFeedback(`Compra mínima requerida: $${cupon.minCompra.toLocaleString('es-UY')} UYU`, false);
+      return;
+    }
+
+    // Validar uso
+    if (cupon.uso === 'unico' && cupon.usos >= 1) {
+      showFeedback('Este código ya fue utilizado', false); return;
+    }
+    if (cupon.uso === 'por-email') {
+      if (!email) { showFeedback('Ingresá tu email antes de aplicar el cupón', false); return; }
+      if (cupon.emailsUsados.includes(email)) {
+        showFeedback('Ya usaste este código anteriormente', false); return;
+      }
+    }
+
+    // ── Cupón válido — aplicar ────────────────────────────
+    state.coupon = cupon;
+    const descLabel = cupon.tipo === 'porcentaje'
+      ? `${cupon.valor}% de descuento`
+      : `$${cupon.valor.toLocaleString('es-UY')} de descuento`;
+
+    setText('couponAppliedText', `✓ ${cupon.codigo} — ${descLabel}`);
+    $('couponApplied').classList.add('is-visible');
+    input.disabled       = true;
+    btn.style.display    = 'none'; // ocultar botón — el finally NO lo restaura
+    renderOrderSummary();
+    return; // salir SIN pasar por la restauración del botón
+
+  } catch (err) {
+    console.error('[Founder] Error validando cupón:', err);
+    showFeedback('Error al validar. Intentá de nuevo.', false);
+  }
+
+  // Solo llega acá si hubo error o validación fallida (cupón NO aplicado)
+  btn.disabled    = false;
+  btn.textContent = 'Aplicar';
+}
+
+function removeCoupon() {
+  state.coupon                 = null;
+  $('couponInput').value       = '';
+  $('couponInput').disabled    = false;
+  $('couponBtn').style.display = '';
+  $('couponApplied').classList.remove('is-visible');
+  showFeedback('', false); // limpia feedback
+  renderOrderSummary();
+}
+
+function showFeedback(msg, ok) {
+  const el = $('couponFeedback');
+  el.className   = msg ? `coupon-feedback ${ok ? 'ok' : 'err'}` : 'coupon-feedback';
+  el.textContent = msg || '';
 }
 
 // ── PROCESAR PEDIDO ───────────────────────────────────────────
@@ -539,7 +716,7 @@ function processOrder() {
     return;
   }
 
-  const { subtotal, discount, shipping, total } = calculateOrderTotals();
+  const { subtotal, discountAmount, discountSource, shipping, total } = calculateOrderTotals();
   const lines = state.cart.map(i =>
     `- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price * i.qty).toLocaleString('es-UY')}`
   ).join('\n');
@@ -568,13 +745,15 @@ function processOrder() {
   const pagoStr  = state.pagoMode === 'mercadopago' ? 'Mercado Pago' : 'Transferencia';
   const estado   = state.pagoMode === 'transfer' ? 'Pendiente pago' : 'Pendiente confirmación';
 
+  const cuponStr = state.coupon ? `${state.coupon.codigo} (-$${discountAmount.toLocaleString('es-UY')})` : '';
   const order = {
     id: orderId, fecha, nombre, apellido, celular, email,
     entrega:   state.entregaMode === 'envio' ? 'Envío' : 'Retiro',
     direccion: deliveryAddress,
     productos: state.cart.map(i => `Founder ${i.name} (${i.color}) x${i.qty}`).join(' | '),
-    subtotal, descuento: Math.round(subtotal * discount), envio: shipping, total,
-    pago: pagoStr, estado, notas: '',
+    subtotal, descuento: discountAmount, envio: shipping, total,
+    pago: pagoStr, estado,
+    notas: cuponStr ? `Cupón: ${cuponStr}` : '',
   };
 
   // Deshabilitar botón para evitar doble envío
@@ -591,13 +770,28 @@ function processOrder() {
     console.warn('[Founder] No se pudo guardar en localStorage:', e);
   }
 
-  // 2. Enviar a Google Sheets via Apps Script
+  // 2. Enviar pedido a Google Sheets via Apps Script
   fetch(CONFIG.APPS_SCRIPT_URL, {
     method: 'POST',
     mode:   'no-cors',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify(order),
-  }).catch(err => console.warn('[Founder] Error enviando a Sheets:', err));
+  }).catch(err => console.warn('[Founder] Error enviando pedido a Sheets:', err));
+
+  // 2b. Registrar uso del cupón si aplica
+  if (state.coupon) {
+    fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode:   'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        accion:  'registrar_cupon',
+        codigo:  state.coupon.codigo,
+        email:   email.toLowerCase(),
+        uso:     state.coupon.uso,
+      }),
+    }).catch(err => console.warn('[Founder] Error registrando cupón:', err));
+  }
 
   // 3. Abrir WhatsApp con resumen
   const waMsg = [
@@ -613,6 +807,7 @@ function processOrder() {
     deliveryInfo,
     ``,
     `💳 *Pago:* ${pagoStr}`,
+    ...(state.coupon ? [`🏷️ *Cupón:* ${state.coupon.codigo} (-$${discountAmount.toLocaleString('es-UY')} UYU)`] : []),
     `💰 *Total:* $${total.toLocaleString('es-UY')} UYU`,
     `🔖 *ID:* ${orderId}`,
   ].join('\n');
