@@ -557,7 +557,7 @@ const CONFIG = Object.freeze({
   SHIPPING_COST: 150,
   get SHEET_PRODUCTOS() { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`; },
   get SHEET_FOTOS()     { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`; },
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycby6KyN99yAWh5yQ4wet4g4T5RNofjKBolAr4crCFq_a2DspnxPW4clSd3XQKbRft0YD/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx8LByXXY7QwzHEB0RyvP0Ejbmqyw099F4ntbbwRIdkRv8JlUDaryn_vQj2aL9kANA/exec',
 });
 
 const COLOR_MAP = Object.freeze({
@@ -941,8 +941,7 @@ function updateCart() {
   if (footer) footer.style.display = 'block';
 
   setHTML('cartItems', state.cart.map((item, idx) => {
-    const photos = getPhotos(item.name, item.color);
-    const photo  = photos[0] || null;
+    const photo = getPhotos(item.name, item.color)[0] || null;
     return `
       <div class="cart-item">
         ${photo
