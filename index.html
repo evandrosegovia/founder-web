@@ -236,6 +236,40 @@ a, button, [onclick], label, select { cursor: pointer; }
 .btn--secondary:hover { border-color: var(--color-text); background: rgba(255,255,255,.05); }
 .btn--sm { padding: 10px 20px; font-size: 9px; }
 
+/* ── FOOTER ───────────────────────────────────────────────── */
+.footer {
+  padding: var(--space-xl) var(--space-lg) var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+.footer__grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 60px;
+  margin-bottom: var(--space-xl);
+}
+.footer__brand p {
+  font-size: 11px; line-height: 1.9; color: var(--color-muted);
+  max-width: 280px; margin-top: 20px;
+}
+.footer__col h4 {
+  font-size: 9px; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--color-gold); margin-bottom: 24px;
+}
+.footer__col ul { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.footer__col ul li a {
+  font-size: 11px; color: var(--color-muted); letter-spacing: 1px;
+  transition: color var(--transition-fast);
+}
+.footer__col ul li a:hover { color: var(--color-text); }
+.footer__bottom {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: var(--space-md); border-top: 1px solid var(--color-border);
+  font-size: 10px; color: var(--color-muted); letter-spacing: 1px;
+}
+.footer__legal { display: flex; gap: 24px; }
+.footer__legal a { color: var(--color-muted); transition: color var(--transition-fast); }
+.footer__legal a:hover { color: var(--color-text); }
+
 /* ── RFID BANNER ──────────────────────────────────────────── */
 .rfid-grid {
   display: grid; grid-template-columns: repeat(4, 1fr);
@@ -524,6 +558,7 @@ a, button, [onclick], label, select { cursor: pointer; }
   .modal__thumbs { grid-row: 2; grid-column: 1; }
   .modal__info { grid-row: 3; grid-column: 1; padding: 28px; }
   .footer { padding: 60px 24px 40px; }
+  .footer__grid { grid-template-columns: 1fr 1fr; gap: 36px; }
   .cart-sidebar { width: 100%; max-height: 100dvh; }
   .cart__footer { position: sticky; bottom: 0; background: var(--color-surface); z-index: 2; }
   .co-layout { grid-template-columns: 1fr; padding: 24px; }
