@@ -7,14 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;background:#0a0a0a;color:#f5f5f0;font-family:'Montserrat',sans-serif;font-weight:300}
+html,body{height:100%;background:#141414;color:#f8f8f4;font-family:'Montserrat',sans-serif;font-weight:300}
 :root{
-  --black:#0a0a0a;--white:#f5f5f0;--gold:#c9a96e;
-  --gray:#1a1a1a;--mid:#2a2a2a;--light:#333;
-  --muted:#888;--border:rgba(255,255,255,0.08);
+  --black:#141414;--white:#f8f8f4;--gold:#c9a96e;
+  --gray:#222222;--mid:#2e2e2e;--light:#3a3a3a;
+  --muted:#9a9a9a;--border:rgba(255,255,255,0.08);
   --green:#4caf82;--red:#e05555;
 }
-/* LOGIN */
+/* ── LOGIN ─────────────────────────────────────────────────── */
 #loginScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#1a1a1a,#0a0a0a);z-index:999}
 .login-box{width:360px;background:var(--gray);border:1px solid var(--border);padding:48px;display:flex;flex-direction:column;gap:28px}
 .login-logo{font-family:'Cormorant Garamond',serif;font-size:26px;letter-spacing:8px;text-align:center}
@@ -24,9 +24,9 @@ html,body{height:100%;background:#0a0a0a;color:#f5f5f0;font-family:'Montserrat',
 .login-btn{background:var(--white);color:var(--black);border:none;padding:14px;font-family:'Montserrat',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:700;cursor:pointer;width:100%;transition:background .3s}
 .login-btn:hover{background:var(--gold)}
 .login-err{font-size:10px;color:var(--red);text-align:center;display:none}
-/* PANEL */
+/* ── PANEL ─────────────────────────────────────────────────── */
 #adminPanel{display:none}
-/* TOPBAR */
+/* ── TOPBAR ────────────────────────────────────────────────── */
 .topbar{height:60px;background:var(--gray);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 32px;position:sticky;top:0;z-index:100}
 .topbar-left{display:flex;align-items:center;gap:12px}
 .topbar-logo{font-family:'Cormorant Garamond',serif;font-size:20px;letter-spacing:6px}
@@ -37,30 +37,30 @@ html,body{height:100%;background:#0a0a0a;color:#f5f5f0;font-family:'Montserrat',
 .tbtn:hover{border-color:var(--white);color:var(--white)}
 .tbtn.green{border-color:rgba(76,175,130,.4);color:var(--green)}
 .tbtn.green:hover{background:var(--green);color:var(--black)}
-/* BODY LAYOUT */
+/* ── LAYOUT ────────────────────────────────────────────────── */
 .body-layout{display:flex;height:calc(100vh - 60px)}
-/* SIDEBAR */
+/* ── SIDEBAR ───────────────────────────────────────────────── */
 .sidebar{width:210px;min-width:210px;background:var(--gray);border-right:1px solid var(--border);overflow-y:auto;padding:20px 0}
 .nav-section{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);padding:14px 18px 6px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;font-size:11px;letter-spacing:.5px;color:var(--muted);cursor:pointer;transition:all .2s;border-left:2px solid transparent}
 .nav-item:hover{color:var(--white);background:rgba(255,255,255,.03)}
 .nav-item.active{color:var(--white);border-left-color:var(--gold);background:rgba(201,169,110,.05)}
 .nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
-/* CONTENT */
+/* ── CONTENIDO PRINCIPAL ───────────────────────────────────── */
 .main-content{flex:1;overflow-y:auto;padding:32px}
 .page{display:none}
 .page.active{display:block}
-/* PAGE HEADER */
+/* ── ENCABEZADO DE PÁGINA ──────────────────────────────────── */
 .ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap}
 .ph-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300}
 .ph-sub{font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:3px}
-/* BUTTONS */
+/* ── BOTONES ───────────────────────────────────────────────── */
 .btn{padding:9px 18px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:600;cursor:pointer;border:none;transition:all .3s;display:inline-block}
 .btn-primary{background:var(--white);color:var(--black)}.btn-primary:hover{background:var(--gold)}
 .btn-secondary{background:var(--mid);color:var(--white)}.btn-secondary:hover{background:var(--light)}
 .btn-danger{background:rgba(224,85,85,.15);color:var(--red);border:1px solid rgba(224,85,85,.3)}.btn-danger:hover{background:var(--red);color:var(--white)}
 .btn-sm{padding:6px 12px;font-size:8px}
-/* STATS */
+/* ── MÉTRICAS (stats cards) ────────────────────────────────── */
 
 /* ── SALES DASHBOARD ───────────────────────────────────────── */
 .sales-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
@@ -108,16 +108,16 @@ html,body{height:100%;background:#0a0a0a;color:#f5f5f0;font-family:'Montserrat',
 .stat-icon{font-size:20px;margin-bottom:6px}
 .stat-value{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300}
 .stat-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:2px}
-/* CARDS */
+/* ── CARDS GENÉRICAS ───────────────────────────────────────── */
 .card{background:var(--gray);border:1px solid var(--border)}
 .card-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .card-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
 .card-body{padding:18px}
-/* LINKS GRID */
+/* ── GRILLA DE ACCESOS RÁPIDOS ─────────────────────────────── */
 .links-grid{display:flex;flex-wrap:wrap;gap:8px}
 .link-btn{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:9px 14px;font-size:10px;letter-spacing:1px;text-decoration:none;transition:all .2s}
 .link-btn:hover{border-color:var(--gold);color:var(--gold)}
-/* PRODUCT ROW */
+/* ── FILA DE PRODUCTO ──────────────────────────────────────── */
 .product-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
 .product-row:last-child{border-bottom:none}
 .prod-img{width:48px;height:48px;object-fit:cover;background:var(--mid);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
@@ -125,7 +125,7 @@ html,body{height:100%;background:#0a0a0a;color:#f5f5f0;font-family:'Montserrat',
 .prod-meta{font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:2px}
 .prod-price{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--gold);margin-left:auto;margin-right:16px}
 .prod-actions{display:flex;gap:6px;flex-shrink:0}
-/* ORDERS */
+/* ── PEDIDOS ───────────────────────────────────────────────── */
 .filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
 .filter-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:6px 14px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s}
 .filter-btn.active{border-color:var(--gold);color:var(--gold)}
@@ -147,7 +147,7 @@ html,body{height:100%;background:#0a0a0a;color:#f5f5f0;font-family:'Montserrat',
 .order-total{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--gold);text-align:right}
 .order-pago{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:right}
 .order-foot{padding:8px 16px;border-top:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap}
-/* FORM */
+/* ── FORMULARIO ────────────────────────────────────────────── */
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-full{grid-column:1/-1}
 .fg{display:flex;flex-direction:column;gap:6px}
@@ -157,7 +157,7 @@ html,body{height:100%;background:#0a0a0a;color:#f5f5f0;font-family:'Montserrat',
 .fi option{background:var(--gray)}
 textarea.fi{resize:vertical;min-height:70px}
 .fhint{font-size:9px;color:var(--muted);letter-spacing:.5px;line-height:1.6}
-/* COLORS */
+/* ── EDITOR DE COLORES ─────────────────────────────────────── */
 .color-row{display:flex;gap:7px;align-items:center;margin-bottom:7px}
 .color-dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);flex-shrink:0}
 .color-name-in{flex:1;background:var(--mid);border:1px solid var(--border);color:var(--white);padding:7px 10px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none}
@@ -165,7 +165,7 @@ textarea.fi{resize:vertical;min-height:70px}
 .rem-color:hover{color:var(--red)}
 .add-color-btn{width:100%;background:none;border:1px dashed var(--border);color:var(--muted);padding:8px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:3px}
 .add-color-btn:hover{border-color:var(--gold);color:var(--gold)}
-/* PHOTOS */
+/* ── EDITOR DE FOTOS ───────────────────────────────────────── */
 .photo-block{border:1px solid var(--border);padding:12px;margin-bottom:8px}
 .photo-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}
 .photo-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);flex-shrink:0}
@@ -212,7 +212,7 @@ textarea.fi{resize:vertical;min-height:70px}
 .conv-inp:focus{border-color:var(--gold)}
 .conv-btn{background:var(--white);color:var(--black);border:none;padding:10px 16px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s}.conv-btn:hover{background:var(--gold)}
 .conv-result{background:var(--mid);border:1px solid rgba(76,175,130,.3);padding:10px;font-size:10px;word-break:break-all;cursor:pointer;transition:background .2s}.conv-result:hover{background:var(--light)}
-/* TOAST */
+/* ── TOAST ─────────────────────────────────────────────────── */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--white);color:var(--black);padding:12px 24px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;opacity:0;transition:all .4s;z-index:9999;white-space:nowrap;pointer-events:none}
 .toast.err{background:var(--red);color:var(--white)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -638,15 +638,14 @@ textarea.fi{resize:vertical;min-height:70px}
 </div>
 
 <script>
-// ============================================================
-// Helper — parsea JSON de características extra (columna G del Sheet)
+/** Parsea el JSON de características extra almacenado en columna G del Sheet.
+ *  Retorna {} si el campo está vacío o el JSON es inválido. */
 function parseExtras(str) {
   if (!str) return {};
   try { return JSON.parse(str); } catch { return {}; }
 }
 
-// CONFIG
-// ============================================================
+// ── CONFIG — única fuente de verdad ─────────────────────────────
 const PASSWORD  = 'nerito20';
 const SHEET_ID  = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`;
@@ -660,18 +659,14 @@ const COLOR_MAP = {
   'Rojo':'#8b1a1a','Crema':'#d4c8a8','Carbon':'#2a2a2a','Verde Oliva':'#4a5a2a'
 };
 
-// ============================================================
-// STATE
-// ============================================================
+// ── STATE ────────────────────────────────────────────────────────
 let products  = [];   // array de {rowIndex, nombre, precio, desc, colores, specs}
 let fotosData = [];   // array de {rowIndex, modelo, color, fotos:[]}
 let allOrders = [], currentFilter = 'todos';
 let tokenClient, accessToken = null, driveReady = false;
 let pendingDeleteIndex = -1; // índice en products[] del producto a eliminar
 
-// ============================================================
-// AUTH
-// ============================================================
+// ── AUTH — Login y conexión con Drive ────────────────────────────
 function login() {
   if (document.getElementById('passwordInput').value === PASSWORD) {
     document.getElementById('loginScreen').style.display = 'none';
@@ -730,9 +725,7 @@ function logout() {
   document.getElementById('connectDriveBtn').style.display = 'inline-flex';
 }
 
-// ============================================================
-// NAVIGATION
-// ============================================================
+// ── NAVEGACIÓN ───────────────────────────────────────────────────
 function nav(page, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
@@ -741,9 +734,7 @@ function nav(page, el) {
   if (page === 'pedidos') loadOrders();
 }
 
-// ============================================================
-// DATA LOADING — con deduplicación robusta
-// ============================================================
+// ── CARGA DE DATOS — con deduplicación robusta ───────────────────
 async function loadData() {
   try {
     const [rP, rF] = await Promise.all([
@@ -806,9 +797,7 @@ function getFotos(m, c) {
   return fotosData.find(f => f.modelo === m && f.color === c)?.fotos || ['','','','',''];
 }
 
-// ============================================================
-// DASHBOARD
-// ============================================================
+// ── DASHBOARD ────────────────────────────────────────────────────
 function renderDashboard() {
   // ── Métricas del catálogo ──────────────────────────────────
   document.getElementById('statProductos').textContent = products.length;
@@ -968,9 +957,7 @@ function renderDashboard() {
   }).join('') || '<div style="padding:32px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px">Sin productos cargados</div>';
 }
 
-// ============================================================
-// PRODUCT LIST — con botones Editar y Eliminar
-// ============================================================
+// ── LISTA DE PRODUCTOS ───────────────────────────────────────────
 function renderProductList() {
   document.getElementById('productListAdmin').innerHTML = products.map((p, i) => {
     const foto = fotosData.find(f => f.modelo === p.nombre && f.fotos.some(x => x))?.fotos.find(x => x);
@@ -989,9 +976,7 @@ function renderProductList() {
   }).join('');
 }
 
-// ============================================================
-// EDIT PRODUCT
-// ============================================================
+// ── EDICIÓN DE PRODUCTOS ─────────────────────────────────────────
 function editProduct(i) {
   const p = products[i];
   document.getElementById('modalTitle').textContent = `Editar — Founder ${p.nombre}`;
@@ -1033,9 +1018,7 @@ function openNewProduct() {
 
 function closeModal() { document.getElementById('productModal').classList.remove('open'); }
 
-// ============================================================
-// COLOR EDITOR
-// ============================================================
+// ── EDITOR DE COLORES ────────────────────────────────────────────
 function renderColorRows(cols) {
   document.getElementById('colorsEditor').innerHTML = cols.map((c, i) => `
     <div class="color-row" id="cr${i}">
@@ -1065,10 +1048,11 @@ function getColors() {
     .map(i => i.value.trim()).filter(v => v).join(',');
 }
 
-// ============================================================
-// PHOTO EDITOR
-// ============================================================
+// ── EDITOR DE FOTOS ──────────────────────────────────────────────
 // Sanitiza un string para usarlo como parte de un id HTML (sin espacios ni caracteres especiales)
+/** Sanitiza un string para usarlo como id HTML.
+ *  Necesario porque colores como "Gris Oscuro" tienen espacios
+ *  y document.getElementById() no los encontraría. */
 function sanitizeId(str) { return str.replace(/[^a-zA-Z0-9]/g, '_'); }
 
 function renderColorPhotos(modelo, cols) {
@@ -1122,9 +1106,7 @@ function pickFile(m, c, fi) {
   f.click();
 }
 
-// ============================================================
-// SAVE PRODUCT — con lógica anti-duplicados mejorada
-// ============================================================
+// ── GUARDAR PRODUCTO ─────────────────────────────────────────────
 async function saveProduct() {
   const nombre = document.getElementById('editNombre').value.trim();
   const precio = document.getElementById('editPrecio').value.trim();
@@ -1220,9 +1202,7 @@ async function saveProduct() {
   }
 }
 
-// ============================================================
-// DELETE PRODUCT — con confirmación
-// ============================================================
+// ── ELIMINAR PRODUCTO ────────────────────────────────────────────
 function confirmDelete(i) {
   pendingDeleteIndex = i;
   const p = products[i];
@@ -1277,9 +1257,7 @@ async function executeDelete() {
   }
 }
 
-// ============================================================
-// GOOGLE SHEETS API
-// ============================================================
+// ── GOOGLE SHEETS API ────────────────────────────────────────────
 async function updateSheetCell(sheet, row, values) {
   const range = `${sheet}!A${row}`;
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
@@ -1291,9 +1269,7 @@ async function updateSheetCell(sheet, row, values) {
   if (!res.ok) throw new Error(await res.text());
 }
 
-// ============================================================
-// GOOGLE DRIVE UPLOAD
-// ============================================================
+// ── GOOGLE DRIVE — Upload de archivos ────────────────────────────
 function initGoogleClient() {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
@@ -1392,9 +1368,7 @@ async function findOrCreateFolder() {
   return f.id;
 }
 
-// ============================================================
-// ORDERS — Lee desde Google Sheets + sincroniza pendientes
-// ============================================================
+// ── PEDIDOS — Lectura desde Sheets + sync de pendientes ──────────
 const SHEET_PEDIDOS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=pedidos`;
 
 // Columnas en la hoja pedidos:
@@ -1596,9 +1570,7 @@ function renderOrders(orders) {
   }).join('');
 }
 
-// ============================================================
-// VER DETALLE DE PEDIDO
-// ============================================================
+// ── DETALLE DE PEDIDO ────────────────────────────────────────────
 function viewOrder(id) {
   // Buscar primero en allOrders (fuente de verdad), luego en localStorage como fallback
   let o = allOrders.find(x => x.id === id);
@@ -1670,9 +1642,7 @@ function viewOrder(id) {
 }
 function closeOrderDetail() { document.getElementById('orderDetailModal').classList.remove('open'); }
 
-// ============================================================
-// BANNER
-// ============================================================
+// ── BANNER DEL HERO ──────────────────────────────────────────────
 async function loadBannerPreview() {
   // Leer banner desde Sheets columna F2
   try {
@@ -1794,9 +1764,7 @@ function pickBannerFile() {
 
 // copyBannerCode — removido, banner ahora usa Sheets directamente
 
-// ============================================================
-// CONVERSOR DE LINKS
-// ============================================================
+// ── CONVERSOR DE LINKS DE DRIVE ──────────────────────────────────
 function extractDriveId(url) {
   const m = url.match(/\/d\/([a-zA-Z0-9_-]{15,})/);
   return m ? m[1] : (url.match(/^[a-zA-Z0-9_-]{15,}$/) ? url : null);
@@ -1831,9 +1799,7 @@ function convertBulk() {
   }).join('');
 }
 
-// ============================================================
-// TOAST
-// ============================================================
+// ── TOAST ────────────────────────────────────────────────────────
 let toastTimer;
 function toast(msg, isErr = false) {
   const t = document.getElementById('toast');
@@ -1843,9 +1809,7 @@ function toast(msg, isErr = false) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
 }
 
-// ============================================================
-// GOOGLE IDENTITY INIT
-// ============================================================
+// ── GOOGLE IDENTITY — Inicialización del cliente OAuth ──────────
 // initGoogleClient se llama SOLO desde el onload del script de Google
 // para evitar la doble inicialización que causaba que tokenClient quedara null
 </script>
