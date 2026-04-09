@@ -566,7 +566,6 @@ a, button, [onclick], label, select { cursor: pointer; }
   .co-summary { position: static; }
   .co-row { grid-template-columns: 1fr; }
   body { cursor: auto; }
-  .cursor, .cursor-ring { display: none; }
 }
 
 @media (max-width: 600px) {
@@ -575,6 +574,18 @@ a, button, [onclick], label, select { cursor: pointer; }
   .footer__bottom { flex-direction: column; text-align: center; gap: 12px; }
   .footer__legal { flex-direction: column; align-items: center; gap: 12px; }
 }
+
+/* ── PÁGINAS LEGALES ─────────────────────────────────────────── */
+.legal-page { position: fixed; inset: 0; background: var(--color-bg); z-index: 400; overflow-y: auto; display: none; padding: 100px var(--space-lg) 60px; }
+.legal-page.is-active { display: block; }
+.legal-close { position: fixed; top: 24px; right: var(--space-lg); background: var(--color-surface2); border: none; color: var(--color-text); padding: 10px 20px; font-family: var(--font-sans); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; z-index: 10; transition: background var(--transition-fast); }
+.legal-close:hover { background: var(--color-surface3); }
+.legal-content { max-width: 720px; margin: 0 auto; }
+.legal-content h1 { font-family: var(--font-serif); font-size: 48px; font-weight: 300; margin-bottom: 8px; }
+.legal-date { font-size: 10px; color: var(--color-muted); letter-spacing: 2px; margin-bottom: 48px; }
+.legal-content h2 { font-family: var(--font-serif); font-size: 22px; font-weight: 400; color: var(--color-gold); margin: 32px 0 12px; }
+.legal-content p, .legal-content li { font-size: 13px; line-height: 1.9; color: var(--color-muted); }
+.legal-content ul { padding-left: 20px; }
 
 /* ── BURBUJA WHATSAPP GLOBAL ─────────────────────────────────── */
 .wa-bubble {
@@ -797,7 +808,7 @@ const CONFIG = Object.freeze({
   SHEET_ID:       '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8',
   WA_NUMBER:      '598098550096',
   FREE_SHIPPING:  2000,
-  SHIPPING_COST:  150,
+  SHIPPING_COST:  250,
   THUMBS_VISIBLE: 5,
   get SHEET_PRODUCTOS() { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`; },
   get SHEET_FOTOS()     { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`; },
@@ -1211,10 +1222,57 @@ const revealObserver = new IntersectionObserver(entries => {
   });
 }, { threshold: 0.1 });
 
+// ── SHARED UI — Páginas legales ──────────────────────────────────
+const LEGAL_IDS = { privacy: 'legalPrivacy', terms: 'legalTerms', returns: 'legalReturns' };
+function showLegal(key) {
+  const el = $(LEGAL_IDS[key]);
+  if (el) { el.classList.add('is-active'); document.body.style.overflow = 'hidden'; }
+}
+function hideLegal(key) {
+  const el = $(LEGAL_IDS[key]);
+  if (el) { el.classList.remove('is-active'); document.body.style.overflow = ''; }
+}
+
 // ── BOOT ────────────────────────────────────────────────────────
 updateCart(); // reflejar carrito persistido (puede venir de producto.html)
 init();
 </script>
+
+<!-- ── PÁGINAS LEGALES ─────────────────────────────────────────── -->
+<div class="legal-page" id="legalPrivacy" role="dialog" aria-modal="true">
+  <button class="legal-close" onclick="hideLegal('privacy')">✕ Cerrar</button>
+  <div class="legal-content">
+    <h1>Política de Privacidad</h1><p class="legal-date">Vigente desde: Enero 2026</p>
+    <h2>1. Responsable</h2><p>Founder.uy, con contacto vía Instagram @founder.uy</p>
+    <h2>2. Datos recabados</h2><p>Nombre, apellido, celular, email y dirección de entrega proporcionados al realizar una compra.</p>
+    <h2>3. Base legal</h2><p>Ley N° 18.331 de Protección de Datos Personales y acción de Habeas Data de la República Oriental del Uruguay.</p>
+    <h2>4. Finalidad</h2><p>Tus datos se usan exclusivamente para procesar tu pedido, gestionar el envío y cumplir obligaciones legales.</p>
+    <h2>5. Consentimiento</h2><p>Al completar el formulario de compra y aceptar esta política, otorgás tu consentimiento libre e informado conforme al artículo 9 de la Ley N° 18.331.</p>
+    <h2>6. Seguridad</h2><p>Implementamos medidas técnicas y organizativas adecuadas para proteger tus datos contra accesos no autorizados.</p>
+    <h2>7. Tus derechos</h2><p>Tenés derecho a acceso, rectificación, supresión e impugnación de tus datos. Contactanos por Instagram @founder.uy.</p>
+  </div>
+</div>
+<div class="legal-page" id="legalTerms" role="dialog" aria-modal="true">
+  <button class="legal-close" onclick="hideLegal('terms')">✕ Cerrar</button>
+  <div class="legal-content">
+    <h1>Términos y Condiciones</h1><p class="legal-date">Vigente desde: Enero 2026</p>
+    <h2>1. Aceptación</h2><p>Al realizar una compra en Founder.uy, aceptás estos Términos y Condiciones en su totalidad.</p>
+    <h2>2. Productos</h2><p>Todos los productos incluyen tecnología RFID y están fabricados con eco cuero y aluminio de alta calidad.</p>
+    <h2>3. Precios</h2><p>Los precios están expresados en Pesos Uruguayos (UYU). Se aplica el precio vigente al momento de confirmar el pedido.</p>
+    <h2>4. Descuentos</h2><p>Se aplica un descuento del 10% para pagos en efectivo o transferencia bancaria. No acumulable con otras promociones.</p>
+    <h2>5. Envíos</h2><p>Enviamos a todo el territorio uruguayo vía agencia UES. Envío gratis en compras desde $2.000 UYU.</p>
+    <h2>6. Jurisdicción</h2><p>Ante cualquier controversia, las partes se someten a la jurisdicción de los Tribunales de la República Oriental del Uruguay.</p>
+  </div>
+</div>
+<div class="legal-page" id="legalReturns" role="dialog" aria-modal="true">
+  <button class="legal-close" onclick="hideLegal('returns')">✕ Cerrar</button>
+  <div class="legal-content">
+    <h1>Cambios y Devoluciones</h1><p class="legal-date">Vigente desde: Enero 2026</p>
+    <h2>Política de cambios</h2><p>Aceptamos cambios dentro de los 7 días corridos de recibido el producto, sin uso, en su estado original y con comprobante de compra.</p>
+    <h2>Defecto de fábrica</h2><p>Si el producto tiene un defecto de fábrica, lo cambiamos o reintegramos el importe sin costo. Plazo: 30 días desde la recepción.</p>
+    <h2>Cómo solicitar un cambio</h2><p>Contactanos por WhatsApp o Instagram @founder.uy indicando tu número de pedido y el motivo. Respondemos en 48 horas hábiles.</p>
+  </div>
+</div>
 <!-- ── BURBUJA WHATSAPP GLOBAL ──────────────────────────────── -->
 <a class="wa-bubble" href="https://wa.me/598098550096" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
   <span class="wa-bubble__tooltip">¿Necesitás ayuda?</span>
