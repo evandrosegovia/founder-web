@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" style="color-scheme: dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,7 +29,8 @@
   --color-text:     #f8f8f4;
   --color-muted:    #9a9a9a;
   --color-gold:     #c9a96e;
-  --color-border:   rgba(255,255,255,0.08);
+  --color-border:        rgba(255,255,255,0.08);
+  --color-border-solid: #282828;
   --color-danger:   #e05555;
   --color-success:  #4caf82;
   --font-serif:     'Cormorant Garamond', serif;
@@ -54,7 +55,6 @@
 }
 /* Forzar renderizado de color nativo — sin ajuste automático del navegador móvil */
 .color-item__swatch, .color-dot, .color-swatch {
-  color-scheme: only light;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
@@ -62,7 +62,7 @@
 /* ── RESET ────────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans); font-weight: 300; overflow-x: hidden; cursor: auto; }
+body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans); font-weight: 300; overflow-x: hidden; cursor: auto; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 img { display: block; max-width: 100%; }
 button { font-family: var(--font-sans); }
 a { color: inherit; text-decoration: none; }
@@ -73,7 +73,7 @@ a, button, [onclick], label, select,
 .color-item, .gallery__thumb, .related-card { cursor: pointer; }
 
 /* ── SHARED — Header ─────────────────────────────────────────── */
-.header { position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-header); height: 70px; padding: 0 var(--space-lg); display: flex; align-items: center; justify-content: space-between; background: rgba(10,10,10,.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--color-border); }
+.header { position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-header); height: 70px; padding: 0 var(--space-lg); display: flex; align-items: center; justify-content: space-between; background: #111111; background: rgba(14,14,14,.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--color-border-solid); }
 .logo { font-family: var(--font-serif); font-size: 22px; font-weight: 500; letter-spacing: 6px; color: var(--color-text); }
 .header__right { display: flex; align-items: center; gap: 24px; }
 .header__back { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-muted); transition: color var(--transition-fast); }
@@ -256,7 +256,7 @@ a, button, [onclick], label, select,
 .footer__legal a:hover { color: var(--color-text); }
 
 /* ── SHARED — Carrito lateral ───────────────────────────────── */
-.cart-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: var(--z-cart); opacity: 0; pointer-events: none; transition: opacity .4s; backdrop-filter: blur(4px); }
+.cart-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: var(--z-cart); opacity: 0; pointer-events: none; transition: opacity .4s; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
 .cart-overlay.is-open { opacity: 1; pointer-events: all; }
 .cart-sidebar { position: fixed; top: 0; right: 0; width: 420px; height: 100vh; background: var(--color-surface); z-index: calc(var(--z-cart) + 1); transform: translateX(100%); transition: transform var(--transition-slow); display: flex; flex-direction: column; border-left: 1px solid var(--color-border); }
 .cart-sidebar.is-open { transform: translateX(0); }
@@ -297,7 +297,7 @@ a, button, [onclick], label, select,
 /* ── RESPONSIVE — Breakpoints ───────────────────────────────── */
 @media (max-width: 900px) {
   /* Compensación de gamma para pantallas de teléfono */
-  .gallery__img { filter: brightness(1) !important; }
+  /* brightness unificado en base CSS — sin override mobile */
   .product-main { grid-template-columns: 1fr; padding: 24px; }
   .gallery { position: static; height: auto; padding-right: 0; }
   .gallery__main { min-height: 280px; }
