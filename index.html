@@ -659,110 +659,9 @@ a, button, [onclick], label, select { cursor: pointer; }
   .wa-bubble { bottom: 20px; right: 16px; }
   .wa-bubble__tooltip { display: none; }
 }
-
-/* ── PRELOADER ───────────────────────────────────────────────────
-   Módulo autónomo. Para removarlo: borrar este bloque CSS,
-   el bloque HTML #founder-preloader y el bloque JS /* PRELOADER */.
-   ─────────────────────────────────────────────────────────────── */
-#founder-preloader {
-  position: fixed;
-  inset: 0;
-  z-index: 99999;                        /* siempre por encima de todo */
-  background: var(--color-bg);           /* #141414 — fondo del sitio */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 32px;
-  /* Transición de salida: opacity fade + pointer-events */
-  transition: opacity 0.6s cubic-bezier(.4,0,.2,1);
-  /* El contenido del DOM sigue existiendo — SEO no se ve afectado */
-}
-#founder-preloader.is-hiding {
-  opacity: 0;
-  pointer-events: none;             /* deja de capturar clicks durante el fade */
-}
-#founder-preloader.is-gone {
-  display: none;                    /* removido del layout cuando termina el fade */
-}
-
-/* Wordmark dentro del preloader */
-.preloader__logo {
-  font-family: var(--font-serif);
-  font-size: clamp(28px, 6vw, 42px);
-  font-weight: 400;
-  letter-spacing: 10px;
-  color: var(--color-text);
-  opacity: 0;
-  animation: preloader-logo-in 0.7s ease 0.1s both;
-}
-
-/* Tres puntos que "respiran" en secuencia */
-.preloader__dots {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.preloader__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-gold);
-  opacity: 0.25;
-  animation: preloader-pulse 1.4s ease-in-out infinite;
-}
-.preloader__dot:nth-child(2) { animation-delay: 0.2s; }
-.preloader__dot:nth-child(3) { animation-delay: 0.4s; }
-
-/* Línea de progreso sutil bajo el logo */
-.preloader__bar-wrap {
-  width: clamp(80px, 16vw, 120px);
-  height: 1px;
-  background: var(--color-border-solid);
-  overflow: hidden;
-}
-.preloader__bar {
-  height: 100%;
-  width: 0%;
-  background: var(--color-gold);
-  animation: preloader-bar 2s ease-out both;
-}
-
-/* Keyframes — CSS puro, sin librerías */
-@keyframes preloader-logo-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes preloader-pulse {
-  0%, 100% { opacity: 0.25; transform: scale(1); }
-  50%       { opacity: 1;    transform: scale(1.4); }
-}
-@keyframes preloader-bar {
-  0%   { width: 0%; }
-  60%  { width: 80%; }
-  100% { width: 100%; }
-}
-/* ── FIN PRELOADER CSS ───────────────────────────────────────── */
 </style>
 </head>
 <body>
-
-<!-- ── PRELOADER ─────────────────────────────────────────────────
-     Módulo autónomo. El contenido real sigue en el DOM (SEO OK).
-     Se oculta con fade-out cuando los recursos críticos están listos.
-     ─────────────────────────────────────────────────────────────── -->
-<div id="founder-preloader" role="status" aria-label="Cargando sitio" aria-live="polite">
-  <div class="preloader__logo" aria-hidden="true">FOUNDER</div>
-  <div class="preloader__bar-wrap" aria-hidden="true">
-    <div class="preloader__bar"></div>
-  </div>
-  <div class="preloader__dots" aria-hidden="true">
-    <span class="preloader__dot"></span>
-    <span class="preloader__dot"></span>
-    <span class="preloader__dot"></span>
-  </div>
-</div>
-<!-- ── FIN PRELOADER HTML ─────────────────────────────────────── -->
 
 <!-- Accesibilidad: skip link -->
 <a href="#productos" style="position:absolute;top:-999px;left:-999px;z-index:9999;background:var(--color-gold);color:var(--color-bg);padding:8px 16px;font-size:11px;letter-spacing:2px" onfocus="this.style.top='8px';this.style.left='8px'" onblur="this.style.top='-999px';this.style.left='-999px'">Ir al contenido principal</a>
@@ -1350,54 +1249,6 @@ function hideLegal(key) {
   const el = $(LEGAL_IDS[key]);
   if (el) { el.classList.remove('is-active'); document.body.style.overflow = ''; }
 }
-
-/* ── PRELOADER — módulo autónomo ────────────────────────────────
-   Lógica: espera el mínimo (1 s) Y que init() termine.
-   Usa Promise.all para no liberar hasta que ambas condiciones
-   se cumplan, sin bloquear el hilo principal.
-   Para remover: borrar este bloque y sus contrapartes HTML/CSS.
-   ─────────────────────────────────────────────────────────────── */
-(function () {
-  'use strict';
-
-  const PRELOADER_ID  = 'founder-preloader';
-  const MIN_MS        = 1000;   // tiempo mínimo visible (ms)
-  const FADE_MS       = 600;    // duración del fade-out (debe coincidir con CSS)
-
-  // Referencia al nodo — puede ser null si alguien lo removió del HTML
-  const node = document.getElementById(PRELOADER_ID);
-  if (!node) return;           // módulo desactivado si no existe el HTML
-
-  // ── 1. Bloquear scroll mientras carga ──────────────────────────
-  document.body.style.overflow = 'hidden';
-
-  // ── 2. Promesa de tiempo mínimo ─────────────────────────────────
-  const minWait = new Promise(resolve => setTimeout(resolve, MIN_MS));
-
-  // ── 3. Promesa que el init() original va a resolver ─────────────
-  //    Guardamos el init original y lo envolvemos para capturar su fin.
-  let resolveDataReady;
-  const dataReady = new Promise(resolve => { resolveDataReady = resolve; });
-
-  const _origInit = window.init;
-  window.init = async function () {
-    try {
-      await _origInit.apply(this, arguments);
-    } finally {
-      resolveDataReady();   // init terminó (con éxito o con error)
-    }
-  };
-
-  // ── 4. Ocultar cuando AMBAS condiciones están cumplidas ─────────
-  Promise.all([minWait, dataReady]).then(() => {
-    node.classList.add('is-hiding');       // inicia el fade-out CSS
-    document.body.style.overflow = '';     // restaurar scroll
-
-    // Cuando termina el fade, sacar del layout completamente
-    setTimeout(() => node.classList.add('is-gone'), FADE_MS);
-  });
-})();
-/* ── FIN PRELOADER JS ───────────────────────────────────────── */
 
 // ── BOOT ────────────────────────────────────────────────────────
 updateCart(); // reflejar carrito persistido (puede venir de producto.html)
