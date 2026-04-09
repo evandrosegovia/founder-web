@@ -114,8 +114,9 @@
 
     /* ── HERO DE PÁGINA ────────────────────────────────────────── */
     .page-hero {
-      padding: 72px 48px 56px;
+      padding: 52px 48px 44px;
       border-bottom: 1px solid var(--color-border);
+      max-width: 780px;
     }
     .page-hero__label {
       font-size: 9px;
@@ -125,7 +126,7 @@
       display: flex;
       align-items: center;
       gap: 14px;
-      margin-bottom: 24px;
+      margin-bottom: 18px;
     }
     .page-hero__label::before {
       content: '';
@@ -136,19 +137,20 @@
     }
     .page-hero__title {
       font-family: var(--font-serif);
-      font-size: clamp(2.4rem, 5vw, 4rem);
+      font-size: clamp(1.8rem, 3vw, 2.6rem);
       font-weight: 300;
       line-height: 1.1;
       letter-spacing: -0.5px;
+      white-space: nowrap;
     }
     .page-hero__title em { font-style: italic; color: var(--color-gold); }
     .page-hero__sub {
-      margin-top: 16px;
+      margin-top: 14px;
       font-size: 12px;
       color: var(--color-muted);
-      letter-spacing: 1px;
-      line-height: 1.8;
-      max-width: 540px;
+      letter-spacing: 0.5px;
+      line-height: 1.7;
+      max-width: 480px;
     }
 
     /* ── LAYOUT PRINCIPAL ──────────────────────────────────────── */
@@ -223,22 +225,22 @@
       list-style: none;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 6px;
       margin-top: 4px;
     }
     .info-list li {
       display: flex;
       align-items: flex-start;
-      gap: 12px;
+      gap: 10px;
       font-size: 12px;
-      line-height: 1.7;
+      line-height: 1.55;
       color: var(--color-muted);
     }
     .info-list li::before {
       content: '✦';
       color: var(--color-gold);
       font-size: 8px;
-      margin-top: 5px;
+      margin-top: 3px;
       flex-shrink: 0;
     }
     .info-list li strong { color: var(--color-text); font-weight: 500; }
@@ -448,7 +450,8 @@
     @media (max-width: 900px) {
       .site-header { padding: 0 24px; }
       .site-nav { display: none; }
-      .page-hero { padding: 48px 24px 40px; }
+      .page-hero { padding: 40px 24px 32px; max-width: 100%; }
+      .page-hero__title { font-size: clamp(1.5rem, 5vw, 2rem); white-space: normal; }
       .site-footer { padding: 48px 24px 28px; }
       .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
       .cart-sidebar { width: 100%; }
@@ -485,7 +488,7 @@
 <!-- ── HERO DE PÁGINA ───────────────────────────────────────────── -->
 <div class="page-hero">
   <div class="page-hero__label">Founder.uy — Información</div>
-  <h1 class="page-hero__title">Envíos, pagos y<br><em>devoluciones</em></h1>
+  <h1 class="page-hero__title">Envíos, pagos y <em>devoluciones</em></h1>
   <p class="page-hero__sub">Todo lo que necesitás saber antes, durante y después de tu compra. Trabajamos para que tu experiencia sea simple y transparente.</p>
 </div>
 
@@ -557,7 +560,7 @@
               <td class="price">Sin costo</td>
             </tr>
             <tr>
-              <td><strong>Montevideo</strong><br><span style="font-size:11px">Vía agencia UES</span></td>
+              <td><strong>Montevideo</strong><br><span style="font-size:11px">Vía agencia UES o cadetería</span></td>
               <td>1 – 2 días hábiles</td>
               <td class="price">$ 250</td>
             </tr>
@@ -611,7 +614,7 @@
           <li>El producto debe estar <strong>sin uso</strong> y con su embalaje original en las mismas condiciones en que fue recibido</li>
           <li>Los costos de reenvío por cambio son <strong>a cargo del cliente</strong>, salvo que se trate de un defecto de fabricación</li>
           <li>Los cambios están <strong>sujetos a disponibilidad de stock</strong> al momento de la solicitud</li>
-          <li>Los reembolsos se procesan dentro de los <strong>5 días hábiles</strong> a partir de la recepción del reclamo, por el mismo medio con el que se realizó la compra</li>
+          <li>Los reembolsos se procesan en hasta <strong>5 días hábiles</strong> desde la recepción del reclamo, por el mismo medio de pago utilizado</li>
         </ul>
       </div>
     </div>
