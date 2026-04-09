@@ -751,6 +751,13 @@ function processOrder() {
     return;
   }
 
+  // Validación de formato de email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showToast('Ingresá un email válido');
+    return;
+  }
+
   // Validación de entrega
   if (state.entregaMode === 'envio') {
     if (!$('coDepartamento').value || !$('coDireccion').value.trim()) {
