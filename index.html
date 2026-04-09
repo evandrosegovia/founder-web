@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" style="color-scheme: dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -53,17 +53,19 @@
 
 /* ── DESIGN TOKENS ────────────────────────────────────────── */
 :root {
+  color-scheme: dark;
   /* Colors */
-  --color-bg:       #141414;
-  --color-surface:  #222222;
-  --color-surface2: #2e2e2e;
-  --color-surface3: #3a3a3a;
-  --color-text:     #f8f8f4;
-  --color-muted:    #9a9a9a;
-  --color-gold:     #c9a96e;
-  --color-border:   rgba(255,255,255,0.08);
-  --color-danger:   #e05555;
-  --color-success:  #4caf82;
+  --color-bg:          #141414;
+  --color-surface:     #222222;
+  --color-surface2:    #2e2e2e;
+  --color-surface3:    #3a3a3a;
+  --color-text:        #f8f8f4;
+  --color-muted:       #9a9a9a;
+  --color-gold:        #c9a96e;
+  --color-border:      rgba(255,255,255,0.08);
+  --color-border-solid: #282828; /* equivalente visual HEX de rgba(255,255,255,0.08) sobre #141414 */
+  --color-danger:      #e05555;
+  --color-success:     #4caf82;
 
   /* Typography */
   --font-serif:  'Cormorant Garamond', serif;
@@ -102,9 +104,9 @@
 }
 /* Forzar renderizado de color nativo — sin ajuste automático del navegador móvil */
 .color-dot, .color-swatch, .color-option .color-swatch {
-  color-scheme: only light;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+  /* color-scheme heredado del :root (dark) — no forzar 'only light' aquí: conflicto en iOS */
 }
 
 /* ── RESET ────────────────────────────────────────────────── */
@@ -117,6 +119,10 @@ body {
   font-weight: 300;
   overflow-x: hidden;
   cursor: auto;
+  /* Normalizar renderizado de fuentes cross-device */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 img { display: block; max-width: 100%; }
 button { font-family: var(--font-sans); }
@@ -132,9 +138,13 @@ a, button, [onclick], label, select { cursor: pointer; }
   z-index: var(--z-header); height: 70px;
   padding: 0 var(--space-lg);
   display: flex; align-items: center; justify-content: space-between;
-  background: rgba(10,10,10,.92);
+  /* Fondo sólido como base (fallback para Android Chrome sin backdrop-filter) */
+  background: #111111;
+  /* Encima del sólido, el efecto glass para iOS Safari y Chrome Desktop */
+  background: rgba(14,14,14,.95);
   backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--color-border);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--color-border-solid);
 }
 .logo {
   font-family: var(--font-serif); font-size: 22px;
@@ -183,7 +193,10 @@ a, button, [onclick], label, select { cursor: pointer; }
 }
 .hero__banner-img {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; opacity: 0.45; pointer-events: none; z-index: 0;
+  object-fit: cover;
+  /* Valor unificado: mismo en desktop y mobile — elimina la diferencia visual entre dispositivos */
+  opacity: 0.50;
+  pointer-events: none; z-index: 0;
 }
 .hero__content {
   position: relative; z-index: 2;
@@ -321,7 +334,9 @@ a, button, [onclick], label, select { cursor: pointer; }
 }
 .product-card__img-wrap img {
   width: 100%; height: 100%; object-fit: cover;
-  transition: transform .8s ease; filter: brightness(.85);
+  transition: transform .8s ease;
+  /* Valor unificado cross-device: sin override en mobile */
+  filter: brightness(.92);
 }
 .product-card:hover .product-card__img-wrap img {
   transform: scale(1.05); filter: brightness(1);
@@ -387,7 +402,9 @@ a, button, [onclick], label, select { cursor: pointer; }
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.85);
   z-index: var(--z-modal); opacity: 0; pointer-events: none;
-  transition: opacity .4s; backdrop-filter: blur(8px);
+  transition: opacity .4s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex; align-items: center; justify-content: center; padding: 40px;
 }
 .modal-overlay.is-open { opacity: 1; pointer-events: all; }
@@ -475,7 +492,9 @@ a, button, [onclick], label, select { cursor: pointer; }
 .cart-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.7);
   z-index: var(--z-cart); opacity: 0; pointer-events: none;
-  transition: opacity .4s; backdrop-filter: blur(4px);
+  transition: opacity .4s;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 .cart-overlay.is-open { opacity: 1; pointer-events: all; }
 .cart-sidebar {
@@ -541,9 +560,7 @@ a, button, [onclick], label, select { cursor: pointer; }
 }
 
 @media (max-width: 900px) {
-  /* Compensación de gamma para pantallas de teléfono */
-  .product-card__img-wrap img { filter: brightness(1) !important; }
-  .hero__banner-img { opacity: 0.55 !important; }
+  /* NOTA: brightness de imágenes ya unificado en base CSS — no se necesita override aquí */
   .header, .footer, .products-section, .shipping-banner { padding-left: 24px; padding-right: 24px; }
   .nav { display: none; }
   .hero { padding: 0 24px; }
