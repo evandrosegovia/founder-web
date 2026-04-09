@@ -225,23 +225,24 @@
       list-style: none;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       margin-top: 4px;
     }
     .info-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
+      display: block;
       font-size: 12px;
-      line-height: 1.55;
+      line-height: 1.65;
       color: var(--color-muted);
+      padding-left: 18px;
+      position: relative;
     }
     .info-list li::before {
       content: '✦';
       color: var(--color-gold);
-      font-size: 8px;
-      margin-top: 3px;
-      flex-shrink: 0;
+      font-size: 7px;
+      position: absolute;
+      left: 0;
+      top: 4px;
     }
     .info-list li strong { color: var(--color-text); font-weight: 500; }
 
