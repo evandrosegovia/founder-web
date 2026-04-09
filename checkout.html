@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" style="color-scheme: dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,7 +29,8 @@
   --color-text:     #f8f8f4;
   --color-muted:    #9a9a9a;
   --color-gold:     #c9a96e;
-  --color-border:   rgba(255, 255, 255, 0.08);
+  --color-border:        rgba(255,255,255,0.08);
+  --color-border-solid: #282828;
   --color-danger:   #e05555;
   --color-success:  #4caf82;
   --font-serif: 'Cormorant Garamond', serif;
@@ -45,7 +46,7 @@
 /* ── RESET ───────────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans); font-weight: 300; min-height: 100vh; }
+body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans); font-weight: 300; min-height: 100vh; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 img    { display: block; max-width: 100%; }
 button { font-family: var(--font-sans); }
 a      { color: inherit; text-decoration: none; }
