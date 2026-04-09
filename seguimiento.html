@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" style="color-scheme: dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -24,6 +24,8 @@
       --color-error: #e07070;
       --color-error-bg: rgba(224,112,112,0.1);
       --color-success: #7ec88a;
+      --color-border-solid: #282828;
+      color-scheme: dark;
       --font-serif: 'Cormorant Garamond', serif;
       --font-sans: 'Montserrat', sans-serif;
     }
@@ -37,6 +39,9 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
     }
 
     /* ── HEADER ── */
@@ -46,12 +51,14 @@
       z-index: 100;
       padding: 0 40px;
       height: 70px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      border-bottom: 1px solid #252525;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: rgba(10,10,10,0.92);
+      background: #111111;
+      background: rgba(14,14,14,0.95);
       backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
     }
     .site-logo {
       font-family: var(--font-serif);
@@ -271,7 +278,7 @@
       justify-content: space-between;
       margin-bottom: 32px;
       padding-bottom: 24px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      border-bottom: 1px solid #252525;
       flex-wrap: wrap;
       gap: 12px;
     }
