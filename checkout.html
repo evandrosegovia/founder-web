@@ -195,8 +195,11 @@ select:active,
 .confirm-screen__title { font-family: var(--font-serif); font-size: 48px; font-weight: 300; }
 .confirm-screen__id    { font-size: 11px; letter-spacing: 3px; color: var(--color-gold); text-transform: uppercase; }
 .confirm-screen__msg   { font-size: var(--text-body-lg); color: var(--color-muted); line-height: var(--lh-body-lg); max-width: 480px; }
-.confirm-screen__btn   { display: inline-block; background: var(--color-text); color: var(--color-bg); padding: 16px 36px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 600; transition: background var(--transition-base); margin-top: 8px; }
+.confirm-screen__btn   { display: inline-block; background: var(--color-text); color: var(--color-bg); padding: 16px 36px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 600; transition: background var(--transition-base); margin-top: 8px; cursor: pointer; border: none; font-family: var(--font-sans); }
 .confirm-screen__btn:hover { background: var(--color-gold); }
+.confirm-screen__btn--secondary { display: inline-block; background: transparent; color: var(--color-muted); border: 1px solid var(--color-border); padding: 12px 28px; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; font-weight: 500; transition: all var(--transition-base); cursor: pointer; font-family: var(--font-sans); }
+.confirm-screen__btn--secondary:hover { border-color: var(--color-text); color: var(--color-text); }
+.confirm-screen__actions { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 8px; width: 100%; max-width: 320px; }
 
 /* ── PÁGINAS LEGALES ─────────────────────────────────────────── */
 .legal-page { position: fixed; inset: 0; background: var(--color-bg); z-index: 400; overflow-y: auto; display: none; padding: 100px var(--space-lg) 60px; }
@@ -445,7 +448,15 @@ a, button, [onclick], label, select, .co-toggle-btn { cursor: pointer; }
     Tu pedido fue enviado por WhatsApp y registrado correctamente.<br>
     Te contactaremos a la brevedad para confirmar los detalles.
   </p>
-  <a href="index.html" class="confirm-screen__btn">Volver a la tienda</a>
+  <div class="confirm-screen__actions">
+    <a href="index.html" class="confirm-screen__btn">Volver a la tienda</a>
+    <button class="confirm-screen__btn--secondary" onclick="reenviarPedido()">
+      ↺ Reenviar pedido por WhatsApp
+    </button>
+    <button class="confirm-screen__btn--secondary" onclick="verDetallesCompra()">
+      🔍 Ver detalles de mi compra
+    </button>
+  </div>
 </div>
 
 <!-- PÁGINAS LEGALES -->
@@ -917,11 +928,56 @@ function processOrder() {
 
   window.open(`https://wa.me/${CONFIG.WA_NUMBER}?text=${encodeURIComponent(waMsg)}`, '_blank');
 
-  // 4. Limpiar carrito y mostrar confirmación
+  // 4. Guardar snapshot del pedido en sessionStorage para reenvío y seguimiento rápido
+  //    sessionStorage se borra al cerrar la pestaña — no persiste entre sesiones
+  const orderSnapshot = {
+    id:       orderId,
+    nombre:   nombre,
+    apellido: apellido,
+    email:    email,
+    waMsg:    waMsg,
+  };
+  try {
+    sessionStorage.setItem('founder_last_order', JSON.stringify(orderSnapshot));
+  } catch(e) {
+    console.warn('[Founder] sessionStorage no disponible:', e);
+  }
+
+  // 5. Limpiar carrito y mostrar confirmación
   clearCart();
   $('checkoutForm').style.display = 'none';
   setText('confirmOrderId', `Pedido #${orderId}`);
   $('confirmScreen').classList.add('is-visible');
+}
+
+// ── REENVIAR PEDIDO — vuelve a abrir WhatsApp con el mismo mensaje ──
+function reenviarPedido() {
+  try {
+    const snap = JSON.parse(sessionStorage.getItem('founder_last_order') || 'null');
+    if (!snap?.waMsg) { showToast('No se encontraron datos del pedido'); return; }
+    window.open(`https://wa.me/${CONFIG.WA_NUMBER}?text=${encodeURIComponent(snap.waMsg)}`, '_blank');
+  } catch(e) {
+    showToast('No se pudo reenviar el pedido');
+  }
+}
+
+// ── VER DETALLES — redirige a seguimiento.html pre-llenado ──────
+function verDetallesCompra() {
+  try {
+    const snap = JSON.parse(sessionStorage.getItem('founder_last_order') || 'null');
+    if (!snap?.id || !snap?.email) {
+      window.location.href = 'seguimiento.html';
+      return;
+    }
+    // Pasar id y email como parámetros de URL — seguimiento.html los leerá y pre-llenará
+    const params = new URLSearchParams({
+      pedido: snap.id,
+      email:  snap.email,
+    });
+    window.location.href = `seguimiento.html?${params.toString()}`;
+  } catch(e) {
+    window.location.href = 'seguimiento.html';
+  }
 }
 
 // ── LEGAL ─────────────────────────────────────────────────────
