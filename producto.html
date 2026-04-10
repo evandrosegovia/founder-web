@@ -52,6 +52,16 @@
   --swatch-crema:       #e4d8b8;
   --swatch-carbon:      #3a3a3a;
   --swatch-verde-oliva: #6a7a3a;
+
+  /* ── Escala tipográfica — textos informativos ─────────────────
+     Solo afecta párrafos, descripciones y textos secundarios.
+     Labels de UI (9-10px), títulos y botones NO se modifican.   */
+  --text-body-sm:  12px;   /* antes 11px — textos descriptivos secundarios */
+  --text-body-md:  13px;   /* antes 12px — textos de cuerpo medio          */
+  --text-body-lg:  14px;   /* antes 13px — descripciones principales       */
+  --lh-body-sm:   1.85;    /* antes 1.8  — mejorar legibilidad en móvil    */
+  --lh-body-md:   1.85;    /* antes 1.8  — consistente con sm              */
+  --lh-body-lg:   1.95;    /* antes 1.9  — textos largos más aireados      */
 }
 /* Forzar renderizado de color nativo — sin ajuste automático del navegador móvil */
 .color-item__swatch, .color-dot, .color-swatch {
@@ -71,6 +81,40 @@ a { color: inherit; text-decoration: none; }
 * { cursor: auto; }
 a, button, [onclick], label, select,
 .color-item, .gallery__thumb, .related-card { cursor: pointer; }
+
+/* ── TAP HIGHLIGHT — elimina el flash azul en Android/iOS ────────
+   Chrome Android y WebView inyectan un highlight azul por defecto
+   en cada tap. Se elimina globalmente y se reemplaza por un
+   feedback táctil premium (opacidad suave) acorde a la estética. */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Feedback táctil premium: opacidad sutil al presionar */
+a:active,
+button:active,
+[onclick]:active,
+label:active,
+select:active,
+.color-item:active,
+.color-item__swatch:active,
+.gallery__thumb:active,
+.related-card:active,
+.btn:active,
+.wa-bubble:active,
+.cart-btn:active,
+.header__back:active,
+.breadcrumb a:active,
+.tab-btn:active,
+.sticky-add-btn:active {
+  opacity: 0.72;
+  transition: opacity 0.08s ease;
+}
+
+/* Accesibilidad: focus visible solo con teclado/navegación */
+:focus-visible {
+  outline: 1px solid var(--color-gold);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) { outline: none; }
 
 /* ── SHARED — Header ─────────────────────────────────────────── */
 .header { position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-header); height: 70px; padding: 0 var(--space-lg); display: flex; align-items: center; justify-content: space-between; background: #111111; background: rgba(14,14,14,.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--color-border-solid); }
@@ -98,7 +142,7 @@ a, button, [onclick], label, select,
 /* ── PRODUCTO — Estado de error ────────────────────────────── */
 .error-screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 20px; text-align: center; padding: var(--space-lg); }
 .error-screen__title { font-family: var(--font-serif); font-size: 48px; font-weight: 300; }
-.error-screen__msg { font-size: 13px; color: var(--color-muted); line-height: 1.8; }
+.error-screen__msg { font-size: var(--text-body-lg); color: var(--color-muted); line-height: var(--lh-body-sm); }
 .error-screen__btn { display: inline-block; background: var(--color-text); color: var(--color-bg); padding: 16px 36px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 600; margin-top: 8px; cursor: pointer; transition: background var(--transition-base); }
 .error-screen__btn:hover { background: var(--color-gold); }
 
@@ -125,7 +169,7 @@ a, button, [onclick], label, select,
 .product-info__label::before { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
 .product-info__name { font-family: var(--font-serif); font-size: clamp(48px, 5vw, 72px); font-weight: 300; line-height: 1; letter-spacing: -1px; }
 .product-info__subtitle { font-size: 12px; color: var(--color-muted); letter-spacing: 3px; text-transform: uppercase; margin-top: 12px; }
-.product-info__desc { font-size: 13px; line-height: 2; color: var(--color-muted); letter-spacing: .3px; border-left: 2px solid var(--color-gold); padding-left: 20px; }
+.product-info__desc { font-size: var(--text-body-lg); line-height: 2; color: var(--color-muted); letter-spacing: .3px; border-left: 2px solid var(--color-gold); padding-left: 20px; }
 
 /* ── PRODUCTO — Selector de color ──────────────────────────── */
 .color-section__label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--color-muted); margin-bottom: 16px; }
@@ -140,7 +184,7 @@ a, button, [onclick], label, select,
 
 /* ── PRODUCTO — Especificaciones inline ────────────────────── */
 .specs-list { border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); padding: 28px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
-.specs-list__item { display: flex; align-items: flex-start; gap: 14px; font-size: 11px; color: var(--color-muted); line-height: 1.6; }
+.specs-list__item { display: flex; align-items: flex-start; gap: 14px; font-size: var(--text-body-sm); color: var(--color-muted); line-height: var(--lh-body-sm); }
 .specs-list__icon { color: var(--color-gold); font-size: 10px; margin-top: 2px; flex-shrink: 0; width: 16px; }
 
 /* ── PRODUCTO — Sección de compra ──────────────────────────── */
@@ -193,16 +237,16 @@ a, button, [onclick], label, select,
 .specs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; background: var(--color-border); }
 .spec-cell { background: var(--color-surface); padding: 24px 28px; display: flex; flex-direction: column; gap: 6px; }
 .spec-cell__label { font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-gold); }
-.spec-cell__value { font-size: 13px; color: var(--color-text); line-height: 1.6; }
+.spec-cell__value { font-size: var(--text-body-lg); color: var(--color-text); line-height: var(--lh-body-sm); }
 
 /* Tab — RFID */
 .rfid-explain { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
 .rfid-explain__title { font-family: var(--font-serif); font-size: 32px; font-weight: 300; margin-bottom: 20px; line-height: 1.2; }
-.rfid-explain__text { font-size: 12px; line-height: 2; color: var(--color-muted); letter-spacing: .3px; margin-bottom: 16px; }
+.rfid-explain__text { font-size: var(--text-body-md); line-height: 2; color: var(--color-muted); letter-spacing: .3px; margin-bottom: 16px; }
 .rfid-explain__highlight { color: var(--color-gold); font-size: 11px; letter-spacing: 1px; }
 .rfid-visual { background: var(--color-surface); padding: 48px; display: flex; flex-direction: column; gap: 20px; align-items: center; text-align: center; }
 .rfid-visual__icon { font-size: 64px; }
-.rfid-visual__text { font-size: 11px; color: var(--color-muted); letter-spacing: 1px; line-height: 1.8; }
+.rfid-visual__text { font-size: var(--text-body-sm); color: var(--color-muted); letter-spacing: 1px; line-height: var(--lh-body-sm); }
 .rfid-visual__badge { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-gold); }
 
 /* ── PRODUCTO — Productos relacionados ─────────────────────── */
@@ -218,7 +262,7 @@ a, button, [onclick], label, select,
 .related-card__placeholder { width: 100%; height: 100%; background: linear-gradient(135deg,#111,#1a1a1a); display: flex; align-items: center; justify-content: center; position: relative; }
 .related-card__info { padding: 24px; display: flex; justify-content: space-between; align-items: center; }
 .related-card__name { font-family: var(--font-serif); font-size: 22px; font-weight: 400; }
-.related-card__desc { font-size: 11px; color: var(--color-muted); letter-spacing: 1px; }
+.related-card__desc { font-size: var(--text-body-sm); color: var(--color-muted); letter-spacing: 1px; }
 .related-card__price { font-family: var(--font-serif); font-size: 20px; }
 
 /* ── SHARED — Footer ────────────────────────────────────────── */
@@ -233,7 +277,7 @@ a, button, [onclick], label, select,
   margin-bottom: var(--space-xl);
 }
 .footer__brand p {
-  font-size: 11px; line-height: 1.9; color: var(--color-muted);
+  font-size: var(--text-body-sm); line-height: var(--lh-body-lg); color: var(--color-muted);
   max-width: 280px; margin-top: 20px;
 }
 .footer__col h4 {
@@ -379,7 +423,7 @@ a, button, [onclick], label, select,
 .legal-content h1 { font-family: var(--font-serif); font-size: 48px; font-weight: 300; margin-bottom: 8px; }
 .legal-date { font-size: 10px; color: var(--color-muted); letter-spacing: 2px; margin-bottom: 48px; }
 .legal-content h2 { font-family: var(--font-serif); font-size: 22px; font-weight: 400; color: var(--color-gold); margin: 32px 0 12px; }
-.legal-content p, .legal-content li { font-size: 13px; line-height: 1.9; color: var(--color-muted); }
+.legal-content p, .legal-content li { font-size: var(--text-body-lg); line-height: var(--lh-body-lg); color: var(--color-muted); }
 .legal-content ul { padding-left: 20px; }
 
 /* ── BURBUJA WHATSAPP GLOBAL ─────────────────────────────────── */
