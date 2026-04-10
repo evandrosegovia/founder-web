@@ -1531,7 +1531,10 @@ async function loadOrders() {
         total:     parseInt(row.c[12]?.v) || 0,
         pago:      row.c[13]?.v || '',
         estado:    row.c[14]?.v || '',
-        notas:     row.c[15]?.v || ''
+        notas:     row.c[15]?.v || '',
+        // Columnas Q y R — datos de seguimiento de envío
+        nro_seguimiento: row.c[16]?.v || '',
+        url_seguimiento: row.c[17]?.v || ''
       })).filter(o => o.id).reverse();
     }
 
@@ -1707,6 +1710,43 @@ function viewOrder(id) {
   };
   const cls = statusMap[o.estado] || '';
 
+  // ── Detectar si es envío a domicilio (no retiro) ──────────────
+  const esEnvio = (o.entrega || '').toLowerCase().includes('envío') ||
+                  (o.entrega || '').toLowerCase().includes('envio');
+
+  // ── Sección de seguimiento — solo para envíos ─────────────────
+  const nroTracking  = o.nro_seguimiento  || '';
+  const urlTracking  = o.url_seguimiento  || '';
+  const trackingSection = esEnvio ? `
+    <div class="card" style="margin-bottom:16px;border-color:rgba(201,169,110,.25)">
+      <div class="card-head">
+        <div class="card-title">🚚 Seguimiento de envío</div>
+      </div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+        <div class="fg">
+          <div class="fl">Número de seguimiento</div>
+          <div style="display:flex;gap:8px">
+            <input type="text" class="fi" id="trackingNro" placeholder="Ej: UES-00123456"
+              value="${sanitizeAttr(nroTracking)}"
+              oninput="this.value=this.value.replace(/[<>\"']/g,'')">
+            <button class="btn btn-sm btn-primary" onclick="saveTracking('${id}')">Guardar</button>
+          </div>
+        </div>
+        <div class="fg">
+          <div class="fl">URL del transportista</div>
+          <div style="display:flex;gap:8px">
+            <input type="url" class="fi" id="trackingUrl" placeholder="https://..."
+              value="${sanitizeAttr(urlTracking)}"
+              oninput="this.value=this.value.replace(/[<>\"'\\s]/g,'')">
+            <button class="btn btn-sm btn-secondary" onclick="openTrackingUrl()" title="Abrir en nueva pestaña">↗</button>
+          </div>
+          <div style="font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:.5px">
+            El cliente verá este link en la página de seguimiento para rastrear su envío.
+          </div>
+        </div>
+      </div>
+    </div>` : '';
+
   document.getElementById('orderDetailContent').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
       <div style="font-family:'Cormorant Garamond',serif;font-size:28px">Pedido #${o.id}</div>
@@ -1737,7 +1777,7 @@ function viewOrder(id) {
       <div class="card-body" style="font-size:13px;line-height:2;color:var(--muted)">${prodsText}</div>
     </div>
 
-    <div class="card" style="margin-bottom:20px">
+    <div class="card" style="margin-bottom:16px">
       <div class="card-head"><div class="card-title">💰 Resumen de pago</div></div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:8px;font-size:13px">
         <div style="display:flex;justify-content:space-between;color:var(--muted)"><span>Subtotal</span><span>$${(o.subtotal||0).toLocaleString('es-UY')}</span></div>
@@ -1751,6 +1791,8 @@ function viewOrder(id) {
       </div>
     </div>
 
+    ${trackingSection}
+
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${['Pendiente pago','Pendiente confirmación','Confirmado','Entregado','Cancelado'].map(s =>
         `<button class="btn btn-sm ${o.estado === s ? 'btn-primary' : 'btn-secondary'}"
@@ -1761,6 +1803,79 @@ function viewOrder(id) {
   document.getElementById('orderDetailModal').classList.add('open');
 }
 function closeOrderDetail() { document.getElementById('orderDetailModal').classList.remove('open'); }
+
+// ── TRACKING — Helpers de seguridad ──────────────────────────────
+/** Escapa atributos HTML para prevenir XSS en value="" */
+function sanitizeAttr(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/** Abre la URL del transportista en nueva pestaña (con validación) */
+function openTrackingUrl() {
+  const raw = (document.getElementById('trackingUrl')?.value || '').trim();
+  if (!raw) { toast('No hay URL de transportista cargada', true); return; }
+  // Solo permitir https:// — bloquear javascript: y otros protocolos
+  if (!/^https?:\/\//i.test(raw)) { toast('La URL debe empezar con https://', true); return; }
+  window.open(raw, '_blank', 'noopener,noreferrer');
+}
+
+// ── TRACKING — Guardar número y URL en Sheets (columnas Q y R) ───
+async function saveTracking(orderId) {
+  const nroRaw = (document.getElementById('trackingNro')?.value || '').trim();
+  const urlRaw = (document.getElementById('trackingUrl')?.value || '').trim();
+
+  // Validación: URL debe ser https si no está vacía
+  if (urlRaw && !/^https?:\/\//i.test(urlRaw)) {
+    toast('La URL debe empezar con https://', true); return;
+  }
+  // Sanitización básica: quitar caracteres peligrosos
+  const nro = nroRaw.replace(/[<>"']/g, '').substring(0, 100);
+  const url = urlRaw.replace(/[<>"'\s]/g, '').substring(0, 500);
+
+  // Actualizar en memoria local (allOrders)
+  const o = allOrders.find(x => x.id === orderId);
+  if (o) { o.nro_seguimiento = nro; o.url_seguimiento = url; }
+
+  // Actualizar en localStorage
+  const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
+  const idx = stored.findIndex(x => x.id === orderId);
+  if (idx >= 0) {
+    stored[idx].nro_seguimiento = nro;
+    stored[idx].url_seguimiento = url;
+    localStorage.setItem('founder_pedidos', JSON.stringify(stored));
+  }
+
+  // Guardar en Sheets si Drive está conectado (columnas Q=17 y R=18)
+  if (driveReady) {
+    try {
+      const r = await fetch(SHEET_PEDIDOS_URL + '&t=' + Date.now());
+      const t = await r.text();
+      const j = JSON.parse(t.substring(47, t.length - 2));
+      const rows = j.table.rows || [];
+      const sheetIdx = rows.findIndex(row => row.c[0]?.v === orderId);
+      if (sheetIdx >= 0) {
+        const sheetRow = sheetIdx + 2;
+        // Columna Q = nro_seguimiento, R = url_seguimiento
+        const range = `pedidos!Q${sheetRow}:R${sheetRow}`;
+        const sheetUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+        await fetch(sheetUrl, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: [[nro, url]] })
+        });
+        toast('✅ Datos de seguimiento guardados en Sheets');
+      } else {
+        toast('Pedido no encontrado en Sheets', true);
+      }
+    } catch(e) {
+      console.error('Error guardando tracking:', e);
+      toast('Guardado localmente (Drive no disponible)', false);
+    }
+  } else {
+    toast('Datos guardados localmente — conectate a Drive para sincronizar');
+  }
+}
+
 
 // ── BANNER DEL HERO ──────────────────────────────────────────────
 async function loadBannerPreview() {
