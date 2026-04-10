@@ -30,6 +30,16 @@
       --font-sans:      'Montserrat', sans-serif;
       --transition-fast: 0.2s ease;
       --z-header: 100;
+
+      /* ── Escala tipográfica — textos informativos ───────────────
+         Solo afecta párrafos, descripciones y textos secundarios.
+         Labels de UI (9-10px), títulos y botones NO se modifican. */
+      --text-body-sm:  12px;   /* antes 11px */
+      --text-body-md:  13px;   /* antes 12px */
+      --text-body-lg:  14px;   /* antes 13px */
+      --lh-body-sm:   1.85;
+      --lh-body-md:   1.85;
+      --lh-body-lg:   1.95;
     }
 
     /* ── RESET ─────────────────────────────────────────────────── */
@@ -50,7 +60,36 @@
     img { display: block; max-width: 100%; }
     a { color: inherit; text-decoration: none; }
     * { cursor: auto; }
-    a, button, [onclick] { cursor: pointer; }
+    a, button, [onclick], label, select { cursor: pointer; }
+
+    /* ── TAP HIGHLIGHT — elimina el flash azul en Android/iOS ────────
+       Chrome Android y WebView inyectan un highlight azul por defecto
+       en cada tap. Se elimina globalmente y se reemplaza por un
+       feedback táctil premium (opacidad suave) acorde a la estética. */
+    * { -webkit-tap-highlight-color: transparent; }
+
+    /* Feedback táctil premium: opacidad sutil al presionar */
+    a:active,
+    button:active,
+    [onclick]:active,
+    label:active,
+    select:active,
+    .site-logo:active,
+    .nav-link:active,
+    .cart-btn:active,
+    .wa-bubble:active,
+    .footer-col ul li a:active,
+    .footer-bottom a:active {
+      opacity: 0.72;
+      transition: opacity 0.08s ease;
+    }
+
+    /* Accesibilidad: focus visible solo con teclado/navegación */
+    :focus-visible {
+      outline: 1px solid var(--color-gold);
+      outline-offset: 2px;
+    }
+    :focus:not(:focus-visible) { outline: none; }
 
     /* ── HEADER ────────────────────────────────────────────────── */
     .site-header {
@@ -153,10 +192,10 @@
     .page-hero__title em { font-style: italic; color: var(--color-gold); }
     .page-hero__sub {
       margin-top: 14px;
-      font-size: 12px;
+      font-size: var(--text-body-md);
       color: var(--color-muted);
       letter-spacing: 0.5px;
-      line-height: 1.7;
+      line-height: var(--lh-body-md);
       max-width: 480px;
     }
 
@@ -220,8 +259,8 @@
       margin-bottom: 14px;
     }
     .info-card__body {
-      font-size: 12px;
-      line-height: 1.9;
+      font-size: var(--text-body-md);
+      line-height: var(--lh-body-lg);
       color: var(--color-muted);
     }
     .info-card__body strong { color: var(--color-text); font-weight: 500; }
@@ -237,8 +276,8 @@
     }
     .info-list li {
       display: block;
-      font-size: 12px;
-      line-height: 1.65;
+      font-size: var(--text-body-md);
+      line-height: var(--lh-body-md);
       color: var(--color-muted);
       padding-left: 18px;
       position: relative;
@@ -270,11 +309,11 @@
       font-weight: 500;
     }
     .shipping-table td {
-      font-size: 12px;
+      font-size: var(--text-body-md);
       color: var(--color-muted);
       padding: 14px 16px;
       border-bottom: 1px solid var(--color-border);
-      line-height: 1.6;
+      line-height: var(--lh-body-sm);
       vertical-align: top;
     }
     .shipping-table tr:last-child td { border-bottom: none; }
@@ -287,8 +326,8 @@
       border: 1px solid var(--color-gold-border);
       border-left: 3px solid var(--color-gold);
       padding: 16px 20px;
-      font-size: 11px;
-      line-height: 1.8;
+      font-size: var(--text-body-sm);
+      line-height: var(--lh-body-sm);
       color: var(--color-muted);
       margin-top: 16px;
     }
@@ -306,8 +345,8 @@
       margin-bottom: 48px;
     }
     .footer-brand p {
-      font-size: 11px;
-      line-height: 1.9;
+      font-size: var(--text-body-sm);
+      line-height: var(--lh-body-lg);
       color: var(--color-muted);
       max-width: 280px;
       margin-top: 16px;
@@ -330,7 +369,7 @@
     }
     .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
     .footer-col ul li a {
-      font-size: 11px;
+      font-size: var(--text-body-sm);
       color: var(--color-muted);
       letter-spacing: 1px;
       text-decoration: none;
@@ -542,17 +581,17 @@
           </thead>
           <tbody>
             <tr>
-              <td><strong>Retiro en local</strong><br><span style="font-size:11px">Zona Prado, Montevideo</span></td>
+              <td><strong>Retiro en local</strong><br><span style="font-size:var(--text-body-sm)">Zona Prado, Montevideo</span></td>
               <td>A coordinar vía WhatsApp</td>
               <td class="price">Sin costo</td>
             </tr>
             <tr>
-              <td><strong>Montevideo</strong><br><span style="font-size:11px">Vía agencia UES o cadetería</span></td>
+              <td><strong>Montevideo</strong><br><span style="font-size:var(--text-body-sm)">Vía agencia UES o cadetería</span></td>
               <td>1 – 2 días hábiles</td>
               <td class="price">$ 250</td>
             </tr>
             <tr>
-              <td><strong>Interior del país</strong><br><span style="font-size:11px">Vía agencia UES</span></td>
+              <td><strong>Interior del país</strong><br><span style="font-size:var(--text-body-sm)">Vía agencia UES</span></td>
               <td>2 – 3 días hábiles</td>
               <td class="price">$ 250</td>
             </tr>
