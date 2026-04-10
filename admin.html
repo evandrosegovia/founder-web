@@ -148,6 +148,24 @@ a:active,button:active,[onclick]:active,label:active{opacity:0.75;transition:opa
 .status-confirmado{background:rgba(76,175,130,.12);color:var(--green)}
 .status-entregado{background:rgba(76,175,130,.2);color:var(--green)}
 .status-cancelado{background:rgba(224,85,85,.12);color:var(--red)}
+
+/* ── BARRA DE PROGRESO — detalle de pedido en admin ─────────── */
+.od-progress-wrap{margin-bottom:20px}
+.od-progress-label{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+.od-progress-track{display:flex;align-items:flex-start;position:relative;padding:0 0 8px}
+.od-progress-track::before{content:'';position:absolute;top:17px;left:calc(100%/8);right:calc(100%/8);height:2px;background:var(--border);z-index:0}
+.od-progress-fill{position:absolute;top:17px;left:calc(100%/8);height:2px;background:var(--gold);z-index:1;transition:width .5s cubic-bezier(.4,0,.2,1);width:0%}
+.od-step{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:2;cursor:pointer}
+.od-step-dot{width:34px;height:34px;border-radius:50%;border:2px solid var(--border);background:var(--black);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);transition:all .3s;flex-shrink:0}
+.od-step.active .od-step-dot{border-color:var(--gold);background:var(--gold);color:var(--black)}
+.od-step.done .od-step-dot{border-color:var(--gold);background:rgba(201,169,110,.15);color:var(--gold)}
+.od-step-name{font-size:7px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center;line-height:1.4;transition:color .2s;max-width:64px}
+.od-step.active .od-step-name,.od-step.done .od-step-name{color:var(--gold)}
+.od-step:hover .od-step-dot{border-color:var(--white);transform:scale(1.08)}
+.od-step:hover .od-step-name{color:var(--white)}
+.od-cancelado-btn{display:flex;justify-content:center;margin-top:10px}
+.od-cancelado-btn button{background:rgba(224,85,85,.1);border:1px solid rgba(224,85,85,.3);color:var(--red);font-family:'Montserrat',sans-serif;font-size:8px;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;cursor:pointer;transition:all .2s}
+.od-cancelado-btn button:hover{background:rgba(224,85,85,.2)}
 .order-body{padding:12px 16px;display:flex;flex-direction:column;gap:7px}
 .order-name{font-family:'Cormorant Garamond',serif;font-size:17px}
 .order-info{font-size:10px;color:var(--muted);line-height:1.8}
@@ -1694,8 +1712,80 @@ function renderOrders(orders) {
 }
 
 // ── DETALLE DE PEDIDO ────────────────────────────────────────────
+
+/**
+ * Configuración de la barra de progreso del pedido.
+ * esEnvio=true  → paso 2 es "En camino"
+ * esEnvio=false → paso 2 es "Listo para retirar"
+ */
+const OD_PASOS_ENVIO   = ['Pendiente', 'En preparación', 'En camino',          'Entregado'];
+const OD_PASOS_RETIRO  = ['Pendiente', 'En preparación', 'Listo para retirar', 'Entregado'];
+const OD_EMOJIS        = ['🕐', '📦', '🚚', '✅'];
+const OD_EMOJIS_RETIRO = ['🕐', '📦', '📍', '✅'];
+const OD_PCT           = ['8%', '36%', '64%', '92%'];
+
+/** Normaliza estados para comparación sin acentos/mayúsculas */
+function normalizarEstado(str) {
+  return (str || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+
+/**
+ * Mapea el estado del pedido (texto libre del Sheet) al índice de paso (0-3).
+ * Retorna -1 si el pedido está cancelado.
+ */
+function estadoAPaso(estado) {
+  const n = normalizarEstado(estado);
+  if (n.includes('cancel'))    return -1;
+  if (n.includes('entregado')) return 3;
+  if (n.includes('camino') || n.includes('listo') || n.includes('retirar')) return 2;
+  if (n.includes('preparac'))  return 1;
+  return 0;
+}
+
+/** Genera el HTML de la barra de progreso interactiva para el admin */
+function renderProgressBar(orderId, estado, esEnvio) {
+  const pasoActual = estadoAPaso(estado);
+  const cancelado  = pasoActual === -1;
+  const labels     = esEnvio ? OD_PASOS_ENVIO  : OD_PASOS_RETIRO;
+  const emojis     = esEnvio ? OD_EMOJIS : OD_EMOJIS_RETIRO;
+
+  const stepsHtml = labels.map((label, i) => {
+    const cls = cancelado ? '' : i < pasoActual ? 'done' : i === pasoActual ? 'active' : '';
+    return `
+      <div class="od-step ${cls}" title="Cambiar a: ${label}"
+        onclick="setOrderStep('${orderId}', ${i}, ${esEnvio})">
+        <div class="od-step-dot">${emojis[i]}</div>
+        <div class="od-step-name">${label}</div>
+      </div>`;
+  }).join('');
+
+  const fillPct = cancelado ? '0%' : OD_PCT[pasoActual] || '8%';
+
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <div class="card-title">📊 Estado del pedido</div>
+        <div style="font-size:8px;color:var(--muted);letter-spacing:1px">Click en un paso para cambiar el estado</div>
+      </div>
+      <div class="card-body">
+        ${cancelado ? `<div style="text-align:center;padding:8px;background:rgba(224,85,85,.1);border:1px solid rgba(224,85,85,.2);color:var(--red);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">❌ Pedido Cancelado</div>` : ''}
+        <div class="od-progress-wrap">
+          <div class="od-progress-track">
+            <div class="od-progress-fill" id="odProgressFill" style="width:${fillPct}"></div>
+            ${stepsHtml}
+          </div>
+        </div>
+        <div class="od-cancelado-btn">
+          <button onclick="setOrderCancelado('${orderId}')">
+            ${cancelado ? '↩ Reactivar pedido' : '✕ Cancelar pedido'}
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
 function viewOrder(id) {
-  // Buscar primero en allOrders (fuente de verdad), luego en localStorage como fallback
   let o = allOrders.find(x => x.id === id);
   if (!o) {
     const stored = JSON.parse(localStorage.getItem('founder_pedidos') || '[]');
@@ -1706,30 +1796,34 @@ function viewOrder(id) {
   const prodsText = o.productos || (o.items||[]).map(it=>`Founder ${it.name} (${it.color}) x${it.qty}`).join('<br>') || '—';
   const statusMap = {
     'Pendiente pago':'status-pendiente-pago','Pendiente confirmación':'status-pendiente-mp',
+    'En preparación':'status-confirmado','En camino':'status-confirmado',
+    'Listo para retirar':'status-confirmado',
     'Confirmado':'status-confirmado','Entregado':'status-entregado','Cancelado':'status-cancelado'
   };
   const cls = statusMap[o.estado] || '';
 
-  // ── Detectar si es envío a domicilio (no retiro) ──────────────
   const esEnvio = (o.entrega || '').toLowerCase().includes('envío') ||
                   (o.entrega || '').toLowerCase().includes('envio');
 
-  // ── Sección de seguimiento — solo para envíos ─────────────────
-  const nroTracking  = o.nro_seguimiento  || '';
-  const urlTracking  = o.url_seguimiento  || '';
-  const trackingSection = esEnvio ? `
+  const progressHTML = renderProgressBar(o.id, o.estado, esEnvio);
+
+  const nroTracking = o.nro_seguimiento || '';
+  const urlTracking = o.url_seguimiento || '';
+
+  const trackingSection = `
     <div class="card" style="margin-bottom:16px;border-color:rgba(201,169,110,.25)">
       <div class="card-head">
-        <div class="card-title">🚚 Seguimiento de envío</div>
+        <div class="card-title">${esEnvio ? '🚚 Seguimiento de envío' : '📍 Coordinar retiro'}</div>
       </div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+        ${esEnvio ? `
         <div class="fg">
           <div class="fl">Número de seguimiento</div>
           <div style="display:flex;gap:8px">
             <input type="text" class="fi" id="trackingNro" placeholder="Ej: UES-00123456"
               value="${sanitizeAttr(nroTracking)}"
               oninput="this.value=this.value.replace(/[<>\"']/g,'')">
-            <button class="btn btn-sm btn-primary" onclick="saveTracking('${id}')">Guardar</button>
+            <button class="btn btn-sm btn-primary" onclick="saveTracking('${o.id}')">Guardar</button>
           </div>
         </div>
         <div class="fg">
@@ -1737,23 +1831,33 @@ function viewOrder(id) {
           <div style="display:flex;gap:8px">
             <input type="url" class="fi" id="trackingUrl" placeholder="https://..."
               value="${sanitizeAttr(urlTracking)}"
-              oninput="this.value=this.value.replace(/[<>\"'\\s]/g,'')">
+              oninput="this.value=this.value.replace(/[<>\"'\s]/g,'')">
             <button class="btn btn-sm btn-secondary" onclick="openTrackingUrl()" title="Abrir en nueva pestaña">↗</button>
           </div>
           <div style="font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:.5px">
             El cliente verá este link en la página de seguimiento para rastrear su envío.
           </div>
-        </div>
+        </div>` : `
+        <div style="font-size:11px;color:var(--muted);line-height:1.8;background:var(--mid);padding:12px 14px;border:1px solid var(--border)">
+          📍 Retiro en <strong style="color:var(--white)">zona Prado, Montevideo</strong>.<br>
+          Cuando el pedido esté listo para retirar, coordiná día y hora con el comprador por WhatsApp.<br>
+          <a href="https://wa.me/598098550096" target="_blank" rel="noopener noreferrer"
+            style="color:var(--gold);text-decoration:underline;font-size:10px;letter-spacing:.5px">
+            Abrir WhatsApp →
+          </a>
+        </div>`}
       </div>
-    </div>` : '';
+    </div>`;
 
   document.getElementById('orderDetailContent').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
       <div style="font-family:'Cormorant Garamond',serif;font-size:28px">Pedido #${o.id}</div>
-      <div class="order-status ${cls}" style="font-size:12px;padding:6px 14px">${o.estado}</div>
+      <div class="order-status ${cls}" style="font-size:12px;padding:6px 14px">${o.estado || 'Pendiente'}</div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+    ${progressHTML}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div class="card">
         <div class="card-head"><div class="card-title">👤 Datos del comprador</div></div>
         <div class="card-body" style="font-size:13px;line-height:2;color:var(--muted)">
@@ -1781,7 +1885,7 @@ function viewOrder(id) {
       <div class="card-head"><div class="card-title">💰 Resumen de pago</div></div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:8px;font-size:13px">
         <div style="display:flex;justify-content:space-between;color:var(--muted)"><span>Subtotal</span><span>$${(o.subtotal||0).toLocaleString('es-UY')}</span></div>
-        ${o.descuento ? `<div style="display:flex;justify-content:space-between;color:var(--green)"><span>Descuento 10%</span><span>-$${o.descuento.toLocaleString('es-UY')}</span></div>` : ''}
+        ${o.descuento ? `<div style="display:flex;justify-content:space-between;color:var(--green)"><span>Descuento</span><span>-$${o.descuento.toLocaleString('es-UY')}</span></div>` : ''}
         ${o.envio ? `<div style="display:flex;justify-content:space-between;color:var(--muted)"><span>Envío</span><span>$${o.envio.toLocaleString('es-UY')}</span></div>` : `<div style="display:flex;justify-content:space-between;color:var(--green)"><span>Envío</span><span>Gratis</span></div>`}
         <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
           <span style="font-family:'Cormorant Garamond',serif;font-size:18px">Total</span>
@@ -1792,17 +1896,45 @@ function viewOrder(id) {
     </div>
 
     ${trackingSection}
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      ${['Pendiente pago','Pendiente confirmación','Confirmado','Entregado','Cancelado'].map(s =>
-        `<button class="btn btn-sm ${o.estado === s ? 'btn-primary' : 'btn-secondary'}"
-          onclick="changeOrderStatus('${o.id}','${s}');viewOrder('${o.id}')">${s}</button>`
-      ).join('')}
-    </div>
   `;
+
+  const paso = estadoAPaso(o.estado);
+  const fill = document.getElementById('odProgressFill');
+  if (fill && paso >= 0) {
+    fill.style.width = '0%';
+    setTimeout(() => { fill.style.width = OD_PCT[paso] || '8%'; }, 80);
+  }
+
   document.getElementById('orderDetailModal').classList.add('open');
 }
 function closeOrderDetail() { document.getElementById('orderDetailModal').classList.remove('open'); }
+
+/**
+ * Cambia el estado al hacer click en un paso de la barra de progreso.
+ * @param {string} orderId
+ * @param {number} pasoIdx  0=Pendiente 1=En prep 2=En camino/Listo 3=Entregado
+ * @param {boolean} esEnvio
+ */
+function setOrderStep(orderId, pasoIdx, esEnvio) {
+  const ESTADOS_POR_PASO_ENVIO  = ['Pendiente pago', 'En preparación', 'En camino',          'Entregado'];
+  const ESTADOS_POR_PASO_RETIRO = ['Pendiente pago', 'En preparación', 'Listo para retirar', 'Entregado'];
+  const estados = esEnvio ? ESTADOS_POR_PASO_ENVIO : ESTADOS_POR_PASO_RETIRO;
+  const nuevoEstado = estados[pasoIdx];
+  if (!nuevoEstado) return;
+  changeOrderStatus(orderId, nuevoEstado);
+  setTimeout(() => viewOrder(orderId), 150);
+}
+
+/** Cancela o reactiva un pedido */
+function setOrderCancelado(orderId) {
+  const o = allOrders.find(x => x.id === orderId);
+  if (!o) return;
+  const nuevoEstado = normalizarEstado(o.estado).includes('cancel') ? 'Pendiente pago' : 'Cancelado';
+  changeOrderStatus(orderId, nuevoEstado);
+  setTimeout(() => viewOrder(orderId), 150);
+}
+
+
 
 // ── TRACKING — Helpers de seguridad ──────────────────────────────
 /** Escapa atributos HTML para prevenir XSS en value="" */
