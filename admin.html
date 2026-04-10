@@ -8,6 +8,15 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;background:#141414;color:#f8f8f4;font-family:'Montserrat',sans-serif;font-weight:300}
+/* ── TAP HIGHLIGHT — elimina el flash azul en Android/iOS */
+*{-webkit-tap-highlight-color:transparent}
+*{cursor:auto}
+a,button,[onclick],label,select{cursor:pointer}
+/* Feedback táctil premium al presionar */
+a:active,button:active,[onclick]:active,label:active{opacity:0.75;transition:opacity 0.08s ease}
+/* Accesibilidad: focus visible solo con teclado */
+:focus-visible{outline:1px solid var(--gold);outline-offset:2px}
+:focus:not(:focus-visible){outline:none}
 :root{
   --black:#141414;--white:#f8f8f4;--gold:#c9a96e;
   --gray:#222222;--mid:#2e2e2e;--light:#3a3a3a;
@@ -243,7 +252,7 @@ textarea.fi{resize:vertical;min-height:70px}
 .info-box strong{color:var(--gold)}
 /* CUPONES */
 .cupones-layout{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
-.cupones-table{width:100%;border-collapse:collapse;font-size:11px}
+.cupones-table{width:100%;border-collapse:collapse;font-size:12px}
 .cupones-table th{background:var(--mid);color:var(--muted);font-size:8px;letter-spacing:2px;text-transform:uppercase;padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);font-weight:500}
 .cupones-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
 .cupones-table tr:last-child td{border-bottom:none}
@@ -573,7 +582,7 @@ textarea.fi{resize:vertical;min-height:70px}
         <div class="ph"><div><div class="ph-title">Conversor de imágenes</div><div class="ph-sub">Convertí links de Google Drive al formato correcto</div></div></div>
         <div class="card">
           <div class="card-head"><div class="card-title">¿Cómo funciona?</div></div>
-          <div class="card-body" style="font-size:11px;color:var(--muted);line-height:2">
+          <div class="card-body" style="font-size:12px;color:var(--muted);line-height:2">
             1. Subí la foto a <strong style="color:var(--white)">founder-imagenes</strong> en Google Drive<br>
             2. Click derecho → Compartir → "Cualquier persona con el enlace"<br>
             3. Copiá el link y pegalo abajo → hacé click en "Convertir"
@@ -1668,7 +1677,7 @@ function renderOrders(orders) {
           ${o.pago || ''}
         </div>
         <div class="order-prods">${prodsText}</div>
-        <div class="order-total">$${(o.total || 0).toLocaleString('es-UY')} <span style="font-size:11px;color:var(--muted)">UYU</span></div>
+        <div class="order-total">$${(o.total || 0).toLocaleString('es-UY')} <span style="font-size:12px;color:var(--muted)">UYU</span></div>
       </div>
       <div class="order-foot">
         <button class="btn btn-secondary btn-sm" onclick="viewOrder('${o.id}')">👁 Ver detalle</button>
@@ -1701,13 +1710,13 @@ function viewOrder(id) {
   document.getElementById('orderDetailContent').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
       <div style="font-family:'Cormorant Garamond',serif;font-size:28px">Pedido #${o.id}</div>
-      <div class="order-status ${cls}" style="font-size:11px;padding:6px 14px">${o.estado}</div>
+      <div class="order-status ${cls}" style="font-size:12px;padding:6px 14px">${o.estado}</div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
       <div class="card">
         <div class="card-head"><div class="card-title">👤 Datos del comprador</div></div>
-        <div class="card-body" style="font-size:12px;line-height:2;color:var(--muted)">
+        <div class="card-body" style="font-size:13px;line-height:2;color:var(--muted)">
           <strong style="color:var(--white)">${o.nombre || ''} ${o.apellido || ''}</strong><br>
           📱 ${o.celular || o.telefono || '—'}<br>
           📧 ${o.email || '—'}<br>
@@ -1716,7 +1725,7 @@ function viewOrder(id) {
       </div>
       <div class="card">
         <div class="card-head"><div class="card-title">📍 Entrega</div></div>
-        <div class="card-body" style="font-size:12px;line-height:2;color:var(--muted)">
+        <div class="card-body" style="font-size:13px;line-height:2;color:var(--muted)">
           <strong style="color:var(--white)">${o.entrega || '—'}</strong><br>
           ${o.direccion || '—'}
         </div>
@@ -1725,12 +1734,12 @@ function viewOrder(id) {
 
     <div class="card" style="margin-bottom:16px">
       <div class="card-head"><div class="card-title">🛍️ Productos</div></div>
-      <div class="card-body" style="font-size:12px;line-height:2;color:var(--muted)">${prodsText}</div>
+      <div class="card-body" style="font-size:13px;line-height:2;color:var(--muted)">${prodsText}</div>
     </div>
 
     <div class="card" style="margin-bottom:20px">
       <div class="card-head"><div class="card-title">💰 Resumen de pago</div></div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:8px;font-size:12px">
+      <div class="card-body" style="display:flex;flex-direction:column;gap:8px;font-size:13px">
         <div style="display:flex;justify-content:space-between;color:var(--muted)"><span>Subtotal</span><span>$${(o.subtotal||0).toLocaleString('es-UY')}</span></div>
         ${o.descuento ? `<div style="display:flex;justify-content:space-between;color:var(--green)"><span>Descuento 10%</span><span>-$${o.descuento.toLocaleString('es-UY')}</span></div>` : ''}
         ${o.envio ? `<div style="display:flex;justify-content:space-between;color:var(--muted)"><span>Envío</span><span>$${o.envio.toLocaleString('es-UY')}</span></div>` : `<div style="display:flex;justify-content:space-between;color:var(--green)"><span>Envío</span><span>Gratis</span></div>`}
