@@ -655,6 +655,17 @@
       margin-top: 12px;
       letter-spacing: 0.03em;
     }
+    .tracking-retiro-msg {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .tracking-retiro-msg p {
+      font-size: var(--text-body-sm);
+      color: var(--color-muted);
+      line-height: 1.8;
+    }
+    .tracking-retiro-msg strong { color: var(--color-text); font-weight: 500; }
 
     /* ── BOTÓN VOLVER ── */
     .btn-volver {
@@ -877,13 +888,54 @@
           </div>
           <div class="progress-step" id="step-camino">
             <div class="step-dot" id="dot-camino">🚚</div>
-            <div class="step-name">En camino</div>
+            <div class="step-name" id="label-camino">En camino</div>
           </div>
           <div class="progress-step" id="step-entregado">
             <div class="step-dot" id="dot-entregado">✅</div>
             <div class="step-name">Entregado</div>
           </div>
         </div>
+      </div>
+
+      <!-- Seguimiento / Coordinación — visible siempre; contenido varía por modalidad -->
+      <div class="tracking-section" id="trackingSection" style="display:none">
+
+        <!-- Variante ENVÍO -->
+        <div id="trackingEnvioContent" style="display:none">
+          <h3>🚚 Seguimiento de tu envío</h3>
+          <div class="tracking-nro" id="trackingNroWrap">
+            <span class="tracking-nro__label">Nro.</span>
+            <span class="tracking-nro__value" id="rTrackingNro">—</span>
+            <button class="tracking-copy-btn" id="trackingCopyBtn"
+              onclick="copiarNroSeguimiento()" aria-label="Copiar número de seguimiento">
+              Copiar
+            </button>
+          </div>
+          <a id="trackingUrlBtn" href="#" target="_blank" rel="noopener noreferrer"
+            class="tracking-url-btn" onclick="return abrirUrlSeguimiento(event)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zm-1 2H5a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-8h-2v8H5V7h8V5z"/></svg>
+            Rastrear en el sitio del transportista
+          </a>
+          <p class="tracking-hint">
+            Copiá el número y pegalo en el sitio del transportista para ver el estado detallado de tu envío.
+          </p>
+        </div>
+
+        <!-- Variante RETIRO -->
+        <div id="trackingRetiroContent" style="display:none">
+          <h3>📍 Información de retiro</h3>
+          <div class="tracking-retiro-msg">
+            <p>Una vez confirmado que tu pedido está <strong>listo para retirar</strong>, te contactaremos para coordinar día y horario.</p>
+            <p>El retiro se realiza en <strong>zona Prado, Montevideo</strong>. La dirección exacta se coordina por WhatsApp.</p>
+            <a href="https://wa.me/598098550096?text=Hola!%20Quiero%20coordinar%20el%20retiro%20de%20mi%20pedido."
+              target="_blank" rel="noopener noreferrer"
+              class="tracking-url-btn" style="margin-top:16px">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              Coordinar retiro por WhatsApp
+            </a>
+          </div>
+        </div>
+
       </div>
 
       <!-- Info grid -->
@@ -930,32 +982,6 @@
       <div class="totales-section">
         <h3>Resumen de pago</h3>
         <div id="rTotales"></div>
-      </div>
-
-      <!-- Seguimiento de envío — solo visible si hay envío y datos cargados -->
-      <div class="tracking-section" id="trackingSection" style="display:none">
-        <h3>🚚 Seguimiento de tu envío</h3>
-
-        <!-- Número de seguimiento -->
-        <div class="tracking-nro" id="trackingNroWrap">
-          <span class="tracking-nro__label">Nro.</span>
-          <span class="tracking-nro__value" id="rTrackingNro">—</span>
-          <button class="tracking-copy-btn" id="trackingCopyBtn"
-            onclick="copiarNroSeguimiento()" aria-label="Copiar número de seguimiento">
-            Copiar
-          </button>
-        </div>
-
-        <!-- Botón al sitio del transportista -->
-        <a id="trackingUrlBtn" href="#" target="_blank" rel="noopener noreferrer"
-          class="tracking-url-btn" onclick="return abrirUrlSeguimiento(event)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zm-1 2H5a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-8h-2v8H5V7h8V5z"/></svg>
-          Rastrear en el sitio del transportista
-        </a>
-
-        <p class="tracking-hint">
-          Copiá el número y pegalo en el sitio del transportista para ver el estado detallado de tu envío.
-        </p>
       </div>
 
       <!-- Volver -->
@@ -1144,6 +1170,33 @@
     }
     document.getElementById('rPago').textContent = pago || '—';
 
+    // ── Detectar modalidad de entrega ──────────────────────────────
+    const esEnvio = entrega.toLowerCase().includes('envío') ||
+                    entrega.toLowerCase().includes('envio');
+
+    // ── Paso 3 de la barra: adaptar texto según modalidad ─────────
+    const labelCamino = document.getElementById('label-camino');
+    const dotCamino   = document.getElementById('dot-camino');
+    if (labelCamino) {
+      labelCamino.textContent = esEnvio ? 'En camino' : 'Listo para retirar';
+    }
+    if (dotCamino) {
+      dotCamino.textContent = esEnvio ? '🚚' : '📍';
+    }
+
+    // ── Agregar "listo para retirar" al mapa de estados si es retiro ──
+    const estadosProgreso = {
+      'pendiente':              0,
+      'en preparacion':         1,
+      'preparacion':            1,
+      'en camino':              2,
+      'camino':                 2,
+      'listo para retirar':     2,  // retiro: paso equivalente a "en camino"
+      'listo':                  2,
+      'retirar':                2,
+      'entregado':              3,
+    };
+
     // Estado → progreso
     const estadoNorm = normalizar(estado);
     const cancelado  = estadoNorm.includes('cancel');
@@ -1155,16 +1208,16 @@
       document.getElementById('progressSection').style.display = '';
       document.getElementById('rBadgeCancelado').innerHTML = '';
 
-      // Buscar índice del estado actual
+      // Buscar índice del estado actual en el mapa extendido
       let idxActual = 0;
-      for (const [key, val] of Object.entries(ESTADOS_PROGRESO)) {
+      for (const [key, val] of Object.entries(estadosProgreso)) {
         if (estadoNorm.includes(key)) { idxActual = val; break; }
       }
 
-      // Actualizar pasos
+      // Actualizar pasos visuales
       IDS_PASOS.forEach((paso, i) => {
-        const stepEl = document.getElementById(`step-${paso}`);
-        const dotEl  = document.getElementById(`dot-${paso}`);
+        const stepEl = document.getElementById('step-' + paso);
+        const dotEl  = document.getElementById('dot-' + paso);
         stepEl.classList.remove('active','done');
         dotEl.classList.remove('active','done');
         if (i < idxActual) {
@@ -1176,7 +1229,7 @@
         }
       });
 
-      // Animar barra (con delay para que se vea la animación)
+      // Animar barra
       const fill = document.getElementById('progressFill');
       fill.style.width = '0%';
       setTimeout(() => { fill.style.width = PROGRESO_PCT[idxActual]; }, 100);
@@ -1188,22 +1241,24 @@
     // Totales
     renderTotales(subtotal, descuento, envio, total, pago);
 
-    // ── Sección de seguimiento de envío ──────────────────────────
-    // Solo se muestra si: modalidad es envío (no retiro) Y hay al menos nro o url
-    const esEnvio = entrega.toLowerCase().includes('envío') ||
-                    entrega.toLowerCase().includes('envio');
-    const tieneTracking = nroSeguimiento || urlSeguimiento;
-    const seccion = document.getElementById('trackingSection');
+    // ── Panel de tracking/retiro — siempre visible, contenido según modalidad ──
+    const seccion      = document.getElementById('trackingSection');
+    const envioContent = document.getElementById('trackingEnvioContent');
+    const retiroContent= document.getElementById('trackingRetiroContent');
 
-    if (esEnvio && tieneTracking) {
-      // Número de seguimiento
+    // Siempre mostrar el panel
+    seccion.style.display = '';
+
+    if (esEnvio) {
+      // Variante ENVÍO: mostrar nro y URL solo si existen
+      envioContent.style.display  = '';
+      retiroContent.style.display = 'none';
+
       document.getElementById('rTrackingNro').textContent = nroSeguimiento || '—';
 
-      // Botón copiar — solo si hay número
       const copyBtn = document.getElementById('trackingCopyBtn');
       copyBtn.style.display = nroSeguimiento ? '' : 'none';
 
-      // URL del transportista — validar que sea https antes de usar
       const urlBtn = document.getElementById('trackingUrlBtn');
       if (urlSeguimiento && /^https?:\/\//i.test(urlSeguimiento)) {
         urlBtn.href = urlSeguimiento;
@@ -1212,9 +1267,14 @@
         urlBtn.style.display = 'none';
       }
 
-      seccion.style.display = '';
+      // Si no hay ningún dato de tracking todavía, ocultar el panel de envío
+      if (!nroSeguimiento && !urlSeguimiento) {
+        seccion.style.display = 'none';
+      }
     } else {
-      seccion.style.display = 'none';
+      // Variante RETIRO: siempre mostrar el mensaje de coordinación
+      envioContent.style.display  = 'none';
+      retiroContent.style.display = '';
     }
 
     // Mostrar resultado
@@ -1299,8 +1359,15 @@
     document.getElementById('searchCard').style.display = '';
     document.getElementById('inputPedido').value = '';
     document.getElementById('inputEmail').value  = '';
-    // Ocultar tracking al resetear
-    document.getElementById('trackingSection').style.display = 'none';
+    // Ocultar tracking y sus subpaneles al resetear
+    document.getElementById('trackingSection').style.display    = 'none';
+    document.getElementById('trackingEnvioContent').style.display  = 'none';
+    document.getElementById('trackingRetiroContent').style.display = 'none';
+    // Restaurar paso 3 a texto por defecto
+    const lc = document.getElementById('label-camino');
+    const dc = document.getElementById('dot-camino');
+    if (lc) lc.textContent = 'En camino';
+    if (dc) dc.textContent = '🚚';
     ocultarError();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
