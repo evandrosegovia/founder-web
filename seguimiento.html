@@ -566,6 +566,96 @@
     }
     .total-row .descuento-val { color: var(--color-success); }
 
+    /* ── SECCIÓN DE SEGUIMIENTO DE ENVÍO ── */
+    .tracking-section {
+      background: var(--color-surface);
+      border: 1px solid rgba(201,169,110,0.25);
+      border-radius: 4px;
+      padding: 24px 28px;
+      margin-bottom: 24px;
+    }
+    .tracking-section h3 {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--color-gold);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tracking-nro {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--color-surface2);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 3px;
+      padding: 14px 18px;
+      margin-bottom: 14px;
+    }
+    .tracking-nro__label {
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      flex-shrink: 0;
+    }
+    .tracking-nro__value {
+      font-family: var(--font-serif);
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--color-text);
+      letter-spacing: 0.05em;
+      flex: 1;
+      word-break: break-all;
+    }
+    .tracking-copy-btn {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: var(--color-muted);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: border-color 0.2s, color 0.2s;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .tracking-copy-btn:hover { border-color: var(--color-gold); color: var(--color-gold); }
+    .tracking-copy-btn.copied { border-color: var(--color-success); color: var(--color-success); }
+    .tracking-url-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(201,169,110,0.1);
+      border: 1px solid rgba(201,169,110,0.35);
+      color: var(--color-gold);
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 12px 20px;
+      border-radius: 3px;
+      text-decoration: none;
+      transition: background 0.2s, border-color 0.2s;
+      cursor: pointer;
+      width: 100%;
+      justify-content: center;
+    }
+    .tracking-url-btn:hover { background: rgba(201,169,110,0.18); border-color: var(--color-gold); }
+    .tracking-url-btn svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
+    .tracking-hint {
+      font-size: 0.68rem;
+      color: var(--color-muted);
+      line-height: 1.6;
+      margin-top: 12px;
+      letter-spacing: 0.03em;
+    }
+
     /* ── BOTÓN VOLVER ── */
     .btn-volver {
       display: inline-flex;
@@ -842,6 +932,32 @@
         <div id="rTotales"></div>
       </div>
 
+      <!-- Seguimiento de envío — solo visible si hay envío y datos cargados -->
+      <div class="tracking-section" id="trackingSection" style="display:none">
+        <h3>🚚 Seguimiento de tu envío</h3>
+
+        <!-- Número de seguimiento -->
+        <div class="tracking-nro" id="trackingNroWrap">
+          <span class="tracking-nro__label">Nro.</span>
+          <span class="tracking-nro__value" id="rTrackingNro">—</span>
+          <button class="tracking-copy-btn" id="trackingCopyBtn"
+            onclick="copiarNroSeguimiento()" aria-label="Copiar número de seguimiento">
+            Copiar
+          </button>
+        </div>
+
+        <!-- Botón al sitio del transportista -->
+        <a id="trackingUrlBtn" href="#" target="_blank" rel="noopener noreferrer"
+          class="tracking-url-btn" onclick="return abrirUrlSeguimiento(event)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3zm-1 2H5a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-8h-2v8H5V7h8V5z"/></svg>
+          Rastrear en el sitio del transportista
+        </a>
+
+        <p class="tracking-hint">
+          Copiá el número y pegalo en el sitio del transportista para ver el estado detallado de tu envío.
+        </p>
+      </div>
+
       <!-- Volver -->
       <button class="btn-volver" onclick="resetear()">← Nueva consulta</button>
 
@@ -956,7 +1072,7 @@
       const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
       const rows = json.table.rows;
 
-      // Columnas: A=id B=fecha C=nombre D=apellido E=celular F=email G=entrega H=direccion I=productos J=subtotal K=descuento L=envio M=total N=pago O=estado P=notas
+      // Columnas: A=id B=fecha C=nombre D=apellido E=celular F=email G=entrega H=direccion I=productos J=subtotal K=descuento L=envio M=total N=pago O=estado P=notas Q=nro_seguimiento R=url_seguimiento
       const pedido = rows.find(r => {
         const id    = normalizar(r.c[0]?.v ?? '');
         const email = normalizar(r.c[5]?.v ?? '');
@@ -989,22 +1105,25 @@
     const c = r.c;
     const get = (i) => (c[i]?.v ?? '').toString().trim();
 
-    const id        = get(0);
-    const fecha     = get(1);
-    const nombre    = get(2);
-    const apellido  = get(3);
-    const celular   = get(4);
-    const email     = get(5);
-    const entrega   = get(6);
-    const direccion = get(7);
-    const productos = get(8);
-    const subtotal  = get(9);
-    const descuento = get(10);
-    const envio     = get(11);
-    const total     = get(12);
-    const pago      = get(13);
-    const estado    = get(14);
-    const notas     = get(15);
+    const id             = get(0);
+    const fecha          = get(1);
+    const nombre         = get(2);
+    const apellido       = get(3);
+    const celular        = get(4);
+    const email          = get(5);
+    const entrega        = get(6);
+    const direccion      = get(7);
+    const productos      = get(8);
+    const subtotal       = get(9);
+    const descuento      = get(10);
+    const envio          = get(11);
+    const total          = get(12);
+    const pago           = get(13);
+    const estado         = get(14);
+    const notas          = get(15);
+    // Columnas Q y R — seguimiento de envío (agregadas por admin)
+    const nroSeguimiento = get(16);
+    const urlSeguimiento = get(17);
 
     // ID formateado
     document.getElementById('rPedidoId').textContent = id.toUpperCase().startsWith('FND') ? id : `FND-${id}`;
@@ -1068,6 +1187,35 @@
 
     // Totales
     renderTotales(subtotal, descuento, envio, total, pago);
+
+    // ── Sección de seguimiento de envío ──────────────────────────
+    // Solo se muestra si: modalidad es envío (no retiro) Y hay al menos nro o url
+    const esEnvio = entrega.toLowerCase().includes('envío') ||
+                    entrega.toLowerCase().includes('envio');
+    const tieneTracking = nroSeguimiento || urlSeguimiento;
+    const seccion = document.getElementById('trackingSection');
+
+    if (esEnvio && tieneTracking) {
+      // Número de seguimiento
+      document.getElementById('rTrackingNro').textContent = nroSeguimiento || '—';
+
+      // Botón copiar — solo si hay número
+      const copyBtn = document.getElementById('trackingCopyBtn');
+      copyBtn.style.display = nroSeguimiento ? '' : 'none';
+
+      // URL del transportista — validar que sea https antes de usar
+      const urlBtn = document.getElementById('trackingUrlBtn');
+      if (urlSeguimiento && /^https?:\/\//i.test(urlSeguimiento)) {
+        urlBtn.href = urlSeguimiento;
+        urlBtn.style.display = '';
+      } else {
+        urlBtn.style.display = 'none';
+      }
+
+      seccion.style.display = '';
+    } else {
+      seccion.style.display = 'none';
+    }
 
     // Mostrar resultado
     document.getElementById('searchCard').style.display = 'none';
@@ -1151,8 +1299,50 @@
     document.getElementById('searchCard').style.display = '';
     document.getElementById('inputPedido').value = '';
     document.getElementById('inputEmail').value  = '';
+    // Ocultar tracking al resetear
+    document.getElementById('trackingSection').style.display = 'none';
     ocultarError();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /** Copia el número de seguimiento al portapapeles */
+  function copiarNroSeguimiento() {
+    const nro = document.getElementById('rTrackingNro')?.textContent?.trim();
+    if (!nro || nro === '—') return;
+    navigator.clipboard.writeText(nro).then(() => {
+      const btn = document.getElementById('trackingCopyBtn');
+      btn.textContent = '¡Copiado!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copiar';
+        btn.classList.remove('copied');
+      }, 2000);
+    }).catch(() => {
+      // Fallback para navegadores sin clipboard API
+      const ta = document.createElement('textarea');
+      ta.value = nro;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      const btn = document.getElementById('trackingCopyBtn');
+      btn.textContent = '¡Copiado!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  /** Valida y abre la URL del transportista en nueva pestaña */
+  function abrirUrlSeguimiento(e) {
+    const href = document.getElementById('trackingUrlBtn')?.href || '';
+    if (!href || href === window.location.href + '#' || !/^https?:\/\//i.test(href)) {
+      e.preventDefault();
+      return false;
+    }
+    // Permitir apertura — el atributo target="_blank" + rel="noopener noreferrer" ya protege
+    return true;
   }
 
   // Enter en los inputs → buscar
