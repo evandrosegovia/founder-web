@@ -119,6 +119,10 @@ select:active,
 /* ── SHARED — Header ─────────────────────────────────────────── */
 .header { position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-header); height: 70px; padding: 0 var(--space-lg); display: flex; align-items: center; justify-content: space-between; background: #111111; background: rgba(14,14,14,.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--color-border-solid); }
 .logo { font-family: var(--font-serif); font-size: 22px; font-weight: 500; letter-spacing: 6px; color: var(--color-text); }
+.header__nav { display: flex; gap: 32px; align-items: center; }
+.header__nav-link { color: var(--color-muted); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; text-decoration: none; transition: color var(--transition-fast); }
+.header__nav-link:hover { color: var(--color-text); }
+.header__nav-link.is-active { color: var(--color-text); }
 .header__right { display: flex; align-items: center; gap: 24px; }
 .header__back { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-muted); transition: color var(--transition-fast); }
 .header__back:hover { color: var(--color-text); }
@@ -126,6 +130,7 @@ select:active,
 .cart-btn:hover { background: var(--color-text); color: var(--color-bg); }
 .cart-count { position: absolute; top: -8px; right: -8px; background: var(--color-gold); color: var(--color-bg); width: 18px; height: 18px; border-radius: 50%; font-size: 9px; display: none; align-items: center; justify-content: center; font-weight: 600; }
 .cart-count.is-visible { display: flex; }
+@media (max-width: 900px) { .header__nav { display: none; } }
 
 /* ── PRODUCTO — Breadcrumb ─────────────────────────────────── */
 .breadcrumb { padding: 90px var(--space-lg) 0; display: flex; align-items: center; gap: 12px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
@@ -466,6 +471,13 @@ body.cart-open .wa-bubble {
 <!-- ── HEADER ──────────────────────────────────────────────── -->
 <header class="header" role="banner">
   <a href="index.html" class="logo" aria-label="Founder - Inicio">FOUNDER</a>
+  <nav class="header__nav" aria-label="Navegación principal">
+    <a href="index.html" class="header__nav-link">Inicio</a>
+    <a href="index.html#productos" class="header__nav-link is-active">Productos</a>
+    <a href="tecnologia-rfid.html" class="header__nav-link">Tecnología RFID</a>
+    <a href="seguimiento.html" class="header__nav-link">Seguí tu compra</a>
+    <a href="contacto.html" class="header__nav-link">Contacto</a>
+  </nav>
   <div class="header__right">
     <a href="index.html" class="header__back">← Volver</a>
     <button class="cart-btn" onclick="toggleCart()" aria-label="Abrir carrito">
