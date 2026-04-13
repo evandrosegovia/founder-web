@@ -3,93 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="pageTitle">FOUNDER — Producto</title>
+  <meta name="description" id="pageDesc" content="Billetera premium con tecnología RFID. Founder Uruguay.">
+  <link rel="canonical" id="pageCanonical" href="https://founder-web-gules.vercel.app/producto.html">
 
-  <!-- ============ SEO PRIMARY ============ -->
-  <title>FOUNDER — Billeteras & Tarjeteros con Protección RFID | Uruguay</title>
-  <meta name="description" content="Billeteras y tarjeteros premium con tecnología RFID. Protegé tus tarjetas. Envíos a todo Uruguay. Pagá con Mercado Pago o transferencia.">
-  <meta name="keywords" content="billetera RFID Uruguay, tarjetero premium, billetera antirrobo, founder uruguay">
-  <meta name="author" content="Founder.uy">
-  <link rel="canonical" href="https://founder-web-gules.vercel.app">
+  <!-- OG dinámico (se actualiza por JS) -->
+  <meta property="og:type" content="product">
+  <meta property="og:site_name" content="Founder.uy">
 
-  <!-- ============ SEO OPEN GRAPH ============ -->
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://founder-web-gules.vercel.app">
-  <meta property="og:title" content="FOUNDER — Billeteras & Tarjeteros con Protección RFID">
-  <meta property="og:description" content="Billeteras y tarjeteros premium con tecnología RFID. Envíos a todo Uruguay.">
-  <meta property="og:locale" content="es_UY">
-
-  <!-- ============ SEO TWITTER ============ -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="FOUNDER — Billeteras RFID Premium Uruguay">
-  <meta name="twitter:description" content="Protegé tus tarjetas con tecnología RFID. Envíos a todo Uruguay.">
-
-  <!-- ============ SCHEMA.ORG ============ -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "Store",
-    "name": "Founder.uy",
-    "description": "Billeteras y tarjeteros premium con tecnología RFID",
-    "url": "https://founder-web-gules.vercel.app",
-    "telephone": "+598098550096",
-    "address": { "@type": "PostalAddress", "addressCountry": "UY" },
-    "priceRange": "$$"
-  }
-  </script>
-
-  <!-- ============ FONTS ============ -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- ============ FAVICON ============ -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23141414'/><text y='72' x='50' text-anchor='middle' font-size='60' font-family='serif' fill='%23c9a96e'>F</text></svg>">
-
 <style>
 /* =============================================================
-   FOUNDER — Design System
-   Tokens → Reset → Layout → Components → Utilities → Responsive
+   FOUNDER producto.html — Design System (mismo que index.html)
    ============================================================= */
 
 /* ── DESIGN TOKENS ────────────────────────────────────────── */
 :root {
-  color-scheme: dark;
-  /* Colors */
-  --color-bg:          #141414;
-  --color-surface:     #222222;
-  --color-surface2:    #2e2e2e;
-  --color-surface3:    #3a3a3a;
-  --color-text:        #f8f8f4;
-  --color-muted:       #9a9a9a;
-  --color-gold:        #c9a96e;
-  --color-border:      rgba(255,255,255,0.08);
-  --color-border-solid: #282828; /* equivalente visual HEX de rgba(255,255,255,0.08) sobre #141414 */
-  --color-danger:      #e05555;
-  --color-success:     #4caf82;
-
-  /* Typography */
-  --font-serif:  'Cormorant Garamond', serif;
-  --font-sans:   'Montserrat', sans-serif;
-
-  /* Spacing */
-  --space-xs:  8px;
-  --space-sm:  16px;
-  --space-md:  24px;
-  --space-lg:  48px;
-  --space-xl:  80px;
-  --space-xxl: 120px;
-
-  /* Transitions */
+  --color-bg:       #141414;
+  --color-surface:  #222222;
+  --color-surface2: #2e2e2e;
+  --color-surface3: #3a3a3a;
+  --color-text:     #f8f8f4;
+  --color-muted:    #9a9a9a;
+  --color-gold:     #c9a96e;
+  --color-border:        rgba(255,255,255,0.08);
+  --color-border-solid: #282828;
+  --color-danger:   #e05555;
+  --color-success:  #4caf82;
+  --font-serif:     'Cormorant Garamond', serif;
+  --font-sans:      'Montserrat', sans-serif;
+  --space-xs: 8px; --space-sm: 16px; --space-md: 24px;
+  --space-lg: 48px; --space-xl: 80px;
   --transition-fast: 0.2s ease;
   --transition-base: 0.3s ease;
   --transition-slow: 0.5s cubic-bezier(.4,0,.2,1);
-
-  /* Z-index scale */
-  --z-header:   100;
-  --z-cart:     200;
-  --z-modal:    300;
-  --z-toast:    9999;
-  --z-cursor:   9998;
+  --z-header: 100; --z-cart: 200; --z-modal: 300; --z-toast: 9999; --z-cursor: 9998;
   /* Colores de productos — definidos aquí para renderizado consistente en todos los dispositivos */
   --swatch-negro:       #3a3f4a;
   --swatch-camel:       #d4a96e;
@@ -113,34 +64,23 @@
   --lh-body-lg:   1.95;    /* antes 1.9  — textos largos más aireados      */
 }
 /* Forzar renderizado de color nativo — sin ajuste automático del navegador móvil */
-.color-dot, .color-swatch, .color-option .color-swatch {
+.color-item__swatch, .color-dot, .color-swatch {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
-  /* color-scheme heredado del :root (dark) — no forzar 'only light' aquí: conflicto en iOS */
 }
 
 /* ── RESET ────────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  font-weight: 300;
-  overflow-x: hidden;
-  cursor: auto;
-  /* Normalizar renderizado de fuentes cross-device */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
+body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans); font-weight: 300; overflow-x: hidden; cursor: auto; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 img { display: block; max-width: 100%; }
 button { font-family: var(--font-sans); }
 a { color: inherit; text-decoration: none; }
 
 /* ── Cursor: se usa el cursor nativo del sistema ─────────────── */
 * { cursor: auto; }
-a, button, [onclick], label, select { cursor: pointer; }
+a, button, [onclick], label, select,
+.color-item, .gallery__thumb, .related-card { cursor: pointer; }
 
 /* ── TAP HIGHLIGHT — elimina el flash azul en Android/iOS ────────
    Chrome Android y WebView inyectan un highlight azul por defecto
@@ -154,24 +94,22 @@ button:active,
 [onclick]:active,
 label:active,
 select:active,
-.product-card:active,
-.color-dot:active,
-.color-option:active,
-.modal__thumb:active,
-.thumb-arrow:active,
-.cart__checkout-btn:active,
+.color-item:active,
+.color-item__swatch:active,
+.gallery__thumb:active,
+.related-card:active,
 .btn:active,
 .wa-bubble:active,
 .cart-btn:active,
-.nav__link:active,
-.footer__col ul li a:active,
-.footer__legal a:active {
+.header__back:active,
+.breadcrumb a:active,
+.tab-btn:active,
+.sticky-add-btn:active {
   opacity: 0.72;
   transition: opacity 0.08s ease;
 }
 
-/* Accesibilidad: focus visible solo con teclado/navegación,
-   nunca al hacer click — compatible con todos los navegadores */
+/* Accesibilidad: focus visible solo con teclado/navegación */
 :focus-visible {
   outline: 1px solid var(--color-gold);
   outline-offset: 2px;
@@ -179,123 +117,155 @@ select:active,
 :focus:not(:focus-visible) { outline: none; }
 
 /* ── SHARED — Header ─────────────────────────────────────────── */
-.header {
-  position: fixed; top: 0; left: 0; right: 0;
-  z-index: var(--z-header); height: 70px;
-  padding: 0 var(--space-lg);
-  display: flex; align-items: center; justify-content: space-between;
-  /* Fondo sólido como base (fallback para Android Chrome sin backdrop-filter) */
-  background: #111111;
-  /* Encima del sólido, el efecto glass para iOS Safari y Chrome Desktop */
-  background: rgba(14,14,14,.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--color-border-solid);
-}
-.logo {
-  font-family: var(--font-serif); font-size: 22px;
-  font-weight: 500; letter-spacing: 6px; color: var(--color-text);
-}
-.nav { display: flex; gap: 36px; }
-.nav__link {
-  color: var(--color-muted); font-size: 10px;
-  letter-spacing: 3px; text-transform: uppercase;
-  transition: color var(--transition-base);
-}
-.nav__link:hover { color: var(--color-text); }
-.cart-btn {
-  position: relative; background: none;
-  border: 1px solid var(--color-border); color: var(--color-text);
-  padding: 10px 20px; font-size: 10px;
-  letter-spacing: 3px; text-transform: uppercase;
-  cursor: pointer; transition: all var(--transition-base);
-}
+.header { position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-header); height: 70px; padding: 0 var(--space-lg); display: flex; align-items: center; justify-content: space-between; background: #111111; background: rgba(14,14,14,.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--color-border-solid); }
+.logo { font-family: var(--font-serif); font-size: 22px; font-weight: 500; letter-spacing: 6px; color: var(--color-text); }
+.header__right { display: flex; align-items: center; gap: 24px; }
+.header__back { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-muted); transition: color var(--transition-fast); }
+.header__back:hover { color: var(--color-text); }
+.cart-btn { position: relative; background: none; border: 1px solid var(--color-border); color: var(--color-text); padding: 10px 20px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; transition: all var(--transition-base); }
 .cart-btn:hover { background: var(--color-text); color: var(--color-bg); }
-.cart-count {
-  position: absolute; top: -8px; right: -8px;
-  background: var(--color-gold); color: var(--color-bg);
-  width: 18px; height: 18px; border-radius: 50%;
-  font-size: 9px; display: none;
-  align-items: center; justify-content: center; font-weight: 600;
-}
+.cart-count { position: absolute; top: -8px; right: -8px; background: var(--color-gold); color: var(--color-bg); width: 18px; height: 18px; border-radius: 50%; font-size: 9px; display: none; align-items: center; justify-content: center; font-weight: 600; }
 .cart-count.is-visible { display: flex; }
 
-/* ── HERO ─────────────────────────────────────────────────── */
-.hero {
-  min-height: 100vh; display: flex; align-items: center;
-  padding: 0 var(--space-lg); position: relative; overflow: hidden;
+/* ── PRODUCTO — Breadcrumb ─────────────────────────────────── */
+.breadcrumb { padding: 90px var(--space-lg) 0; display: flex; align-items: center; gap: 12px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
+.breadcrumb a { color: var(--color-muted); transition: color var(--transition-fast); }
+.breadcrumb a:hover { color: var(--color-text); }
+.breadcrumb__sep { color: var(--color-gold); }
+.breadcrumb__current { color: var(--color-text); }
+
+/* ── PRODUCTO — Estado de carga ────────────────────────────── */
+.loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 20px; color: var(--color-muted); }
+.loading-screen__title { font-family: var(--font-serif); font-size: 32px; font-weight: 300; }
+.loading-screen__sub { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; }
+
+/* ── PRODUCTO — Estado de error ────────────────────────────── */
+.error-screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 20px; text-align: center; padding: var(--space-lg); }
+.error-screen__title { font-family: var(--font-serif); font-size: 48px; font-weight: 300; }
+.error-screen__msg { font-size: var(--text-body-lg); color: var(--color-muted); line-height: var(--lh-body-sm); }
+.error-screen__btn { display: inline-block; background: var(--color-text); color: var(--color-bg); padding: 16px 36px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 600; margin-top: 8px; cursor: pointer; transition: background var(--transition-base); }
+.error-screen__btn:hover { background: var(--color-gold); }
+
+/* ── PRODUCTO — Layout principal ───────────────────────────── */
+.product-main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 40px var(--space-lg) 0; min-height: 90vh; }
+
+/* ── PRODUCTO — Galería de fotos ───────────────────────────── */
+.gallery { position: sticky; top: 70px; height: calc(100vh - 70px); display: flex; flex-direction: column; gap: 2px; padding-right: 40px; }
+.gallery__main { flex: 1; background: var(--color-surface); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.gallery__main-inner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; transition: background 0.6s ease; }
+.gallery__img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; opacity: 0; transition: opacity .4s ease; }
+.gallery__img.is-active { opacity: 1; }
+.gallery__placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 40px; color: var(--color-muted); font-family: var(--font-serif); font-size: 11px; letter-spacing: 4px; text-transform: uppercase; }
+.gallery__rfid-badge { position: absolute; bottom: 24px; left: 24px; background: rgba(201,169,110,0.12); border: 1px solid var(--color-gold); padding: 8px 16px; display: flex; align-items: center; gap: 10px; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-gold); }
+.gallery__thumbs { display: flex; gap: 2px; height: 80px; }
+.gallery__thumb { flex: 1; background: var(--color-surface); cursor: pointer; border: 2px solid transparent; transition: all var(--transition-fast); overflow: hidden; position: relative; }
+.gallery__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.gallery__thumb.is-active { border-color: var(--color-gold); }
+.gallery__thumb:hover { border-color: rgba(255,255,255,.3); }
+
+/* ── PRODUCTO — Panel de información ───────────────────────── */
+.product-info { padding: 0 0 80px 40px; border-left: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 36px; }
+.product-info__label { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--color-gold); display: flex; align-items: center; gap: 12px; }
+.product-info__label::before { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
+.product-info__name { font-family: var(--font-serif); font-size: clamp(48px, 5vw, 72px); font-weight: 300; line-height: 1; letter-spacing: -1px; }
+.product-info__subtitle { font-size: 12px; color: var(--color-muted); letter-spacing: 3px; text-transform: uppercase; margin-top: 12px; }
+.product-info__desc { font-size: var(--text-body-lg); line-height: 2; color: var(--color-muted); letter-spacing: .3px; border-left: 2px solid var(--color-gold); padding-left: 20px; }
+
+/* ── PRODUCTO — Selector de color ──────────────────────────── */
+.color-section__label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--color-muted); margin-bottom: 16px; }
+.color-section__name { color: var(--color-text); font-size: 11px; letter-spacing: 2px; margin-left: 8px; }
+.colors-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+.color-item { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
+.color-item__swatch { width: 22px; height: 36px; border-radius: 3px; border: 2px solid transparent; transition: all .25s; position: relative; }
+.color-item:hover .color-item__swatch,
+.color-item.is-active .color-item__swatch { border-color: var(--color-text); transform: scale(1.12); }
+.color-item.is-active .color-item__swatch::after { content: ''; position: absolute; inset: -5px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.3); }
+.color-item__name { font-size: 8px; letter-spacing: 1px; color: var(--color-muted); text-transform: uppercase; text-align: center; max-width: 50px; }
+
+/* ── PRODUCTO — Especificaciones inline ────────────────────── */
+.specs-list { border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); padding: 28px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
+.specs-list__item { display: flex; align-items: flex-start; gap: 14px; font-size: var(--text-body-sm); color: var(--color-muted); line-height: var(--lh-body-sm); }
+.specs-list__icon { color: var(--color-gold); font-size: 10px; margin-top: 2px; flex-shrink: 0; width: 16px; }
+
+/* ── PRODUCTO — Sección de compra ──────────────────────────── */
+.purchase { display: flex; flex-direction: column; gap: 16px; }
+.purchase__price-row { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.purchase__price-label { font-size: 9px; letter-spacing: 3px; color: var(--color-muted); text-transform: uppercase; margin-bottom: 8px; }
+.purchase__price { font-family: var(--font-serif); font-size: 48px; font-weight: 400; line-height: 1; }
+.purchase__currency { font-size: 14px; color: var(--color-muted); letter-spacing: 2px; }
+.purchase__discount-tag { background: rgba(201,169,110,.15); border: 1px solid rgba(201,169,110,.3); color: var(--color-gold); font-size: 9px; letter-spacing: 2px; padding: 6px 12px; text-transform: uppercase; }
+.purchase__shipping { font-size: 10px; color: var(--color-muted); letter-spacing: .5px; display: flex; align-items: center; gap: 8px; }
+.purchase__shipping--free { color: var(--color-gold); font-weight: 500; }
+.purchase__add-btn { background: var(--color-text); color: var(--color-bg); border: none; padding: 20px; width: 100%; font-size: 11px; letter-spacing: 4px; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: all var(--transition-base); }
+.purchase__add-btn:hover:not(:disabled) { background: var(--color-gold); }
+.purchase__add-btn:disabled { background: var(--color-surface2); color: var(--color-muted); cursor: not-allowed; }
+/* Botón flotante en móvil */
+.sticky-btn-wrap { display: none; }
+@media (max-width: 900px) {
+  .sticky-btn-wrap {
+    display: block; position: fixed; bottom: 0; left: 0; right: 0;
+    z-index: 150; padding: 12px 16px;
+    background: linear-gradient(to top, var(--color-bg) 70%, transparent);
+  }
+  .sticky-btn-wrap.is-hidden { opacity: 0; pointer-events: none; transition: opacity .3s; }
+  .sticky-btn-wrap .purchase__add-btn { width: 100%; padding: 18px; font-size: 11px; cursor: pointer; }
+  /* En móvil ocultamos el botón inline para no duplicar */
+  .purchase .purchase__add-btn { display: none; }
 }
-.hero__bg {
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 70% 50%, rgba(201,169,110,.06) 0%, transparent 60%);
-}
-.hero__grid {
-  position: absolute; inset: 0;
-  background-image:
-    linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
-  background-size: 80px 80px;
-  mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
-}
-.hero__banner-img {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover;
-  /* Valor unificado: mismo en desktop y mobile — elimina la diferencia visual entre dispositivos */
-  opacity: 0.50;
-  pointer-events: none; z-index: 0;
-}
-.hero__content {
-  position: relative; z-index: 2;
-  max-width: 700px; animation: fadeUp 1.2s ease both;
-}
-.hero__label {
-  font-size: 9px; letter-spacing: 5px; text-transform: uppercase;
-  color: var(--color-gold); margin-bottom: 32px;
-  display: flex; align-items: center; gap: 16px;
-}
-.hero__label::before {
-  content: ''; display: block; width: 40px; height: 1px;
-  background: var(--color-gold);
-}
-.hero__title {
-  font-family: var(--font-serif);
-  font-size: clamp(64px, 8vw, 110px);
-  font-weight: 300; line-height: .95;
-  margin-bottom: 32px; letter-spacing: -2px;
-}
-.hero__title em { font-style: italic; color: var(--color-gold); }
-.hero__desc {
-  font-size: var(--text-body-lg); line-height: var(--lh-body-lg); color: var(--color-muted);
-  max-width: 440px; margin-bottom: 48px; letter-spacing: .5px;
-}
-.hero__ctas { display: flex; gap: 16px; flex-wrap: wrap; }
-.hero__letter {
-  position: absolute; right: -60px; top: 50%;
-  transform: translateY(-50%);
-  font-family: var(--font-serif);
-  font-size: clamp(140px, 18vw, 260px);
-  font-weight: 300; color: rgba(255,255,255,.04);
-  pointer-events: none; line-height: 1;
+.trust-badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.trust-badge { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px; border: 1px solid var(--color-border); text-align: center; }
+.trust-badge__icon { font-size: 18px; }
+.trust-badge__label { font-size: 8px; letter-spacing: 1px; color: var(--color-muted); text-transform: uppercase; line-height: 1.4; }
+/* Móvil: forzar fila horizontal compacta */
+@media (max-width: 900px) {
+  .trust-badges { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .trust-badge { padding: 10px 4px; gap: 4px; }
+  .trust-badge__icon { font-size: 16px; }
+  .trust-badge__label { font-size: 7px; letter-spacing: 0.5px; }
 }
 
-/* ── BUTTONS ──────────────────────────────────────────────── */
-.btn {
-  display: inline-block; font-family: var(--font-sans);
-  font-size: 10px; letter-spacing: 3px;
-  text-transform: uppercase; font-weight: 600;
-  padding: 16px 36px; transition: all var(--transition-base);
-  cursor: pointer; border: none;
-}
-.btn--primary { background: var(--color-text); color: var(--color-bg); }
-.btn--primary:hover { background: var(--color-gold); }
-.btn--secondary {
-  border: 1px solid rgba(255,255,255,.2); color: var(--color-text);
-  background: transparent;
-}
-.btn--secondary:hover { border-color: var(--color-text); background: rgba(255,255,255,.05); }
-.btn--sm { padding: 10px 20px; font-size: 9px; }
+/* ── PRODUCTO — Tabs de detalles ───────────────────────────── */
+.details-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); }
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--color-border); margin-bottom: 48px; overflow-x: auto; }
+.tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--color-muted); padding: 16px 32px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; transition: all var(--transition-base); margin-bottom: -1px; white-space: nowrap; }
+.tab-btn.is-active { color: var(--color-text); border-bottom-color: var(--color-gold); }
+.tab-btn:hover { color: var(--color-text); }
+.tab-content { display: none; animation: fadeUp .4s ease; }
+.tab-content.is-active { display: block; }
 
-/* ── FOOTER ───────────────────────────────────────────────── */
+/* Tab — Specs grid */
+.specs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; background: var(--color-border); }
+.spec-cell { background: var(--color-surface); padding: 24px 28px; display: flex; flex-direction: column; gap: 6px; }
+.spec-cell__label { font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-gold); }
+.spec-cell__value { font-size: var(--text-body-lg); color: var(--color-text); line-height: var(--lh-body-sm); }
+
+/* Tab — RFID */
+.rfid-explain { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+.rfid-explain__title { font-family: var(--font-serif); font-size: 32px; font-weight: 300; margin-bottom: 20px; line-height: 1.2; }
+.rfid-explain__text { font-size: var(--text-body-md); line-height: 2; color: var(--color-muted); letter-spacing: .3px; margin-bottom: 16px; }
+.rfid-explain__highlight { color: var(--color-gold); font-size: 11px; letter-spacing: 1px; }
+.rfid-visual { background: var(--color-surface); padding: 48px; display: flex; flex-direction: column; gap: 20px; align-items: center; text-align: center; }
+.rfid-visual__icon { font-size: 64px; }
+.rfid-visual__text { font-size: var(--text-body-sm); color: var(--color-muted); letter-spacing: 1px; line-height: var(--lh-body-sm); }
+.rfid-visual__badge { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-gold); }
+
+/* ── PRODUCTO — Productos relacionados ─────────────────────── */
+.related-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); }
+.related-section__eyebrow { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--color-gold); margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
+.related-section__eyebrow::before { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
+.related-section__title { font-family: var(--font-serif); font-size: 36px; font-weight: 300; margin-bottom: 48px; }
+.related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.related-card { background: var(--color-surface); cursor: pointer; color: var(--color-text); transition: background var(--transition-base); display: block; }
+.related-card:hover { background: var(--color-surface2); }
+.related-card__img { aspect-ratio: 4/3; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
+.related-card__img img { width: 100%; height: 100%; object-fit: cover; }
+.related-card__placeholder { width: 100%; height: 100%; background: linear-gradient(135deg,#111,#1a1a1a); display: flex; align-items: center; justify-content: center; position: relative; }
+.related-card__info { padding: 24px; display: flex; justify-content: space-between; align-items: center; }
+.related-card__name { font-family: var(--font-serif); font-size: 22px; font-weight: 400; }
+.related-card__desc { font-size: var(--text-body-sm); color: var(--color-muted); letter-spacing: 1px; }
+.related-card__price { font-family: var(--font-serif); font-size: 20px; }
+
+/* ── SHARED — Footer ────────────────────────────────────────── */
 .footer {
   padding: var(--space-xl) var(--space-lg) var(--space-md);
   border-top: 1px solid var(--color-border);
@@ -329,238 +299,19 @@ select:active,
 .footer__legal a { color: var(--color-muted); transition: color var(--transition-fast); }
 .footer__legal a:hover { color: var(--color-text); }
 
-/* ── RFID BANNER ──────────────────────────────────────────── */
-.rfid-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: 1px; background: var(--color-border);
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-}
-.rfid-item {
-  background: var(--color-bg); padding: var(--space-lg) 36px;
-  display: flex; flex-direction: column; gap: 16px;
-}
-.rfid-item__icon { font-size: 28px; }
-.rfid-item__title {
-  font-family: var(--font-serif); font-size: 22px; font-weight: 400;
-}
-.rfid-item__desc { font-size: var(--text-body-sm); line-height: var(--lh-body-sm); color: var(--color-muted); }
-
-/* ── PRODUCTS SECTION ─────────────────────────────────────── */
-.products-section { padding: var(--space-xxl) var(--space-lg); }
-.section-header {
-  display: flex; align-items: flex-end;
-  justify-content: space-between; margin-bottom: var(--space-xl);
-}
-.section-label {
-  font-size: 9px; letter-spacing: 5px;
-  text-transform: uppercase; color: var(--color-gold);
-  margin-bottom: 16px; display: flex; align-items: center; gap: 12px;
-}
-.section-label::before {
-  content: ''; display: block; width: 30px; height: 1px; background: var(--color-gold);
-}
-.section-title {
-  font-family: var(--font-serif);
-  font-size: clamp(36px, 4vw, 54px);
-  font-weight: 300; line-height: 1.1; letter-spacing: -1px;
-}
-.products-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px;
-}
-
-/* ── PRODUCT CARD ─────────────────────────────────────────── */
-.product-card {
-  background: var(--color-surface);
-  position: relative; overflow: hidden; cursor: pointer;
-}
-.product-card__img-wrap {
-  aspect-ratio: 4/3; overflow: hidden; background: #111;
-  position: relative; display: flex; align-items: center; justify-content: center;
-}
-.product-card__img-wrap img {
-  width: 100%; height: 100%; object-fit: cover;
-  transition: transform .8s ease;
-  /* Valor unificado cross-device: sin override en mobile */
-  filter: brightness(.92);
-}
-.product-card:hover .product-card__img-wrap img {
-  transform: scale(1.05); filter: brightness(1);
-}
-.product-card__placeholder {
-  width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #111, #1a1a1a, #0d0d0d);
-  position: relative; overflow: hidden;
-}
-.product-card__badge {
-  position: absolute; top: 20px; left: 20px;
-  background: var(--color-gold); color: var(--color-bg);
-  font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
-  padding: 6px 12px; font-weight: 600; z-index: 2;
-}
-.product-card__body {
-  padding: 32px 36px 36px;
-  display: flex; flex-direction: column; gap: 20px;
-}
-.product-card__subtitle {
-  font-size: 9px; letter-spacing: 3px;
-  color: var(--color-muted); text-transform: uppercase;
-}
-.product-card__name {
-  font-family: var(--font-serif); font-size: 28px;
-  font-weight: 400; letter-spacing: 2px;
-}
-.product-card__desc { font-size: var(--text-body-sm); line-height: var(--lh-body-sm); color: var(--color-muted); }
-.product-card__specs { display: flex; gap: 24px; flex-wrap: wrap; }
-.spec-item { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--color-muted); }
-.spec-item::before { content: '—'; color: var(--color-gold); }
-.product-card__footer {
-  display: flex; align-items: center; justify-content: space-between;
-  padding-top: 20px; border-top: 1px solid var(--color-border);
-}
-.price { font-family: var(--font-serif); font-size: 28px; font-weight: 400; }
-.price-note {
-  font-size: 9px; color: var(--color-gold);
-  letter-spacing: 2px; text-transform: uppercase; margin-top: 4px;
-}
-.color-dot {
-  width: 14px; height: 22px; border-radius: 3px;
-  border: 2px solid transparent; cursor: pointer; transition: all var(--transition-fast);
-}
-.color-dot:hover { border-color: var(--color-text); transform: scale(1.15); }
-
-/* ── SHIPPING BANNER ──────────────────────────────────────── */
-.shipping-banner {
-  background: var(--color-surface); padding: 32px var(--space-lg);
-  display: flex; justify-content: center; gap: var(--space-xl);
-  border-top: 1px solid var(--color-border); flex-wrap: wrap;
-}
-.ship-item {
-  display: flex; align-items: center; gap: 16px;
-  font-size: 10px; letter-spacing: 2px;
-  text-transform: uppercase; color: var(--color-muted);
-}
-.ship-item__icon { font-size: 20px; }
-.ship-item__label { color: var(--color-text); display: block; font-size: 11px; letter-spacing: 2px; }
-
-/* ── PRODUCT MODAL ────────────────────────────────────────── */
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.85);
-  z-index: var(--z-modal); opacity: 0; pointer-events: none;
-  transition: opacity .4s;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex; align-items: center; justify-content: center; padding: 40px;
-}
-.modal-overlay.is-open { opacity: 1; pointer-events: all; }
-.modal {
-  background: var(--color-surface); max-width: 900px; width: 100%;
-  max-height: 90vh; overflow-y: auto;
-  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto;
-  border: 1px solid var(--color-border);
-  transform: translateY(20px); transition: transform .4s; position: relative;
-}
-.modal-overlay.is-open .modal { transform: translateY(0); }
-.modal__gallery { grid-row: 1; grid-column: 1; background: #111; overflow: hidden; min-height: 280px; display: flex; align-items: center; justify-content: center; }
-.modal__gallery img { width: 100%; height: 100%; object-fit: cover; }
-.modal__thumbs {
-  grid-row: 2; grid-column: 1; background: var(--color-bg);
-  padding: 10px 8px; display: flex; align-items: center; gap: 6px;
-}
-.modal__thumbs-track { display: flex; gap: 6px; flex: 1; overflow: hidden; justify-content: center; }
-.modal__thumb {
-  width: 58px; height: 58px; object-fit: cover;
-  border: 2px solid transparent; cursor: pointer;
-  transition: all var(--transition-fast); flex-shrink: 0;
-}
-.modal__thumb.is-active { border-color: var(--color-gold); }
-.modal__thumb:hover { border-color: rgba(255,255,255,.4); }
-.thumb-arrow {
-  background: rgba(255,255,255,.08); border: 1px solid var(--color-border);
-  color: var(--color-text); width: 28px; height: 58px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 12px; transition: all var(--transition-fast);
-  flex-shrink: 0; user-select: none;
-}
-.thumb-arrow:hover { background: rgba(255,255,255,.18); }
-.thumb-arrow:disabled { opacity: .2; cursor: not-allowed; }
-.modal__info {
-  grid-row: 1 / 3; grid-column: 2;
-  padding: 48px 40px; display: flex; flex-direction: column; gap: 24px;
-}
-.modal__close {
-  position: absolute; top: 16px; right: 16px;
-  background: var(--color-surface2); border: none; color: var(--color-text);
-  width: 36px; height: 36px; font-size: 18px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  z-index: 10; transition: background var(--transition-fast);
-}
-.modal__close:hover { background: var(--color-surface3); }
-.modal__label {
-  font-size: 9px; letter-spacing: 5px; text-transform: uppercase;
-  color: var(--color-gold); display: flex; align-items: center; gap: 12px;
-}
-.modal__label::before { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
-.modal__name { font-family: var(--font-serif); font-size: 36px; font-weight: 400; letter-spacing: 3px; }
-.modal__specs { display: flex; flex-direction: column; gap: 10px; }
-.modal__spec { display: flex; gap: 12px; font-size: var(--text-body-sm); color: var(--color-muted); line-height: var(--lh-body-sm); }
-.modal__spec::before { content: '✦'; color: var(--color-gold); font-size: 8px; margin-top: 3px; flex-shrink: 0; }
-.modal__color-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-muted); margin-bottom: 12px; }
-.modal__colors { display: flex; gap: 10px; flex-wrap: wrap; }
-.color-option { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
-.color-swatch {
-  width: 20px; height: 32px; border-radius: 3px;
-  border: 2px solid transparent; transition: all var(--transition-fast);
-}
-.color-option.is-active .color-swatch,
-.color-option:hover .color-swatch { border-color: var(--color-text); transform: scale(1.15); }
-.color-option__name { font-size: 8px; letter-spacing: 1px; color: var(--color-muted); text-transform: uppercase; text-align: center; }
-.modal__footer { margin-top: auto; padding-top: 24px; border-top: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 16px; }
-.modal__price { font-family: var(--font-serif); font-size: 36px; font-weight: 400; line-height: 1; }
-.modal__price-note { font-size: 10px; color: var(--color-gold); letter-spacing: 1px; margin-top: 2px; }
-.modal__add-btn {
-  background: var(--color-text); color: var(--color-bg); border: none;
-  padding: 16px; font-size: 10px; letter-spacing: 4px;
-  text-transform: uppercase; font-weight: 700; cursor: pointer; transition: all var(--transition-base);
-}
-.modal__add-btn:hover { background: var(--color-gold); }
-.modal__detail-link {
-  display: block; text-align: center;
-  font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
-  color: var(--color-muted); text-decoration: none;
-  padding: 10px; border: 1px solid var(--color-border);
-  transition: all var(--transition-base);
-}
-.modal__detail-link:hover { color: var(--color-gold); border-color: var(--color-gold); }
-
 /* ── SHARED — Carrito lateral ───────────────────────────────── */
-.cart-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.7);
-  z-index: var(--z-cart); opacity: 0; pointer-events: none;
-  transition: opacity .4s;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
+.cart-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: var(--z-cart); opacity: 0; pointer-events: none; transition: opacity .4s; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
 .cart-overlay.is-open { opacity: 1; pointer-events: all; }
-.cart-sidebar {
-  position: fixed; top: 0; right: 0; width: 420px; height: 100vh;
-  background: var(--color-surface); z-index: calc(var(--z-cart) + 1);
-  transform: translateX(100%); transition: transform var(--transition-slow);
-  display: flex; flex-direction: column; border-left: 1px solid var(--color-border);
-}
+.cart-sidebar { position: fixed; top: 0; right: 0; width: 420px; height: 100vh; background: var(--color-surface); z-index: calc(var(--z-cart) + 1); transform: translateX(100%); transition: transform var(--transition-slow); display: flex; flex-direction: column; border-left: 1px solid var(--color-border); }
 .cart-sidebar.is-open { transform: translateX(0); }
-.cart__header {
-  padding: 32px 36px; border-bottom: 1px solid var(--color-border);
-  display: flex; justify-content: space-between; align-items: center;
-}
+.cart__header { padding: 32px 36px; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
 .cart__title { font-family: var(--font-serif); font-size: 24px; font-weight: 400; letter-spacing: 3px; }
 .cart__close { background: none; border: none; color: var(--color-muted); font-size: 24px; cursor: pointer; transition: color var(--transition-fast); line-height: 1; }
 .cart__close:hover { color: var(--color-text); }
 .cart__items { flex: 1; overflow-y: auto; padding: 24px 36px; }
 .cart-item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--color-border); align-items: flex-start; }
-.cart-item__img { width: 56px; height: 56px; min-width: 56px; min-height: 56px; object-fit: cover; border: 1px solid var(--color-border); flex-shrink: 0; background: var(--color-surface2); }
-.cart-item__img-placeholder { width: 56px; height: 56px; min-width: 56px; min-height: 56px; background: var(--color-surface2); border: 1px solid var(--color-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.cart-item__img { width: 56px; height: 56px; min-width: 56px; object-fit: cover; border: 1px solid var(--color-border); flex-shrink: 0; }
+.cart-item__img-placeholder { width: 56px; height: 56px; min-width: 56px; background: var(--color-surface2); border: 1px solid var(--color-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 22px; font-weight: 400; color: var(--color-gold); letter-spacing: 0; }
 .cart-item__info { flex: 1; min-width: 0; }
 .cart-item__name { font-family: var(--font-serif); font-size: 18px; margin-bottom: 4px; }
 .cart-item__variant { font-size: 10px; color: var(--color-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
@@ -573,71 +324,96 @@ select:active,
 .cart-item__remove:hover { color: var(--color-danger); }
 .cart__empty { text-align: center; padding: 80px 36px; color: var(--color-muted); }
 .cart__empty p { font-family: var(--font-serif); font-size: 22px; margin-bottom: 8px; }
-.cart__empty span { font-size: 11px; letter-spacing: 2px; }
 .cart__footer { padding: 24px 36px 36px; border-top: 1px solid var(--color-border); }
-.cart__subtotal { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.cart__subtotal { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .cart__subtotal span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
 .cart__subtotal strong { font-family: var(--font-serif); font-size: 28px; font-weight: 400; }
-.cart__ship-note { font-size: 10px; color: var(--color-gold); letter-spacing: 1px; margin-bottom: 12px; }
-.cart__discount-note { font-size: 10px; color: var(--color-muted); letter-spacing: .5px; line-height: 1.6; margin-bottom: 16px; }
 .cart__checkout-btn { width: 100%; background: var(--color-text); color: var(--color-bg); border: none; padding: 18px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: background var(--transition-base); }
 .cart__checkout-btn:hover { background: var(--color-gold); }
-.cart__mp-info { text-align: center; margin-top: 12px; font-size: 9px; letter-spacing: 2px; color: var(--color-muted); }
-.cart__mp-info strong { color: var(--color-text); letter-spacing: 3px; }
 
-/* ── SHARED — Toast de notificación ────────────────────────── */
-.toast {
-  position: fixed; bottom: 24px; left: 50%;
-  transform: translateX(-50%) translateY(12px);
-  background: var(--color-text); color: var(--color-bg);
-  padding: 12px 24px; font-size: 11px; letter-spacing: 2px;
-  text-transform: uppercase; font-weight: 600;
-  opacity: 0; transition: all .4s; z-index: var(--z-toast);
-  white-space: nowrap; pointer-events: none;
-}
+/* ── SHARED — Toast ────────────────────────────────────────── */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--color-text); color: var(--color-bg); padding: 12px 24px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; opacity: 0; transition: all .4s; z-index: var(--z-toast); white-space: nowrap; pointer-events: none; }
 .toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* ── ANIMATIONS ───────────────────────────────────────────── */
+/* ── SHARED — Animaciones ───────────────────────────────────── */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 
-/* ── RESPONSIVE ───────────────────────────────────────────── */
-@media (max-width: 1024px) {
-  .footer__grid { grid-template-columns: 1fr 1fr; gap: 40px; }
-}
-
+/* ── RESPONSIVE — Breakpoints ───────────────────────────────── */
 @media (max-width: 900px) {
-  /* NOTA: brightness de imágenes ya unificado en base CSS — no se necesita override aquí */
-  .header, .footer, .products-section, .shipping-banner { padding-left: 24px; padding-right: 24px; }
-  .nav { display: none; }
-  .hero { padding: 0 24px; }
-  .hero__letter { display: none; }
-  .rfid-grid { grid-template-columns: 1fr 1fr; }
-  .products-section { padding: 80px 24px; }
-  .products-grid { grid-template-columns: 1fr; }
-  .section-header { flex-direction: column; align-items: flex-start; gap: 20px; }
-  .shipping-banner { gap: 32px; padding: 32px 24px; }
-  .modal { grid-template-columns: 1fr; }
-  .modal__gallery { grid-row: 1; grid-column: 1; min-height: 200px; }
-  .modal__thumbs { grid-row: 2; grid-column: 1; }
-  .modal__info { grid-row: 3; grid-column: 1; padding: 28px; }
-  .footer { padding: 60px 24px 40px; }
-  .footer__grid { grid-template-columns: 1fr 1fr; gap: 36px; }
+  /* Compensación de gamma para pantallas de teléfono */
+  /* brightness unificado en base CSS — sin override mobile */
+  .product-main { grid-template-columns: 1fr; padding: 24px; }
+  .gallery { position: static; height: auto; padding-right: 0; }
+  .gallery__main { min-height: 280px; }
+  /* En móvil: product-info es flex-column — color-section sube al primer lugar */
+  .product-info {
+    padding: 0 0 80px;
+    border-left: none;
+    border-top: none;
+    display: flex;
+    flex-direction: column;
+  }
+  .color-section        { order: 1; padding-top: 24px; border-top: 1px solid var(--color-border); }
+  .product-info__label  { order: 2; padding-top: 24px; }
+  .product-info > div:first-of-type { order: 3; }
+  .product-info__desc   { order: 4; }
+  .specs-list           { order: 5; }
+  .purchase             { order: 6; }
+  .details-section { padding: 60px 24px; }
+  .specs-list { grid-template-columns: 1fr; } /* en móvil specs en 1 col */
+  .specs-grid { grid-template-columns: 1fr; }
+  .rfid-explain { grid-template-columns: 1fr; }
+  .related-section { padding: 60px 24px; }
+  .related-grid { grid-template-columns: 1fr; }
   .cart-sidebar { width: 100%; max-height: 100dvh; }
   .cart__footer { position: sticky; bottom: 0; background: var(--color-surface); z-index: 2; }
-  .co-layout { grid-template-columns: 1fr; padding: 24px; }
-  .co-topbar { padding: 0 24px; }
-  .co-summary { position: static; }
-  .co-row { grid-template-columns: 1fr; }
+  .header { padding: 0 24px; }
+  .breadcrumb { padding: 90px 24px 0; }
   body { cursor: auto; }
+  .footer { padding: 32px 24px; }
+  .footer__grid { grid-template-columns: 1fr 1fr; gap: 32px; }
 }
-
 @media (max-width: 600px) {
-  .rfid-grid { grid-template-columns: 1fr; }
-  .footer__grid { grid-template-columns: 1fr; }
+  .related-grid { grid-template-columns: 1fr; }
+  .footer__grid { grid-template-columns: 1fr; gap: 24px; }
   .footer__bottom { flex-direction: column; text-align: center; gap: 12px; }
   .footer__legal { flex-direction: column; align-items: center; gap: 12px; }
 }
 
+/* ── SHARED — Checkout ──────────────────────────────────────── */
+.checkout-page { position: fixed; inset: 0; background: var(--color-bg); z-index: calc(var(--z-modal) + 10); overflow-y: auto; opacity: 0; pointer-events: none; transition: opacity .4s; }
+.checkout-page.is-open { opacity: 1; pointer-events: all; }
+.co-topbar { height: 60px; padding: 0 var(--space-lg); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-border); position: sticky; top: 0; background: var(--color-bg); z-index: 10; }
+.co-back { background: none; border: none; color: var(--color-muted); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: color var(--transition-fast); }
+.co-back:hover { color: var(--color-text); }
+.co-layout { display: grid; grid-template-columns: 1fr 380px; gap: var(--space-xl); padding: var(--space-xl) var(--space-lg); max-width: 1100px; margin: 0 auto; align-items: start; }
+.co-title { font-family: var(--font-serif); font-size: 36px; font-weight: 300; margin-bottom: var(--space-md); }
+.co-step { border: 1px solid var(--color-border); margin-bottom: 16px; }
+.co-step__head { padding: 18px 22px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; gap: 14px; }
+.co-step__num { width: 28px; height: 28px; border: 1px solid var(--color-gold); color: var(--color-gold); display: flex; align-items: center; justify-content: center; font-size: 12px; letter-spacing: 1px; flex-shrink: 0; }
+.co-step__name { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; }
+.co-step__body { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.co-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.co-field { display: flex; flex-direction: column; gap: 6px; }
+.co-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
+.co-inp { background: var(--color-surface2); border: 1px solid var(--color-border); color: var(--color-text); padding: 12px 14px; font-family: var(--font-sans); font-size: 12px; outline: none; width: 100%; transition: border-color var(--transition-fast); }
+.co-inp:focus { border-color: var(--color-gold); }
+.co-inp option { background: var(--color-surface); }
+.co-textarea { resize: vertical; min-height: 70px; }
+.co-toggle { display: flex; gap: 2px; margin-bottom: 14px; }
+.co-toggle-btn { flex: 1; background: var(--color-surface2); border: 1px solid var(--color-border); color: var(--color-muted); padding: 12px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all var(--transition-fast); }
+.co-toggle-btn.is-active { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
+.co-note { background: rgba(201,169,110,.08); border: 1px solid rgba(201,169,110,.2); padding: 12px 16px; font-size: 10px; color: var(--color-muted); line-height: 1.8; }
+.co-consent { display: flex; align-items: flex-start; gap: 10px; font-size: 10px; color: var(--color-muted); line-height: 1.7; }
+.co-consent a { color: var(--color-gold); }
+.co-submit-btn { width: 100%; background: var(--color-text); color: var(--color-bg); border: none; padding: 18px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: background var(--transition-base); }
+.co-submit-btn:hover { background: var(--color-gold); }
+.co-summary { background: var(--color-surface); border: 1px solid var(--color-border); padding: 28px; position: sticky; top: 80px; }
+.co-summary__title { font-family: var(--font-serif); font-size: 22px; margin-bottom: 20px; }
+.co-summary__item { display: flex; justify-content: space-between; font-size: 11px; color: var(--color-muted); margin-bottom: 10px; }
+.co-summary__total { display: flex; justify-content: space-between; border-top: 1px solid var(--color-border); padding-top: 14px; margin-top: 14px; }
+.co-summary__total-label { font-family: var(--font-serif); font-size: 18px; }
+.co-summary__total-value { font-family: var(--font-serif); font-size: 22px; color: var(--color-gold); }
 /* ── PÁGINAS LEGALES ─────────────────────────────────────────── */
 .legal-page { position: fixed; inset: 0; background: var(--color-bg); z-index: 400; overflow-y: auto; display: none; padding: 100px var(--space-lg) 60px; }
 .legal-page.is-active { display: block; }
@@ -651,60 +427,15 @@ select:active,
 .legal-content ul { padding-left: 20px; }
 
 /* ── BURBUJA WHATSAPP GLOBAL ─────────────────────────────────── */
-.wa-bubble {
-  position: fixed;
-  bottom: 28px;
-  right: 28px;
-  z-index: 9000;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-}
-.wa-bubble__tooltip {
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  padding: 8px 14px;
-  border-radius: 4px;
-  border: 1px solid var(--color-border);
-  white-space: nowrap;
-  opacity: 0;
-  transform: translateX(8px);
-  transition: opacity 0.25s ease, transform 0.25s ease;
-  pointer-events: none;
-}
-.wa-bubble:hover .wa-bubble__tooltip {
-  opacity: 1;
-  transform: translateX(0);
-}
-.wa-bubble__btn {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: #25D366;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 16px rgba(37,211,102,0.35);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  flex-shrink: 0;
-}
-.wa-bubble:hover .wa-bubble__btn {
-  transform: scale(1.08);
-  box-shadow: 0 6px 22px rgba(37,211,102,0.5);
-}
-.wa-bubble__btn svg {
-  width: 28px;
-  height: 28px;
-  fill: #ffffff;
-}
-@media (max-width: 600px) {
-  .wa-bubble { bottom: 20px; right: 16px; }
-  .wa-bubble__tooltip { display: none; }
-}
+.wa-bubble { position: fixed; bottom: 28px; right: 28px; z-index: 9000; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.wa-bubble__tooltip { background: var(--color-surface); color: var(--color-text); font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.05em; padding: 8px 14px; border-radius: 4px; border: 1px solid var(--color-border); white-space: nowrap; opacity: 0; transform: translateX(8px); transition: opacity 0.25s ease, transform 0.25s ease; pointer-events: none; }
+.wa-bubble:hover .wa-bubble__tooltip { opacity: 1; transform: translateX(0); }
+.wa-bubble__btn { width: 56px; height: 56px; border-radius: 50%; background: #25D366; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(37,211,102,0.35); transition: transform 0.2s ease, box-shadow 0.2s ease; flex-shrink: 0; }
+.wa-bubble:hover .wa-bubble__btn { transform: scale(1.08); box-shadow: 0 6px 22px rgba(37,211,102,0.5); }
+.wa-bubble__btn svg { width: 28px; height: 28px; fill: #ffffff; }
+/* En móvil sube para no tapar el botón sticky de "Agregar al carrito" (altura ~66px + padding) */
+@media (max-width: 900px) { .wa-bubble { bottom: 88px; right: 16px; } .wa-bubble__tooltip { display: none; } }
+@media (min-width: 901px) and (max-width: 1100px) { .wa-bubble { bottom: 28px; right: 20px; } }
 
 /* ── Burbuja WA — se desplaza cuando el carrito está abierto ── */
 .wa-bubble {
@@ -721,108 +452,223 @@ body.cart-open .wa-bubble {
   }
 }
 </style>
+  <!-- ============ FAVICON ============ -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23141414'/><text y='72' x='50' text-anchor='middle' font-size='60' font-family='serif' fill='%23c9a96e'>F</text></svg>">
 </head>
 <body>
-
-<!-- Accesibilidad: skip link -->
-<a href="#productos" style="position:absolute;top:-999px;left:-999px;z-index:9999;background:var(--color-gold);color:var(--color-bg);padding:8px 16px;font-size:11px;letter-spacing:2px" onfocus="this.style.top='8px';this.style.left='8px'" onblur="this.style.top='-999px';this.style.left='-999px'">Ir al contenido principal</a>
 
 <div class="toast" id="toast" role="alert" aria-live="polite"></div>
 
 <!-- ── HEADER ──────────────────────────────────────────────── -->
 <header class="header" role="banner">
-  <a href="#" class="logo" aria-label="Founder - Inicio">FOUNDER</a>
-  <nav class="nav" aria-label="Navegación principal">
-    <a href="#productos" class="nav__link">Productos</a>
-    <a href="#rfid" class="nav__link">Tecnología RFID</a>
-    <a href="envios.html" class="nav__link">Envíos y Devoluciones</a>
-    <a href="seguimiento.html" class="nav__link">Seguimiento</a>
-  </nav>
-  <button class="cart-btn" onclick="toggleCart()" aria-label="Abrir carrito">
-    Carrito
-    <span class="cart-count" id="cartCount" aria-label="Items en carrito">0</span>
-  </button>
+  <a href="index.html" class="logo" aria-label="Founder - Inicio">FOUNDER</a>
+  <div class="header__right">
+    <a href="index.html" class="header__back">← Volver</a>
+    <button class="cart-btn" onclick="toggleCart()" aria-label="Abrir carrito">
+      Carrito
+      <span class="cart-count" id="cartCount">0</span>
+    </button>
+  </div>
 </header>
 
-<!-- ── HERO ────────────────────────────────────────────────── -->
-<section class="hero" aria-label="Presentación">
-  <div class="hero__bg" aria-hidden="true"></div>
-  <div class="hero__grid" aria-hidden="true"></div>
-  <div id="heroBannerImg" aria-hidden="true"></div>
-  <div class="hero__content">
-    <div class="hero__label">Founder.uy — Uruguay</div>
-    <h1 class="hero__title">Protegé<br>lo que <em>importa.</em></h1>
-    <p class="hero__desc">Billeteras y tarjeteros premium con tecnología RFID. Diseño minimalista, materiales de alta calidad. Tus tarjetas, protegidas.</p>
-    <div class="hero__ctas">
-      <a href="#productos" class="btn btn--primary">Ver colección</a>
-      <a href="#rfid" class="btn btn--secondary">¿Qué es RFID?</a>
-    </div>
-  </div>
-  <div class="hero__letter" aria-hidden="true">F</div>
-</section>
+<!-- ── BREADCRUMB ─────────────────────────────────────────── -->
+<nav class="breadcrumb" aria-label="Navegación de migas de pan">
+  <a href="index.html">Inicio</a>
+  <span class="breadcrumb__sep">›</span>
+  <a href="index.html#productos">Productos</a>
+  <span class="breadcrumb__sep">›</span>
+  <span class="breadcrumb__current" id="breadcrumbProduct">Cargando...</span>
+</nav>
 
-<!-- ── RFID ─────────────────────────────────────────────────── -->
-<section class="rfid-grid" id="rfid" aria-label="Características RFID">
-  <article class="rfid-item">
-    <span class="rfid-item__icon" aria-hidden="true">🛡️</span>
-    <h3 class="rfid-item__title">Protección RFID</h3>
-    <p class="rfid-item__desc">Blindaje electromagnético que impide la lectura no autorizada de tus tarjetas de crédito, débito y documentos con chip.</p>
-  </article>
-  <article class="rfid-item">
-    <span class="rfid-item__icon" aria-hidden="true">⚡</span>
-    <h3 class="rfid-item__title">Acceso rápido</h3>
-    <p class="rfid-item__desc">Botón deslizante lateral que expulsa tus tarjetas al instante. Sin perder tiempo, sin buscar nada.</p>
-  </article>
-  <article class="rfid-item">
-    <span class="rfid-item__icon" aria-hidden="true">✦</span>
-    <h3 class="rfid-item__title">Premium siempre</h3>
-    <p class="rfid-item__desc">Eco cuero + estructura de aluminio de alta calidad. Liviana, resistente y con acabado de lujo.</p>
-  </article>
-  <article class="rfid-item">
-    <span class="rfid-item__icon" aria-hidden="true">📦</span>
-    <h3 class="rfid-item__title">Envíos Uruguay</h3>
-    <p class="rfid-item__desc">Enviamos a todo el país. Envío gratis en compras desde $2.000 UYU. Pagá con Mercado Pago.</p>
-  </article>
-</section>
-
-<!-- ── PRODUCTS ─────────────────────────────────────────────── -->
-<section class="products-section" id="productos" aria-label="Catálogo de productos">
-  <div class="section-header">
-    <div>
-      <div class="section-label">Colección 2026</div>
-      <h2 class="section-title">Nuestros<br>modelos</h2>
-    </div>
-  </div>
-  <div class="products-grid" id="productsGrid" role="list">
-    <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--color-muted)">
-      <div style="font-family:var(--font-serif);font-size:28px;margin-bottom:12px">Cargando productos...</div>
-      <div style="font-size:10px;letter-spacing:3px">UN MOMENTO</div>
-    </div>
-  </div>
-</section>
-
-<!-- ── SHIPPING ──────────────────────────────────────────────── -->
-<div class="shipping-banner" id="envios" aria-label="Información de envíos">
-  <div class="ship-item"><span class="ship-item__icon" aria-hidden="true">🚚</span><div><strong class="ship-item__label">Envíos a todo Uruguay</strong>gratis desde $2.000 UYU</div></div>
-  <div class="ship-item"><span class="ship-item__icon" aria-hidden="true">💳</span><div><strong class="ship-item__label">Mercado Pago</strong>tarjetas, débito y más</div></div>
-  <div class="ship-item"><span class="ship-item__icon" aria-hidden="true">💰</span><div><strong class="ship-item__label">10% OFF</strong>en efectivo o transferencia</div></div>
-  <div class="ship-item"><span class="ship-item__icon" aria-hidden="true">🛡️</span><div><strong class="ship-item__label">Compra segura</strong>datos protegidos</div></div>
+<!-- ── CONTENIDO DINÁMICO ──────────────────────────────────── -->
+<div id="loadingScreen" class="loading-screen">
+  <div class="loading-screen__title">Cargando producto</div>
+  <div class="loading-screen__sub">Un momento...</div>
 </div>
 
-<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<div id="errorScreen" class="error-screen">
+  <div class="error-screen__title">Producto no encontrado</div>
+  <p class="error-screen__msg">El producto que buscás no existe o fue eliminado.<br>Volvé al catálogo para ver todos los modelos disponibles.</p>
+  <a href="index.html#productos" class="error-screen__btn">Ver catálogo</a>
+</div>
+
+<div id="productContent" style="display:none">
+
+  <!-- PRODUCT MAIN -->
+  <main class="product-main">
+
+    <!-- GALLERY -->
+    <div class="gallery" role="region" aria-label="Galería de imágenes">
+      <div class="gallery__main">
+        <div class="gallery__main-inner" id="galleryMain">
+          <div class="gallery__placeholder" id="galleryPlaceholder">
+            <span style="font-size:48px">👜</span>
+            <span>Cargando imágenes...</span>
+          </div>
+          <div class="gallery__rfid-badge" aria-label="Protección RFID">
+            <span aria-hidden="true">🛡️</span> Protección RFID
+          </div>
+        </div>
+      </div>
+      <div class="gallery__thumbs" id="galleryThumbs"></div>
+    </div>
+
+    <!-- INFO -->
+    <div class="product-info">
+      <div class="product-info__label">Founder.uy — Colección 2026</div>
+
+      <div>
+        <h1 class="product-info__name" id="productName">—</h1>
+        <div class="product-info__subtitle" id="productSubtitle">Protección RFID</div>
+      </div>
+
+      <p class="product-info__desc" id="productDesc">—</p>
+
+      <!-- COLORS -->
+      <div class="color-section">
+        <div class="color-section__label">
+          Color: <span class="color-section__name" id="selectedColorName">—</span>
+        </div>
+        <div class="colors-grid" id="colorsGrid"></div>
+      </div>
+
+      <!-- SPECS -->
+      <div class="specs-list" id="specsList"></div>
+
+      <!-- PURCHASE -->
+      <div class="purchase">
+        <div>
+          <div class="purchase__price-label">Precio</div>
+          <div class="purchase__price-row">
+            <div>
+              <span class="purchase__price" id="productPrice">—</span>
+              <span class="purchase__currency">UYU</span>
+            </div>
+            <div class="purchase__discount-tag">10% OFF<br>efectivo/transferencia</div>
+          </div>
+        </div>
+        <div class="purchase__shipping" id="shippingNote">
+          <span aria-hidden="true">🚚</span>
+          <span id="shippingText">Calculando envío...</span>
+        </div>
+        <button class="purchase__add-btn" id="addCartBtn" onclick="addToCart()" disabled aria-label="Agregar al carrito">
+          Seleccioná un color para continuar
+        </button>
+        <div class="trust-badges" role="list">
+          <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🛡️</span><span class="trust-badge__label">RFID protegido</span></div>
+          <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🚚</span><span class="trust-badge__label" id="trustShipping">Envío gratis</span></div>
+          <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">↩️</span><span class="trust-badge__label">Cambios 7 días</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- BOTÓN STICKY MÓVIL — sigue al usuario mientras scrollea -->
+  <div class="sticky-btn-wrap" id="stickyBtnWrap">
+    <button class="purchase__add-btn" id="stickyAddBtn" onclick="addToCart()" disabled aria-label="Agregar al carrito">
+      Seleccioná un color para continuar
+    </button>
+  </div>
+
+  <!-- DETAILS TABS -->
+  <section class="details-section" aria-label="Detalles del producto">
+    <div class="tabs" role="tablist">
+      <button class="tab-btn is-active" onclick="switchTab('specs', this)" role="tab" aria-selected="true">Especificaciones</button>
+      <button class="tab-btn" onclick="switchTab('rfid', this)" role="tab" aria-selected="false">¿Qué es RFID?</button>
+      <button class="tab-btn" onclick="switchTab('shipping', this)" role="tab" aria-selected="false">Envíos y cambios</button>
+    </div>
+
+    <div class="tab-content is-active" id="tab-specs" role="tabpanel">
+      <div class="specs-grid" id="specsGrid">
+        <div class="spec-cell"><div class="spec-cell__label">Material</div><div class="spec-cell__value">Eco cuero + aluminio de alta calidad</div></div>
+        <div class="spec-cell"><div class="spec-cell__label">Tecnología</div><div class="spec-cell__value">Blindaje RFID — protección electromagnética activa</div></div>
+        <div class="spec-cell"><div class="spec-cell__label">Mecanismo</div><div class="spec-cell__value">Botón deslizante lateral para acceso rápido</div></div>
+        <div class="spec-cell" id="specCapacidad"><div class="spec-cell__label">Capacidad</div><div class="spec-cell__value" id="specCapacidadVal">—</div></div>
+        <div class="spec-cell" id="specDims" style="display:none"><div class="spec-cell__label">Dimensiones</div><div class="spec-cell__value" id="specDimsVal">—</div></div>
+        <div class="spec-cell"><div class="spec-cell__label">Garantía defecto</div><div class="spec-cell__value">30 días desde recepción</div></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-rfid" role="tabpanel">
+      <div class="rfid-explain">
+        <div>
+          <h3 class="rfid-explain__title">¿Qué es la tecnología RFID?</h3>
+          <p class="rfid-explain__text">Las tarjetas modernas (crédito, débito, documentos) usan chips RFID para pagos sin contacto. Esto es conveniente, pero también significa que alguien con un lector RFID podría escanear tus datos sin que lo notes.</p>
+          <p class="rfid-explain__text">La tecnología de Founder crea un escudo electromagnético alrededor de tus tarjetas, bloqueando cualquier intento de lectura no autorizada. Tus datos están protegidos mientras la billetera esté cerrada.</p>
+          <p class="rfid-explain__text">Abrís la billetera para pagar normalmente. La protección actúa solo cuando está cerrada, sin interferir con el uso cotidiano.</p>
+          <p class="rfid-explain__highlight">Compatible con: tarjetas Visa, Mastercard, BROU, BBVA, Santander, Itaú, cédula de identidad uruguaya y más.</p>
+        </div>
+        <div class="rfid-visual" aria-label="Visualización RFID">
+          <div class="rfid-visual__icon" aria-hidden="true">🛡️</div>
+          <p class="rfid-visual__text">Blindaje electromagnético activo cuando la billetera está cerrada</p>
+          <div style="width:100%;height:1px;background:var(--color-border);margin:8px 0"></div>
+          <p class="rfid-visual__badge">100% segura · 100% founder</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-shipping" role="tabpanel">
+      <div class="specs-grid">
+        <div class="spec-cell"><div class="spec-cell__label">Envíos</div><div class="spec-cell__value">A todo el territorio uruguayo · Vía agencia UES</div></div>
+        <div class="spec-cell"><div class="spec-cell__label">Envío gratis</div><div class="spec-cell__value" id="tabShippingFree">En compras desde $2.000 UYU</div></div>
+        <div class="spec-cell"><div class="spec-cell__label">Plazo de entrega</div><div class="spec-cell__value">1 a 3 días hábiles según departamento</div></div>
+        <div class="spec-cell"><div class="spec-cell__label">Costo de envío</div><div class="spec-cell__value">$250 UYU a todo el país</div></div>
+        <div class="spec-cell"><div class="spec-cell__label">Cambios</div><div class="spec-cell__value">Hasta 7 días corridos de recibido el producto, sin uso</div></div>
+        <div class="spec-cell"><div class="spec-cell__label">Defectos de fábrica</div><div class="spec-cell__value">Cambio o reintegro sin costo. Plazo: 30 días</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RELATED PRODUCTS -->
+  <section class="related-section" aria-label="Productos relacionados">
+    <div class="related-section__eyebrow">También te puede gustar</div>
+    <div class="related-section__title">Otros modelos</div>
+    <div class="related-grid" id="relatedGrid"></div>
+  </section>
+
+</div><!-- /productContent -->
+
+<!-- ── FOOTER ──────────────────────────────────────────────── -->
 <footer class="footer" role="contentinfo">
   <div class="footer__grid">
     <div class="footer__brand">
-      <a href="#" class="logo" aria-label="Founder - Inicio">FOUNDER</a>
+      <a href="index.html" class="logo" aria-label="Founder - Inicio">FOUNDER</a>
       <p>Billeteras y tarjeteros premium con tecnología RFID. Diseñados para quienes cuidan cada detalle. Enviamos a todo Uruguay.</p>
     </div>
-    <div class="footer__col"><h4>Productos</h4><ul><li><a href="producto.html?p=Simple">Simple</a></li><li><a href="producto.html?p=Classic">Classic</a></li><li><a href="producto.html?p=Confort">Confort</a></li><li><a href="producto.html?p=Essential">Essential</a></li></ul></div>
-    <div class="footer__col"><h4>Info</h4><ul><li><a href="#rfid">Tecnología RFID</a></li><li><a href="envios.html">Envíos y Devoluciones</a></li><li><a href="seguimiento.html">Seguimiento</a></li><li><a href="https://instagram.com/founder.uy" target="_blank" rel="noopener">@founder.uy</a></li><li><a href="https://wa.me/598098550096" target="_blank" rel="noopener">WhatsApp</a></li></ul></div>
-    <div class="footer__col"><h4>Legal</h4><ul><li><a href="#" onclick="showLegal('privacy');return false">Política de Privacidad</a></li><li><a href="#" onclick="showLegal('terms');return false">Términos y Condiciones</a></li><li><a href="envios.html">Cambios y Devoluciones</a></li></ul></div>
+    <div class="footer__col">
+      <h4>Productos</h4>
+      <ul>
+        <li><a href="producto.html?p=Simple">Simple</a></li>
+        <li><a href="producto.html?p=Classic">Classic</a></li>
+        <li><a href="producto.html?p=Confort">Confort</a></li>
+        <li><a href="producto.html?p=Essential">Essential</a></li>
+      </ul>
+    </div>
+    <div class="footer__col">
+      <h4>Info</h4>
+      <ul>
+        <li><a href="index.html#rfid">Tecnología RFID</a></li>
+        <li><a href="envios.html">Envíos y Devoluciones</a></li>
+        <li><a href="seguimiento.html">Seguimiento</a></li>
+        <li><a href="https://instagram.com/founder.uy" target="_blank" rel="noopener">@founder.uy</a></li>
+        <li><a href="https://wa.me/598098550096" target="_blank" rel="noopener">WhatsApp</a></li>
+      </ul>
+    </div>
+    <div class="footer__col">
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="#" onclick="showLegal('privacy');return false">Política de Privacidad</a></li>
+        <li><a href="#" onclick="showLegal('terms');return false">Términos y Condiciones</a></li>
+        <li><a href="envios.html">Cambios y Devoluciones</a></li>
+      </ul>
+    </div>
   </div>
   <div class="footer__bottom">
     <p>© 2026 Founder.uy — Todos los derechos reservados</p>
-    <div class="footer__legal"><a href="#" onclick="showLegal('privacy');return false">Privacidad</a><a href="#" onclick="showLegal('terms');return false">Términos</a><a href="envios.html">Devoluciones</a></div>
+    <div class="footer__legal">
+      <a href="#" onclick="showLegal('privacy');return false">Privacidad</a>
+      <a href="#" onclick="showLegal('terms');return false">Términos</a>
+    </div>
   </div>
 </footer>
 
@@ -838,38 +684,9 @@ body.cart-open .wa-bubble {
   </div>
   <div class="cart__footer" id="cartFooter" style="display:none">
     <div class="cart__subtotal"><span>Subtotal</span><strong id="cartTotal">$0</strong></div>
-    <div class="cart__ship-note" id="cartShipNote"></div>
-    <div class="cart__discount-note">💰 Pagando en efectivo o transferencia obtenés un <strong>10% de descuento</strong>.</div>
     <button class="cart__checkout-btn" onclick="openCheckout()">Finalizar compra</button>
-    <div class="cart__mp-info"><span>Pagás con</span> <strong>Mercado Pago</strong></div>
   </div>
 </aside>
-
-<!-- ── PRODUCT MODAL ─────────────────────────────────────────── -->
-<div class="modal-overlay" id="modalOverlay" onclick="handleModalOverlayClick(event)" role="dialog" aria-modal="true" aria-label="Detalle del producto">
-  <div class="modal">
-    <div class="modal__gallery"><img id="modalImg" src="" alt="Foto del producto" loading="lazy"></div>
-    <div class="modal__thumbs" id="modalThumbs" style="display:none">
-      <button class="thumb-arrow" id="thumbPrev" onclick="scrollThumbs(-1)" aria-label="Foto anterior">‹</button>
-      <div class="modal__thumbs-track" id="thumbsTrack"></div>
-      <button class="thumb-arrow" id="thumbNext" onclick="scrollThumbs(1)" aria-label="Foto siguiente">›</button>
-    </div>
-    <div class="modal__info">
-      <button class="modal__close" onclick="closeModal()" aria-label="Cerrar">✕</button>
-      <div><div class="modal__label">FOUNDER</div><div class="modal__name" id="modalName"></div></div>
-      <div class="modal__specs" id="modalSpecs"></div>
-      <div>
-        <div class="modal__color-label">Color: <span id="selectedColorName" style="color:var(--color-text)"></span></div>
-        <div class="modal__colors" id="modalColors"></div>
-      </div>
-      <div class="modal__footer">
-        <div><div class="modal__price" id="modalPrice"></div><div class="modal__price-note">10% OFF en efectivo o transferencia</div></div>
-        <button class="modal__add-btn" onclick="addFromModal()">Agregar al carrito</button>
-        <a id="modalDetailLink" href="#" class="modal__detail-link">Ver página completa →</a>
-      </div>
-    </div>
-  </div>
-</div>
 
 
 
@@ -877,37 +694,37 @@ body.cart-open .wa-bubble {
 'use strict';
 
 /* =============================================================
-   FOUNDER — Application
-   Config → State → API → UI → Cart → Checkout → Utils
+   FOUNDER producto.html
+   Lee el producto desde la URL (?p=NombreDelProducto)
+   y carga todos los datos desde Google Sheets en tiempo real.
    ============================================================= */
 
-// ── SHARED CONFIG — única fuente de verdad. Actualizar también en producto.html ──
+// ── SHARED CONFIG — actualizar también en index.html si cambia ──
 const CONFIG = Object.freeze({
-  SHEET_ID:       '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8',
-  WA_NUMBER:      '598098550096',
-  FREE_SHIPPING:  2000,
-  SHIPPING_COST:  250,
-  THUMBS_VISIBLE: 5,
+  SHEET_ID:      '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8',
+  WA_NUMBER:     '598098550096',
+  FREE_SHIPPING: 2000,
+  SHIPPING_COST: 250,
   get SHEET_PRODUCTOS() { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`; },
   get SHEET_FOTOS()     { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`; },
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx8LByXXY7QwzHEB0RyvP0Ejbmqyw099F4ntbbwRIdkRv8JlUDaryn_vQj2aL9kANA/exec',
 });
 
 const COLOR_MAP = Object.freeze({
-  'Negro':        { hex: '#3a3f4a', css: 'var(--swatch-negro)' },
-  'Camel':        { hex: '#d4a96e', css: 'var(--swatch-camel)' },
-  'Marrón':       { hex: '#6b3820', css: 'var(--swatch-marron)' },
-  'Gris Oscuro':  { hex: '#6a6a7a', css: 'var(--swatch-gris-oscuro)' },
-  'Azul':         { hex: '#2a5a8c', css: 'var(--swatch-azul)' },
-  'Rosa':         { hex: '#e8b8b8', css: 'var(--swatch-rosa)' },
-  'Rojo':         { hex: '#b52a2a', css: 'var(--swatch-rojo)' },
-  'Crema':        { hex: '#e4d8b8', css: 'var(--swatch-crema)' },
-  'Carbon':       { hex: '#3a3a3a', css: 'var(--swatch-carbon)', pattern: true },
-  'Verde Oliva':  { hex: '#6a7a3a', css: 'var(--swatch-verde-oliva)' },
+  'Negro':       { hex: '#3a3f4a', css: 'var(--swatch-negro)' },
+  'Camel':       { hex: '#d4a96e', css: 'var(--swatch-camel)' },
+  'Marrón':      { hex: '#6b3820', css: 'var(--swatch-marron)' },
+  'Gris Oscuro': { hex: '#6a6a7a', css: 'var(--swatch-gris-oscuro)' },
+  'Azul':        { hex: '#2a5a8c', css: 'var(--swatch-azul)' },
+  'Rosa':        { hex: '#e8b8b8', css: 'var(--swatch-rosa)' },
+  'Rojo':        { hex: '#b52a2a', css: 'var(--swatch-rojo)' },
+  'Crema':       { hex: '#e4d8b8', css: 'var(--swatch-crema)' },
+  'Carbon':      { hex: '#3a3a3a', css: 'var(--swatch-carbon)', pattern: true },
+  'Verde Oliva': { hex: '#6a7a3a', css: 'var(--swatch-verde-oliva)' },
 });
 
 /** Genera el valor CSS de background para un color de producto.
- *  Centraliza la lógica del patrón de Carbon en un solo lugar. */
+ *  Centraliza la lógica del patrón de Carbon (mismo helper que index.html). */
 function swatchBackground(color) {
   if (color.pattern) {
     return 'repeating-linear-gradient(45deg,var(--swatch-carbon) 0,var(--swatch-carbon) 4px,#4a4a4a 4px,#4a4a4a 8px)';
@@ -916,7 +733,7 @@ function swatchBackground(color) {
 }
 
 // ── SHARED STATE + PAGE STATE ────────────────────────────────────
-const CART_KEY = 'founder_cart'; // clave compartida con producto.html
+const CART_KEY = 'founder_cart'; // clave compartida con index.html
 
 // Estas funciones deben estar ANTES de state para que loadCartFromStorage() funcione
 function loadCartFromStorage() {
@@ -927,22 +744,29 @@ function saveCartToStorage() {
 }
 
 const state = {
-  products:       [],
-  photoMap:       {},
-  cart:           loadCartFromStorage(), // carrito persistente compartido con producto.html
-  currentProduct: null,
-  currentColor:   null,
-  entregaMode:    'envio',
-  pagoMode:       'mercadopago',
-  thumbOffset:    0,
+  product:      null,   // producto actual
+  allProducts:  [],     // todos los productos (para relacionados)
+  photoMap:     {},     // { modelo: { color: [urls] } }
+  selectedColor: null,  // color seleccionado
+  activePhoto:   0,     // índice de foto activa
+  cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
+  entregaMode:   'envio',       // para checkout
+  pagoMode:      'mercadopago', // para checkout
 };
 
 // ── SHARED DOM HELPERS ────────────────────────────────────────────
-const $ = (id) => document.getElementById(id);
-const setHTML = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
-const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+const $        = id => document.getElementById(id);
+const setHTML  = (id, html)  => { const el = $(id); if (el) el.innerHTML = html; };
+const setText  = (id, text)  => { const el = $(id); if (el) el.textContent = text; };
+const show     = id => { const el = $(id); if (el) el.style.display = ''; };
+const hide     = id => { const el = $(id); if (el) el.style.display = 'none'; };
+const toggle   = (el, cls, force) => el?.classList.toggle(cls, force);
 
-const toggle  = (el, cls, force) => el?.classList.toggle(cls, force);
+// ── PRODUCTO — Parámetros de URL ────────────────────────────────
+function getProductNameFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return (params.get('p') || '').trim();
+}
 
 // ── SHARED API — Google Sheets ──────────────────────────────────
 async function fetchSheet(url) {
@@ -961,7 +785,7 @@ function parseProducts(rows) {
       colors: (row.c[3]?.v || '').split(',').map(c => {
         const name = c.trim();
         return { name, ...(COLOR_MAP[name] || { hex: '#555' }) };
-      }),
+      }).filter(c => c.name),
       specs:  (row.c[4]?.v || '').split('|').map(s => s.trim()).filter(Boolean),
     }))
     .filter(p => p.name);
@@ -981,201 +805,272 @@ function parsePhotoMap(rows) {
   return map;
 }
 
-// ── INDEX — Banner del hero ─────────────────────────────────────
-function applyBanner(url) {
-  const container = $('heroBannerImg');
-  if (!container) return;
-  if (url?.trim()) {
-    const img = document.createElement('img');
-    img.src = url.trim();
-    img.alt = '';
-    img.className = 'hero__banner-img';
-    img.onerror = () => img.remove();
-    container.innerHTML = '';
-    container.appendChild(img);
-  } else {
-    container.innerHTML = '';
-  }
+function getPhotos(model, color) {
+  return state.photoMap[model]?.[color] || [];
 }
 
-// ── INDEX — Inicialización ───────────────────────────────────────
+/** Placeholder elegante: cuadrado oscuro con la inicial del modelo en dorado */
+function cartPhotoPlaceholder(name) {
+  const inicial = (name || '?')[0].toUpperCase();
+  const el = document.createElement('div');
+  el.className = 'cart-item__img-placeholder';
+  el.setAttribute('aria-hidden', 'true');
+  el.textContent = inicial;
+  return el;
+}
+
+/** Si una imagen del carrito falla, intenta reconstruir la URL desde el Sheet de fotos.
+ *  Si eso también falla, muestra el placeholder elegante. */
+async function recoverCartPhoto(imgEl, name, color) {
+  try {
+    const data = await fetchSheet(CONFIG.SHEET_FOTOS);
+    const rows = data?.table?.rows || [];
+    for (const row of rows) {
+      const modelo = (row.c[0]?.v || '').trim();
+      const col    = (row.c[1]?.v || '').trim();
+      if (modelo === name && col === color) {
+        const foto = [row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].find(Boolean);
+        if (foto) {
+          imgEl.src = foto;
+          imgEl.onerror = () => imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
+          return;
+        }
+      }
+    }
+  } catch (_) {}
+  imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
+}
+
+// ── PRODUCTO — Inicialización ───────────────────────────────────
 async function init() {
+  const productName = getProductNameFromURL();
+
+  if (!productName) {
+    showError();
+    return;
+  }
+
   try {
     const [jP, jF] = await Promise.all([
       fetchSheet(CONFIG.SHEET_PRODUCTOS),
       fetchSheet(CONFIG.SHEET_FOTOS),
     ]);
 
-    // Banner desde columna F2
-    applyBanner(jP.table.rows?.[0]?.c?.[5]?.v || null);
+    state.photoMap    = parsePhotoMap(jF.table.rows);
+    state.allProducts = parseProducts(jP.table.rows);
+    state.product     = state.allProducts.find(
+      p => p.name.toLowerCase() === productName.toLowerCase()
+    );
 
-    state.photoMap  = parsePhotoMap(jF.table.rows);
-    state.products  = parseProducts(jP.table.rows);
+    if (!state.product) {
+      showError();
+      return;
+    }
 
-    renderProducts();
-    document.querySelectorAll('.rfid-item').forEach(el => revealObserver.observe(el));
+    renderProduct();
+    hide('loadingScreen');
+    show('productContent');
+
   } catch (err) {
-    console.error('[Founder] Error cargando datos:', err);
-    setHTML('productsGrid', `
-      <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--color-muted)">
-        <div style="font-family:var(--font-serif);font-size:28px">Error al cargar. Recargá la página.</div>
-      </div>`);
+    console.error('[Founder] Error cargando producto:', err);
+    showError();
   }
 }
 
-function getPhotos(model, color) {
-  return state.photoMap[model]?.[color] || [];
+function showError() {
+  hide('loadingScreen');
+  $('errorScreen').style.display = 'flex';
 }
 
-// ── INDEX — Grilla de productos ─────────────────────────────────
-function renderProducts() {
-  setHTML('productsGrid', state.products.map(renderProductCard).join(''));
-  document.querySelectorAll('.product-card').forEach(el => revealObserver.observe(el));
+// ── PRODUCTO — Renderizado ───────────────────────────────────────
+function renderProduct() {
+  const p = state.product;
 
-  // Event delegation para botones Vista rápida (evita problemas con onclick en template strings)
-  document.getElementById('productsGrid').addEventListener('click', function(e) {
-    const btn = e.target.closest('.quick-view-btn');
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    openModal(parseInt(btn.dataset.id));
-  });
-}
+  // SEO dinámico
+  document.title = `FOUNDER ${p.name} — Billetera RFID Premium Uruguay`;
+  // Meta description: usar setAttribute para actualizar el atributo content correctamente
+  const metaDesc = document.getElementById('pageDesc');
+  if (metaDesc) metaDesc.setAttribute('content', `Founder ${p.name} — Billetera premium con tecnología RFID. $${p.price.toLocaleString('es-UY')} UYU. Envíos a todo Uruguay.`);
+  // Canonical: actualizar href
+  const metaCan = document.getElementById('pageCanonical');
+  if (metaCan) metaCan.setAttribute('href', `https://founder-web-gules.vercel.app/producto.html?p=${encodeURIComponent(p.name)}`);
+  setText('breadcrumbProduct', `Founder ${p.name}`);
 
-function renderProductCard(p) {
-  const firstPhoto = Object.values(state.photoMap[p.name] || {}).flat()[0] || null;
-  const swatches   = p.colors.slice(0, 4).map(c => `
-    <div style="width:36px;height:52px;border-radius:3px;box-shadow:0 4px 20px rgba(0,0,0,.5);background:${
-      swatchBackground(c)
-    }"></div>`).join('');
+  // Info básica
+  setText('productName',     `Founder ${p.name}`);
+  setText('productSubtitle', p.specs[0] || 'Protección RFID');
+  setText('productDesc',     p.desc);
+  setText('productPrice',    `$${p.price.toLocaleString('es-UY')}`);
 
-  const colorDots = p.colors.map(c => `
-    <div class="color-dot" title="${c.name}" style="background:${
-      swatchBackground(c)
-    }"></div>`).join('');
-
-  return `
-    <article class="product-card" role="listitem">
-      <a class="product-card__img-wrap" href="producto.html?p=${encodeURIComponent(p.name)}" aria-label="Ver Founder ${p.name}">
-        ${firstPhoto
-          ? `<img src="${firstPhoto}" alt="Founder ${p.name}" loading="lazy">`
-          : `<div class="product-card__placeholder">
-               <div style="font-family:var(--font-serif);font-size:clamp(60px,10vw,120px);font-weight:300;color:rgba(255,255,255,.04);position:absolute;right:-5px;bottom:-15px;line-height:1">${p.name.toUpperCase()}</div>
-               <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 20px;position:relative;z-index:1">${swatches}</div>
-             </div>`}
-        <div class="product-card__badge">RFID</div>
-      </a>
-      <div class="product-card__body">
-        <div>
-          <div class="product-card__subtitle">Billetera / Tarjetero RFID</div>
-          <div class="product-card__name">Founder ${p.name}</div>
-        </div>
-        <p class="product-card__desc">${p.desc}</p>
-        <div class="product-card__specs">${p.specs.slice(0,3).map(s=>`<div class="spec-item">${s}</div>`).join('')}</div>
-        <div>
-          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--color-muted);margin-bottom:8px">Colores disponibles</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">${colorDots}</div>
-        </div>
-        <div class="product-card__footer">
-          <div>
-            <div class="price">$${p.price.toLocaleString('es-UY')} UYU</div>
-            <div class="price-note">10% OFF efectivo/transferencia</div>
-          </div>
-          <button class="btn btn--primary btn--sm quick-view-btn" data-id="${p.id}" type="button">Vista rápida</button>
-        </div>
-      </div>
-    </article>`;
-}
-
-// ── INDEX — Modal de vista rápida ───────────────────────────────
-function openModal(id) {
-  id = parseInt(id);
-  state.currentProduct = state.products.find(p => p.id === id);
-  if (!state.currentProduct) return;
-  state.currentColor = state.currentProduct.colors[0];
-
-  setText('modalName',  `Founder ${state.currentProduct.name}`);
-  setText('modalPrice', `$${state.currentProduct.price.toLocaleString('es-UY')} UYU`);
-  setHTML('modalSpecs',  state.currentProduct.specs.map(s => `<div class="modal__spec">${s}</div>`).join(''));
-
-  // Actualizar link "Ver página completa"
-  const detailLink = $('modalDetailLink');
-  if (detailLink) detailLink.href = `producto.html?p=${encodeURIComponent(state.currentProduct.name)}`;
-
-  updateModalGallery();
-  renderModalColors();
-
-  $('modalOverlay').classList.add('is-open');
-  document.body.style.overflow = 'hidden';
-}
-
-function updateModalGallery() {
-  const photos = getPhotos(state.currentProduct.name, state.currentColor.name);
-  const img    = $('modalImg');
-  const thumbs = $('modalThumbs');
-  const track  = $('thumbsTrack');
-
-  img.src = photos[0] || '';
-  img.style.background = photos.length ? '' : 'linear-gradient(135deg,#111,#1a1a1a)';
-  state.thumbOffset = 0;
-
-  if (photos.length > 1) {
-    thumbs.style.display = 'flex';
-    track.innerHTML = photos.map((p, i) => `
-      <img src="${p}" class="modal__thumb ${i===0 ? 'is-active' : ''}"
-        onclick="setModalMainPhoto('${p}', this)" alt="Foto ${i+1}" loading="lazy">`
-    ).join('');
-    updateThumbArrows(photos.length);
-  } else {
-    thumbs.style.display = 'none';
+  // Envío
+  const freeShip = p.price >= CONFIG.FREE_SHIPPING;
+  const shippingEl = $('shippingNote');
+  if (shippingEl) {
+    $('shippingText').textContent = freeShip
+      ? 'Envío gratis — este producto califica ✓'
+      : `Envío $${CONFIG.SHIPPING_COST.toLocaleString('es-UY')} UYU`;
+    $('shippingText').style.color = freeShip ? 'var(--color-gold)' : 'var(--color-muted)';
   }
+  setText('trustShipping', freeShip ? 'Envío gratis' : `Envío $${CONFIG.SHIPPING_COST}`);
+  if ($('tabShippingFree')) {
+    $('tabShippingFree').textContent = `En compras desde $2.000 UYU${freeShip ? ' — este producto califica ✓' : ''}`;
+  }
+
+  // Specs inline
+  setHTML('specsList', p.specs.map(s => `
+    <div class="specs-list__item">
+      <span class="specs-list__icon" aria-hidden="true">✦</span>
+      <span>${s}</span>
+    </div>`).join(''));
+
+  // Specs grid — capacidad (primera spec)
+  if ($('specCapacidadVal')) $('specCapacidadVal').textContent = p.specs[0] || '—';
+
+  // Colores
+  renderColors();
+
+  // Galería — mostrar primera foto del primer color
+  if (p.colors.length > 0) {
+    selectColor(0);
+  }
+
+  // Relacionados
+  renderRelated();
 }
 
-function setModalMainPhoto(src, el) {
-  $('modalImg').src = src;
-  document.querySelectorAll('.modal__thumb').forEach(t => t.classList.remove('is-active'));
-  el.classList.add('is-active');
-}
-
-function scrollThumbs(dir) {
-  const track  = $('thumbsTrack');
-  const total  = track.querySelectorAll('.modal__thumb').length;
-  state.thumbOffset = Math.max(0, Math.min(total - CONFIG.THUMBS_VISIBLE, state.thumbOffset + dir));
-  track.style.transform  = `translateX(-${state.thumbOffset * (58 + 6)}px)`;
-  track.style.transition = 'transform .3s ease';
-  updateThumbArrows(total);
-}
-
-function updateThumbArrows(total) {
-  const prev = $('thumbPrev');
-  const next = $('thumbNext');
-  const showArrows = total > CONFIG.THUMBS_VISIBLE;
-  [prev, next].forEach(btn => { if (btn) btn.style.display = showArrows ? 'flex' : 'none'; });
-  if (prev) prev.disabled = state.thumbOffset === 0;
-  if (next) next.disabled = state.thumbOffset >= total - CONFIG.THUMBS_VISIBLE;
-}
-
-function renderModalColors() {
-  setText('selectedColorName', state.currentColor.name);
-  setHTML('modalColors', state.currentProduct.colors.map((c, i) => `
-    <div class="color-option ${c.name === state.currentColor.name ? 'is-active' : ''}" onclick="selectColor(${i})">
-      <div class="color-swatch" style="background:${
+// ── PRODUCTO — Selector de colores ──────────────────────────────
+function renderColors() {
+  const p = state.product;
+  setHTML('colorsGrid', p.colors.map((c, i) => `
+    <div class="color-item ${state.selectedColor?.name === c.name ? 'is-active' : ''}"
+      onclick="selectColor(${i})" role="button" aria-label="Color ${c.name}" tabindex="0">
+      <div class="color-item__swatch" style="background:${
         swatchBackground(c)
       }"></div>
-      <div class="color-option__name">${c.name}</div>
+      <div class="color-item__name">${c.name}</div>
     </div>`).join(''));
 }
 
 function selectColor(i) {
-  state.currentColor = state.currentProduct.colors[i];
-  updateModalGallery();
-  renderModalColors();
+  state.selectedColor = state.product.colors[i];
+  state.activePhoto   = 0;
+
+  setText('selectedColorName', state.selectedColor.name);
+  renderColors();
+  renderGallery();
+
+  // Habilitar botón inline y botón sticky
+  const label = `Agregar al carrito — $${state.product.price.toLocaleString('es-UY')} UYU`;
+  const btn = $('addCartBtn');
+  if (btn) { btn.disabled = false; btn.textContent = label; }
+  const stickyBtn = $('stickyAddBtn');
+  if (stickyBtn) { stickyBtn.disabled = false; stickyBtn.textContent = label; }
 }
 
-function handleModalOverlayClick(e) { if (e.target.id === 'modalOverlay') closeModal(); }
-function closeModal() {
-  $('modalOverlay').classList.remove('is-open');
-  document.body.style.overflow = '';
+// ── PRODUCTO — Galería de fotos ─────────────────────────────────
+function renderGallery() {
+  const photos  = getPhotos(state.product.name, state.selectedColor.name);
+  const main    = $('galleryMain');
+  const thumbs  = $('galleryThumbs');
+  const placeholder = $('galleryPlaceholder');
+
+  if (!photos.length) {
+    // Sin fotos — mostrar placeholder con color de fondo
+    if (placeholder) placeholder.style.display = 'flex';
+    main.style.background = state.selectedColor.hex || '#1a1a1a';
+
+    // Limpiar imágenes previas
+    main.querySelectorAll('.gallery__img').forEach(el => el.remove());
+    thumbs.innerHTML = '';
+    return;
+  }
+
+  if (placeholder) placeholder.style.display = 'none';
+  main.style.background = '';
+
+  // Render imágenes principales
+  main.querySelectorAll('.gallery__img').forEach(el => el.remove());
+  photos.forEach((url, i) => {
+    const img = document.createElement('img');
+    img.src     = url;
+    img.alt     = `Founder ${state.product.name} — foto ${i + 1}`;
+    img.className = `gallery__img${i === state.activePhoto ? ' is-active' : ''}`;
+    img.loading = 'lazy';
+    main.insertBefore(img, main.querySelector('.gallery__rfid-badge'));
+  });
+
+  // Render thumbnails
+  thumbs.innerHTML = photos.map((url, i) => `
+    <div class="gallery__thumb ${i === state.activePhoto ? 'is-active' : ''}"
+      onclick="setActivePhoto(${i})" role="button" aria-label="Foto ${i + 1}" tabindex="0">
+      <img src="${url}" alt="Foto ${i + 1}" loading="lazy">
+    </div>`).join('');
+}
+
+function setActivePhoto(i) {
+  state.activePhoto = i;
+
+  // Actualizar imagen principal
+  document.querySelectorAll('.gallery__img').forEach((img, idx) => {
+    toggle(img, 'is-active', idx === i);
+  });
+
+  // Actualizar thumbnail activo
+  document.querySelectorAll('.gallery__thumb').forEach((t, idx) => {
+    toggle(t, 'is-active', idx === i);
+  });
+}
+
+// ── PRODUCTO — Tabs de detalles ─────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('is-active');
+    b.setAttribute('aria-selected', 'false');
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('is-active'));
+
+  if (btn) { btn.classList.add('is-active'); btn.setAttribute('aria-selected', 'true'); }
+  const tab = $('tab-' + name);
+  if (tab) tab.classList.add('is-active');
+}
+
+// ── PRODUCTO — Productos relacionados ───────────────────────────
+function renderRelated() {
+  const related = state.allProducts
+    .filter(p => p.name !== state.product.name)
+    .slice(0, 3);
+
+  if (!related.length) {
+    hide('relatedSection');
+    return;
+  }
+
+  setHTML('relatedGrid', related.map(p => {
+    const firstPhoto = Object.values(state.photoMap[p.name] || {}).flat()[0] || null;
+    const swatches   = p.colors.slice(0, 3).map(c => `
+      <div style="width:24px;height:36px;border-radius:3px;box-shadow:0 4px 12px rgba(0,0,0,.5);background:${
+        swatchBackground(c)
+      }"></div>`).join('');
+
+    return `
+      <a href="producto.html?p=${encodeURIComponent(p.name)}" class="related-card" aria-label="Ver Founder ${p.name}">
+        <div class="related-card__img">
+          ${firstPhoto
+            ? `<img src="${firstPhoto}" alt="Founder ${p.name}" loading="lazy" style="width:100%;height:100%;object-fit:cover">`
+            : `<div class="related-card__placeholder">
+                 <div style="font-family:var(--font-serif);font-size:60px;font-weight:300;color:rgba(255,255,255,.04);position:absolute">${p.name.toUpperCase()}</div>
+                 <div style="display:flex;gap:6px;position:relative;z-index:1">${swatches}</div>
+               </div>`}
+        </div>
+        <div class="related-card__info">
+          <div>
+            <div class="related-card__name">${p.name}</div>
+            <div class="related-card__desc">${p.specs[0] || 'RFID'}</div>
+          </div>
+          <div class="related-card__price">$${p.price.toLocaleString('es-UY')}</div>
+        </div>
+      </a>`;
+  }).join(''));
 }
 
 // ── CARRITO → CHECKOUT ───────────────────────────────────────
@@ -1186,10 +1081,22 @@ function openCheckout() {
 }
 
 // ── SHARED CART ─────────────────────────────────────────────────
-function addFromModal() {
-  if (!state.currentColor) { showToast('Seleccioná un color'); return; }
-  addToCart(state.currentProduct, state.currentColor);
-  closeModal();
+function addToCart() {
+  if (!state.selectedColor) return;
+  const p     = state.product;
+  const color = state.selectedColor.name;
+  const ex    = state.cart.find(i => i.name === p.name && i.color === color);
+
+  if (ex) {
+    ex.qty++;
+  } else {
+    state.cart.push({ id: p.name, name: p.name, color, price: p.price, qty: 1 }); // id=name para compatibilidad con index.html
+  }
+
+  updateCart();
+  showToast(`Founder ${p.name} — ${color} agregado`);
+
+  // Abrir carrito
   setTimeout(() => {
     $('cartSidebar').classList.add('is-open');
     $('cartOverlay').classList.add('is-open');
@@ -1197,20 +1104,8 @@ function addFromModal() {
   }, 300);
 }
 
-function addToCart(product, color) {
-  // Busca por nombre+color para compatibilidad con items de producto.html
-  const existing = state.cart.find(i => i.name === product.name && i.color === color.name);
-  if (existing) {
-    existing.qty++;
-  } else {
-    state.cart.push({ id: product.id, name: product.name, color: color.name, price: product.price, qty: 1 });
-  }
-  updateCart();
-  showToast(`Founder ${product.name} — ${color.name} agregado`);
-}
-
 function updateCart() {
-  // Persistir en localStorage para sincronizar con producto.html
+  // Persistir en localStorage para sincronizar con index.html
   saveCartToStorage();
   const total  = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
   const count  = state.cart.reduce((s, i) => s + i.qty, 0);
@@ -1226,39 +1121,33 @@ function updateCart() {
   }
 
   if (footer) footer.style.display = 'block';
+
   setHTML('cartItems', state.cart.map((item, idx) => {
-    // Busca foto directo en photoMap (funciona antes y después de cargar productos)
     const photo = getPhotos(item.name, item.color)[0] || null;
+    const inicial = (item.name || '?')[0].toUpperCase();
     return `
       <div class="cart-item">
         ${photo
-          ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy">`
-          : `<div class="cart-item__img-placeholder" aria-hidden="true">👜</div>`}
+          ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
+               onerror="recoverCartPhoto(this,'${item.name.replace(/'/g,"\\'")}','${item.color.replace(/'/g,"\\'")}');">`
+          : `<div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>`}
         <div class="cart-item__info">
           <div class="cart-item__name">Founder ${item.name}</div>
           <div class="cart-item__variant">${item.color}</div>
           <div class="cart-item__controls">
-            <button class="qty-btn" onclick="changeQty(${idx},-1)" aria-label="Reducir cantidad">−</button>
-            <span class="qty-val" aria-label="Cantidad">${item.qty}</span>
-            <button class="qty-btn" onclick="changeQty(${idx},1)" aria-label="Aumentar cantidad">+</button>
+            <button class="qty-btn" onclick="changeQty(${idx},-1)" aria-label="Reducir">−</button>
+            <span class="qty-val">${item.qty}</span>
+            <button class="qty-btn" onclick="changeQty(${idx},1)" aria-label="Aumentar">+</button>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px">
           <div class="cart-item__price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
-          <button class="cart-item__remove" onclick="removeItem(${idx})" aria-label="Eliminar producto">✕</button>
+          <button class="cart-item__remove" onclick="removeItem(${idx})" aria-label="Eliminar">✕</button>
         </div>
       </div>`;
   }).join(''));
 
   setText('cartTotal', `$${total.toLocaleString('es-UY')} UYU`);
-
-  const note = $('cartShipNote');
-  if (note) {
-    note.textContent = total >= CONFIG.FREE_SHIPPING
-      ? '🎁 ¡Tenés envío gratis!'
-      : `Agregá $${(CONFIG.FREE_SHIPPING - total).toLocaleString('es-UY')} más para envío gratis`;
-    note.style.color = total >= CONFIG.FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
-  }
 }
 
 function changeQty(idx, delta) {
@@ -1267,10 +1156,7 @@ function changeQty(idx, delta) {
   updateCart();
 }
 
-function removeItem(idx) {
-  state.cart.splice(idx, 1);
-  updateCart();
-}
+function removeItem(idx) { state.cart.splice(idx, 1); updateCart(); }
 
 function toggleCart() {
   const sidebar = $('cartSidebar');
@@ -1291,29 +1177,31 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('is-visible'), 3000);
 }
 
-// ── SHARED UI — Scroll reveal ────────────────────────────────────
-const revealObserver = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      e.target.style.animation = 'fadeUp .8s ease both';
-      revealObserver.unobserve(e.target);
-    }
-  });
-}, { threshold: 0.1 });
+// ── PRODUCTO — Botón sticky móvil ───────────────────────────────
+(function initStickyBtn() {
+  const wrap   = document.getElementById('stickyBtnWrap');
+  const footer = document.querySelector('footer.footer');
+  if (!wrap || !footer) return;
+  const obs = new IntersectionObserver(entries => {
+    // Cuando el footer es visible, ocultar el botón sticky
+    wrap.classList.toggle('is-hidden', entries[0].isIntersecting);
+  }, { threshold: 0.1 });
+  obs.observe(footer);
+})();
 
 // ── SHARED UI — Páginas legales ──────────────────────────────────
 const LEGAL_IDS = { privacy: 'legalPrivacy', terms: 'legalTerms', returns: 'legalReturns' };
 function showLegal(key) {
-  const el = $(LEGAL_IDS[key]);
+  const el = document.getElementById(LEGAL_IDS[key]);
   if (el) { el.classList.add('is-active'); document.body.style.overflow = 'hidden'; }
 }
 function hideLegal(key) {
-  const el = $(LEGAL_IDS[key]);
+  const el = document.getElementById(LEGAL_IDS[key]);
   if (el) { el.classList.remove('is-active'); document.body.style.overflow = ''; }
 }
 
 // ── BOOT ────────────────────────────────────────────────────────
-updateCart(); // reflejar carrito persistido (puede venir de producto.html)
+updateCart(); // reflejar carrito persistido (puede venir de index.html)
 init();
 </script>
 
@@ -1352,7 +1240,6 @@ init();
     <h2>Cómo solicitar un cambio</h2><p>Contactanos por WhatsApp o Instagram @founder.uy indicando tu número de pedido y el motivo. Respondemos en 48 horas hábiles.</p>
   </div>
 </div>
-<!-- ── BURBUJA WHATSAPP GLOBAL ──────────────────────────────── -->
 <a class="wa-bubble" href="https://wa.me/598098550096" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
   <span class="wa-bubble__tooltip">¿Necesitás ayuda?</span>
   <span class="wa-bubble__btn">
