@@ -807,18 +807,43 @@
       .wa-bubble { bottom: 20px; right: 16px; }
       .wa-bubble__tooltip { display: none; }
     }
+
+    /* ── MENÚ HAMBURGUESA (mobile) ───────────────────────────── */
+    .menu-btn { display: none; flex-direction: column; justify-content: center; gap: 5px; background: none; border: none; padding: 6px 4px; cursor: pointer; flex-shrink: 0; }
+    .menu-btn span { display: block; width: 22px; height: 1.5px; background: var(--color-text); transition: all 0.3s ease; }
+    .menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 299; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+    .menu-overlay.is-open { opacity: 1; pointer-events: all; }
+    .menu-drawer { position: fixed; top: 0; left: 0; width: 50%; min-width: 240px; max-width: 320px; height: 100dvh; background: var(--color-surface); z-index: 300; transform: translateX(-100%); transition: transform 0.35s cubic-bezier(.4,0,.2,1); display: flex; flex-direction: column; border-right: 1px solid var(--color-border); }
+    .menu-drawer.is-open { transform: translateX(0); }
+    .menu-drawer__header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 70px; border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+    .menu-drawer__logo { font-family: var(--font-serif); font-size: 18px; font-weight: 500; letter-spacing: 5px; color: var(--color-text); }
+    .menu-drawer__close { background: none; border: none; color: var(--color-muted); font-size: 20px; cursor: pointer; line-height: 1; padding: 4px; transition: color 0.2s ease; }
+    .menu-drawer__close:hover { color: var(--color-text); }
+    .menu-drawer__nav { flex: 1; display: flex; flex-direction: column; padding: 12px 0; overflow-y: auto; }
+    .menu-drawer__link { padding: 16px 28px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-muted); text-decoration: none; border-bottom: 1px solid var(--color-border); transition: color 0.2s ease, background 0.2s ease; }
+    .menu-drawer__link:first-child { border-top: 1px solid var(--color-border); }
+    .menu-drawer__link:hover { color: var(--color-text); background: rgba(255,255,255,0.03); }
+    .menu-drawer__link.is-active { color: var(--color-gold); }
+    .menu-drawer__footer { padding: 20px 28px; border-top: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 14px; flex-shrink: 0; }
+    .menu-drawer__wa { display: flex; align-items: center; gap: 10px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); text-decoration: none; transition: color 0.2s ease; }
+    .menu-drawer__wa:hover { color: var(--color-text); }
+    @media (max-width: 900px) { .menu-btn { display: flex; } }
   </style>
 </head>
 <body>
 
   <!-- HEADER -->
   <header class="site-header">
+    <button class="menu-btn" onclick="toggleMenu()" aria-label="Abrir menú">
+      <span></span><span></span><span></span>
+    </button>
     <a href="index.html" class="site-logo" aria-label="Founder - Inicio">FOUNDER</a>
     <nav class="site-nav" aria-label="Navegación principal">
       <a href="index.html" class="site-nav__link">Inicio</a>
       <a href="index.html#productos" class="site-nav__link">Productos</a>
       <a href="tecnologia-rfid.html" class="site-nav__link">Tecnología RFID</a>
       <a href="seguimiento.html" class="site-nav__link is-active">Seguí tu compra</a>
+      <a href="sobre-nosotros.html" class="site-nav__link">Sobre nosotros</a>
       <a href="contacto.html" class="site-nav__link">Contacto</a>
     </nav>
     <div style="display:flex;align-items:center;gap:12px;">
@@ -833,6 +858,33 @@
       </a>
     </div>
   </header>
+
+<!-- ── MENÚ MOBILE ──────────────────────────────────────────────── -->
+<div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()" aria-hidden="true"></div>
+<aside class="menu-drawer" id="menuDrawer" aria-label="Menú de navegación">
+  <div class="menu-drawer__header">
+    <span class="menu-drawer__logo">FOUNDER</span>
+    <button class="menu-drawer__close" onclick="toggleMenu()" aria-label="Cerrar menú">✕</button>
+  </div>
+  <nav class="menu-drawer__nav" aria-label="Navegación mobile">
+    <a href="index.html" class="menu-drawer__link">Inicio</a>
+    <a href="index.html#productos" class="menu-drawer__link">Productos</a>
+    <a href="tecnologia-rfid.html" class="menu-drawer__link">Tecnología RFID</a>
+    <a href="seguimiento.html" class="menu-drawer__link is-active">Seguí tu compra</a>
+    <a href="sobre-nosotros.html" class="menu-drawer__link">Sobre nosotros</a>
+    <a href="contacto.html" class="menu-drawer__link">Contacto</a>
+  </nav>
+  <div class="menu-drawer__footer">
+    <a href="https://wa.me/598098550096" target="_blank" rel="noopener noreferrer" class="menu-drawer__wa">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      WhatsApp
+    </a>
+    <a href="https://instagram.com/founder.uy" target="_blank" rel="noopener noreferrer" class="menu-drawer__wa">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+      @founder.uy
+    </a>
+  </div>
+</aside>
 
   <main>
     <h1 class="page-title">Seguí tu <em>pedido</em></h1>
@@ -1007,11 +1059,11 @@
       <div class="footer-col">
         <h4>Info</h4>
         <ul>
-          <li><a href="index.html#rfid">Tecnología RFID</a></li>
+          <li><a href="tecnologia-rfid.html">Tecnología RFID</a></li>
           <li><a href="envios.html">Envíos y Devoluciones</a></li>
           <li><a href="seguimiento.html">Seguimiento</a></li>
-          <li><a href="https://instagram.com/founder.uy" target="_blank" rel="noopener">@founder.uy</a></li>
-          <li><a href="https://wa.me/598098550096" target="_blank" rel="noopener">WhatsApp</a></li>
+          <li><a href="sobre-nosotros.html">Sobre nosotros</a></li>
+          <li><a href="contacto.html">Contacto</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -1034,6 +1086,14 @@
   </footer>
 
 <script>
+  function toggleMenu() {
+    const drawer  = document.getElementById('menuDrawer');
+    const overlay = document.getElementById('menuOverlay');
+    const isOpen  = drawer.classList.toggle('is-open');
+    overlay.classList.toggle('is-open', isOpen);
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+  }
+
   const SHEET_ID = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8LByXXY7QwzHEB0RyvP0Ejbmqyw099F4ntbbwRIdkRv8JlUDaryn_vQj2aL9kANA/exec';
 
