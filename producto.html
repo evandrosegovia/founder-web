@@ -187,6 +187,45 @@ select:active,
 .color-item.is-active .color-item__swatch::after { content: ''; position: absolute; inset: -5px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.3); }
 .color-item__name { font-size: 8px; letter-spacing: 1px; color: var(--color-muted); text-transform: uppercase; text-align: center; max-width: 50px; }
 
+/* ── Estados de color ──────────────────────────────────────── */
+.color-item--sin-stock { opacity: 0.35; cursor: not-allowed !important; }
+.color-item--sin-stock .color-item__swatch { cursor: not-allowed !important; }
+.color-item--sin-stock .color-item__name::after { content: 'Sin stock'; display: block; color: var(--color-danger, #e05555); font-size: 7px; letter-spacing: 0.5px; margin-top: 2px; }
+
+.color-item--oferta { position: relative; }
+.color-item__badge {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-gold);
+  color: var(--color-bg);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Precio tachado cuando hay oferta */
+.purchase__price-original {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--color-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-danger, #e05555);
+}
+.purchase__price-oferta-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--color-gold);
+  text-transform: uppercase;
+  align-self: center;
+}
+
 /* ── PRODUCTO — Especificaciones inline ────────────────────── */
 .specs-list { border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); padding: 28px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
 .specs-list__item { display: flex; align-items: flex-start; gap: 14px; font-size: var(--text-body-sm); color: var(--color-muted); line-height: var(--lh-body-sm); }
@@ -819,6 +858,7 @@ const state = {
   allProducts:  [],     // todos los productos (para relacionados)
   photoMap:     {},     // { modelo: { color: [urls] } }
   selectedColor: null,  // color seleccionado
+  precioEfectivo: null, // precio activo (puede ser precio de oferta)
   activePhoto:   0,     // índice de foto activa
   cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
   entregaMode:   'envio',       // para checkout
@@ -858,8 +898,25 @@ function parseProducts(rows) {
         return { name, ...(COLOR_MAP[name] || { hex: '#555' }) };
       }).filter(c => c.name),
       specs:  (row.c[4]?.v || '').split('|').map(s => s.trim()).filter(Boolean),
+      extras: parseExtras(row.c[6]?.v || ''),  // col G — estados de colores, material, nota, etc.
     }))
     .filter(p => p.name);
+}
+
+/** Parsea el JSON de extras de la col G. Retorna {} si está vacío o es inválido. */
+function parseExtras(str) {
+  if (!str) return {};
+  try { return JSON.parse(str); } catch { return {}; }
+}
+
+/** Retorna el estado y precio de oferta de un color dado.
+ *  estado: 'activo' | 'sin_stock' | 'oferta'
+ *  precioOferta: número o null */
+function getColorEstado(product, colorName) {
+  const ce = product.extras?.colores_estado || {};
+  const estado = ce[colorName] || 'activo';
+  const precioOferta = estado === 'oferta' ? (ce[`${colorName}_precio_oferta`] || null) : null;
+  return { estado, precioOferta };
 }
 
 function parsePhotoMap(rows) {
@@ -997,12 +1054,14 @@ function renderProduct() {
   // Specs grid — capacidad (primera spec)
   if ($('specCapacidadVal')) $('specCapacidadVal').textContent = p.specs[0] || '—';
 
-  // Colores
+  // Colores — seleccionar el primer color disponible (no sin_stock)
   renderColors();
-
-  // Galería — mostrar primera foto del primer color
   if (p.colors.length > 0) {
-    selectColor(0);
+    const primerDisponible = p.colors.findIndex(c => {
+      const { estado } = getColorEstado(p, c.name);
+      return estado !== 'sin_stock';
+    });
+    selectColor(primerDisponible >= 0 ? primerDisponible : 0);
   }
 
   // Relacionados
@@ -1012,30 +1071,92 @@ function renderProduct() {
 // ── PRODUCTO — Selector de colores ──────────────────────────────
 function renderColors() {
   const p = state.product;
-  setHTML('colorsGrid', p.colors.map((c, i) => `
-    <div class="color-item ${state.selectedColor?.name === c.name ? 'is-active' : ''}"
-      onclick="selectColor(${i})" role="button" aria-label="Color ${c.name}" tabindex="0">
-      <div class="color-item__swatch" style="background:${
-        swatchBackground(c)
-      }"></div>
+  setHTML('colorsGrid', p.colors.map((c, i) => {
+    const { estado } = getColorEstado(p, c.name);
+    const isActive   = state.selectedColor?.name === c.name;
+    const sinStock   = estado === 'sin_stock';
+    const enOferta   = estado === 'oferta';
+    const classes    = [
+      'color-item',
+      isActive  ? 'is-active'          : '',
+      sinStock  ? 'color-item--sin-stock' : '',
+      enOferta  ? 'color-item--oferta'    : '',
+    ].filter(Boolean).join(' ');
+    const clickHandler = sinStock ? '' : `onclick="selectColor(${i})"`;
+    return `
+    <div class="${classes}" ${clickHandler}
+      role="button" aria-label="Color ${c.name}${sinStock ? ' — Sin stock' : ''}" tabindex="${sinStock ? -1 : 0}">
+      <div class="color-item__swatch" style="background:${swatchBackground(c)}">
+        ${enOferta ? '<span class="color-item__badge">OFERTA</span>' : ''}
+      </div>
       <div class="color-item__name">${c.name}</div>
-    </div>`).join(''));
+    </div>`;
+  }).join(''));
 }
 
 function selectColor(i) {
-  state.selectedColor = state.product.colors[i];
+  const p     = state.product;
+  const color = p.colors[i];
+  const { estado, precioOferta } = getColorEstado(p, color.name);
+
+  // No permitir selección de colores sin stock
+  if (estado === 'sin_stock') return;
+
+  state.selectedColor = color;
   state.activePhoto   = 0;
 
   setText('selectedColorName', state.selectedColor.name);
   renderColors();
   renderGallery();
 
-  // Habilitar botón inline y botón sticky
-  const label = `Agregar al carrito — $${state.product.price.toLocaleString('es-UY')} UYU`;
-  const btn = $('addCartBtn');
-  if (btn) { btn.disabled = false; btn.textContent = label; }
+  // Calcular precio efectivo
+  const precioEfectivo = (estado === 'oferta' && precioOferta) ? precioOferta : p.price;
+
+  // Actualizar display de precio
+  const priceEl    = $('productPrice');
+  const priceRow   = $('productPriceRow'); // contenedor flex de precios
+  if (priceEl) {
+    if (estado === 'oferta' && precioOferta) {
+      // Precio tachado + precio de oferta
+      const priceRowEl = priceEl.closest('.purchase__price-row') || priceEl.parentNode;
+      priceEl.textContent = `$${precioOferta.toLocaleString('es-UY')}`;
+      // Agregar/actualizar precio original tachado
+      let origEl = document.getElementById('precioOriginalTachado');
+      if (!origEl) {
+        origEl = document.createElement('span');
+        origEl.id = 'precioOriginalTachado';
+        origEl.className = 'purchase__price-original';
+        priceEl.insertAdjacentElement('afterend', origEl);
+        // Label "OFERTA"
+        let labelEl = document.createElement('span');
+        labelEl.id = 'precioOfertaLabel';
+        labelEl.className = 'purchase__price-oferta-label';
+        labelEl.textContent = 'OFERTA';
+        origEl.insertAdjacentElement('afterend', labelEl);
+      }
+      origEl.textContent = `$${p.price.toLocaleString('es-UY')}`;
+      origEl.style.display = '';
+      const labelExist = document.getElementById('precioOfertaLabel');
+      if (labelExist) labelExist.style.display = '';
+    } else {
+      priceEl.textContent = `$${p.price.toLocaleString('es-UY')}`;
+      // Ocultar precio original tachado si existía
+      const origEl  = document.getElementById('precioOriginalTachado');
+      const labelEl = document.getElementById('precioOfertaLabel');
+      if (origEl)  origEl.style.display  = 'none';
+      if (labelEl) labelEl.style.display = 'none';
+    }
+  }
+
+  // Botón carrito con precio efectivo
+  const label = `Agregar al carrito — $${precioEfectivo.toLocaleString('es-UY')} UYU`;
+  const btn       = $('addCartBtn');
   const stickyBtn = $('stickyAddBtn');
+  if (btn)       { btn.disabled       = false; btn.textContent       = label; }
   if (stickyBtn) { stickyBtn.disabled = false; stickyBtn.textContent = label; }
+
+  // Guardar precio efectivo en el estado para que addToCart lo use
+  state.precioEfectivo = precioEfectivo;
 }
 
 // ── PRODUCTO — Galería de fotos ─────────────────────────────────
@@ -1156,12 +1277,16 @@ function addToCart() {
   if (!state.selectedColor) return;
   const p     = state.product;
   const color = state.selectedColor.name;
-  const ex    = state.cart.find(i => i.name === p.name && i.color === color);
 
+  // Usar precio efectivo (oferta o normal) — calculado en selectColor()
+  const precio = state.precioEfectivo ?? p.price;
+
+  const ex = state.cart.find(i => i.name === p.name && i.color === color);
   if (ex) {
     ex.qty++;
+    ex.price = precio; // actualizar precio por si cambió
   } else {
-    state.cart.push({ id: p.name, name: p.name, color, price: p.price, qty: 1 }); // id=name para compatibilidad con index.html
+    state.cart.push({ id: p.name, name: p.name, color, price: precio, qty: 1 });
   }
 
   updateCart();
@@ -1171,6 +1296,7 @@ function addToCart() {
   setTimeout(() => {
     $('cartSidebar').classList.add('is-open');
     $('cartOverlay').classList.add('is-open');
+    document.body.classList.add('cart-open');
     document.body.style.overflow = 'hidden';
   }, 300);
 }
