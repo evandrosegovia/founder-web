@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es" style="color-scheme: dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sobre Nosotros — FOUNDER.UY</title>
+  <meta name="description" content="Conocé la historia detrás de FOUNDER. Billeteras y tarjeteros premium con protección RFID, diseñados y distribuidos desde Uruguay." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- ============ FAVICON ============ -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23141414'/><text y='72' x='50' text-anchor='middle' font-size='60' font-family='serif' fill='%23c9a96e'>F</text></svg>">
+
+  <style>
+    /* ── DESIGN TOKENS ─────────────────────────────────────────── */
+    :root {
+      color-scheme: dark;
+      --color-bg:           #141414;
+      --color-surface:      #222222;
+      --color-surface2:     #2e2e2e;
+      --color-text:         #f8f8f4;
+      --color-muted:        #9a9a9a;
+      --color-gold:         #c9a96e;
+      --color-gold-dim:     rgba(201,169,110,0.12);
+      --color-gold-border:  rgba(201,169,110,0.25);
+      --color-border:       rgba(255,255,255,0.07);
+      --color-border-solid: #242424;
+      --font-serif:     'Cormorant Garamond', serif;
+      --font-sans:      'Montserrat', sans-serif;
+      --transition-fast: 0.2s ease;
+      --z-header: 100;
+
+      --text-body-sm:  12px;
+      --text-body-md:  13px;
+      --text-body-lg:  14px;
+      --lh-body-sm:   1.85;
+      --lh-body-md:   1.85;
+      --lh-body-lg:   1.95;
+    }
+
+    /* ── RESET ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-family: var(--font-sans);
+      font-weight: 300;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+    img { display: block; max-width: 100%; }
+    a { color: inherit; text-decoration: none; }
+    * { cursor: auto; }
+    a, button, [onclick], label, select { cursor: pointer; }
+    * { -webkit-tap-highlight-color: transparent; }
+
+    a:active, button:active, [onclick]:active, label:active, select:active,
+    .site-logo:active, .cart-btn:active, .wa-bubble:active,
+    .footer-col ul li a:active, .footer-bottom a:active {
+      opacity: 0.72;
+      transition: opacity 0.08s ease;
+    }
+
+    :focus-visible { outline: 1px solid var(--color-gold); outline-offset: 2px; }
+    :focus:not(:focus-visible) { outline: none; }
+
+    /* ── HEADER ────────────────────────────────────────────────── */
+    .site-header {
+      position: sticky; top: 0; z-index: var(--z-header);
+      height: 70px; padding: 0 48px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(14,14,14,0.95);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--color-border-solid);
+    }
+    .site-logo {
+      font-family: var(--font-serif); font-size: 22px;
+      font-weight: 500; letter-spacing: 6px;
+      color: var(--color-text); text-decoration: none; flex-shrink: 0;
+    }
+    .site-nav { display: flex; gap: 32px; align-items: center; }
+    .site-nav__link {
+      color: var(--color-muted); font-size: 10px; letter-spacing: 3px;
+      text-transform: uppercase; text-decoration: none;
+      transition: color var(--transition-fast);
+    }
+    .site-nav__link:hover { color: var(--color-text); }
+    .site-nav__link.is-active { color: var(--color-text); }
+    .cart-btn {
+      position: relative; background: none;
+      border: 1px solid rgba(255,255,255,0.08); color: var(--color-text);
+      padding: 10px 20px; font-family: var(--font-sans); font-size: 10px;
+      letter-spacing: 3px; text-transform: uppercase; cursor: pointer;
+      transition: all var(--transition-fast); flex-shrink: 0;
+    }
+    .cart-btn:hover { background: var(--color-text); color: var(--color-bg); }
+    .cart-count {
+      position: absolute; top: -8px; right: -8px;
+      background: var(--color-gold); color: var(--color-bg);
+      width: 18px; height: 18px; border-radius: 50%;
+      font-size: 9px; display: none;
+      align-items: center; justify-content: center; font-weight: 600;
+    }
+    .cart-count.is-visible { display: flex; }
+
+    /* ── MENÚ HAMBURGUESA ──────────────────────────────────────── */
+    .menu-btn {
+      display: none; flex-direction: column; justify-content: center;
+      gap: 5px; background: none; border: none; padding: 6px 4px; cursor: pointer; flex-shrink: 0;
+    }
+    .menu-btn span { display: block; width: 22px; height: 1.5px; background: var(--color-text); transition: all 0.3s ease; }
+    .menu-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 299;
+      opacity: 0; pointer-events: none; transition: opacity 0.35s ease;
+      backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    }
+    .menu-overlay.is-open { opacity: 1; pointer-events: all; }
+    .menu-drawer {
+      position: fixed; top: 0; left: 0;
+      width: 50%; min-width: 240px; max-width: 320px; height: 100dvh;
+      background: var(--color-surface); z-index: 300;
+      transform: translateX(-100%); transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+      display: flex; flex-direction: column; border-right: 1px solid var(--color-border);
+    }
+    .menu-drawer.is-open { transform: translateX(0); }
+    .menu-drawer__header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; height: 70px; border-bottom: 1px solid var(--color-border); flex-shrink: 0;
+    }
+    .menu-drawer__logo { font-family: var(--font-serif); font-size: 18px; font-weight: 500; letter-spacing: 5px; color: var(--color-text); }
+    .menu-drawer__close { background: none; border: none; color: var(--color-muted); font-size: 20px; cursor: pointer; line-height: 1; padding: 4px; transition: color var(--transition-fast); }
+    .menu-drawer__close:hover { color: var(--color-text); }
+    .menu-drawer__nav { flex: 1; display: flex; flex-direction: column; padding: 12px 0; overflow-y: auto; }
+    .menu-drawer__link {
+      padding: 16px 28px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--color-muted); text-decoration: none;
+      border-bottom: 1px solid var(--color-border);
+      transition: color var(--transition-fast), background var(--transition-fast);
+    }
+    .menu-drawer__link:first-child { border-top: 1px solid var(--color-border); }
+    .menu-drawer__link:hover { color: var(--color-text); background: rgba(255,255,255,0.03); }
+    .menu-drawer__link.is-active { color: var(--color-gold); }
+    .menu-drawer__footer { padding: 20px 28px; border-top: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 14px; flex-shrink: 0; }
+    .menu-drawer__wa { display: flex; align-items: center; gap: 10px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); text-decoration: none; transition: color var(--transition-fast); }
+    .menu-drawer__wa:hover { color: var(--color-text); }
+
+    /* ── HERO DE PÁGINA ────────────────────────────────────────── */
+    .page-hero {
+      padding: 52px 48px 44px;
+      border-bottom: 1px solid var(--color-border);
+      max-width: 780px;
+    }
+    .page-hero__label {
+      font-size: 9px; letter-spacing: 5px; text-transform: uppercase;
+      color: var(--color-gold); display: flex; align-items: center;
+      gap: 14px; margin-bottom: 18px;
+    }
+    .page-hero__label::before {
+      content: ''; display: block; width: 32px; height: 1px; background: var(--color-gold);
+    }
+    .page-hero__title {
+      font-family: var(--font-serif); font-size: clamp(1.8rem, 3vw, 2.6rem);
+      font-weight: 300; line-height: 1.1; letter-spacing: -0.5px;
+    }
+    .page-hero__title em { font-style: italic; color: var(--color-gold); }
+    .page-hero__sub {
+      margin-top: 14px; font-size: var(--text-body-md); color: var(--color-muted);
+      letter-spacing: 0.5px; line-height: var(--lh-body-md); max-width: 480px;
+    }
+
+    /* ── LAYOUT PRINCIPAL ──────────────────────────────────────── */
+    .page-body {
+      flex: 1; max-width: 900px; margin: 0 auto; width: 100%;
+      padding: 64px 24px 80px; display: flex; flex-direction: column; gap: 48px;
+    }
+
+    /* ── SECCIÓN ───────────────────────────────────────────────── */
+    .info-section { display: flex; flex-direction: column; gap: 0; }
+    .info-section__header {
+      display: flex; align-items: center; gap: 16px;
+      padding-bottom: 20px; border-bottom: 1px solid var(--color-border); margin-bottom: 28px;
+    }
+    .info-section__icon {
+      width: 44px; height: 44px; background: var(--color-gold-dim);
+      border: 1px solid var(--color-gold-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .info-section__title { font-family: var(--font-serif); font-size: 1.9rem; font-weight: 300; letter-spacing: 0.5px; }
+
+    /* ── CARDS ─────────────────────────────────────────────────── */
+    .info-card { background: var(--color-surface); border: 1px solid var(--color-border); padding: 28px 32px; margin-bottom: 12px; }
+    .info-card:last-child { margin-bottom: 0; }
+    .info-card__title { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--color-gold); margin-bottom: 14px; }
+    .info-card__body { font-size: var(--text-body-md); line-height: var(--lh-body-lg); color: var(--color-muted); }
+    .info-card__body strong { color: var(--color-text); font-weight: 500; }
+    .info-card__body a { color: var(--color-gold); text-decoration: underline; text-underline-offset: 3px; }
+
+    .info-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+    .info-list li { display: block; font-size: var(--text-body-md); line-height: var(--lh-body-md); color: var(--color-muted); padding-left: 18px; position: relative; }
+    .info-list li::before { content: '✦'; color: var(--color-gold); font-size: 7px; position: absolute; left: 0; top: 4px; }
+    .info-list li strong { color: var(--color-text); font-weight: 500; }
+
+    .highlight-note {
+      background: var(--color-gold-dim); border: 1px solid var(--color-gold-border);
+      border-left: 3px solid var(--color-gold); padding: 16px 20px;
+      font-size: var(--text-body-sm); line-height: var(--lh-body-sm);
+      color: var(--color-muted); margin-top: 16px;
+    }
+    .highlight-note strong { color: var(--color-gold); font-weight: 500; }
+
+    /* ── CTA ───────────────────────────────────────────────────── */
+    .nosotros-cta {
+      background: var(--color-surface); border: 1px solid var(--color-gold-border);
+      padding: 36px 32px; display: flex; align-items: center;
+      justify-content: space-between; gap: 24px; flex-wrap: wrap;
+    }
+    .nosotros-cta__text { font-family: var(--font-serif); font-size: clamp(1.3rem, 2.5vw, 1.8rem); font-weight: 300; line-height: 1.2; }
+    .nosotros-cta__text em { font-style: italic; color: var(--color-gold); }
+    .nosotros-cta__btn {
+      display: inline-block; padding: 14px 28px; background: var(--color-text);
+      color: var(--color-bg); font-family: var(--font-sans); font-size: 10px;
+      letter-spacing: 3px; text-transform: uppercase; font-weight: 700;
+      text-decoration: none; flex-shrink: 0; transition: background var(--transition-fast);
+    }
+    .nosotros-cta__btn:hover { background: var(--color-gold); }
+
+    /* ── FOOTER ────────────────────────────────────────────────── */
+    .site-footer { border-top: 1px solid var(--color-border); padding: 60px 48px 32px; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 60px; margin-bottom: 48px; }
+    .footer-brand p { font-size: var(--text-body-sm); line-height: var(--lh-body-lg); color: var(--color-muted); max-width: 280px; margin-top: 16px; }
+    .footer-logo { font-family: var(--font-serif); font-size: 1.3rem; font-weight: 500; letter-spacing: 0.25em; color: var(--color-text); text-decoration: none; }
+    .footer-logo span { font-style: italic; color: var(--color-gold); }
+    .footer-col h4 { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--color-gold); margin-bottom: 20px; }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-col ul li a { font-size: var(--text-body-sm); color: var(--color-muted); letter-spacing: 1px; text-decoration: none; transition: color var(--transition-fast); }
+    .footer-col ul li a:hover { color: var(--color-text); }
+    .footer-bottom { display: flex; justify-content: space-between; align-items: center; padding-top: 24px; border-top: 1px solid var(--color-border); font-size: 10px; color: var(--color-muted); letter-spacing: 1px; }
+    .footer-legal { display: flex; gap: 24px; }
+    .footer-legal a { color: var(--color-muted); text-decoration: none; transition: color var(--transition-fast); }
+    .footer-legal a:hover { color: var(--color-text); }
+
+    /* ── CARRITO LATERAL ───────────────────────────────────────── */
+    .cart-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; opacity: 0; pointer-events: none; transition: opacity .4s; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+    .cart-overlay.is-open { opacity: 1; pointer-events: all; }
+    .cart-sidebar { position: fixed; top: 0; right: 0; width: 420px; height: 100vh; background: var(--color-surface); z-index: 201; transform: translateX(100%); transition: transform .5s cubic-bezier(.4,0,.2,1); display: flex; flex-direction: column; border-left: 1px solid var(--color-border); }
+    .cart-sidebar.is-open { transform: translateX(0); }
+    .cart__header { padding: 32px 36px; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
+    .cart__title { font-family: var(--font-serif); font-size: 24px; font-weight: 400; letter-spacing: 3px; }
+    .cart__close { background: none; border: none; color: var(--color-muted); font-size: 24px; cursor: pointer; transition: color var(--transition-fast); line-height: 1; }
+    .cart__close:hover { color: var(--color-text); }
+    .cart__items { flex: 1; overflow-y: auto; padding: 24px 36px; }
+    .cart__empty { text-align: center; padding: 80px 36px; color: var(--color-muted); }
+    .cart__empty p { font-family: var(--font-serif); font-size: 22px; margin-bottom: 8px; }
+    .cart__empty span { font-size: 11px; letter-spacing: 2px; }
+    .cart__footer { padding: 24px 36px 36px; border-top: 1px solid var(--color-border); }
+    .cart-item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--color-border); align-items: flex-start; }
+    .cart-item__img-placeholder { width: 56px; height: 56px; background: var(--color-surface2); border: 1px solid var(--color-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 22px; font-weight: 400; color: var(--color-gold); }
+    .cart-item__info { flex: 1; min-width: 0; }
+    .cart-item__name { font-family: var(--font-serif); font-size: 18px; margin-bottom: 4px; }
+    .cart-item__variant { font-size: 10px; color: var(--color-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+    .cart-item__controls { display: flex; align-items: center; gap: 12px; }
+    .qty-btn { background: var(--color-surface2); border: none; color: var(--color-text); width: 28px; height: 28px; font-size: 16px; cursor: pointer; transition: background var(--transition-fast); display: flex; align-items: center; justify-content: center; }
+    .qty-val { font-size: 14px; min-width: 20px; text-align: center; }
+    .cart-item__price { font-family: var(--font-serif); font-size: 20px; white-space: nowrap; align-self: center; }
+    .cart-item__remove { background: none; border: none; color: var(--color-muted); cursor: pointer; font-size: 16px; align-self: center; transition: color var(--transition-fast); }
+    .cart__subtotal { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .cart__subtotal span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
+    .cart__subtotal strong { font-family: var(--font-serif); font-size: 28px; font-weight: 400; }
+    .cart__ship-note { font-size: 10px; color: var(--color-gold); letter-spacing: 1px; margin-bottom: 12px; }
+    .cart__discount-note { font-size: 10px; color: var(--color-muted); letter-spacing: .5px; line-height: 1.6; margin-bottom: 16px; }
+    .cart__checkout-btn { width: 100%; background: var(--color-text); color: var(--color-bg); border: none; padding: 18px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: background var(--transition-fast); }
+    .cart__checkout-btn:hover { background: var(--color-gold); }
+    .cart__mp-info { text-align: center; margin-top: 12px; font-size: 9px; letter-spacing: 2px; color: var(--color-muted); }
+    .cart__mp-info strong { color: var(--color-text); letter-spacing: 3px; }
+
+    /* ── BURBUJA WHATSAPP ──────────────────────────────────────── */
+    .wa-bubble { position: fixed; bottom: 28px; right: 28px; z-index: 9000; display: flex; align-items: center; gap: 10px; text-decoration: none; transition: transform 0.5s cubic-bezier(.4,0,.2,1), opacity 0.3s ease; }
+    .wa-bubble__tooltip { background: var(--color-surface); color: var(--color-text); font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.05em; padding: 8px 14px; border-radius: 4px; border: 1px solid var(--color-border); white-space: nowrap; opacity: 0; transform: translateX(8px); transition: opacity 0.25s ease, transform 0.25s ease; pointer-events: none; }
+    .wa-bubble:hover .wa-bubble__tooltip { opacity: 1; transform: translateX(0); }
+    .wa-bubble__btn { width: 56px; height: 56px; border-radius: 50%; background: #25D366; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(37,211,102,0.35); transition: transform 0.2s ease, box-shadow 0.2s ease; flex-shrink: 0; }
+    .wa-bubble:hover .wa-bubble__btn { transform: scale(1.08); box-shadow: 0 6px 22px rgba(37,211,102,0.5); }
+    .wa-bubble__btn svg { width: 28px; height: 28px; fill: #fff; }
+    body.cart-open .wa-bubble { transform: translateX(-440px); }
+
+    /* ── TOAST ─────────────────────────────────────────────────── */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--color-text); color: var(--color-bg); padding: 12px 24px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; opacity: 0; transition: all .4s; z-index: 9999; white-space: nowrap; pointer-events: none; }
+    .toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── RESPONSIVE ────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .site-header { padding: 0 24px; }
+      .site-nav { display: none; }
+      .menu-btn { display: flex; }
+      .page-hero { padding: 40px 24px 32px; max-width: 100%; }
+      .page-hero__title { font-size: clamp(1.5rem, 5vw, 2rem); }
+      .site-footer { padding: 48px 24px 28px; }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
+      .cart-sidebar { width: 100%; }
+      body.cart-open .wa-bubble { transform: none; opacity: 0; pointer-events: none; }
+      .nosotros-cta { flex-direction: column; align-items: flex-start; }
+    }
+    @media (max-width: 600px) {
+      .footer-grid { grid-template-columns: 1fr; gap: 28px; }
+      .footer-bottom { flex-direction: column; text-align: center; gap: 12px; }
+      .footer-legal { flex-direction: column; align-items: center; gap: 10px; }
+      .wa-bubble { bottom: 20px; right: 16px; }
+      .wa-bubble__tooltip { display: none; }
+      .page-body { padding: 40px 16px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+<!-- ── HEADER ──────────────────────────────────────────────────── -->
+<header class="site-header">
+  <button class="menu-btn" onclick="toggleMenu()" aria-label="Abrir menú">
+    <span></span><span></span><span></span>
+  </button>
+  <a href="index.html" class="site-logo" aria-label="Founder - Inicio">FOUNDER</a>
+  <nav class="site-nav" aria-label="Navegación principal">
+    <a href="index.html" class="site-nav__link">Inicio</a>
+    <a href="index.html#productos" class="site-nav__link">Productos</a>
+    <a href="tecnologia-rfid.html" class="site-nav__link">Tecnología RFID</a>
+    <a href="seguimiento.html" class="site-nav__link">Seguí tu compra</a>
+    <a href="contacto.html" class="site-nav__link">Contacto</a>
+  </nav>
+  <button class="cart-btn" onclick="toggleCart()" aria-label="Abrir carrito">
+    Carrito
+    <span class="cart-count" id="cartCount">0</span>
+  </button>
+</header>
+
+<!-- ── MENÚ MOBILE ──────────────────────────────────────────────── -->
+<div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()" aria-hidden="true"></div>
+<aside class="menu-drawer" id="menuDrawer" aria-label="Menú de navegación">
+  <div class="menu-drawer__header">
+    <span class="menu-drawer__logo">FOUNDER</span>
+    <button class="menu-drawer__close" onclick="toggleMenu()" aria-label="Cerrar menú">✕</button>
+  </div>
+  <nav class="menu-drawer__nav" aria-label="Navegación mobile">
+    <a href="index.html" class="menu-drawer__link">Inicio</a>
+    <a href="index.html#productos" class="menu-drawer__link">Productos</a>
+    <a href="tecnologia-rfid.html" class="menu-drawer__link">Tecnología RFID</a>
+    <a href="seguimiento.html" class="menu-drawer__link">Seguí tu compra</a>
+    <a href="contacto.html" class="menu-drawer__link">Contacto</a>
+  </nav>
+  <div class="menu-drawer__footer">
+    <a href="https://wa.me/598098550096" target="_blank" rel="noopener noreferrer" class="menu-drawer__wa">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      WhatsApp
+    </a>
+    <a href="https://instagram.com/founder.uy" target="_blank" rel="noopener noreferrer" class="menu-drawer__wa">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+      @founder.uy
+    </a>
+  </div>
+</aside>
+
+<!-- ── HERO DE PÁGINA ───────────────────────────────────────────── -->
+<div class="page-hero">
+  <div class="page-hero__label">Founder.uy — Nuestra historia</div>
+  <h1 class="page-hero__title">Quiénes <em>somos</em></h1>
+  <p class="page-hero__sub">Una marca uruguaya que nació de la convicción de que los accesorios del día a día pueden ser funcionales, seguros y con identidad propia.</p>
+</div>
+
+<!-- ── CONTENIDO PRINCIPAL ─────────────────────────────────────── -->
+<main class="page-body">
+
+  <!-- ══ SECCIÓN 1: LA MARCA ══ -->
+  <section class="info-section" aria-labelledby="titulo-marca">
+    <div class="info-section__header">
+      <div class="info-section__icon" aria-hidden="true">✦</div>
+      <h2 class="info-section__title" id="titulo-marca">La marca</h2>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card__title">Origen</div>
+      <div class="info-card__body">
+        FOUNDER nació en Uruguay con una idea simple: crear billeteras y tarjeteros que combinen <strong>diseño minimalista, materiales de calidad y protección real</strong> para el día a día moderno.
+        <br><br>
+        Vivimos en un mundo donde pagamos con tarjeta sin contacto, llevamos documentos con chip y usamos llaves electrónicas. Esa comodidad también trae riesgos que muchos desconocen. FOUNDER existe para cubrirlos.
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card__title">Nuestra propuesta</div>
+      <div class="info-card__body">
+        Cada producto FOUNDER está diseñado para ser <strong>discreto, duradero y funcional</strong>. Nada de excesos ni marcas ostentosas. Solo un accesorio bien hecho que protege lo que llevás encima.
+        <div class="highlight-note">
+          <strong>Tecnología RFID integrada:</strong> todos nuestros productos incluyen protección contra el robo electrónico de datos. No es un extra — es parte del diseño desde el principio.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ SECCIÓN 2: POR QUÉ ELEGIRNOS ══ -->
+  <section class="info-section" aria-labelledby="titulo-porque">
+    <div class="info-section__header">
+      <div class="info-section__icon" aria-hidden="true">🎯</div>
+      <h2 class="info-section__title" id="titulo-porque">Por qué elegirnos</h2>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card__title">Lo que nos diferencia</div>
+      <div class="info-card__body">
+        <ul class="info-list">
+          <li><strong>Protección RFID real:</strong> blindaje integrado en cada producto, sin comprometer el diseño</li>
+          <li><strong>Materiales seleccionados:</strong> cuero y materiales de alta calidad que mejoran con el uso</li>
+          <li><strong>Diseño minimalista:</strong> sin logos gigantes, sin adornos innecesarios — solo lo esencial</li>
+          <li><strong>Atención directa:</strong> hablás con nosotros, no con un bot. Coordinamos por WhatsApp en horario real</li>
+          <li><strong>Envíos a todo Uruguay:</strong> vía agencia UES para el interior, cadetería en Montevideo</li>
+          <li><strong>Cambios en 7 días:</strong> si algo no está bien, lo resolvemos sin vueltas</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ SECCIÓN 3: CÓMO COMPRAR ══ -->
+  <section class="info-section" aria-labelledby="titulo-comprar">
+    <div class="info-section__header">
+      <div class="info-section__icon" aria-hidden="true">🛍️</div>
+      <h2 class="info-section__title" id="titulo-comprar">Cómo comprar</h2>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card__title">El proceso es simple</div>
+      <div class="info-card__body">
+        <ul class="info-list">
+          <li>Elegís tu modelo y color desde la tienda</li>
+          <li>Completás el checkout con tus datos de entrega</li>
+          <li>Te llega la confirmación con el número de pedido</li>
+          <li>Si pagás por transferencia, te enviamos los datos bancarios por WhatsApp</li>
+          <li>Preparamos y despachamos en 24 a 48 hs hábiles tras confirmar el pago</li>
+          <li>Podés hacer seguimiento de tu pedido en tiempo real</li>
+        </ul>
+        <div class="highlight-note">
+          <strong>Retiro en local:</strong> si estás en Montevideo podés pasar a buscar tu pedido en zona Prado. La dirección exacta se coordina por WhatsApp una vez confirmado el pedido.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ CTA FINAL ══ -->
+  <div class="nosotros-cta">
+    <div class="nosotros-cta__text">¿Tenés alguna duda?<br>Escribinos por <em>WhatsApp</em></div>
+    <a href="https://wa.me/598098550096" target="_blank" rel="noopener noreferrer" class="nosotros-cta__btn">Contactar ahora</a>
+  </div>
+
+</main>
+
+<!-- ── FOOTER ───────────────────────────────────────────────────── -->
+<footer class="site-footer" role="contentinfo">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <a href="index.html" class="footer-logo">FOUNDER<span>.UY</span></a>
+      <p>Billeteras y tarjeteros premium con tecnología RFID. Diseñados para quienes cuidan cada detalle. Enviamos a todo Uruguay vía agencia UES.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Productos</h4>
+      <ul>
+        <li><a href="producto.html?p=Simple">Simple</a></li>
+        <li><a href="producto.html?p=Classic">Classic</a></li>
+        <li><a href="producto.html?p=Confort">Confort</a></li>
+        <li><a href="producto.html?p=Essential">Essential</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Info</h4>
+      <ul>
+        <li><a href="tecnologia-rfid.html">Tecnología RFID</a></li>
+        <li><a href="envios.html">Envíos y Devoluciones</a></li>
+        <li><a href="seguimiento.html">Seguimiento</a></li>
+        <li><a href="contacto.html">Contacto</a></li>
+        <li><a href="sobre-nosotros.html">Sobre nosotros</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="index.html">Política de Privacidad</a></li>
+        <li><a href="index.html">Términos y Condiciones</a></li>
+        <li><a href="envios.html">Cambios y Devoluciones</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2026 Founder.uy — Todos los derechos reservados</p>
+    <div class="footer-legal">
+      <a href="index.html">Privacidad</a>
+      <a href="index.html">Términos</a>
+      <a href="envios.html">Devoluciones</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ── CARRITO LATERAL ──────────────────────────────────────────── -->
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()" aria-hidden="true"></div>
+<aside class="cart-sidebar" id="cartSidebar" aria-label="Carrito de compras">
+  <div class="cart__header">
+    <span class="cart__title">Mi Carrito</span>
+    <button class="cart__close" onclick="toggleCart()" aria-label="Cerrar carrito">✕</button>
+  </div>
+  <div class="cart__items" id="cartItems">
+    <div class="cart__empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>
+  </div>
+  <div class="cart__footer" id="cartFooter" style="display:none">
+    <div class="cart__subtotal"><span>Subtotal</span><strong id="cartTotal">$0</strong></div>
+    <div class="cart__ship-note" id="cartShipNote"></div>
+    <div class="cart__discount-note">💰 Pagando por transferencia obtenés un <strong>10% de descuento</strong>.</div>
+    <button class="cart__checkout-btn" onclick="openCheckout()">Finalizar compra</button>
+    <div class="cart__mp-info"><span>Pagás con</span> <strong>Mercado Pago</strong> o transferencia</div>
+  </div>
+</aside>
+
+<!-- ── BURBUJA WHATSAPP ─────────────────────────────────────────── -->
+<a class="wa-bubble" href="https://wa.me/598098550096" target="_blank" rel="noopener noreferrer" aria-label="Contactar por WhatsApp">
+  <span class="wa-bubble__tooltip">¿Necesitás ayuda?</span>
+  <span class="wa-bubble__btn">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+    </svg>
+  </span>
+</a>
+
+<script>
+'use strict';
+
+const CART_KEY      = 'founder_cart';
+const FREE_SHIPPING = 2000;
+
+function loadCart() {
+  try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
+}
+function formatPrice(n) { return '$' + Number(n).toLocaleString('es-UY'); }
+
+function updateCartUI() {
+  const cart    = loadCart();
+  const total   = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const count   = cart.reduce((s, i) => s + i.qty, 0);
+  const countEl = document.getElementById('cartCount');
+  const footer  = document.getElementById('cartFooter');
+  const itemsEl = document.getElementById('cartItems');
+
+  if (countEl) { countEl.textContent = count; countEl.classList.toggle('is-visible', count > 0); }
+  if (!itemsEl) return;
+
+  if (cart.length === 0) {
+    itemsEl.innerHTML = '<div class="cart__empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>';
+    if (footer) footer.style.display = 'none';
+    return;
+  }
+
+  itemsEl.innerHTML = cart.map((item, i) => {
+    const inicial = (item.name || '?')[0].toUpperCase();
+    return `
+      <div class="cart-item">
+        <div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>
+        <div class="cart-item__info">
+          <div class="cart-item__name">Founder ${item.name}</div>
+          <div class="cart-item__variant">${item.color || ''}</div>
+          <div class="cart-item__controls">
+            <button class="qty-btn" onclick="changeQty(${i},-1)">−</button>
+            <span class="qty-val">${item.qty}</span>
+            <button class="qty-btn" onclick="changeQty(${i},1)">+</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="cart-item__price">${formatPrice(item.price * item.qty)}</div>
+          <button class="cart-item__remove" onclick="removeItem(${i})" aria-label="Eliminar">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  if (footer) {
+    footer.style.display = 'block';
+    document.getElementById('cartTotal').textContent = formatPrice(total) + ' UYU';
+    const shipNote = document.getElementById('cartShipNote');
+    if (shipNote) {
+      shipNote.textContent = total >= FREE_SHIPPING ? '🎁 ¡Tenés envío gratis!' : `Agregá ${formatPrice(FREE_SHIPPING - total)} más para envío gratis`;
+      shipNote.style.color = total >= FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
+    }
+  }
+}
+
+function changeQty(idx, delta) {
+  const cart = loadCart();
+  if (!cart[idx]) return;
+  cart[idx].qty = Math.max(1, cart[idx].qty + delta);
+  localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  updateCartUI();
+}
+function removeItem(idx) {
+  const cart = loadCart(); cart.splice(idx, 1);
+  localStorage.setItem(CART_KEY, JSON.stringify(cart)); updateCartUI();
+}
+function toggleCart() {
+  const sidebar = document.getElementById('cartSidebar');
+  const overlay = document.getElementById('cartOverlay');
+  const isOpen  = sidebar.classList.toggle('is-open');
+  overlay.classList.toggle('is-open', isOpen);
+  document.body.classList.toggle('cart-open', isOpen);
+  document.body.style.overflow = isOpen ? 'hidden' : '';
+}
+function toggleMenu() {
+  const drawer  = document.getElementById('menuDrawer');
+  const overlay = document.getElementById('menuOverlay');
+  const isOpen  = drawer.classList.toggle('is-open');
+  overlay.classList.toggle('is-open', isOpen);
+  document.body.style.overflow = isOpen ? 'hidden' : '';
+}
+function openCheckout() { window.location.href = 'checkout.html'; }
+
+updateCartUI();
+</script>
+</body>
+</html>
