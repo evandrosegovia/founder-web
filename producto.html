@@ -311,7 +311,7 @@ select:active,
 .cart__items { flex: 1; overflow-y: auto; padding: 24px 36px; }
 .cart-item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--color-border); align-items: flex-start; }
 .cart-item__img { width: 56px; height: 56px; min-width: 56px; object-fit: cover; border: 1px solid var(--color-border); flex-shrink: 0; }
-.cart-item__img-placeholder { width: 56px; height: 56px; min-width: 56px; background: var(--color-surface2); border: 1px solid var(--color-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.cart-item__img-placeholder { width: 56px; height: 56px; min-width: 56px; background: var(--color-surface2); border: 1px solid var(--color-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 22px; font-weight: 400; color: var(--color-gold); letter-spacing: 0; }
 .cart-item__info { flex: 1; min-width: 0; }
 .cart-item__name { font-family: var(--font-serif); font-size: 18px; margin-bottom: 4px; }
 .cart-item__variant { font-size: 10px; color: var(--color-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
@@ -809,6 +809,38 @@ function getPhotos(model, color) {
   return state.photoMap[model]?.[color] || [];
 }
 
+/** Placeholder elegante: cuadrado oscuro con la inicial del modelo en dorado */
+function cartPhotoPlaceholder(name) {
+  const inicial = (name || '?')[0].toUpperCase();
+  const el = document.createElement('div');
+  el.className = 'cart-item__img-placeholder';
+  el.setAttribute('aria-hidden', 'true');
+  el.textContent = inicial;
+  return el;
+}
+
+/** Si una imagen del carrito falla, intenta reconstruir la URL desde el Sheet de fotos.
+ *  Si eso también falla, muestra el placeholder elegante. */
+async function recoverCartPhoto(imgEl, name, color) {
+  try {
+    const data = await fetchSheet(CONFIG.SHEET_FOTOS);
+    const rows = data?.table?.rows || [];
+    for (const row of rows) {
+      const modelo = (row.c[0]?.v || '').trim();
+      const col    = (row.c[1]?.v || '').trim();
+      if (modelo === name && col === color) {
+        const foto = [row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].find(Boolean);
+        if (foto) {
+          imgEl.src = foto;
+          imgEl.onerror = () => imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
+          return;
+        }
+      }
+    }
+  } catch (_) {}
+  imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
+}
+
 // ── PRODUCTO — Inicialización ───────────────────────────────────
 async function init() {
   const productName = getProductNameFromURL();
@@ -1092,11 +1124,13 @@ function updateCart() {
 
   setHTML('cartItems', state.cart.map((item, idx) => {
     const photo = getPhotos(item.name, item.color)[0] || null;
+    const inicial = (item.name || '?')[0].toUpperCase();
     return `
       <div class="cart-item">
         ${photo
-          ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy">`
-          : `<div class="cart-item__img-placeholder" aria-hidden="true">👜</div>`}
+          ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
+               onerror="recoverCartPhoto(this,'${item.name.replace(/'/g,"\\'")}','${item.color.replace(/'/g,"\\'")}');">`
+          : `<div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>`}
         <div class="cart-item__info">
           <div class="cart-item__name">Founder ${item.name}</div>
           <div class="cart-item__variant">${item.color}</div>
