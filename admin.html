@@ -185,13 +185,24 @@ a:active,button:active,[onclick]:active,label:active{opacity:0.75;transition:opa
 textarea.fi{resize:vertical;min-height:70px}
 .fhint{font-size:9px;color:var(--muted);letter-spacing:.5px;line-height:1.6}
 /* ── EDITOR DE COLORES ─────────────────────────────────────── */
-.color-row{display:flex;gap:7px;align-items:center;margin-bottom:7px}
+.color-row{display:flex;gap:7px;align-items:center;margin-bottom:7px;flex-wrap:wrap}
 .color-dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);flex-shrink:0}
-.color-name-in{flex:1;background:var(--mid);border:1px solid var(--border);color:var(--white);padding:7px 10px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none}
-.rem-color{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;transition:color .2s;padding:3px}
+.color-name-in{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:7px 10px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;width:140px;flex-shrink:0}
+.rem-color{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;transition:color .2s;padding:3px;flex-shrink:0}
 .rem-color:hover{color:var(--red)}
 .add-color-btn{width:100%;background:none;border:1px dashed var(--border);color:var(--muted);padding:8px;font-family:'Montserrat',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:3px}
 .add-color-btn:hover{border-color:var(--gold);color:var(--gold)}
+/* Botones de estado por color */
+.color-estado-btns{display:flex;gap:4px;align-items:center;flex:1}
+.estado-btn{border:1px solid var(--border);background:none;color:var(--muted);font-family:'Montserrat',sans-serif;font-size:8px;letter-spacing:1px;text-transform:uppercase;padding:4px 8px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.estado-btn:hover{border-color:var(--gold);color:var(--gold)}
+.estado-btn.activo--sel{background:rgba(76,175,130,.15);border-color:rgba(76,175,130,.5);color:#4caf82}
+.estado-btn.sinstock--sel{background:rgba(224,85,85,.15);border-color:rgba(224,85,85,.5);color:var(--red)}
+.estado-btn.oferta--sel{background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--gold)}
+.oferta-precio-wrap{display:flex;align-items:center;gap:5px;margin-top:5px;padding-left:33px;width:100%}
+.oferta-precio-in{background:var(--mid);border:1px solid var(--gold);color:var(--gold);padding:5px 9px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;width:140px}
+.oferta-precio-in::placeholder{color:var(--muted)}
+.oferta-precio-label{font-size:9px;letter-spacing:1px;color:var(--muted)}
 /* ── EDITOR DE FOTOS ───────────────────────────────────────── */
 .photo-block{border:1px solid var(--border);padding:12px;margin-bottom:8px}
 .photo-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}
@@ -788,6 +799,7 @@ let fotosData = [];   // array de {rowIndex, modelo, color, fotos:[]}
 let allOrders = [], currentFilter = 'todos';
 let tokenClient, accessToken = null, driveReady = false;
 let pendingDeleteIndex = -1; // índice en products[] del producto a eliminar
+let colorEstados = {};  // { colorName: { estado: 'activo'|'sin_stock'|'oferta', precioOferta: number|null } }
 
 // ── AUTH — Login y conexión con Drive ────────────────────────────
 function login() {
@@ -1119,7 +1131,16 @@ function editProduct(i) {
   document.getElementById('editMaterial').value    = extras.material    || '';
   document.getElementById('editNota').value        = extras.nota        || '';
 
+  // Cargar estados de color existentes desde extras.colores_estado
+  const ce = extras.colores_estado || {};
   const cols = p.colores ? p.colores.split(',').map(c => c.trim()) : [];
+  colorEstados = {};
+  cols.forEach(colorName => {
+    const estado = ce[colorName] || 'activo';
+    const precioOferta = ce[`${colorName}_precio_oferta`] || null;
+    colorEstados[colorName] = { estado, precioOferta };
+  });
+
   renderColorRows(cols);
   renderColorPhotos(p.nombre, cols);
   document.getElementById('productModal').classList.add('open');
@@ -1128,6 +1149,7 @@ function editProduct(i) {
 function openNewProduct() {
   document.getElementById('modalTitle').textContent = 'Nuevo producto';
   document.getElementById('editingRow').value = -1;
+  colorEstados = {};
   ['editNombre','editPrecio','editDesc','editSpecs',
    'editCapacidad','editDimensiones','editMaterial','editNota'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
@@ -1144,13 +1166,36 @@ function closeModal() { document.getElementById('productModal').classList.remove
 
 // ── EDITOR DE COLORES ────────────────────────────────────────────
 function renderColorRows(cols) {
-  document.getElementById('colorsEditor').innerHTML = cols.map((c, i) => `
+  document.getElementById('colorsEditor').innerHTML = cols.map((c, i) => {
+    const est = colorEstados[c] || { estado: 'activo', precioOferta: null };
+    return `
     <div class="color-row" id="cr${i}">
       <div class="color-dot" id="cd${i}" style="background:${COLOR_MAP[c] || '#555'}"></div>
       <input type="text" class="color-name-in" value="${c}" placeholder="Nombre del color"
-        oninput="updDot(${i},this.value)" id="cn${i}">
-      <button class="rem-color" onclick="remRow(${i})">✕</button>
-    </div>`).join('');
+        oninput="updDot(${i},this.value);updEstadoKey(${i},this.value)" id="cn${i}">
+      <div class="color-estado-btns">
+        <button class="estado-btn ${est.estado === 'activo'    ? 'activo--sel'   : ''}"
+          onclick="setEstado(${i},'activo')"   type="button">🟢 Activo</button>
+        <button class="estado-btn ${est.estado === 'sin_stock' ? 'sinstock--sel' : ''}"
+          onclick="setEstado(${i},'sin_stock')" type="button">🔴 Sin stock</button>
+        <button class="estado-btn ${est.estado === 'oferta'    ? 'oferta--sel'   : ''}"
+          onclick="setEstado(${i},'oferta')"   type="button">🏷️ Oferta</button>
+      </div>
+      <button class="rem-color" onclick="remRow(${i})" type="button">✕</button>
+      ${est.estado === 'oferta' ? `
+      <div class="oferta-precio-wrap">
+        <span class="oferta-precio-label">Precio oferta $</span>
+        <input type="number" class="oferta-precio-in" id="op${i}"
+          placeholder="ej: 1490" value="${est.precioOferta || ''}"
+          oninput="updPrecioOferta(${i},this.value)" min="0">
+      </div>` : `<div class="oferta-precio-wrap" id="opw${i}" style="display:none">
+        <span class="oferta-precio-label">Precio oferta $</span>
+        <input type="number" class="oferta-precio-in" id="op${i}"
+          placeholder="ej: 1490" value=""
+          oninput="updPrecioOferta(${i},this.value)" min="0">
+      </div>`}
+    </div>`;
+  }).join('');
 }
 
 function addColorRow() {
@@ -1158,15 +1203,72 @@ function addColorRow() {
   const i = e.children.length;
   const d = document.createElement('div');
   d.className = 'color-row'; d.id = `cr${i}`;
-  d.innerHTML = `<div class="color-dot" id="cd${i}" style="background:#555"></div>
+  d.innerHTML = `
+    <div class="color-dot" id="cd${i}" style="background:#555"></div>
     <input type="text" class="color-name-in" placeholder="Nombre del color"
-      oninput="updDot(${i},this.value)" id="cn${i}">
-    <button class="rem-color" onclick="remRow(${i})">✕</button>`;
+      oninput="updDot(${i},this.value);updEstadoKey(${i},this.value)" id="cn${i}">
+    <div class="color-estado-btns">
+      <button class="estado-btn activo--sel" onclick="setEstado(${i},'activo')" type="button">🟢 Activo</button>
+      <button class="estado-btn" onclick="setEstado(${i},'sin_stock')" type="button">🔴 Sin stock</button>
+      <button class="estado-btn" onclick="setEstado(${i},'oferta')" type="button">🏷️ Oferta</button>
+    </div>
+    <button class="rem-color" onclick="remRow(${i})" type="button">✕</button>
+    <div class="oferta-precio-wrap" id="opw${i}" style="display:none">
+      <span class="oferta-precio-label">Precio oferta $</span>
+      <input type="number" class="oferta-precio-in" id="op${i}"
+        placeholder="ej: 1490" value=""
+        oninput="updPrecioOferta(${i},this.value)" min="0">
+    </div>`;
   e.appendChild(d);
 }
 
 function remRow(i) { const r = document.getElementById(`cr${i}`); if (r) r.remove(); }
 function updDot(i, v) { const d = document.getElementById(`cd${i}`); if (d) d.style.background = COLOR_MAP[v.trim()] || '#555'; }
+
+/** Actualiza la clave en colorEstados cuando el nombre del color cambia */
+function updEstadoKey(i, newName) {
+  const oldName = Object.keys(colorEstados).find((_, idx) => idx === i);
+  if (oldName && oldName !== newName.trim()) {
+    colorEstados[newName.trim()] = colorEstados[oldName];
+    delete colorEstados[oldName];
+  }
+}
+
+/** Cambia el estado de un color y re-renderiza los botones del row */
+function setEstado(i, nuevoEstado) {
+  const colorName = document.getElementById(`cn${i}`)?.value.trim() || `__nuevo_${i}`;
+  if (!colorEstados[colorName]) colorEstados[colorName] = { estado: 'activo', precioOferta: null };
+  colorEstados[colorName].estado = nuevoEstado;
+
+  // Actualizar clases de botones visualmente
+  const row = document.getElementById(`cr${i}`);
+  if (!row) return;
+  row.querySelectorAll('.estado-btn').forEach(btn => {
+    btn.classList.remove('activo--sel','sinstock--sel','oferta--sel');
+  });
+  const btns = row.querySelectorAll('.estado-btn');
+  if (btns[0] && nuevoEstado === 'activo')    btns[0].classList.add('activo--sel');
+  if (btns[1] && nuevoEstado === 'sin_stock') btns[1].classList.add('sinstock--sel');
+  if (btns[2] && nuevoEstado === 'oferta')    btns[2].classList.add('oferta--sel');
+
+  // Mostrar/ocultar campo de precio de oferta
+  const opw = document.getElementById(`opw${i}`);
+  if (opw) opw.style.display = nuevoEstado === 'oferta' ? 'flex' : 'none';
+  // Si cambia a no-oferta, limpiar el precio
+  if (nuevoEstado !== 'oferta') {
+    const op = document.getElementById(`op${i}`);
+    if (op) op.value = '';
+    colorEstados[colorName].precioOferta = null;
+  }
+}
+
+/** Guarda el precio de oferta cuando el input cambia */
+function updPrecioOferta(i, val) {
+  const colorName = document.getElementById(`cn${i}`)?.value.trim() || `__nuevo_${i}`;
+  if (!colorEstados[colorName]) colorEstados[colorName] = { estado: 'oferta', precioOferta: null };
+  colorEstados[colorName].precioOferta = parseInt(val) || null;
+}
+
 function getColors() {
   return Array.from(document.querySelectorAll('#colorsEditor .color-name-in'))
     .map(i => i.value.trim()).filter(v => v).join(',');
@@ -1239,18 +1341,50 @@ async function saveProduct() {
   const colores  = getColors();
   const specs    = document.getElementById('editSpecs').value.trim();
   const desc     = document.getElementById('editDesc').value.trim();
-  const rowIdx   = parseInt(document.getElementById('editingRow').value);
 
   // Leer características extra y serializar como JSON para columna G
+  // ⚠️ MERGE: preservar todas las claves existentes, solo extender con colores_estado
+  const rowIdx   = parseInt(document.getElementById('editingRow').value);
+  const extrasExistentes = rowIdx === -1 ? {} : parseExtras(products[rowIdx]?.extras || '');
+
   const extrasObj = {
-    capacidad:   document.getElementById('editCapacidad')?.value.trim()   || '',
-    dimensiones: document.getElementById('editDimensiones')?.value.trim() || '',
-    billetes:    document.getElementById('editBilletes')?.value            || '',
-    monedas:     document.getElementById('editMonedas')?.value            || '',
-    material:    document.getElementById('editMaterial')?.value.trim()    || '',
-    nota:        document.getElementById('editNota')?.value.trim()         || '',
+    ...extrasExistentes,  // preservar material, nota, capacidad, etc. existentes
+    capacidad:   document.getElementById('editCapacidad')?.value.trim()   || extrasExistentes.capacidad   || '',
+    dimensiones: document.getElementById('editDimensiones')?.value.trim() || extrasExistentes.dimensiones || '',
+    billetes:    document.getElementById('editBilletes')?.value            || extrasExistentes.billetes    || '',
+    monedas:     document.getElementById('editMonedas')?.value            || extrasExistentes.monedas     || '',
+    material:    document.getElementById('editMaterial')?.value.trim()    || extrasExistentes.material    || '',
+    nota:        document.getElementById('editNota')?.value.trim()         || extrasExistentes.nota        || '',
   };
-  Object.keys(extrasObj).forEach(k => { if (!extrasObj[k]) delete extrasObj[k]; });
+
+  // Construir colores_estado desde colorEstados (solo guardar si hay algo no-activo)
+  const coloresEstadoObj = {};
+  const colsParaGuardar = getColors().split(',').map(c => c.trim()).filter(Boolean);
+  colsParaGuardar.forEach(colorName => {
+    const est = colorEstados[colorName];
+    if (est) {
+      coloresEstadoObj[colorName] = est.estado;
+      if (est.estado === 'oferta' && est.precioOferta) {
+        coloresEstadoObj[`${colorName}_precio_oferta`] = est.precioOferta;
+      }
+    } else {
+      coloresEstadoObj[colorName] = 'activo';
+    }
+  });
+
+  // Solo agregar colores_estado si hay al menos un color no-activo
+  const hayEstadoEspecial = colsParaGuardar.some(c => colorEstados[c]?.estado && colorEstados[c].estado !== 'activo');
+  if (hayEstadoEspecial) {
+    extrasObj.colores_estado = coloresEstadoObj;
+  } else {
+    // Limpiar colores_estado si todos están activos (no ocupar espacio)
+    delete extrasObj.colores_estado;
+  }
+
+  // Limpiar claves vacías
+  Object.keys(extrasObj).forEach(k => {
+    if (extrasObj[k] === '' || extrasObj[k] === null || extrasObj[k] === undefined) delete extrasObj[k];
+  });
   const extras = Object.keys(extrasObj).length ? JSON.stringify(extrasObj) : '';
 
   // Calcular la fila real en la hoja
