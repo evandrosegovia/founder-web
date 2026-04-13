@@ -203,6 +203,7 @@ select:active,
   transition: color var(--transition-base);
 }
 .nav__link:hover { color: var(--color-text); }
+.nav__link.is-active { color: var(--color-text); }
 .cart-btn {
   position: relative; background: none;
   border: 1px solid var(--color-border); color: var(--color-text);
@@ -733,10 +734,11 @@ body.cart-open .wa-bubble {
 <header class="header" role="banner">
   <a href="#" class="logo" aria-label="Founder - Inicio">FOUNDER</a>
   <nav class="nav" aria-label="Navegación principal">
+    <a href="index.html" class="nav__link is-active">Inicio</a>
     <a href="#productos" class="nav__link">Productos</a>
-    <a href="#rfid" class="nav__link">Tecnología RFID</a>
-    <a href="envios.html" class="nav__link">Envíos y Devoluciones</a>
-    <a href="seguimiento.html" class="nav__link">Seguimiento</a>
+    <a href="tecnologia-rfid.html" class="nav__link">Tecnología RFID</a>
+    <a href="seguimiento.html" class="nav__link">Seguí tu compra</a>
+    <a href="contacto.html" class="nav__link">Contacto</a>
   </nav>
   <button class="cart-btn" onclick="toggleCart()" aria-label="Abrir carrito">
     Carrito
