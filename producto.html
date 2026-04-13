@@ -330,6 +330,10 @@ select:active,
 .cart__subtotal strong { font-family: var(--font-serif); font-size: 28px; font-weight: 400; }
 .cart__checkout-btn { width: 100%; background: var(--color-text); color: var(--color-bg); border: none; padding: 18px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: background var(--transition-base); }
 .cart__checkout-btn:hover { background: var(--color-gold); }
+.cart__ship-note { font-size: 10px; color: var(--color-gold); letter-spacing: 1px; margin-bottom: 12px; }
+.cart__discount-note { font-size: 10px; color: var(--color-muted); letter-spacing: .5px; line-height: 1.6; margin-bottom: 16px; }
+.cart__mp-info { text-align: center; margin-top: 12px; font-size: 9px; letter-spacing: 2px; color: var(--color-muted); }
+.cart__mp-info strong { color: var(--color-text); letter-spacing: 3px; }
 
 /* ── SHARED — Toast ────────────────────────────────────────── */
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--color-text); color: var(--color-bg); padding: 12px 24px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; opacity: 0; transition: all .4s; z-index: var(--z-toast); white-space: nowrap; pointer-events: none; }
@@ -684,7 +688,10 @@ body.cart-open .wa-bubble {
   </div>
   <div class="cart__footer" id="cartFooter" style="display:none">
     <div class="cart__subtotal"><span>Subtotal</span><strong id="cartTotal">$0</strong></div>
+    <div class="cart__ship-note" id="cartShipNote"></div>
+    <div class="cart__discount-note">💰 Pagando por transferencia obtenés un <strong>10% de descuento</strong>.</div>
     <button class="cart__checkout-btn" onclick="openCheckout()">Finalizar compra</button>
+    <div class="cart__mp-info"><span>Pagás con</span> <strong>Mercado Pago</strong> o transferencia</div>
   </div>
 </aside>
 
@@ -1148,6 +1155,14 @@ function updateCart() {
   }).join(''));
 
   setText('cartTotal', `$${total.toLocaleString('es-UY')} UYU`);
+
+  const note = $('cartShipNote');
+  if (note) {
+    note.textContent = total >= CONFIG.FREE_SHIPPING
+      ? '🎁 ¡Tenés envío gratis!'
+      : `Agregá $${(CONFIG.FREE_SHIPPING - total).toLocaleString('es-UY')} más para envío gratis`;
+    note.style.color = total >= CONFIG.FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
+  }
 }
 
 function changeQty(idx, delta) {
