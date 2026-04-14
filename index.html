@@ -612,6 +612,14 @@ select:active,
 .cart__empty { text-align: center; padding: 80px 36px; color: var(--color-muted); }
 .cart__empty p { font-family: var(--font-serif); font-size: 22px; margin-bottom: 8px; }
 .cart__empty span { font-size: 11px; letter-spacing: 2px; }
+/* Aviso de producto sin stock en carrito */
+.cart-stock-warning {
+  display: none; margin: 12px 16px; padding: 12px 14px;
+  background: rgba(255,59,48,0.07); border: 1px solid rgba(255,59,48,0.25);
+  border-radius: 3px; font-size: 11px; color: #ff3b30; line-height: 1.6;
+}
+.cart-stock-warning.visible { display: block; }
+.cart-stock-warning a { color: #ff3b30; text-decoration: underline; font-weight: 500; cursor: pointer; }
 .cart__footer { padding: 24px 36px 36px; border-top: 1px solid var(--color-border); }
 .cart__subtotal { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .cart__subtotal span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
@@ -1034,6 +1042,10 @@ body.cart-open .wa-bubble {
   <div class="cart__header">
     <span class="cart__title">Mi Carrito</span>
     <button class="cart__close" onclick="toggleCart()" aria-label="Cerrar carrito">✕</button>
+  </div>
+  <div class="cart-stock-warning" id="cartStockWarning">
+    ⚠️ Uno o más productos de tu carrito no tienen stock disponible momentáneamente.
+    <br><a onclick="toggleCart();window.location.href='index.html#productos'">Buscá otra variante →</a>
   </div>
   <div class="cart__items" id="cartItems">
     <div class="cart__empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>
@@ -1566,6 +1578,7 @@ function updateCart() {
       : `Agregá $${(CONFIG.FREE_SHIPPING - total).toLocaleString('es-UY')} más para envío gratis`;
     note.style.color = total >= CONFIG.FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
   }
+  checkCartStock();
 }
 
 function changeQty(idx, delta) {
@@ -1586,6 +1599,23 @@ function toggleCart() {
   overlay.classList.toggle('is-open', isOpen);
   document.body.classList.toggle('cart-open', isOpen);
   document.body.style.overflow = isOpen ? 'hidden' : '';
+  if (isOpen) checkCartStock();
+}
+
+/** Verifica si algún item del carrito está sin stock en el catálogo actual. */
+function checkCartStock() {
+  if (!state.products || !state.products.length) return;
+  const haySinStock = state.cart.some(item => {
+    const prod = state.products.find(p => p.name === item.name);
+    if (!prod) return false;
+    const { estado } = getColorEstado(prod, item.color);
+    return estado === 'sin_stock';
+  });
+  const warning = $('cartStockWarning');
+  if (warning) {
+    if (haySinStock) warning.classList.add('visible');
+    else warning.classList.remove('visible');
+  }
 }
 
 function toggleMenu() {
