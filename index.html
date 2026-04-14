@@ -435,6 +435,30 @@ select:active,
   border: 2px solid transparent; cursor: pointer; transition: all var(--transition-fast);
 }
 .color-dot:hover { border-color: var(--color-text); transform: scale(1.15); }
+/* Color dot sin stock en tarjeta */
+.color-dot--sin-stock { opacity: 0.3; }
+
+/* Badge de oferta sobre imagen de tarjeta */
+.product-card__badge-oferta {
+  position: absolute; top: 12px; right: 12px;
+  background: var(--color-gold); color: #141414;
+  font-family: var(--font-sans); font-size: 8px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  padding: 5px 10px; border-radius: 2px; z-index: 2; pointer-events: none;
+}
+
+/* Estados de color en modal */
+.color-option--sin-stock {
+  opacity: 0.35; cursor: not-allowed !important; pointer-events: none;
+}
+.color-option--sin-stock .color-option__name::after {
+  content: ' · Sin stock'; color: #ff3b30; font-size: 9px;
+}
+.color-option--oferta .color-swatch { position: relative; }
+.color-option--oferta .color-swatch::after {
+  content: '★'; position: absolute; bottom: -1px; right: -1px;
+  font-size: 8px; color: var(--color-gold); line-height: 1;
+}
 
 /* ── SHIPPING BANNER ──────────────────────────────────────── */
 .shipping-banner {
@@ -1121,6 +1145,18 @@ async function fetchSheet(url) {
   return JSON.parse(text.substring(47, text.length - 2));
 }
 
+function parseExtras(str) {
+  if (!str || !str.trim()) return {};
+  try { return JSON.parse(str); } catch { return {}; }
+}
+
+function getColorEstado(product, colorName) {
+  const ce = product.extras?.colores_estado || {};
+  const estado = ce[colorName] || 'activo';
+  const precioOferta = estado === 'oferta' ? (ce[`${colorName}_precio_oferta`] || null) : null;
+  return { estado, precioOferta };
+}
+
 function parseProducts(rows) {
   return (rows || [])
     .map((row, i) => ({
@@ -1133,6 +1169,7 @@ function parseProducts(rows) {
         return { name, ...(COLOR_MAP[name] || { hex: '#555' }) };
       }),
       specs:  (row.c[4]?.v || '').split('|').map(s => s.trim()).filter(Boolean),
+      extras: parseExtras(row.c[6]?.v || ''),
     }))
     .filter(p => p.name);
 }
@@ -1253,10 +1290,13 @@ function renderProductCard(p) {
       swatchBackground(c)
     }"></div>`).join('');
 
-  const colorDots = p.colors.map(c => `
-    <div class="color-dot" title="${c.name}" style="background:${
-      swatchBackground(c)
-    }"></div>`).join('');
+  const colorDots = p.colors.map(c => {
+    const { estado } = getColorEstado(p, c.name);
+    const cls = estado === 'sin_stock' ? ' color-dot--sin-stock' : '';
+    return `<div class="color-dot${cls}" title="${c.name}${estado === 'sin_stock' ? ' (sin stock)' : ''}" style="background:${swatchBackground(c)}"></div>`;
+  }).join('');
+
+  const tieneOferta = p.colors.some(c => getColorEstado(p, c.name).estado === 'oferta');
 
   return `
     <article class="product-card" role="listitem">
@@ -1268,6 +1308,7 @@ function renderProductCard(p) {
                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 20px;position:relative;z-index:1">${swatches}</div>
              </div>`}
         <div class="product-card__badge">RFID</div>
+        ${tieneOferta ? '<div class="product-card__badge-oferta">Oferta</div>' : ''}
       </a>
       <div class="product-card__body">
         <div>
@@ -1296,7 +1337,10 @@ function openModal(id) {
   id = parseInt(id);
   state.currentProduct = state.products.find(p => p.id === id);
   if (!state.currentProduct) return;
-  state.currentColor = state.currentProduct.colors[0];
+  const primerDisponible = state.currentProduct.colors.findIndex(c =>
+    getColorEstado(state.currentProduct, c.name).estado !== 'sin_stock'
+  );
+  state.currentColor = state.currentProduct.colors[primerDisponible >= 0 ? primerDisponible : 0];
 
   setText('modalName',  `Founder ${state.currentProduct.name}`);
   setText('modalPrice', `$${state.currentProduct.price.toLocaleString('es-UY')} UYU`);
@@ -1360,18 +1404,32 @@ function updateThumbArrows(total) {
 }
 
 function renderModalColors() {
+  const p = state.currentProduct;
   setText('selectedColorName', state.currentColor.name);
-  setHTML('modalColors', state.currentProduct.colors.map((c, i) => `
-    <div class="color-option ${c.name === state.currentColor.name ? 'is-active' : ''}" onclick="selectColor(${i})">
-      <div class="color-swatch" style="background:${
-        swatchBackground(c)
-      }"></div>
-      <div class="color-option__name">${c.name}</div>
-    </div>`).join(''));
+  setHTML('modalColors', p.colors.map((c, i) => {
+    const { estado } = getColorEstado(p, c.name);
+    const sinStock = estado === 'sin_stock';
+    const enOferta = estado === 'oferta';
+    const classes = [
+      'color-option',
+      c.name === state.currentColor.name ? 'is-active' : '',
+      sinStock ? 'color-option--sin-stock' : '',
+      enOferta ? 'color-option--oferta' : '',
+    ].filter(Boolean).join(' ');
+    const clickable = sinStock ? '' : `onclick="selectColor(${i})"`;
+    return `
+      <div class="${classes}" ${clickable}>
+        <div class="color-swatch" style="background:${swatchBackground(c)}"></div>
+        <div class="color-option__name">${c.name}</div>
+      </div>`;
+  }).join(''));
 }
 
 function selectColor(i) {
-  state.currentColor = state.currentProduct.colors[i];
+  const color = state.currentProduct.colors[i];
+  const { estado } = getColorEstado(state.currentProduct, color.name);
+  if (estado === 'sin_stock') return;
+  state.currentColor = color;
   updateModalGallery();
   renderModalColors();
 }
