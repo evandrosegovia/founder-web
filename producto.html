@@ -377,6 +377,14 @@ select:active,
 .cart-item__remove:hover { color: var(--color-danger); }
 .cart__empty { text-align: center; padding: 80px 36px; color: var(--color-muted); }
 .cart__empty p { font-family: var(--font-serif); font-size: 22px; margin-bottom: 8px; }
+/* Aviso de producto sin stock en carrito */
+.cart-stock-warning {
+  display: none; margin: 12px 16px; padding: 12px 14px;
+  background: rgba(255,59,48,0.07); border: 1px solid rgba(255,59,48,0.25);
+  border-radius: 3px; font-size: 11px; color: #ff3b30; line-height: 1.6;
+}
+.cart-stock-warning.visible { display: block; }
+.cart-stock-warning a { color: #ff3b30; text-decoration: underline; font-weight: 500; cursor: pointer; }
 .cart__footer { padding: 24px 36px 36px; border-top: 1px solid var(--color-border); }
 .cart__subtotal { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .cart__subtotal span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
@@ -697,14 +705,7 @@ body.cart-open .wa-bubble {
     </div>
 
     <div class="tab-content is-active" id="tab-specs" role="tabpanel">
-      <div class="specs-grid" id="specsGrid">
-        <div class="spec-cell"><div class="spec-cell__label">Material</div><div class="spec-cell__value">Eco cuero + aluminio de alta calidad</div></div>
-        <div class="spec-cell"><div class="spec-cell__label">Tecnología</div><div class="spec-cell__value">Blindaje RFID — protección electromagnética activa</div></div>
-        <div class="spec-cell"><div class="spec-cell__label">Mecanismo</div><div class="spec-cell__value">Botón deslizante lateral para acceso rápido</div></div>
-        <div class="spec-cell" id="specCapacidad"><div class="spec-cell__label">Capacidad</div><div class="spec-cell__value" id="specCapacidadVal">—</div></div>
-        <div class="spec-cell" id="specDims" style="display:none"><div class="spec-cell__label">Dimensiones</div><div class="spec-cell__value" id="specDimsVal">—</div></div>
-        <div class="spec-cell"><div class="spec-cell__label">Garantía defecto</div><div class="spec-cell__value">30 días desde recepción</div></div>
-      </div>
+      <div class="specs-grid" id="specsGrid"></div>
     </div>
 
     <div class="tab-content" id="tab-rfid" role="tabpanel">
@@ -796,6 +797,10 @@ body.cart-open .wa-bubble {
   <div class="cart__header">
     <span class="cart__title">Mi Carrito</span>
     <button class="cart__close" onclick="toggleCart()" aria-label="Cerrar carrito">✕</button>
+  </div>
+  <div class="cart-stock-warning" id="cartStockWarning">
+    ⚠️ Uno o más productos de tu carrito no tienen stock disponible momentáneamente.
+    <br><a onclick="toggleCart();window.location.href='index.html#productos'">Buscá otra variante →</a>
   </div>
   <div class="cart__items" id="cartItems">
     <div class="cart__empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>
@@ -1022,6 +1027,62 @@ function showError() {
 }
 
 // ── PRODUCTO — Renderizado ───────────────────────────────────────
+/** Genera dinámicamente la grilla de specs desde los datos del Sheet (col E + col G extras). */
+function renderSpecsGrid(p) {
+  const extras = p.extras || {};
+  const specs  = [];
+
+  // Material — usar el del extras si existe, sino el default
+  const material = extras.material?.trim()
+    ? extras.material
+    : 'Eco cuero + aluminio de alta calidad';
+  specs.push({ label: 'Material', value: material });
+
+  // Tecnología y mecanismo — siempre fijos
+  specs.push({ label: 'Tecnología', value: 'Blindaje RFID — protección electromagnética activa' });
+  specs.push({ label: 'Mecanismo', value: 'Botón deslizante lateral para acceso rápido' });
+
+  // Capacidad — del extras si existe, sino primera spec del pipe
+  const capacidad = extras.capacidad?.trim() || p.specs[0] || '';
+  if (capacidad) specs.push({ label: 'Capacidad', value: capacidad });
+
+  // Dimensiones — del extras, solo si existe
+  if (extras.dimensiones?.trim()) {
+    specs.push({ label: 'Dimensiones', value: extras.dimensiones });
+  }
+
+  // Billetes — del extras, solo si existe
+  if (extras.billetes?.trim()) {
+    specs.push({ label: 'Lugar para billetes', value: extras.billetes });
+  }
+
+  // Monedas — del extras, solo si existe
+  if (extras.monedas?.trim()) {
+    specs.push({ label: 'Lugar para monedas', value: extras.monedas });
+  }
+
+  // Garantía — siempre fija
+  specs.push({ label: 'Garantía defecto', value: '30 días desde recepción' });
+
+  // Nota especial — al final en dorado si existe
+  const notaHTML = extras.nota?.trim()
+    ? `<div class="spec-cell spec-cell--nota" style="grid-column:1/-1">
+         <div class="spec-cell__label">Nota</div>
+         <div class="spec-cell__value" style="color:var(--color-gold)">${extras.nota}</div>
+       </div>`
+    : '';
+
+  const gridHTML = specs.map(s =>
+    `<div class="spec-cell">
+      <div class="spec-cell__label">${s.label}</div>
+      <div class="spec-cell__value">${s.value}</div>
+    </div>`
+  ).join('') + notaHTML;
+
+  const el = $('specsGrid');
+  if (el) el.innerHTML = gridHTML;
+}
+
 function renderProduct() {
   const p = state.product;
 
@@ -1062,8 +1123,8 @@ function renderProduct() {
       <span>${s}</span>
     </div>`).join(''));
 
-  // Specs grid — capacidad (primera spec)
-  if ($('specCapacidadVal')) $('specCapacidadVal').textContent = p.specs[0] || '—';
+  // Specs grid — generada dinámicamente desde los datos del Sheet
+  renderSpecsGrid(p);
 
   // Colores — seleccionar el primer color disponible (no sin_stock)
   renderColors();
@@ -1394,6 +1455,7 @@ function updateCart() {
       : `Agregá $${(CONFIG.FREE_SHIPPING - total).toLocaleString('es-UY')} más para envío gratis`;
     note.style.color = total >= CONFIG.FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
   }
+  checkCartStock();
 }
 
 function changeQty(idx, delta) {
@@ -1411,6 +1473,25 @@ function toggleCart() {
   overlay.classList.toggle('is-open', isOpen);
   document.body.classList.toggle('cart-open', isOpen);
   document.body.style.overflow = isOpen ? 'hidden' : '';
+  if (isOpen) checkCartStock();
+}
+
+/** Verifica si algún item del carrito está sin stock en el catálogo actual. */
+function checkCartStock() {
+  if (!state.product) return; // producto aún no cargado
+  const haysinStock = state.cart.some(item => {
+    // En producto.html state.product es el producto actual; para otros productos del carrito
+    // buscamos en el catálogo si fue cargado, sino chequeamos solo el producto actual
+    const prod = (item.name === state.product.name) ? state.product : null;
+    if (!prod) return false;
+    const { estado } = getColorEstado(prod, item.color);
+    return estado === 'sin_stock';
+  });
+  const warning = $('cartStockWarning');
+  if (warning) {
+    if (haysinStock) warning.classList.add('visible');
+    else warning.classList.remove('visible');
+  }
 }
 
 function toggleMenu() {
