@@ -64,7 +64,7 @@
   --color-gold:        #c9a96e;
   --color-border:      rgba(255,255,255,0.08);
   --color-border-solid: #282828; /* equivalente visual HEX de rgba(255,255,255,0.08) sobre #141414 */
-  --color-danger:      #e05555;
+  --color-danger:      #ff3b30;
   --color-success:     #4caf82;
 
   /* Typography */
@@ -289,6 +289,11 @@ select:active,
 }
 .btn--primary { background: var(--color-text); color: var(--color-bg); }
 .btn--primary:hover { background: var(--color-gold); }
+/* Botón "Ver detalle de producto" en tarjeta — fondo dorado, texto blanco */
+.quick-view-btn.btn--primary {
+  background: var(--color-gold); color: #ffffff; font-weight: 600;
+}
+.quick-view-btn.btn--primary:hover { background: var(--color-text); color: var(--color-bg); }
 .btn--secondary {
   border: 1px solid rgba(255,255,255,.2); color: var(--color-text);
   background: transparent;
@@ -1280,7 +1285,7 @@ function renderProductCard(p) {
             <div class="price">$${p.price.toLocaleString('es-UY')} UYU</div>
             <div class="price-note">10% OFF por transferencia</div>
           </div>
-          <button class="btn btn--primary btn--sm quick-view-btn" data-id="${p.id}" type="button">Vista rápida</button>
+          <button class="btn btn--primary btn--sm quick-view-btn" data-id="${p.id}" type="button">Ver detalle de producto</button>
         </div>
       </div>
     </article>`;
