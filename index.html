@@ -434,8 +434,18 @@ select:active,
   border: 2px solid transparent; cursor: pointer; transition: all var(--transition-fast);
 }
 .color-dot:hover { border-color: var(--color-text); transform: scale(1.15); }
-/* Color dot sin stock en tarjeta */
-.color-dot--sin-stock { opacity: 0.3; }
+/* Color dot sin stock en tarjeta — badge rojo superpuesto */
+.color-dot--sin-stock {
+  opacity: 0.65;
+  position: relative;
+}
+.color-dot--sin-stock::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(255,59,48,0.80);
+  border-radius: 1px;
+  pointer-events: none;
+}
 
 /* Badge de oferta sobre imagen de tarjeta */
 .product-card__badge-oferta {
@@ -448,15 +458,29 @@ select:active,
 
 /* Estados de color en modal */
 .color-option--sin-stock {
-  opacity: 0.35; cursor: not-allowed !important; pointer-events: none;
+  opacity: 0.65; cursor: not-allowed !important; pointer-events: none;
 }
-.color-option--sin-stock .color-option__name::after {
-  content: ' · Sin stock'; color: #ff3b30; font-size: 9px;
-}
+/* Sin stock: el badge rojo sobre el swatch reemplaza el texto anterior */
+.color-option--sin-stock .color-option__name::after { content: none; }
 .color-option--oferta .color-swatch { position: relative; }
 .color-option--oferta .color-swatch::after {
   content: '★'; position: absolute; bottom: -1px; right: -1px;
   font-size: 8px; color: var(--color-gold); line-height: 1;
+}
+/* Badge rojo "SIN STOCK" sobre el swatch — mismo sistema que OFERTA */
+.color-option--sin-stock .color-swatch { position: relative; }
+.color-option--sin-stock .color-swatch::before {
+  content: 'SIN STOCK';
+  position: absolute; inset: 0;
+  background: rgba(255,59,48,0.88);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 6px; font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 1px;
+  pointer-events: none;
+  line-height: 1.2; text-align: center; padding: 2px;
 }
 
 /* ── SHIPPING BANNER ──────────────────────────────────────── */
@@ -541,6 +565,7 @@ select:active,
 .color-swatch {
   width: 20px; height: 32px; border-radius: 3px;
   border: 2px solid transparent; transition: all var(--transition-fast);
+  position: relative;
 }
 .color-option.is-active .color-swatch,
 .color-option:hover .color-swatch { border-color: var(--color-text); transform: scale(1.15); }
