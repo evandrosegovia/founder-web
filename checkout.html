@@ -31,7 +31,7 @@
   --color-gold:     #c9a96e;
   --color-border:        rgba(255,255,255,0.08);
   --color-border-solid: #282828;
-  --color-danger:   #e05555;
+  --color-danger:   #ff3b30;
   --color-success:  #4caf82;
   --font-serif: 'Cormorant Garamond', serif;
   --font-sans:  'Montserrat', sans-serif;
@@ -580,8 +580,9 @@ function init() {
 
 // ── NAVEGACIÓN ────────────────────────────────────────────────
 function goBack() {
-  // Volver a la página anterior del historial, o a index si no hay
-  if (document.referrer) {
+  // Solo hacer history.back() si el referrer es del mismo dominio
+  const referrer = document.referrer;
+  if (referrer && new URL(referrer).origin === window.location.origin) {
     history.back();
   } else {
     window.location.href = 'index.html';
@@ -809,6 +810,13 @@ function processOrder() {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     showToast('Ingresá un email válido');
+    return;
+  }
+
+  // Validación básica de celular — solo dígitos, espacios y guiones, mínimo 7 caracteres
+  const celularClean = celular.replace(/[\s\-\+]/g, '');
+  if (!/^\d{7,15}$/.test(celularClean)) {
+    showToast('Ingresá un número de celular válido');
     return;
   }
 
