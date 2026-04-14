@@ -555,6 +555,14 @@ select:active,
   text-transform: uppercase; font-weight: 700; cursor: pointer; transition: all var(--transition-base);
 }
 .modal__add-btn:hover { background: var(--color-gold); }
+/* Aviso sin stock en modal */
+.modal__sin-stock-aviso {
+  display: none; padding: 12px 16px;
+  background: rgba(255,59,48,0.08); border: 1px solid rgba(255,59,48,0.3);
+  border-radius: 3px; color: #ff3b30; font-size: 11px;
+  letter-spacing: 0.08em; text-align: center; font-weight: 500;
+}
+.modal__sin-stock-aviso.visible { display: block; }
 .modal__detail-link {
   display: block; text-align: center;
   font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
@@ -1058,6 +1066,7 @@ body.cart-open .wa-bubble {
       </div>
       <div class="modal__footer">
         <div><div class="modal__price" id="modalPrice"></div><div class="modal__price-note">10% OFF por transferencia</div></div>
+        <div class="modal__sin-stock-aviso" id="modalSinStockAviso">Sin stock disponible</div>
         <button class="modal__add-btn" onclick="addFromModal()">Agregar al carrito</button>
         <a id="modalDetailLink" href="#" class="modal__detail-link">Ver página completa →</a>
       </div>
@@ -1343,7 +1352,16 @@ function openModal(id) {
   state.currentColor = state.currentProduct.colors[primerDisponible >= 0 ? primerDisponible : 0];
 
   setText('modalName',  `Founder ${state.currentProduct.name}`);
-  setText('modalPrice', `$${state.currentProduct.price.toLocaleString('es-UY')} UYU`);
+  // Precio inicial según estado del color seleccionado
+  const { estado: estadoInicial, precioOferta: ofertaInicial } = getColorEstado(state.currentProduct, state.currentColor.name);
+  const priceElModal = $('modalPrice');
+  if (priceElModal) {
+    if (estadoInicial === 'oferta' && ofertaInicial) {
+      priceElModal.innerHTML = `<span style="text-decoration:line-through;color:var(--color-muted);font-size:0.8em;margin-right:6px">$${state.currentProduct.price.toLocaleString('es-UY')}</span><span style="color:var(--color-gold)">$${ofertaInicial.toLocaleString('es-UY')} UYU</span>`;
+    } else {
+      priceElModal.textContent = `$${state.currentProduct.price.toLocaleString('es-UY')} UYU`;
+    }
+  }
   setHTML('modalSpecs',  state.currentProduct.specs.map(s => `<div class="modal__spec">${s}</div>`).join(''));
 
   // Actualizar link "Ver página completa"
@@ -1427,11 +1445,32 @@ function renderModalColors() {
 
 function selectColor(i) {
   const color = state.currentProduct.colors[i];
-  const { estado } = getColorEstado(state.currentProduct, color.name);
+  const { estado, precioOferta } = getColorEstado(state.currentProduct, color.name);
   if (estado === 'sin_stock') return;
   state.currentColor = color;
   updateModalGallery();
   renderModalColors();
+
+  // Cambio 6: mostrar/ocultar botón y aviso sin stock
+  const addBtn = document.querySelector('.modal__add-btn');
+  const aviso  = $('modalSinStockAviso');
+  if (estado === 'sin_stock') {
+    if (addBtn) addBtn.style.display = 'none';
+    if (aviso)  aviso.classList.add('visible');
+  } else {
+    if (addBtn) addBtn.style.display = '';
+    if (aviso)  aviso.classList.remove('visible');
+  }
+
+  // Cambio 7: actualizar precio en modal (oferta con tachado)
+  const priceEl = $('modalPrice');
+  if (priceEl) {
+    if (estado === 'oferta' && precioOferta) {
+      priceEl.innerHTML = `<span style="text-decoration:line-through;color:var(--color-muted);font-size:0.8em;margin-right:6px">$${state.currentProduct.price.toLocaleString('es-UY')}</span><span style="color:var(--color-gold)">$${precioOferta.toLocaleString('es-UY')} UYU</span>`;
+    } else {
+      priceEl.textContent = `$${state.currentProduct.price.toLocaleString('es-UY')} UYU`;
+    }
+  }
 }
 
 function handleModalOverlayClick(e) { if (e.target.id === 'modalOverlay') closeModal(); }
@@ -1450,7 +1489,10 @@ function openCheckout() {
 // ── SHARED CART ─────────────────────────────────────────────────
 function addFromModal() {
   if (!state.currentColor) { showToast('Seleccioná un color'); return; }
-  addToCart(state.currentProduct, state.currentColor);
+  const { estado, precioOferta } = getColorEstado(state.currentProduct, state.currentColor.name);
+  if (estado === 'sin_stock') { showToast('Este color no tiene stock disponible'); return; }
+  const precio = (estado === 'oferta' && precioOferta) ? precioOferta : state.currentProduct.price;
+  addToCart(state.currentProduct, state.currentColor, precio);
   closeModal();
   setTimeout(() => {
     $('cartSidebar').classList.add('is-open');
@@ -1459,13 +1501,14 @@ function addFromModal() {
   }, 300);
 }
 
-function addToCart(product, color) {
-  // Busca por nombre+color para compatibilidad con items de producto.html
+function addToCart(product, color, precio) {
+  const precioFinal = precio ?? product.price;
   const existing = state.cart.find(i => i.name === product.name && i.color === color.name);
   if (existing) {
     existing.qty++;
+    existing.price = precioFinal;
   } else {
-    state.cart.push({ id: product.id, name: product.name, color: color.name, price: product.price, qty: 1 });
+    state.cart.push({ id: product.id, name: product.name, color: color.name, price: precioFinal, qty: 1 });
   }
   updateCart();
   showToast(`Founder ${product.name} — ${color.name} agregado`);
