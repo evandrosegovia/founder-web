@@ -1353,6 +1353,106 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  // ── FOTOS EN SEGUIMIENTO — Cambio 9 ────────────────────────────
+  // Cache de fotos ya consultadas en esta sesión: clave "Modelo|Color" → URL
+  const _fotoCache = {};
+
+  /**
+   * Genera un placeholder elegante: cuadrado oscuro con la inicial del modelo en dorado.
+   * Idéntico al del Cambio 2 (carrito) para consistencia visual.
+   */
+  function fotoPlaceholder(nombre) {
+    const inicial = (nombre || '?').trim().charAt(0).toUpperCase();
+    const el = document.createElement('div');
+    el.className = 'producto-foto-placeholder';
+    el.style.cssText = [
+      'width:60px', 'height:60px', 'border-radius:3px',
+      'background:var(--color-surface2)', 'flex-shrink:0',
+      'display:flex', 'align-items:center', 'justify-content:center',
+      'font-family:var(--font-serif)', 'font-size:1.4rem',
+      'color:var(--color-gold)', 'font-weight:400', 'letter-spacing:0'
+    ].join(';');
+    el.textContent = inicial;
+    return el;
+  }
+
+  /**
+   * Consulta la hoja `fotos` del Sheet vía GViz y retorna la primera URL de foto
+   * para el modelo+color dados. Usa cache para no repetir la misma consulta.
+   */
+  async function obtenerFotoSeguimiento(modelo, color) {
+    const cacheKey = `${modelo}|${color}`;
+    if (_fotoCache[cacheKey] !== undefined) return _fotoCache[cacheKey];
+
+    try {
+      // Consulta GViz con filtro WHERE para el modelo y color exactos
+      const query = encodeURIComponent(`SELECT C WHERE A='${modelo}' AND B='${color}'`);
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=fotos&tqx=out:json&tq=${query}`;
+      const res  = await fetch(url);
+      const text = await res.text();
+      const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
+      const rows = json?.table?.rows || [];
+
+      // La consulta devuelve solo col C (foto1) en posición 0
+      const foto = rows[0]?.c?.[0]?.v || null;
+      _fotoCache[cacheKey] = foto;
+      return foto;
+    } catch (e) {
+      _fotoCache[cacheKey] = null;
+      return null;
+    }
+  }
+
+  /**
+   * Parsea el texto de productos del Sheet y devuelve un array de objetos.
+   *
+   * El checkout guarda los productos en formato:
+   *   "Modelo — Color × cantidad — $precio | Modelo2 — Color2 × 1 — $precio2"
+   * También soporta el formato alternativo:
+   *   "Nombre (Color) x2 — $1.400"
+   */
+  function parsearProductos(productosStr) {
+    if (!productosStr) return [];
+
+    return productosStr.split('|').map(s => s.trim()).filter(Boolean).map(item => {
+      let nombre = item, color = '', cantidad = '1', precio = '';
+
+      // Formato 1 (checkout actual): "Modelo — Color × 2 — $1.400"
+      // El guión largo separa: nombre, color×cant, precio
+      const partes = item.split(/\s*—\s*/);
+      if (partes.length >= 2) {
+        nombre = partes[0].trim();
+
+        // Segunda parte puede ser "Color × 2" o solo "Color"
+        const colorCant = partes[1].trim();
+        const mxCant = colorCant.match(/^(.+?)\s*[×x]\s*(\d+)$/i);
+        if (mxCant) {
+          color    = mxCant[1].trim();
+          cantidad = mxCant[2];
+        } else {
+          color = colorCant;
+        }
+
+        // Tercera parte (si existe) puede ser el precio
+        if (partes[2]) {
+          const matchPrecio = partes[2].match(/\$[\d.,]+/);
+          if (matchPrecio) precio = matchPrecio[0];
+        }
+      } else {
+        // Formato 2 (alternativo): "Nombre (Color) x2 — $1.400"
+        const match = item.match(/^(.+?)(?:\((.+?)\))?\s*x?(\d+)\s*(?:—|-|–)?\s*(\$[\d.,]+)?/i);
+        if (match) {
+          nombre   = match[1]?.trim() || item;
+          color    = match[2]?.trim() || '';
+          cantidad = match[3] || '1';
+          precio   = match[4]?.trim() || '';
+        }
+      }
+
+      return { nombre, color, cantidad, precio };
+    });
+  }
+
   function renderProductos(productosStr) {
     const container = document.getElementById('rProductos');
     container.innerHTML = '';
@@ -1362,38 +1462,55 @@
       return;
     }
 
-    // Formato esperado en Sheets: "Nombre (Color) x2 — $1.400 | Otro (Negro) x1 — $700"
-    // Intentamos parsear ese formato. Si el contenido es diferente, mostramos como texto.
-    const items = productosStr.split('|').map(s => s.trim()).filter(Boolean);
+    const items = parsearProductos(productosStr);
 
     if (items.length === 0) {
       container.innerHTML = `<p style="color:var(--color-muted);font-size:0.82rem;">${productosStr}</p>`;
       return;
     }
 
-    items.forEach(item => {
-      // Intentar extraer nombre, color, cantidad, precio
-      // Ejemplo: "Billetera Clásica (Carbon) x2 — $1.400"
-      const match = item.match(/^(.+?)(?:\((.+?)\))?\s*x?(\d+)\s*(?:—|-|–)?\s*(\$[\d.,]+)?/i);
-      let nombre = item, color = '', cantidad = '', precio = '';
-      if (match) {
-        nombre   = match[1]?.trim() || item;
-        color    = match[2]?.trim() || '';
-        cantidad = match[3] || '1';
-        precio   = match[4]?.trim() || '';
-      }
-
+    items.forEach(({ nombre, color, cantidad, precio }) => {
       const div = document.createElement('div');
       div.className = 'producto-item';
-      div.innerHTML = `
-        <div class="producto-foto-placeholder">🛍️</div>
-        <div class="producto-info">
-          <div class="producto-nombre">${nombre}</div>
-          <div class="producto-detalle">${[color, cantidad > 1 ? `x${cantidad}` : ''].filter(Boolean).join(' · ')}</div>
-        </div>
-        ${precio ? `<div class="producto-precio">${precio}</div>` : ''}
+
+      // Placeholder inicial mientras carga la foto
+      const placeholder = fotoPlaceholder(nombre);
+      div.appendChild(placeholder);
+
+      // Info del producto
+      const infoDiv = document.createElement('div');
+      infoDiv.className = 'producto-info';
+      infoDiv.innerHTML = `
+        <div class="producto-nombre">${nombre}</div>
+        <div class="producto-detalle">${[color, parseInt(cantidad) > 1 ? `x${cantidad}` : ''].filter(Boolean).join(' · ')}</div>
       `;
+      div.appendChild(infoDiv);
+
+      if (precio) {
+        const precioDiv = document.createElement('div');
+        precioDiv.className = 'producto-precio';
+        precioDiv.textContent = precio;
+        div.appendChild(precioDiv);
+      }
+
       container.appendChild(div);
+
+      // Cargar foto de forma asíncrona si tenemos modelo y color
+      if (nombre && color) {
+        obtenerFotoSeguimiento(nombre, color).then(fotoUrl => {
+          if (!fotoUrl) return; // Mantiene el placeholder con inicial
+          const img = document.createElement('img');
+          img.className = 'producto-foto';
+          img.alt = `${nombre} — ${color}`;
+          img.style.cssText = 'width:60px;height:60px;border-radius:3px;object-fit:cover;flex-shrink:0;filter:brightness(.92)';
+          img.onload = () => {
+            // Reemplazar el placeholder por la foto real solo cuando cargó correctamente
+            if (placeholder.parentNode) placeholder.parentNode.replaceChild(img, placeholder);
+          };
+          img.onerror = () => { /* Mantiene el placeholder si la foto falla */ };
+          img.src = fotoUrl;
+        });
+      }
     });
   }
 
