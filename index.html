@@ -435,16 +435,11 @@ select:active,
 }
 .color-dot:hover { border-color: var(--color-text); transform: scale(1.15); }
 /* Color dot sin stock en tarjeta — badge rojo superpuesto */
+/* color-dot sin stock: color visible, borde rojo sutil para indicar estado */
 .color-dot--sin-stock {
-  opacity: 0.65;
+  opacity: 1;
   position: relative;
-}
-.color-dot--sin-stock::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: rgba(255,59,48,0.80);
-  border-radius: 1px;
-  pointer-events: none;
+  box-shadow: 0 0 0 2px rgba(255,59,48,0.75);
 }
 
 /* Badge de oferta sobre imagen de tarjeta */
@@ -457,30 +452,30 @@ select:active,
 }
 
 /* Estados de color en modal */
-.color-option--sin-stock {
-  opacity: 0.65; cursor: not-allowed !important; pointer-events: none;
-}
-/* Sin stock: el badge rojo sobre el swatch reemplaza el texto anterior */
+/* Sin stock en modal: clickeable para ver fotos, badge rojo flotante arriba */
+.color-option--sin-stock { opacity: 1; cursor: pointer; pointer-events: auto; }
 .color-option--sin-stock .color-option__name::after { content: none; }
+/* Badge rojo flotante encima del swatch — color de fondo visible */
+.color-option--sin-stock .color-swatch { position: relative; }
+.color-option--sin-stock .color-swatch::before {
+  content: 'SIN STOCK';
+  position: absolute;
+  top: -14px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-danger);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 5.5px; font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  padding: 2px 4px; border-radius: 2px;
+  white-space: nowrap; pointer-events: none;
+  z-index: 3;
+}
+/* OFERTA badge — sin cambios */
 .color-option--oferta .color-swatch { position: relative; }
 .color-option--oferta .color-swatch::after {
   content: '★'; position: absolute; bottom: -1px; right: -1px;
   font-size: 8px; color: var(--color-gold); line-height: 1;
-}
-/* Badge rojo "SIN STOCK" sobre el swatch — mismo sistema que OFERTA */
-.color-option--sin-stock .color-swatch { position: relative; }
-.color-option--sin-stock .color-swatch::before {
-  content: 'SIN STOCK';
-  position: absolute; inset: 0;
-  background: rgba(255,59,48,0.88);
-  color: #fff;
-  font-family: var(--font-sans);
-  font-size: 6px; font-weight: 700;
-  letter-spacing: 0.5px; text-transform: uppercase;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 1px;
-  pointer-events: none;
-  line-height: 1.2; text-align: center; padding: 2px;
 }
 
 /* ── SHIPPING BANNER ──────────────────────────────────────── */
@@ -1389,11 +1384,21 @@ function openModal(id) {
   // Precio inicial según estado del color seleccionado
   const { estado: estadoInicial, precioOferta: ofertaInicial } = getColorEstado(state.currentProduct, state.currentColor.name);
   const priceElModal = $('modalPrice');
-  if (priceElModal) {
-    if (estadoInicial === 'oferta' && ofertaInicial) {
-      priceElModal.innerHTML = `<span style="text-decoration:line-through;color:var(--color-muted);font-size:0.8em;margin-right:6px">$${state.currentProduct.price.toLocaleString('es-UY')}</span><span style="color:var(--color-gold)">$${ofertaInicial.toLocaleString('es-UY')} UYU</span>`;
-    } else {
-      priceElModal.textContent = `$${state.currentProduct.price.toLocaleString('es-UY')} UYU`;
+  const addBtnModal  = document.querySelector('.modal__add-btn');
+  const avisoModal   = $('modalSinStockAviso');
+  if (estadoInicial === 'sin_stock') {
+    if (priceElModal) priceElModal.textContent = '';
+    if (addBtnModal)  addBtnModal.style.display = 'none';
+    if (avisoModal)   avisoModal.classList.add('visible');
+  } else {
+    if (addBtnModal)  addBtnModal.style.display = '';
+    if (avisoModal)   avisoModal.classList.remove('visible');
+    if (priceElModal) {
+      if (estadoInicial === 'oferta' && ofertaInicial) {
+        priceElModal.innerHTML = `<span style="text-decoration:line-through;color:var(--color-muted);font-size:0.8em;margin-right:6px">$${state.currentProduct.price.toLocaleString('es-UY')}</span><span style="color:var(--color-gold)">$${ofertaInicial.toLocaleString('es-UY')} UYU</span>`;
+      } else {
+        priceElModal.textContent = `$${state.currentProduct.price.toLocaleString('es-UY')} UYU`;
+      }
     }
   }
   setHTML('modalSpecs',  state.currentProduct.specs.map(s => `<div class="modal__spec">${s}</div>`).join(''));
@@ -1468,7 +1473,7 @@ function renderModalColors() {
       sinStock ? 'color-option--sin-stock' : '',
       enOferta ? 'color-option--oferta' : '',
     ].filter(Boolean).join(' ');
-    const clickable = sinStock ? '' : `onclick="selectColor(${i})"`;
+    const clickable = `onclick="selectColor(${i})"`;
     return `
       <div class="${classes}" ${clickable}>
         <div class="color-swatch" style="background:${swatchBackground(c)}"></div>
@@ -1480,18 +1485,29 @@ function renderModalColors() {
 function selectColor(i) {
   const color = state.currentProduct.colors[i];
   const { estado, precioOferta } = getColorEstado(state.currentProduct, color.name);
-  if (estado === 'sin_stock') return;
+  // Sin stock ahora es clickeable — actualiza galería pero bloquea el carrito
   state.currentColor = color;
   updateModalGallery();
   renderModalColors();
 
-  // Asegurar que el botón y aviso estén en estado correcto (color activo o en oferta)
   const addBtn = document.querySelector('.modal__add-btn');
   const aviso  = $('modalSinStockAviso');
+
+  if (estado === 'sin_stock') {
+    // Ocultar botón agregar y mostrar aviso
+    if (addBtn) addBtn.style.display = 'none';
+    if (aviso)  aviso.classList.add('visible');
+    // Precio oculto cuando sin stock
+    const priceEl = $('modalPrice');
+    if (priceEl) priceEl.textContent = '';
+    return;
+  }
+
+  // Color disponible (activo u oferta)
   if (addBtn) addBtn.style.display = '';
   if (aviso)  aviso.classList.remove('visible');
 
-  // Actualizar precio en modal (oferta con tachado)
+  // Actualizar precio (oferta con tachado)
   const priceEl = $('modalPrice');
   if (priceEl) {
     if (estado === 'oferta' && precioOferta) {
