@@ -31,7 +31,7 @@
   --color-gold:     #c9a96e;
   --color-border:        rgba(255,255,255,0.08);
   --color-border-solid: #282828;
-  --color-danger:   #e05555;
+  --color-danger:   #ff3b30;
   --color-success:  #4caf82;
   --font-serif:     'Cormorant Garamond', serif;
   --font-sans:      'Montserrat', sans-serif;
@@ -40,7 +40,7 @@
   --transition-fast: 0.2s ease;
   --transition-base: 0.3s ease;
   --transition-slow: 0.5s cubic-bezier(.4,0,.2,1);
-  --z-header: 100; --z-cart: 200; --z-modal: 300; --z-toast: 9999; --z-cursor: 9998;
+  --z-header: 100; --z-cart: 200; --z-modal: 300; --z-toast: 9999;
   /* Colores de productos — definidos aquí para renderizado consistente en todos los dispositivos */
   --swatch-negro:       #3a3f4a;
   --swatch-camel:       #d4a96e;
@@ -877,8 +877,6 @@ const state = {
   precioEfectivo: null, // precio activo (puede ser precio de oferta)
   activePhoto:   0,     // índice de foto activa
   cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
-  entregaMode:   'envio',       // para checkout
-  pagoMode:      'mercadopago', // para checkout
 };
 
 // ── SHARED DOM HELPERS ────────────────────────────────────────────
@@ -973,7 +971,7 @@ async function recoverCartPhoto(imgEl, name, color) {
       const modelo = (row.c[0]?.v || '').trim();
       const col    = (row.c[1]?.v || '').trim();
       if (modelo === name && col === color) {
-        const foto = [row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].find(Boolean);
+        const foto = [row.c[2]?.v, row.c[3]?.v, row.c[4]?.v, row.c[5]?.v, row.c[6]?.v].find(Boolean);
         if (foto) {
           imgEl.src = foto;
           imgEl.onerror = () => imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
@@ -1478,18 +1476,18 @@ function toggleCart() {
 
 /** Verifica si algún item del carrito está sin stock en el catálogo actual. */
 function checkCartStock() {
-  if (!state.product) return; // producto aún no cargado
-  const haysinStock = state.cart.some(item => {
-    // En producto.html state.product es el producto actual; para otros productos del carrito
-    // buscamos en el catálogo si fue cargado, sino chequeamos solo el producto actual
-    const prod = (item.name === state.product.name) ? state.product : null;
+  if (!state.product) return;
+  const haySinStock = state.cart.some(item => {
+    const prod = state.allProducts.length
+      ? state.allProducts.find(p => p.name === item.name)
+      : (item.name === state.product.name ? state.product : null);
     if (!prod) return false;
     const { estado } = getColorEstado(prod, item.color);
     return estado === 'sin_stock';
   });
   const warning = $('cartStockWarning');
   if (warning) {
-    if (haysinStock) warning.classList.add('visible');
+    if (haySinStock) warning.classList.add('visible');
     else warning.classList.remove('visible');
   }
 }
