@@ -89,7 +89,6 @@
   --z-cart:     200;
   --z-modal:    300;
   --z-toast:    9999;
-  --z-cursor:   9998;
   /* Colores de productos — definidos aquí para renderizado consistente en todos los dispositivos */
   --swatch-negro:       #3a3f4a;
   --swatch-camel:       #d4a96e;
@@ -1147,8 +1146,6 @@ const state = {
   cart:           loadCartFromStorage(), // carrito persistente compartido con producto.html
   currentProduct: null,
   currentColor:   null,
-  entregaMode:    'envio',
-  pagoMode:       'mercadopago',
   thumbOffset:    0,
 };
 
@@ -1188,7 +1185,7 @@ function parseProducts(rows) {
       colors: (row.c[3]?.v || '').split(',').map(c => {
         const name = c.trim();
         return { name, ...(COLOR_MAP[name] || { hex: '#555' }) };
-      }),
+      }).filter(c => c.name),
       specs:  (row.c[4]?.v || '').split('|').map(s => s.trim()).filter(Boolean),
       extras: parseExtras(row.c[6]?.v || ''),
     }))
@@ -1242,6 +1239,15 @@ async function init() {
 
     renderProducts();
     document.querySelectorAll('.rfid-item').forEach(el => revealObserver.observe(el));
+
+    // Event delegation para modal — se registra UNA SOLA VEZ aquí, no en renderProducts()
+    document.getElementById('productsGrid').addEventListener('click', function(e) {
+      const btn = e.target.closest('.quick-view-btn');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openModal(parseInt(btn.dataset.id));
+    });
   } catch (err) {
     console.error('[Founder] Error cargando datos:', err);
     setHTML('productsGrid', `
@@ -1269,14 +1275,13 @@ function cartPhotoPlaceholder(name) {
  *  Si eso también falla, muestra el placeholder elegante. */
 async function recoverCartPhoto(imgEl, name, color) {
   try {
-    const url = CONFIG.SHEET_FOTOS;
-    const data = await fetchSheet(url);
+    const data = await fetchSheet(CONFIG.SHEET_FOTOS);
     const rows = data?.table?.rows || [];
     for (const row of rows) {
       const modelo = (row.c[0]?.v || '').trim();
       const col    = (row.c[1]?.v || '').trim();
       if (modelo === name && col === color) {
-        const foto = [row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].find(Boolean);
+        const foto = [row.c[2]?.v, row.c[3]?.v, row.c[4]?.v, row.c[5]?.v, row.c[6]?.v].find(Boolean);
         if (foto) {
           imgEl.src = foto;
           imgEl.onerror = () => imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
@@ -1293,15 +1298,7 @@ async function recoverCartPhoto(imgEl, name, color) {
 function renderProducts() {
   setHTML('productsGrid', state.products.map(renderProductCard).join(''));
   document.querySelectorAll('.product-card').forEach(el => revealObserver.observe(el));
-
-  // Event delegation para botones Vista rápida (evita problemas con onclick en template strings)
-  document.getElementById('productsGrid').addEventListener('click', function(e) {
-    const btn = e.target.closest('.quick-view-btn');
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    openModal(parseInt(btn.dataset.id));
-  });
+  // El event listener del grid se registra UNA SOLA VEZ en init() — ver abajo
 }
 
 function renderProductCard(p) {
@@ -1463,18 +1460,13 @@ function selectColor(i) {
   updateModalGallery();
   renderModalColors();
 
-  // Cambio 6: mostrar/ocultar botón y aviso sin stock
+  // Asegurar que el botón y aviso estén en estado correcto (color activo o en oferta)
   const addBtn = document.querySelector('.modal__add-btn');
   const aviso  = $('modalSinStockAviso');
-  if (estado === 'sin_stock') {
-    if (addBtn) addBtn.style.display = 'none';
-    if (aviso)  aviso.classList.add('visible');
-  } else {
-    if (addBtn) addBtn.style.display = '';
-    if (aviso)  aviso.classList.remove('visible');
-  }
+  if (addBtn) addBtn.style.display = '';
+  if (aviso)  aviso.classList.remove('visible');
 
-  // Cambio 7: actualizar precio en modal (oferta con tachado)
+  // Actualizar precio en modal (oferta con tachado)
   const priceEl = $('modalPrice');
   if (priceEl) {
     if (estado === 'oferta' && precioOferta) {
@@ -1506,10 +1498,11 @@ function addFromModal() {
   const precio = (estado === 'oferta' && precioOferta) ? precioOferta : state.currentProduct.price;
   addToCart(state.currentProduct, state.currentColor, precio);
   closeModal();
+  // Usar toggleCart() en lugar de manipular clases directamente,
+  // garantiza sincronización con body.cart-open y desplazamiento de burbuja WA
   setTimeout(() => {
-    $('cartSidebar').classList.add('is-open');
-    $('cartOverlay').classList.add('is-open');
-    document.body.style.overflow = 'hidden';
+    const sidebar = $('cartSidebar');
+    if (!sidebar.classList.contains('is-open')) toggleCart();
   }, 300);
 }
 
