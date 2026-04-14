@@ -189,23 +189,24 @@ select:active,
 .color-item__name { font-size: 8px; letter-spacing: 1px; color: var(--color-muted); text-transform: uppercase; text-align: center; max-width: 50px; }
 
 /* ── Estados de color ──────────────────────────────────────── */
-.color-item--sin-stock { opacity: 0.65; cursor: not-allowed !important; }
-.color-item--sin-stock .color-item__swatch { cursor: not-allowed !important; }
-/* Badge rojo "SIN STOCK" sobre el swatch — texto debajo eliminado */
+/* Sin stock en producto: clickeable para ver fotos, badge rojo flotante arriba */
+.color-item--sin-stock { opacity: 1; cursor: pointer !important; }
+.color-item--sin-stock .color-item__swatch { cursor: pointer !important; }
 .color-item--sin-stock .color-item__name::after { content: none; }
+/* Badge rojo flotante encima del swatch — color de fondo visible */
 .color-item--sin-stock .color-item__swatch::before {
   content: 'SIN STOCK';
-  position: absolute; inset: 0;
-  background: rgba(255,59,48,0.88);
+  position: absolute;
+  top: -14px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-danger);
   color: #fff;
   font-family: var(--font-sans);
-  font-size: 6px; font-weight: 700;
+  font-size: 5.5px; font-weight: 700;
   letter-spacing: 0.5px; text-transform: uppercase;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 1px;
-  pointer-events: none;
-  line-height: 1.2; text-align: center; padding: 2px;
-  z-index: 2;
+  padding: 2px 4px; border-radius: 2px;
+  white-space: nowrap; pointer-events: none;
+  z-index: 3;
 }
 
 .color-item--oferta { position: relative; }
@@ -1167,10 +1168,9 @@ function renderColors() {
       sinStock  ? 'color-item--sin-stock' : '',
       enOferta  ? 'color-item--oferta'    : '',
     ].filter(Boolean).join(' ');
-    const clickHandler = sinStock ? '' : `onclick="selectColor(${i})"`;
     return `
-    <div class="${classes}" ${clickHandler}
-      role="button" aria-label="Color ${c.name}${sinStock ? ' — Sin stock' : ''}" tabindex="${sinStock ? -1 : 0}">
+    <div class="${classes}" onclick="selectColor(${i})"
+      role="button" aria-label="Color ${c.name}${sinStock ? ' — Sin stock' : ''}" tabindex="0">
       <div class="color-item__swatch" style="background:${swatchBackground(c)}">
         ${enOferta ? '<span class="color-item__badge">OFERTA</span>' : ''}
       </div>
@@ -1196,22 +1196,20 @@ function selectColor(i) {
   const sinStockAviso = $('sinStockAviso');
 
   if (estado === 'sin_stock') {
-    // Sin stock: ocultar botones, mostrar aviso
+    // Sin stock: mostrar galería pero bloquear compra
     if (addBtn)        addBtn.style.display    = 'none';
     if (stickyBtn)     stickyBtn.style.display = 'none';
     if (sinStockAviso) sinStockAviso.classList.add('visible');
 
-    // Ocultar elementos de precio
-    const priceEl  = $('productPrice');
-    const origEl   = document.getElementById('precioOriginalTachado');
-    const labelEl  = document.getElementById('precioOfertaLabel');
-    if (priceEl)  priceEl.textContent = '—';
-    if (origEl)   origEl.style.display  = 'none';
-    if (labelEl)  labelEl.style.display = 'none';
-
-    // Badge oferta
+    // Limpiar precio y badge oferta
+    const priceEl = $('productPrice');
+    const origEl  = document.getElementById('precioOriginalTachado');
+    const labelEl = document.getElementById('precioOfertaLabel');
     const badgeEl = $('ofertaBadge');
-    if (badgeEl) badgeEl.style.display = 'none';
+    if (priceEl)  priceEl.textContent    = '';
+    if (origEl)   origEl.style.display   = 'none';
+    if (labelEl)  labelEl.style.display  = 'none';
+    if (badgeEl)  badgeEl.style.display  = 'none';
 
     state.precioEfectivo = null;
     return;
