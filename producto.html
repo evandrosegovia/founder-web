@@ -189,9 +189,24 @@ select:active,
 .color-item__name { font-size: 8px; letter-spacing: 1px; color: var(--color-muted); text-transform: uppercase; text-align: center; max-width: 50px; }
 
 /* ── Estados de color ──────────────────────────────────────── */
-.color-item--sin-stock { opacity: 0.35; cursor: not-allowed !important; }
+.color-item--sin-stock { opacity: 0.65; cursor: not-allowed !important; }
 .color-item--sin-stock .color-item__swatch { cursor: not-allowed !important; }
-.color-item--sin-stock .color-item__name::after { content: 'Sin stock'; display: block; color: var(--color-danger, #e05555); font-size: 7px; letter-spacing: 0.5px; margin-top: 2px; }
+/* Badge rojo "SIN STOCK" sobre el swatch — texto debajo eliminado */
+.color-item--sin-stock .color-item__name::after { content: none; }
+.color-item--sin-stock .color-item__swatch::before {
+  content: 'SIN STOCK';
+  position: absolute; inset: 0;
+  background: rgba(255,59,48,0.88);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 6px; font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 1px;
+  pointer-events: none;
+  line-height: 1.2; text-align: center; padding: 2px;
+  z-index: 2;
+}
 
 .color-item--oferta { position: relative; }
 .color-item__badge {
