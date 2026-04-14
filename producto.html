@@ -244,6 +244,14 @@ select:active,
 .purchase__add-btn { background: var(--color-text); color: var(--color-bg); border: none; padding: 20px; width: 100%; font-size: 11px; letter-spacing: 4px; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: all var(--transition-base); }
 .purchase__add-btn:hover:not(:disabled) { background: var(--color-gold); }
 .purchase__add-btn:disabled { background: var(--color-surface2); color: var(--color-muted); cursor: not-allowed; }
+/* Aviso sin stock en compra */
+.purchase__sin-stock-aviso {
+  display: none; padding: 14px 18px;
+  background: rgba(255,59,48,0.08); border: 1px solid rgba(255,59,48,0.3);
+  border-radius: 3px; color: #ff3b30; font-size: 12px;
+  letter-spacing: 0.08em; text-align: center; font-weight: 500;
+}
+.purchase__sin-stock-aviso.visible { display: block; }
 /* Botón flotante en móvil */
 .sticky-btn-wrap { display: none; }
 @media (max-width: 900px) {
@@ -660,6 +668,7 @@ body.cart-open .wa-bubble {
           <span aria-hidden="true">🚚</span>
           <span id="shippingText">Calculando envío...</span>
         </div>
+        <div class="purchase__sin-stock-aviso" id="sinStockAviso">Sin stock disponible</div>
         <button class="purchase__add-btn" id="addCartBtn" onclick="addToCart()" disabled aria-label="Agregar al carrito">
           Seleccioná un color para continuar
         </button>
@@ -1101,15 +1110,43 @@ function selectColor(i) {
   const color = p.colors[i];
   const { estado, precioOferta } = getColorEstado(p, color.name);
 
-  // No permitir selección de colores sin stock
-  if (estado === 'sin_stock') return;
-
   state.selectedColor = color;
   state.activePhoto   = 0;
 
   setText('selectedColorName', state.selectedColor.name);
   renderColors();
   renderGallery();
+
+  const addBtn        = $('addCartBtn');
+  const stickyBtn     = $('stickyAddBtn');
+  const sinStockAviso = $('sinStockAviso');
+
+  if (estado === 'sin_stock') {
+    // Sin stock: ocultar botones, mostrar aviso
+    if (addBtn)        addBtn.style.display    = 'none';
+    if (stickyBtn)     stickyBtn.style.display = 'none';
+    if (sinStockAviso) sinStockAviso.classList.add('visible');
+
+    // Ocultar elementos de precio
+    const priceEl  = $('productPrice');
+    const origEl   = document.getElementById('precioOriginalTachado');
+    const labelEl  = document.getElementById('precioOfertaLabel');
+    if (priceEl)  priceEl.textContent = '—';
+    if (origEl)   origEl.style.display  = 'none';
+    if (labelEl)  labelEl.style.display = 'none';
+
+    // Badge oferta
+    const badgeEl = $('ofertaBadge');
+    if (badgeEl) badgeEl.style.display = 'none';
+
+    state.precioEfectivo = null;
+    return;
+  }
+
+  // Color disponible: mostrar botones, ocultar aviso
+  if (addBtn)        addBtn.style.display    = '';
+  if (stickyBtn)     stickyBtn.style.display = '';
+  if (sinStockAviso) sinStockAviso.classList.remove('visible');
 
   // Calcular precio efectivo
   const precioEfectivo = (estado === 'oferta' && precioOferta) ? precioOferta : p.price;
@@ -1152,9 +1189,7 @@ function selectColor(i) {
 
   // Botón carrito con precio efectivo
   const label = `Agregar al carrito — $${precioEfectivo.toLocaleString('es-UY')} UYU`;
-  const btn       = $('addCartBtn');
-  const stickyBtn = $('stickyAddBtn');
-  if (btn)       { btn.disabled       = false; btn.textContent       = label; }
+  if (addBtn)    { addBtn.disabled    = false; addBtn.textContent    = label; }
   if (stickyBtn) { stickyBtn.disabled = false; stickyBtn.textContent = label; }
 
   // Guardar precio efectivo en el estado para que addToCart lo use
