@@ -367,8 +367,9 @@ select:active,
 }
 .section-title {
   font-family: var(--font-serif);
-  font-size: clamp(36px, 4vw, 54px);
+  font-size: clamp(32px, 4vw, 54px);
   font-weight: 300; line-height: 1.1; letter-spacing: -1px;
+  white-space: nowrap;
 }
 .products-grid {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px;
@@ -1019,7 +1020,7 @@ body.cart-open .wa-bubble {
   <div class="section-header">
     <div>
       <div class="section-label">Colección 2026</div>
-      <h2 class="section-title">Nuestros<br>modelos</h2>
+      <h2 class="section-title">Nuestros modelos</h2>
     </div>
   </div>
   <div class="products-grid" id="productsGrid" role="list">
