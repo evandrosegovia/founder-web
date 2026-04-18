@@ -474,7 +474,7 @@ select:active,
   font-size: 5px;
   font-weight: 700;
   letter-spacing: 0.3px;
-  padding: 2px 3px;
+  padding: 2px 2px;
   border-radius: 2px;
   white-space: nowrap;
   pointer-events: none;
@@ -931,52 +931,9 @@ body.cart-open .wa-bubble {
 
 <div class="toast" id="toast" role="alert" aria-live="polite"></div>
 
-<!-- ── HEADER ──────────────────────────────────────────────── -->
-<header class="header" role="banner">
-  <button class="menu-btn" onclick="toggleMenu()" aria-label="Abrir menú">
-    <span></span><span></span><span></span>
-  </button>
-  <a href="#" class="logo" aria-label="Founder - Inicio">FOUNDER</a>
-  <nav class="nav" aria-label="Navegación principal">
-    <a href="index.html" class="nav__link is-active">Inicio</a>
-    <a href="#productos" class="nav__link">Productos</a>
-    <a href="tecnologia-rfid.html" class="nav__link">Tecnología RFID</a>
-    <a href="seguimiento.html" class="nav__link">Seguí tu compra</a>
-    <a href="sobre-nosotros.html" class="nav__link">Sobre nosotros</a>
-    <a href="contacto.html" class="nav__link">Contacto</a>
-  </nav>
-  <button class="cart-btn" onclick="toggleCart()" aria-label="Abrir carrito">
-    Carrito
-    <span class="cart-count" id="cartCount" aria-label="Items en carrito">0</span>
-  </button>
-</header>
-
-<!-- ── MENÚ MOBILE ──────────────────────────────────────────── -->
-<div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()" aria-hidden="true"></div>
-<aside class="menu-drawer" id="menuDrawer" aria-label="Menú de navegación">
-  <div class="menu-drawer__header">
-    <span class="menu-drawer__logo">FOUNDER</span>
-    <button class="menu-drawer__close" onclick="toggleMenu()" aria-label="Cerrar menú">✕</button>
-  </div>
-  <nav class="menu-drawer__nav" aria-label="Navegación mobile">
-    <a href="index.html" class="menu-drawer__link is-active">Inicio</a>
-    <a href="#productos" class="menu-drawer__link" onclick="toggleMenu()">Productos</a>
-    <a href="tecnologia-rfid.html" class="menu-drawer__link">Tecnología RFID</a>
-    <a href="seguimiento.html" class="menu-drawer__link">Seguí tu compra</a>
-    <a href="sobre-nosotros.html" class="menu-drawer__link">Sobre nosotros</a>
-    <a href="contacto.html" class="menu-drawer__link">Contacto</a>
-  </nav>
-  <div class="menu-drawer__footer">
-    <a href="https://wa.me/598098550096" target="_blank" rel="noopener noreferrer" class="menu-drawer__wa">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-      WhatsApp
-    </a>
-    <a href="https://instagram.com/founder.uy" target="_blank" rel="noopener noreferrer" class="menu-drawer__wa">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-      @founder.uy
-    </a>
-  </div>
-</aside>
+<!-- ── HEADER + MENÚ MOBILE (componente compartido) ──────────── -->
+<div id="site-header"></div>
+<script src="components/header.js"></script>
 
 <!-- ── HERO ────────────────────────────────────────────────── -->
 <section class="hero" aria-label="Presentación">
@@ -1043,45 +1000,13 @@ body.cart-open .wa-bubble {
   <div class="ship-item"><span class="ship-item__icon" aria-hidden="true">🛡️</span><div><strong class="ship-item__label">Compra segura</strong>datos protegidos</div></div>
 </div>
 
-<!-- ── FOOTER ────────────────────────────────────────────────── -->
-<footer class="footer" role="contentinfo">
-  <div class="footer__grid">
-    <div class="footer__brand">
-      <a href="#" class="logo" aria-label="Founder - Inicio">FOUNDER</a>
-      <p>Billeteras y tarjeteros premium con tecnología RFID. Diseñados para quienes cuidan cada detalle. Enviamos a todo Uruguay.</p>
-    </div>
-    <div class="footer__col"><h4>Productos</h4><ul><li><a href="producto.html?p=Simple">Simple</a></li><li><a href="producto.html?p=Classic">Classic</a></li><li><a href="producto.html?p=Confort">Confort</a></li><li><a href="producto.html?p=Essential">Essential</a></li></ul></div>
-    <div class="footer__col"><h4>Info</h4><ul><li><a href="tecnologia-rfid.html">Tecnología RFID</a></li><li><a href="envios.html">Envíos y Devoluciones</a></li><li><a href="seguimiento.html">Seguimiento</a></li><li><a href="sobre-nosotros.html">Sobre nosotros</a></li><li><a href="contacto.html">Contacto</a></li></ul></div>
-    <div class="footer__col"><h4>Legal</h4><ul><li><a href="#" onclick="showLegal('privacy');return false">Política de Privacidad</a></li><li><a href="#" onclick="showLegal('terms');return false">Términos y Condiciones</a></li><li><a href="envios.html">Cambios y Devoluciones</a></li></ul></div>
-  </div>
-  <div class="footer__bottom">
-    <p>© 2026 Founder.uy — Todos los derechos reservados</p>
-    <div class="footer__legal"><a href="#" onclick="showLegal('privacy');return false">Privacidad</a><a href="#" onclick="showLegal('terms');return false">Términos</a><a href="envios.html">Devoluciones</a></div>
-  </div>
-</footer>
+<!-- ── FOOTER + MODALES LEGALES + BURBUJA WA (componente compartido) ── -->
+<div id="site-footer"></div>
+<script src="components/footer.js"></script>
 
-<!-- ── CART ──────────────────────────────────────────────────── -->
-<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()" aria-hidden="true"></div>
-<aside class="cart-sidebar" id="cartSidebar" aria-label="Carrito de compras">
-  <div class="cart__header">
-    <span class="cart__title">Mi Carrito</span>
-    <button class="cart__close" onclick="toggleCart()" aria-label="Cerrar carrito">✕</button>
-  </div>
-  <div class="cart-stock-warning" id="cartStockWarning">
-    ⚠️ Uno o más productos de tu carrito están agotados momentáneamente.
-    <br><a onclick="toggleCart();window.location.href='index.html#productos'">Buscá otra variante →</a>
-  </div>
-  <div class="cart__items" id="cartItems">
-    <div class="cart__empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>
-  </div>
-  <div class="cart__footer" id="cartFooter" style="display:none">
-    <div class="cart__subtotal"><span>Subtotal</span><strong id="cartTotal">$0</strong></div>
-    <div class="cart__ship-note" id="cartShipNote"></div>
-    <div class="cart__discount-note">💰 Pagando por transferencia obtenés un <strong>10% de descuento</strong>.</div>
-    <button class="cart__checkout-btn" onclick="openCheckout()">Finalizar compra</button>
-    <div class="cart__mp-info"><span>Pagás con</span> <strong>Mercado Pago</strong> o transferencia</div>
-  </div>
-</aside>
+<!-- ── CARRITO LATERAL (componente compartido) ─────────────── -->
+<div id="site-cart"></div>
+<script src="components/cart.js"></script>
 
 <!-- ── PRODUCT MODAL ─────────────────────────────────────────── -->
 <div class="modal-overlay" id="modalOverlay" onclick="handleModalOverlayClick(event)" role="dialog" aria-modal="true" aria-label="Detalle del producto">
@@ -1690,65 +1615,17 @@ const revealObserver = new IntersectionObserver(entries => {
 }, { threshold: 0.1 });
 
 // ── SHARED UI — Páginas legales ──────────────────────────────────
-const LEGAL_IDS = { privacy: 'legalPrivacy', terms: 'legalTerms', returns: 'legalReturns' };
-function showLegal(key) {
-  const el = $(LEGAL_IDS[key]);
-  if (el) { el.classList.add('is-active'); document.body.style.overflow = 'hidden'; }
-}
-function hideLegal(key) {
-  const el = $(LEGAL_IDS[key]);
-  if (el) { el.classList.remove('is-active'); document.body.style.overflow = ''; }
-}
+// showLegal() / hideLegal() ahora viven en components/footer.js
+// (única fuente de verdad para el sistema de modales legales).
 
 // ── BOOT ────────────────────────────────────────────────────────
 updateCart(); // reflejar carrito persistido (puede venir de producto.html)
 init();
 </script>
 
-<!-- ── PÁGINAS LEGALES ─────────────────────────────────────────── -->
-<div class="legal-page" id="legalPrivacy" role="dialog" aria-modal="true">
-  <button class="legal-close" onclick="hideLegal('privacy')">✕ Cerrar</button>
-  <div class="legal-content">
-    <h1>Política de Privacidad</h1><p class="legal-date">Vigente desde: Enero 2026</p>
-    <h2>1. Responsable</h2><p>Founder.uy, con contacto vía Instagram @founder.uy</p>
-    <h2>2. Datos recabados</h2><p>Nombre, apellido, celular, email y dirección de entrega proporcionados al realizar una compra.</p>
-    <h2>3. Base legal</h2><p>Ley N° 18.331 de Protección de Datos Personales y acción de Habeas Data de la República Oriental del Uruguay.</p>
-    <h2>4. Finalidad</h2><p>Tus datos se usan exclusivamente para procesar tu pedido, gestionar el envío y cumplir obligaciones legales.</p>
-    <h2>5. Consentimiento</h2><p>Al completar el formulario de compra y aceptar esta política, otorgás tu consentimiento libre e informado conforme al artículo 9 de la Ley N° 18.331.</p>
-    <h2>6. Seguridad</h2><p>Implementamos medidas técnicas y organizativas adecuadas para proteger tus datos contra accesos no autorizados.</p>
-    <h2>7. Tus derechos</h2><p>Tenés derecho a acceso, rectificación, supresión e impugnación de tus datos. Contactanos por Instagram @founder.uy.</p>
-  </div>
+
 </div>
-<div class="legal-page" id="legalTerms" role="dialog" aria-modal="true">
-  <button class="legal-close" onclick="hideLegal('terms')">✕ Cerrar</button>
-  <div class="legal-content">
-    <h1>Términos y Condiciones</h1><p class="legal-date">Vigente desde: Enero 2026</p>
-    <h2>1. Aceptación</h2><p>Al realizar una compra en Founder.uy, aceptás estos Términos y Condiciones en su totalidad.</p>
-    <h2>2. Productos</h2><p>Todos los productos incluyen tecnología RFID y están fabricados con eco cuero y aluminio de alta calidad.</p>
-    <h2>3. Precios</h2><p>Los precios están expresados en Pesos Uruguayos (UYU). Se aplica el precio vigente al momento de confirmar el pedido.</p>
-    <h2>4. Descuentos</h2><p>Se aplica un descuento del 10% para pagos por transferencia bancaria. No acumulable con otras promociones.</p>
-    <h2>5. Envíos</h2><p>Enviamos a todo el territorio uruguayo vía agencia UES. Envío gratis en compras desde $2.000 UYU.</p>
-    <h2>6. Jurisdicción</h2><p>Ante cualquier controversia, las partes se someten a la jurisdicción de los Tribunales de la República Oriental del Uruguay.</p>
-  </div>
-</div>
-<div class="legal-page" id="legalReturns" role="dialog" aria-modal="true">
-  <button class="legal-close" onclick="hideLegal('returns')">✕ Cerrar</button>
-  <div class="legal-content">
-    <h1>Cambios y Devoluciones</h1><p class="legal-date">Vigente desde: Enero 2026</p>
-    <h2>Política de cambios</h2><p>Aceptamos cambios dentro de los 7 días corridos de recibido el producto, sin uso, en su estado original y con comprobante de compra.</p>
-    <h2>Defecto de fábrica</h2><p>Si el producto tiene un defecto de fábrica, lo cambiamos o reintegramos el importe sin costo. Plazo: 30 días desde la recepción.</p>
-    <h2>Cómo solicitar un cambio</h2><p>Contactanos por WhatsApp o Instagram @founder.uy indicando tu número de pedido y el motivo. Respondemos en 48 horas hábiles.</p>
-  </div>
-</div>
-<!-- ── BURBUJA WHATSAPP GLOBAL ──────────────────────────────── -->
-<a class="wa-bubble" href="https://wa.me/598098550096" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
-  <span class="wa-bubble__tooltip">¿Necesitás ayuda?</span>
-  <span class="wa-bubble__btn">
-    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-    </svg>
-  </span>
-</a>
+
 
 </body>
 </html>
