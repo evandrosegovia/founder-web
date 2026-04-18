@@ -443,41 +443,45 @@ select:active,
   box-shadow: 0 0 0 2px rgba(255,59,48,0.75);
 }
 
-/* Badge de oferta sobre imagen de tarjeta */
-.product-card__badge-oferta {
+/* Badge de oferta / agotado sobre imagen de tarjeta */
+.product-card__badge-oferta,
+.product-card__badge-agotado {
   position: absolute; top: 12px; right: 12px;
-  background: var(--color-gold); color: #141414;
   font-family: var(--font-sans); font-size: 8px; font-weight: 700;
   letter-spacing: 2px; text-transform: uppercase;
   padding: 5px 10px; border-radius: 2px; z-index: 2; pointer-events: none;
 }
+.product-card__badge-oferta  { background: var(--color-gold);   color: #141414; }
+.product-card__badge-agotado { background: var(--color-danger); color: #fff; }
 
-/* Estados de color en modal */
-/* Sin stock en modal: clickeable para ver fotos, badge rojo flotante arriba */
-.color-option--sin-stock { opacity: 1; cursor: pointer; pointer-events: auto; }
+/* Estados de color en modal — badges alineados con producto.html */
+.color-option--sin-stock { position: relative; opacity: 1; cursor: pointer; pointer-events: auto; }
 .color-option--sin-stock .color-option__name::after { content: none; }
-/* Badge rojo flotante encima del swatch — color de fondo visible */
-.color-option--sin-stock .color-swatch { position: relative; }
-.color-option--sin-stock .color-swatch::before {
-  content: 'AGOTADO';
-  position: absolute;
-  top: -14px; left: 50%;
-  transform: translateX(-50%);
-  background: var(--color-danger);
-  color: #fff;
-  font-family: var(--font-sans);
-  font-size: 5.5px; font-weight: 700;
-  letter-spacing: 0.5px; text-transform: uppercase;
-  padding: 2px 4px; border-radius: 2px;
-  white-space: nowrap; pointer-events: none;
-  z-index: 3;
-}
-/* OFERTA badge — sin cambios */
-.color-option--oferta .color-swatch { position: relative; }
+
+.color-option--oferta { position: relative; }
+/* Estrella dorada sobre el swatch de oferta — marca sutil adicional */
 .color-option--oferta .color-swatch::after {
   content: '★'; position: absolute; bottom: -1px; right: -1px;
   font-size: 8px; color: var(--color-gold); line-height: 1;
 }
+
+/* Badge rectangular flotante sobre el swatch — espejo visual de OFERTA y AGOTADO */
+.color-option__badge {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 3;
+}
+.color-option__badge--oferta  { background: var(--color-gold);   color: var(--color-bg); }
+.color-option__badge--agotado { background: var(--color-danger); color: #fff; }
 
 /* ── SHIPPING BANNER ──────────────────────────────────────── */
 .shipping-banner {
@@ -1336,6 +1340,7 @@ function renderProductCard(p) {
   }).join('');
 
   const tieneOferta = p.colors.some(c => getColorEstado(p, c.name).estado === 'oferta');
+  const todoAgotado = p.colors.length > 0 && p.colors.every(c => getColorEstado(p, c.name).estado === 'sin_stock');
 
   return `
     <article class="product-card" role="listitem">
@@ -1347,7 +1352,7 @@ function renderProductCard(p) {
                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 20px;position:relative;z-index:1">${swatches}</div>
              </div>`}
         <div class="product-card__badge">RFID</div>
-        ${tieneOferta ? '<div class="product-card__badge-oferta">Oferta</div>' : ''}
+        ${todoAgotado ? '<div class="product-card__badge-agotado">Agotado</div>' : (tieneOferta ? '<div class="product-card__badge-oferta">Oferta</div>' : '')}
       </a>
       <div class="product-card__body">
         <div>
@@ -1477,7 +1482,10 @@ function renderModalColors() {
     const clickable = `onclick="selectColor(${i})"`;
     return `
       <div class="${classes}" ${clickable}>
-        <div class="color-swatch" style="background:${swatchBackground(c)}"></div>
+        <div class="color-swatch" style="background:${swatchBackground(c)}">
+          ${enOferta ? '<span class="color-option__badge color-option__badge--oferta">OFERTA</span>' : ''}
+          ${sinStock ? '<span class="color-option__badge color-option__badge--agotado">AGOTADO</span>' : ''}
+        </div>
         <div class="color-option__name">${c.name}</div>
       </div>`;
   }).join(''));
