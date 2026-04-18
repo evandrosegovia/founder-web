@@ -1177,7 +1177,7 @@ function renderColorRows(cols) {
         <button class="estado-btn ${est.estado === 'activo'    ? 'activo--sel'   : ''}"
           onclick="setEstado(${i},'activo')"   type="button">🟢 Activo</button>
         <button class="estado-btn ${est.estado === 'sin_stock' ? 'sinstock--sel' : ''}"
-          onclick="setEstado(${i},'sin_stock')" type="button">🔴 Sin stock</button>
+          onclick="setEstado(${i},'sin_stock')" type="button">🔴 Agotado</button>
         <button class="estado-btn ${est.estado === 'oferta'    ? 'oferta--sel'   : ''}"
           onclick="setEstado(${i},'oferta')"   type="button">🏷️ Oferta</button>
       </div>
@@ -1209,7 +1209,7 @@ function addColorRow() {
       oninput="updDot(${i},this.value);updEstadoKey(${i},this.value)" id="cn${i}">
     <div class="color-estado-btns">
       <button class="estado-btn activo--sel" onclick="setEstado(${i},'activo')" type="button">🟢 Activo</button>
-      <button class="estado-btn" onclick="setEstado(${i},'sin_stock')" type="button">🔴 Sin stock</button>
+      <button class="estado-btn" onclick="setEstado(${i},'sin_stock')" type="button">🔴 Agotado</button>
       <button class="estado-btn" onclick="setEstado(${i},'oferta')" type="button">🏷️ Oferta</button>
     </div>
     <button class="rem-color" onclick="remRow(${i})" type="button">✕</button>
