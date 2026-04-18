@@ -459,7 +459,7 @@ select:active,
 /* Badge rojo flotante encima del swatch — color de fondo visible */
 .color-option--sin-stock .color-swatch { position: relative; }
 .color-option--sin-stock .color-swatch::before {
-  content: 'SIN STOCK';
+  content: 'AGOTADO';
   position: absolute;
   top: -14px; left: 50%;
   transform: translateX(-50%);
@@ -1064,7 +1064,7 @@ body.cart-open .wa-bubble {
     <button class="cart__close" onclick="toggleCart()" aria-label="Cerrar carrito">✕</button>
   </div>
   <div class="cart-stock-warning" id="cartStockWarning">
-    ⚠️ Uno o más productos de tu carrito no tienen stock disponible momentáneamente.
+    ⚠️ Uno o más productos de tu carrito están agotados momentáneamente.
     <br><a onclick="toggleCart();window.location.href='index.html#productos'">Buscá otra variante →</a>
   </div>
   <div class="cart__items" id="cartItems">
@@ -1098,7 +1098,7 @@ body.cart-open .wa-bubble {
       </div>
       <div class="modal__footer">
         <div><div class="modal__price" id="modalPrice"></div><div class="modal__price-note">10% OFF por transferencia</div></div>
-        <div class="modal__sin-stock-aviso" id="modalSinStockAviso">Sin stock disponible</div>
+        <div class="modal__sin-stock-aviso" id="modalSinStockAviso">Producto agotado</div>
         <button class="modal__add-btn" onclick="addFromModal()">Agregar al carrito</button>
         <a id="modalDetailLink" href="#" class="modal__detail-link">Ver página completa →</a>
       </div>
@@ -1332,7 +1332,7 @@ function renderProductCard(p) {
   const colorDots = p.colors.map(c => {
     const { estado } = getColorEstado(p, c.name);
     const cls = estado === 'sin_stock' ? ' color-dot--sin-stock' : '';
-    return `<div class="color-dot${cls}" title="${c.name}${estado === 'sin_stock' ? ' (sin stock)' : ''}" style="background:${swatchBackground(c)}"></div>`;
+    return `<div class="color-dot${cls}" title="${c.name}${estado === 'sin_stock' ? ' (agotado)' : ''}" style="background:${swatchBackground(c)}"></div>`;
   }).join('');
 
   const tieneOferta = p.colors.some(c => getColorEstado(p, c.name).estado === 'oferta');
@@ -1536,7 +1536,7 @@ function openCheckout() {
 function addFromModal() {
   if (!state.currentColor) { showToast('Seleccioná un color'); return; }
   const { estado, precioOferta } = getColorEstado(state.currentProduct, state.currentColor.name);
-  if (estado === 'sin_stock') { showToast('Este color no tiene stock disponible'); return; }
+  if (estado === 'sin_stock') { showToast('Este color está agotado'); return; }
   const precio = (estado === 'oferta' && precioOferta) ? precioOferta : state.currentProduct.price;
   addToCart(state.currentProduct, state.currentColor, precio);
   closeModal();
