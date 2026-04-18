@@ -195,7 +195,7 @@ select:active,
 .color-item--sin-stock .color-item__name::after { content: none; }
 /* Badge rojo flotante encima del swatch — color de fondo visible */
 .color-item--sin-stock .color-item__swatch::before {
-  content: 'SIN STOCK';
+  content: 'AGOTADO';
   position: absolute;
   top: -14px; left: 50%;
   transform: translateX(-50%);
@@ -692,7 +692,7 @@ body.cart-open .wa-bubble {
           <span aria-hidden="true">🚚</span>
           <span id="shippingText">Calculando envío...</span>
         </div>
-        <div class="purchase__sin-stock-aviso" id="sinStockAviso">Sin stock disponible</div>
+        <div class="purchase__sin-stock-aviso" id="sinStockAviso">Producto agotado</div>
         <button class="purchase__add-btn" id="addCartBtn" onclick="addToCart()" disabled aria-label="Agregar al carrito">
           Seleccioná un color para continuar
         </button>
@@ -815,7 +815,7 @@ body.cart-open .wa-bubble {
     <button class="cart__close" onclick="toggleCart()" aria-label="Cerrar carrito">✕</button>
   </div>
   <div class="cart-stock-warning" id="cartStockWarning">
-    ⚠️ Uno o más productos de tu carrito no tienen stock disponible momentáneamente.
+    ⚠️ Uno o más productos de tu carrito están agotados momentáneamente.
     <br><a onclick="toggleCart();window.location.href='index.html#productos'">Buscá otra variante →</a>
   </div>
   <div class="cart__items" id="cartItems">
@@ -1170,7 +1170,7 @@ function renderColors() {
     ].filter(Boolean).join(' ');
     return `
     <div class="${classes}" onclick="selectColor(${i})"
-      role="button" aria-label="Color ${c.name}${sinStock ? ' — Sin stock' : ''}" tabindex="0">
+      role="button" aria-label="Color ${c.name}${sinStock ? ' — Agotado' : ''}" tabindex="0">
       <div class="color-item__swatch" style="background:${swatchBackground(c)}">
         ${enOferta ? '<span class="color-item__badge">OFERTA</span>' : ''}
       </div>
