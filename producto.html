@@ -189,34 +189,20 @@ select:active,
 .color-item__name { font-size: 8px; letter-spacing: 1px; color: var(--color-muted); text-transform: uppercase; text-align: center; max-width: 50px; }
 
 /* ── Estados de color ──────────────────────────────────────── */
-/* Sin stock en producto: clickeable para ver fotos, badge rojo flotante arriba */
-.color-item--sin-stock { opacity: 1; cursor: pointer !important; }
+/* Agotado: clickeable para ver fotos, solo bloquea el carrito */
+.color-item--sin-stock { position: relative; opacity: 1; cursor: pointer !important; }
 .color-item--sin-stock .color-item__swatch { cursor: pointer !important; }
 .color-item--sin-stock .color-item__name::after { content: none; }
-/* Badge rojo flotante encima del swatch — color de fondo visible */
-.color-item--sin-stock .color-item__swatch::before {
-  content: 'AGOTADO';
-  position: absolute;
-  top: -14px; left: 50%;
-  transform: translateX(-50%);
-  background: var(--color-danger);
-  color: #fff;
-  font-family: var(--font-sans);
-  font-size: 5.5px; font-weight: 700;
-  letter-spacing: 0.5px; text-transform: uppercase;
-  padding: 2px 4px; border-radius: 2px;
-  white-space: nowrap; pointer-events: none;
-  z-index: 3;
-}
 
+/* Oferta */
 .color-item--oferta { position: relative; }
+
+/* Badge rectangular flotante sobre el swatch — espejo visual de OFERTA y AGOTADO */
 .color-item__badge {
   position: absolute;
   top: -7px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--color-gold);
-  color: var(--color-bg);
   font-size: 6px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -224,7 +210,10 @@ select:active,
   border-radius: 2px;
   white-space: nowrap;
   pointer-events: none;
+  z-index: 3;
 }
+.color-item__badge--oferta  { background: var(--color-gold);   color: var(--color-bg); }
+.color-item__badge--agotado { background: var(--color-danger); color: #fff; }
 
 /* Precio tachado cuando hay oferta */
 .purchase__price-original {
@@ -1172,7 +1161,8 @@ function renderColors() {
     <div class="${classes}" onclick="selectColor(${i})"
       role="button" aria-label="Color ${c.name}${sinStock ? ' — Agotado' : ''}" tabindex="0">
       <div class="color-item__swatch" style="background:${swatchBackground(c)}">
-        ${enOferta ? '<span class="color-item__badge">OFERTA</span>' : ''}
+        ${enOferta ? '<span class="color-item__badge color-item__badge--oferta">OFERTA</span>' : ''}
+        ${sinStock ? '<span class="color-item__badge color-item__badge--agotado">AGOTADO</span>' : ''}
       </div>
       <div class="color-item__name">${c.name}</div>
     </div>`;
