@@ -108,7 +108,7 @@
     <div class="footer__mobile-links">
       <a href="contacto.html">Contacto</a>
       <span class="footer__mobile-sep">·</span>
-      <a href="https://wa.me/598098550096" target="_blank" rel="noopener">WhatsApp</a>
+      <a href="envios.html">Envíos y Devoluciones</a>
       <span class="footer__mobile-sep">·</span>
       <a href="#" onclick="showLegal('privacy');return false">Privacidad</a>
       <span class="footer__mobile-sep">·</span>
