@@ -615,7 +615,7 @@ select:active,
 .cart__close { background: none; border: none; color: var(--color-muted); font-size: 24px; cursor: pointer; transition: color var(--transition-fast); line-height: 1; }
 .cart__close:hover { color: var(--color-text); }
 .cart__items { flex: 1; overflow-y: auto; padding: 24px 36px; }
-.cart-item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--color-border); align-items: flex-start; }
+.cart-item { display: flex; flex-wrap: wrap; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--color-border); align-items: flex-start; }
 .cart-item__img { width: 56px; height: 56px; min-width: 56px; min-height: 56px; object-fit: cover; border: 1px solid var(--color-border); flex-shrink: 0; background: var(--color-surface2); }
 .cart-item__img-placeholder { width: 56px; height: 56px; min-width: 56px; min-height: 56px; background: var(--color-surface2); border: 1px solid var(--color-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 22px; font-weight: 400; color: var(--color-gold); letter-spacing: 0; }
 .cart-item__info { flex: 1; min-width: 0; }
@@ -631,14 +631,42 @@ select:active,
 .cart__empty { text-align: center; padding: 80px 36px; color: var(--color-muted); }
 .cart__empty p { font-family: var(--font-serif); font-size: 22px; margin-bottom: 8px; }
 .cart__empty span { font-size: 11px; letter-spacing: 2px; }
-/* Aviso de producto sin stock en carrito */
-.cart-stock-warning {
-  display: none; margin: 12px 16px; padding: 12px 14px;
-  background: rgba(255,59,48,0.07); border: 1px solid rgba(255,59,48,0.25);
-  border-radius: 3px; font-size: 11px; color: #ff3b30; line-height: 1.6;
+/* ── S11 T4: aviso de sin stock POR-ITEM (reemplaza el aviso global) ──
+   Cuando un item del carrito se quedó sin stock en el catálogo actual,
+   se destaca SOLO ese item con borde rojo a la izquierda y aparece un
+   bloque interno con mensaje + 2 acciones: eliminar o ver otros modelos. */
+.cart-item--sin-stock {
+  background: rgba(255, 59, 48, 0.05);
+  border-left: 3px solid var(--color-danger);
+  padding-left: 12px;
 }
-.cart-stock-warning.visible { display: block; }
-.cart-stock-warning a { color: #ff3b30; text-decoration: underline; font-weight: 500; cursor: pointer; }
+.cart-item__stock-alert {
+  flex-basis: 100%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 59, 48, 0.08);
+  border: 1px solid rgba(255, 59, 48, 0.2);
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--color-danger);
+  line-height: 1.5;
+}
+.cart-item__stock-alert p { margin: 0 0 8px; letter-spacing: 0.5px; }
+.cart-item__stock-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.stock-btn {
+  flex: 1;
+  min-width: 110px;
+  padding: 8px 12px;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+  font-family: inherit;
+}
+.stock-btn--remove { background: var(--color-danger); color: #fff; border: 1px solid var(--color-danger); }
+.stock-btn--other  { background: transparent; color: var(--color-danger); border: 1px solid var(--color-danger); }
+.stock-btn:hover   { opacity: 0.85; }
 .cart__footer { padding: 24px 36px 36px; border-top: 1px solid var(--color-border); }
 .cart__subtotal { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .cart__subtotal span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
@@ -711,6 +739,33 @@ select:active,
   }
   /* En mobile las specs vuelven a columna única para mejor lectura */
   .modal__specs { grid-template-columns: 1fr; gap: 10px; }
+  /* ── S11 T1: Modal fullscreen en mobile ──────────────────────
+     El modal ocupa toda la pantalla para aprovechar el espacio,
+     el overlay pierde el padding y el botón de cerrar queda fijo
+     arriba-derecha sobre fondo semi-transparente para que siempre
+     sea visible aunque se scrollee el contenido del modal. */
+  .modal-overlay { padding: 0; }
+  .modal {
+    max-width: 100%;
+    width: 100vw;
+    max-height: 100dvh;
+    height: 100dvh;
+    border: none;
+  }
+  .modal__close {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 20;
+  }
+  .modal__info { padding: 24px 20px 40px; }
+  .modal__gallery { min-height: 280px; }
 }
 
 /* ── PÁGINAS LEGALES ─────────────────────────────────────────── */
@@ -1193,6 +1248,9 @@ async function init() {
     state.products  = parseProducts(jP.table.rows);
 
     renderProducts();
+    // S11 T4: catálogo ya disponible → re-render del carrito persistido
+    // para que los avisos "sin stock" aparezcan en los items afectados.
+    if (state.cart && state.cart.length) updateCart();
     document.querySelectorAll('.rfid-item').forEach(el => revealObserver.observe(el));
 
     // Event delegation para modal — se registra UNA SOLA VEZ aquí, no en renderProducts()
@@ -1530,8 +1588,10 @@ function updateCart() {
     // Busca foto directo en photoMap (funciona antes y después de cargar productos)
     const photo = getPhotos(item.name, item.color)[0] || null;
     const inicial = (item.name || '?')[0].toUpperCase();
+    // S11 T4: ¿este item quedó sin stock en el catálogo actual?
+    const sinStock = isItemSinStock(item);
     return `
-      <div class="cart-item">
+      <div class="cart-item${sinStock ? ' cart-item--sin-stock' : ''}">
         ${photo
           ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
                onerror="recoverCartPhoto(this,'${item.name.replace(/'/g,"\\'")}','${item.color.replace(/'/g,"\\'")}');">`
@@ -1549,6 +1609,14 @@ function updateCart() {
           <div class="cart-item__price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
           <button class="cart-item__remove" onclick="removeItem(${idx})" aria-label="Eliminar producto">✕</button>
         </div>
+        ${sinStock ? `
+        <div class="cart-item__stock-alert">
+          <p>⚠ Este producto se quedó sin stock</p>
+          <div class="cart-item__stock-actions">
+            <button class="stock-btn stock-btn--remove" onclick="removeSinStockItem(${idx})">Eliminar</button>
+            <button class="stock-btn stock-btn--other" onclick="buscarOtroModelo(${idx})">Ver otros modelos</button>
+          </div>
+        </div>` : ''}
       </div>`;
   }).join(''));
 
@@ -1561,7 +1629,6 @@ function updateCart() {
       : `Agregá $${(CONFIG.FREE_SHIPPING - total).toLocaleString('es-UY')} más para envío gratis`;
     note.style.color = total >= CONFIG.FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
   }
-  checkCartStock();
 }
 
 function changeQty(idx, delta) {
@@ -1582,23 +1649,36 @@ function toggleCart() {
   overlay.classList.toggle('is-open', isOpen);
   document.body.classList.toggle('cart-open', isOpen);
   document.body.style.overflow = isOpen ? 'hidden' : '';
-  if (isOpen) checkCartStock();
+  if (isOpen) updateCart(); // re-render al abrir para refrescar estado de stock
 }
 
-/** Verifica si algún item del carrito está sin stock en el catálogo actual. */
-function checkCartStock() {
-  if (!state.products || !state.products.length) return;
-  const haySinStock = state.cart.some(item => {
-    const prod = state.products.find(p => p.name === item.name);
-    if (!prod) return false;
-    const { estado } = getColorEstado(prod, item.color);
-    return estado === 'sin_stock';
-  });
-  const warning = $('cartStockWarning');
-  if (warning) {
-    if (haySinStock) warning.classList.add('visible');
-    else warning.classList.remove('visible');
-  }
+/** S11 T4: Indica si un item del carrito está sin_stock en el catálogo actual.
+ *  Si el catálogo todavía no cargó (state.products vacío), devuelve false para
+ *  no mostrar falsos positivos. */
+function isItemSinStock(item) {
+  if (!state.products || !state.products.length) return false;
+  const prod = state.products.find(p => p.name === item.name);
+  if (!prod) return false;
+  const { estado } = getColorEstado(prod, item.color);
+  return estado === 'sin_stock';
+}
+
+/** S11 T4: Elimina un item sin stock y muestra toast de confirmación. */
+function removeSinStockItem(idx) {
+  state.cart.splice(idx, 1);
+  updateCart();
+  showToast('Producto sin stock eliminado');
+}
+
+/** S11 T4: Elimina el item sin stock, cierra el carrito y hace scroll a
+ *  la grilla de productos para que el usuario elija otro modelo. */
+function buscarOtroModelo(idx) {
+  state.cart.splice(idx, 1);
+  updateCart();
+  const sidebar = $('cartSidebar');
+  if (sidebar && sidebar.classList.contains('is-open')) toggleCart();
+  const productos = document.getElementById('productos');
+  if (productos) productos.scrollIntoView({ behavior: 'smooth' });
 }
 
 function toggleMenu() {
