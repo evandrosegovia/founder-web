@@ -79,6 +79,7 @@
     return `
 <!-- ── FOOTER ──────────────────────────────────────────────── -->
 <footer class="footer" role="contentinfo">
+  <!-- DESKTOP / TABLET: grilla completa + bottom bar -->
   <div class="footer__grid">
     <div class="footer__brand">
       <a href="index.html" class="logo" aria-label="Founder - Inicio">FOUNDER</a>
@@ -99,6 +100,21 @@
       <a href="#" onclick="showLegal('terms');return false">Términos</a>
       <a href="#" onclick="showLegal('returns');return false">Devoluciones</a>
     </div>
+  </div>
+  <!-- MOBILE: versión minimalista (logo + 4 links inline + copyright).
+       Oculto en desktop via CSS. El menú hamburguesa provee navegación completa. -->
+  <div class="footer__mobile">
+    <a href="index.html" class="footer__mobile-logo" aria-label="Founder - Inicio">FOUNDER</a>
+    <div class="footer__mobile-links">
+      <a href="contacto.html">Contacto</a>
+      <span class="footer__mobile-sep">·</span>
+      <a href="https://wa.me/598098550096" target="_blank" rel="noopener">WhatsApp</a>
+      <span class="footer__mobile-sep">·</span>
+      <a href="#" onclick="showLegal('privacy');return false">Privacidad</a>
+      <span class="footer__mobile-sep">·</span>
+      <a href="#" onclick="showLegal('terms');return false">Términos</a>
+    </div>
+    <p class="footer__mobile-copy">© 2026 Founder.uy</p>
   </div>
 </footer>
 
@@ -155,6 +171,60 @@
   // Usa las variables CSS globales (--color-bg, --color-gold, etc.) que
   // sí están definidas en el :root de cada página.
   const COMPONENT_CSS = `
+/* ── FOOTER MOBILE MINIMALISTA (Opción C) ─────────────────────
+   En mobile (<600px) se oculta la grilla completa y se muestra
+   una versión compacta: logo + 4 links inline + copyright.
+   El menú hamburguesa provee la navegación completa. */
+.footer__mobile { display: none; }
+@media (max-width: 600px) {
+  .footer__grid,
+  .footer__bottom { display: none; }
+  .footer__mobile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: 8px 0;
+    text-align: center;
+  }
+  .footer__mobile-logo {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 6px;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+  .footer__mobile-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px 10px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .footer__mobile-links a {
+    color: var(--color-muted);
+    text-decoration: none;
+    transition: color var(--transition-fast, 0.2s ease);
+  }
+  .footer__mobile-links a:hover,
+  .footer__mobile-links a:active { color: var(--color-text); }
+  .footer__mobile-sep {
+    color: var(--color-gold);
+    font-size: 12px;
+    line-height: 1;
+  }
+  .footer__mobile-copy {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--color-muted);
+    margin: 0;
+  }
+}
+
 /* ── PÁGINAS LEGALES (modales) ─────────────────────────────── */
 .legal-page { position: fixed; inset: 0; background: var(--color-bg); z-index: 400; overflow-y: auto; display: none; padding: 100px 48px 60px; }
 .legal-page.is-active { display: block; }
