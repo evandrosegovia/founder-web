@@ -9,6 +9,10 @@
      <div id="site-header"></div>
      <script src="components/header.js"></script>
 
+   Para páginas sin drawer de carrito (ej: seguimiento.html):
+     <div id="site-header" data-cart="false"></div>
+     <script src="components/header.js"></script>
+
    Cómo agregar un link nuevo:
    ---------------------------
      Editar el array NAV_LINKS de abajo. Se refleja en las 7 páginas.
@@ -39,7 +43,7 @@
   }
 
   // ── Genera el markup del header + menú mobile ──────────────
-  function buildMarkup(current) {
+  function buildMarkup(current, showCart) {
     const navLinks = NAV_LINKS.map(link => {
       const isActive = link.match === current ? ' is-active' : '';
       return `<a href="${link.href}" class="nav__link${isActive}">${link.label}</a>`;
@@ -50,6 +54,14 @@
       return `<a href="${link.href}" class="menu-drawer__link${isActive}">${link.label}</a>`;
     }).join('\n    ');
 
+    // Botón carrito: se incluye sólo si la página lo activa (default: sí).
+    // Páginas que NO usan carrito (ej: seguimiento.html) declaran data-cart="false".
+    const cartBtn = showCart ? `
+  <button class="cart-btn" onclick="toggleCart()" aria-label="Abrir carrito">
+    Carrito
+    <span class="cart-count" id="cartCount" aria-label="Items en carrito">0</span>
+  </button>` : '';
+
     return `
 <!-- ── HEADER ──────────────────────────────────────────────── -->
 <header class="header" role="banner">
@@ -59,11 +71,7 @@
   <a href="index.html" class="logo" aria-label="Founder - Inicio">FOUNDER</a>
   <nav class="nav" aria-label="Navegación principal">
     ${navLinks}
-  </nav>
-  <button class="cart-btn" onclick="toggleCart()" aria-label="Abrir carrito">
-    Carrito
-    <span class="cart-count" id="cartCount" aria-label="Items en carrito">0</span>
-  </button>
+  </nav>${cartBtn}
 </header>
 
 <!-- ── MENÚ MOBILE ──────────────────────────────────────────── -->
@@ -98,7 +106,10 @@
       return;
     }
     const current = getCurrentPage();
-    mount.outerHTML = buildMarkup(current);
+    // data-cart="false" → página sin drawer de carrito (ej: seguimiento).
+    // Default: true (retrocompatible con las 6 páginas que sí lo usan).
+    const showCart = mount.dataset.cart !== 'false';
+    mount.outerHTML = buildMarkup(current, showCart);
   }
 
   // Ejecutar apenas el script se carga (el <div> de montaje ya existe)
