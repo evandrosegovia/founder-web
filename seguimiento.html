@@ -24,17 +24,37 @@
       --color-error: #e07070;
       --color-error-bg: rgba(224,112,112,0.1);
       --color-success: #7ec88a;
+      --color-border: rgba(255,255,255,0.08);
       --color-border-solid: #282828;
+      --color-danger: #ff3b30;
       color-scheme: dark;
       --font-serif: 'Cormorant Garamond', serif;
       --font-sans: 'Montserrat', sans-serif;
 
+      /* Spacing — alineado con el resto del sitio */
+      --space-xs:  8px;
+      --space-sm:  16px;
+      --space-md:  24px;
+      --space-lg:  48px;
+      --space-xl:  80px;
+      --space-xxl: 120px;
+
+      /* Transitions — alineado con el resto del sitio */
+      --transition-fast: 0.2s ease;
+      --transition-base: 0.3s ease;
+
+      /* z-index — alineado con el resto del sitio */
+      --z-header:   100;
+      --z-cart:     200;
+      --z-modal:    300;
+      --z-toast:    9999;
+
       /* ── Escala tipográfica — textos informativos ───────────────
          Solo afecta párrafos, descripciones y textos secundarios.
          Labels de UI (9-10px), títulos y botones NO se modifican. */
-      --text-body-sm:  12px;   /* antes 11px */
-      --text-body-md:  13px;   /* antes 12px */
-      --text-body-lg:  14px;   /* antes 13px */
+      --text-body-sm:  12px;
+      --text-body-md:  13px;
+      --text-body-lg:  14px;
       --lh-body-sm:   1.85;
       --lh-body-md:   1.85;
       --lh-body-lg:   1.95;
@@ -73,8 +93,7 @@
     .btn-buscar:active,
     .btn-volver:active,
     .logo:active,
-    .nav-link:active,
-    .wa-header-btn:active,
+    .nav__link:active,
     .wa-bubble:active,
     .footer__col ul li a:active {
       opacity: 0.72;
@@ -89,13 +108,13 @@
     :focus:not(:focus-visible) { outline: none; }
 
     /* ── HEADER ── */
+    /* ── SHARED — Header (alineado con index.html / master) ──── */
     .header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      padding: 0 40px;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: var(--z-header);
       height: 70px;
-      border-bottom: 1px solid #252525;
+      padding: 0 var(--space-lg);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -103,6 +122,7 @@
       background: rgba(14,14,14,0.95);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--color-border-solid);
     }
     .logo {
       font-family: var(--font-serif);
@@ -113,43 +133,16 @@
       text-decoration: none;
       flex-shrink: 0;
     }
-
-    /* Nav links — igual al index */
-    .nav {
-      display: flex;
-      gap: 32px;
-      align-items: center;
-    }
+    .nav { display: flex; gap: 36px; }
     .nav__link {
       color: var(--color-muted);
       font-size: 10px;
       letter-spacing: 3px;
       text-transform: uppercase;
-      text-decoration: none;
-      transition: color 0.2s ease;
+      transition: color var(--transition-base);
     }
     .nav__link:hover,
     .nav__link.is-active { color: var(--color-text); }
-
-    /* Botón volver al inicio */
-    .header-back-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: none;
-      border: 1px solid rgba(255,255,255,0.12);
-      color: var(--color-muted);
-      font-family: var(--font-sans);
-      font-size: 10px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      padding: 9px 18px;
-      cursor: pointer;
-      text-decoration: none;
-      transition: color 0.2s ease, border-color 0.2s ease;
-      flex-shrink: 0;
-    }
-    .header-back-btn:hover { color: var(--color-text); border-color: rgba(255,255,255,0.3); }
 
     /* ── FOOTER ── */
     .footer {
@@ -735,32 +728,7 @@
       .footer__grid { grid-template-columns: 1fr; gap: 28px; }
       .footer__bottom { flex-direction: column; text-align: center; gap: 12px; }
       .footer__legal { flex-direction: column; align-items: center; gap: 12px; }
-      .wa-header-btn span { display: none; }
-      .wa-header-btn { padding: 9px 12px; }
     }
-    @media (max-width: 600px) {
-      .header-back-btn span { display: none; }
-    }
-
-    /* ── BOTÓN WHATSAPP EN HEADER ────────────────────────────── */
-    .wa-header-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: #25D366;
-      color: #ffffff;
-      font-family: var(--font-sans);
-      font-size: 0.68rem;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      padding: 9px 16px;
-      border-radius: 4px;
-      text-decoration: none;
-      transition: opacity 0.2s ease, transform 0.15s ease;
-      white-space: nowrap;
-    }
-    .wa-header-btn:hover { opacity: 0.88; transform: translateY(-1px); }
-    .wa-header-btn svg { width: 16px; height: 16px; fill: #ffffff; flex-shrink: 0; }
 
     /* ── BURBUJA WHATSAPP GLOBAL ─────────────────────────────── */
     .wa-bubble {

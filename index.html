@@ -459,11 +459,6 @@ select:active,
 .color-option--sin-stock .color-option__name::after { content: none; }
 
 .color-option--oferta { position: relative; }
-/* Estrella dorada sobre el swatch de oferta — marca sutil adicional */
-.color-option--oferta .color-swatch::after {
-  content: '★'; position: absolute; bottom: -1px; right: -1px;
-  font-size: 8px; color: var(--color-gold); line-height: 1;
-}
 
 /* Badge rectangular flotante sobre el swatch — espejo visual de OFERTA y AGOTADO */
 .color-option__badge {
@@ -556,7 +551,7 @@ select:active,
 }
 .modal__label::before { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
 .modal__name { font-family: var(--font-serif); font-size: 36px; font-weight: 400; letter-spacing: 3px; }
-.modal__specs { display: flex; flex-direction: column; gap: 10px; }
+.modal__specs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
 .modal__spec { display: flex; gap: 12px; font-size: var(--text-body-sm); color: var(--color-muted); line-height: var(--lh-body-sm); }
 .modal__spec::before { content: '✦'; color: var(--color-gold); font-size: 8px; margin-top: 3px; flex-shrink: 0; }
 .modal__color-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-muted); margin-bottom: 12px; }
@@ -590,8 +585,8 @@ select:active,
 .modal__detail-link {
   display: block; text-align: center;
   font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
-  color: var(--color-muted); text-decoration: none;
-  padding: 10px; border: 1px solid var(--color-border);
+  color: var(--color-text); text-decoration: none;
+  padding: 10px; border: 1px solid var(--color-text);
   transition: all var(--transition-base);
 }
 .modal__detail-link:hover { color: var(--color-gold); border-color: var(--color-gold); }
@@ -706,6 +701,16 @@ select:active,
   .footer__grid { grid-template-columns: 1fr; }
   .footer__bottom { flex-direction: column; text-align: center; gap: 12px; }
   .footer__legal { flex-direction: column; align-items: center; gap: 12px; }
+  /* Título del modal en una sola línea (como en desktop) */
+  .modal__name {
+    font-size: 26px;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* En mobile las specs vuelven a columna única para mejor lectura */
+  .modal__specs { grid-template-columns: 1fr; gap: 10px; }
 }
 
 /* ── PÁGINAS LEGALES ─────────────────────────────────────────── */
@@ -1332,7 +1337,17 @@ function openModal(id) {
       }
     }
   }
-  setHTML('modalSpecs',  state.currentProduct.specs.map(s => `<div class="modal__spec">${s}</div>`).join(''));
+  // Specs: en mobile mostrar solo 3 clave (Monedero / RFID / Tarjetas); desktop muestra todas.
+  // Fallback: si el filtro no matchea ninguna (producto raro), caer a las primeras 3.
+  const allSpecs = state.currentProduct.specs || [];
+  const isMobileModal = window.matchMedia('(max-width: 600px)').matches;
+  const SPECS_MOBILE_KEYWORDS = ['monedero', 'rfid', 'tarjeta'];
+  let specsToShow = allSpecs;
+  if (isMobileModal) {
+    const filtered = allSpecs.filter(s => SPECS_MOBILE_KEYWORDS.some(kw => s.toLowerCase().includes(kw)));
+    specsToShow = filtered.length ? filtered : allSpecs.slice(0, 3);
+  }
+  setHTML('modalSpecs', specsToShow.map(s => `<div class="modal__spec">${s}</div>`).join(''));
 
   // Actualizar link "Ver página completa"
   const detailLink = $('modalDetailLink');
