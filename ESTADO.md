@@ -1,5 +1,5 @@
 # FOUNDER.UY — Estado del proyecto
-**Última actualización:** Abril 2026 — Cierre completo de Sesión 11
+**Última actualización:** Abril 2026 — Cierre completo de Sesión 11 + S11-bis (sistema global de validación de stock)
 **URL del sitio:** https://founder-web-gules.vercel.app
 **Deploy:** Vercel → GitHub (auto-deploy en push a main)
 
@@ -10,15 +10,21 @@
 **Al iniciar la próxima sesión, leer en este orden:**
 
 1. Leer este archivo (`ESTADO.md`) primero — contexto general.
-2. Confirmar con el usuario qué tarea abordar. Hay 5 propuestas estratégicas pendientes (ver sección al final).
+2. Confirmar con el usuario qué tarea abordar. Hay 4 propuestas estratégicas pendientes (ver sección al final).
 
 **Resumen rápido:**
 - Sesión 9: migración a componentes compartidos — completa.
 - Sesión 10: 4 tareas UX — completa.
 - Sesión 10 EXTRA: reconstrucción de `seguimiento.html` usando `envios.html` como plantilla — resolvió bugs crónicos.
-- **Sesión 11: 4 tareas UX mobile + aviso de sin stock por-item — completa.**
+- Sesión 11: 4 tareas UX mobile + aviso de sin stock por-item — completa.
+- **Sesión 11-bis:**
+  - Header de `producto.html` arreglado (clases viejas `.header__nav` → estándar `.nav`).
+  - Aviso "Agotado" ahora se valida y muestra en **TODO el sitio** (las 7 páginas públicas + checkout), no solo en index/producto.
+  - Módulo central en `components/cart.js` con API `window.founderCart`.
+  - Bloqueo de "Finalizar compra" si hay items agotados (con toast + scroll al item).
+  - Auto-eliminación de items agotados al volver el usuario + toast "Sacamos X de tu carrito porque se agotó".
 
-**Regla crítica:** la clave interna `'sin_stock'` NO se modifica jamás. Solo el texto visible.
+**Regla crítica:** la clave interna `'sin_stock'` NO se modifica jamás. Solo el texto visible ("Agotado").
 
 ---
 
@@ -43,18 +49,18 @@
 
 | Archivo | Descripción | Estado |
 |---------|-------------|--------|
-| `index.html` | Tienda principal — modal fullscreen mobile + aviso sin stock por-item (S11) | ✅ |
-| `producto.html` | Página producto + botón Volver (S10) + 4 ajustes mobile + aviso sin stock por-item (S11) | ✅ |
-| `checkout.html` | Checkout (NO usa componentes) | ✅ |
-| `seguimiento.html` | Seguimiento — RECONSTRUIDO S10 extra (igual que envios) | ✅ |
-| `envios.html` | Envíos | ✅ |
+| `index.html` | Tienda principal — modal fullscreen mobile + aviso sin stock + integra módulo founderCart (S11-bis) | ✅ |
+| `producto.html` | Página producto — header arreglado + 4 ajustes mobile + integra módulo founderCart (S11-bis) | ✅ |
+| `checkout.html` | Checkout — revalida stock al cargar + bloquea processOrder si hay agotados (S11-bis) | ✅ |
+| `seguimiento.html` | Seguimiento — integra módulo founderCart (S11-bis) | ✅ |
+| `envios.html` | Envíos — integra módulo founderCart (S11-bis) | ✅ |
 | `admin.html` | Admin (NO usa componentes) | ✅ |
-| `contacto.html` | Contacto | ✅ |
-| `tecnologia-rfid.html` | RFID | ✅ |
-| `sobre-nosotros.html` | Sobre nosotros | ✅ |
+| `contacto.html` | Contacto — ⚠️ pendiente integrar módulo founderCart manualmente | ⚠️ |
+| `tecnologia-rfid.html` | RFID — integra módulo founderCart (S11-bis) | ✅ |
+| `sobre-nosotros.html` | Sobre nosotros — integra módulo founderCart (S11-bis) | ✅ |
 | `components/header.js` | Header + menú mobile — soporta `data-cart` (S10) | ✅ |
-| `components/footer.js` | Footer — link "Envíos y Devoluciones" en mobile (S11, reemplaza WhatsApp) | ✅ |
-| `components/cart.js` | Drawer del carrito — removido `#cartStockWarning` global (S11) | ✅ |
+| `components/footer.js` | Footer — link "Envíos y Devoluciones" en mobile (S11) | ✅ |
+| `components/cart.js` | Drawer del carrito + **módulo central `window.founderCart`** + CSS unificado del aviso "Agotado" (S11-bis) | ✅ |
 | `ESTADO.md` | Este archivo | 📄 |
 
 ---
@@ -159,16 +165,65 @@ Sistema de componentes compartidos completo. 7 páginas públicas: 11.774 → 7.
 
 ---
 
+## ✅ Sesión 11-bis — Cambios aplicados (refuerzo post-Sesión 11)
+
+### Bug reportado por el usuario
+1. Header de `producto.html` roto (menú desalineado en mobile y desktop).
+2. Aviso del item sin stock con recuadro "no cerrado" — estética pobre.
+3. Texto "Sin stock" → preferencia "Agotado".
+4. **Bug funcional crítico**: si el comprador navegaba a una página secundaria (envios, contacto, etc.), el aviso de agotado NO se mostraba, y peor: podía **finalizar compra igual** desde ahí.
+
+### Fix 1 — Header de `producto.html`
+Las reglas CSS del header tenían nomenclatura vieja (`.header__nav`, `.header__nav-link`, `.header__right`, `.header__back`) que no matcheaba el markup inyectado por `components/header.js` (que usa `.nav` y `.nav__link`). Renombradas al estándar. CSS muerto eliminado.
+
+### Fix 2 — Recuadro cerrado + texto "Agotado"
+- El `.cart-item--sin-stock` pasó de tener solo `border-left: 3px` a ser un **recuadro completo** con borde en los 4 lados, padding uniforme (14px) y border-radius. La alerta interna queda simétrica adentro.
+- Texto del mensaje: "Este producto se quedó sin stock" → **"Este producto está agotado"**.
+- Texto del toast al eliminar: "Producto sin stock eliminado" → "Producto agotado eliminado".
+
+### Fix 3 — Sistema global de validación de stock (cambio arquitectónico mayor)
+
+**Problema raíz:** la lógica `isItemSinStock()` vivía duplicada en `index.html` y `producto.html`, dependía de variables locales (`state.products`, `state.allProducts`) que no existen en las 5 páginas secundarias. Resultado: navegar a otra página hacía "desaparecer" los avisos y el usuario podía confirmar la compra.
+
+**Solución: módulo central en `components/cart.js` con API `window.founderCart`:**
+
+- **`getStockSnapshot()` / `saveStockSnapshot(products)`**: cache en `localStorage` (key `founder_stock_snapshot`) con la lista de combos `modelo|color` agotados. Lo **escriben** solo `index.html` y `producto.html` (que cargan el catálogo desde Google Sheets); lo **leen** TODAS las páginas.
+- **`isItemSinStock(item)`**: devuelve `true/false` leyendo el cache. No requiere tener el catálogo en memoria.
+- **`renderStockAlertHTML(idx)`**: devuelve el HTML del bloque rojo interno con mensaje + 2 botones. Consumido por `updateCart()`/`updateCartUI()` en cada página.
+- **`pruneSinStock(cart)`**: auto-elimina items agotados al arrancar la página (respuesta a la decisión del usuario: "auto-eliminar con toast"). Encola los nombres eliminados en `sessionStorage` (key `founder_autoremoved`).
+- **`flushAutoRemoveToast()`**: dispara el toast **"Sacamos X de tu carrito porque se agotó"** en la próxima llamada a `updateCart`. Centralizado y consistente en todas las páginas.
+- **`canCheckout(cart)`**: valida el carrito antes de ir al checkout. Devuelve `{ ok, blockedItem, message }`.
+
+**CSS unificado:** los estilos de `.cart-item--sin-stock`, `.cart-item__stock-alert`, `.stock-btn` se migraron desde `index.html`/`producto.html` hacia `components/cart.js` (se inyectan automáticamente). Elimina duplicación.
+
+**Bloqueo de "Finalizar compra":** en las 6 páginas con `cart.js`, `openCheckout()` ahora llama `founderCart.canCheckout()` antes de redirigir. Si hay agotados → toast de advertencia + scroll al item bloqueante. Botón **activo** (no deshabilitado), coherente con la decisión del usuario.
+
+**Doble seguro en `checkout.html`:** como `checkout.html` no carga `cart.js` (tiene header propio), inyecté inline las helpers `_stockSnapshot()` y `findSinStockInCart()` que leen el mismo cache. Esto revalida al cargar la página y vuelve a chequear dentro de `processOrder()` — ni siquiera con link directo se puede confirmar un pedido con agotados.
+
+### Decisiones del usuario S11-bis
+- Recuadro: **cerrado** con bordes parejos.
+- Texto: "⚠ Este producto está agotado".
+- Botón "Finalizar compra": **activo pero con toast de advertencia al click**.
+- Auto-eliminación: **silenciosa + toast al volver** ("Sacamos X de tu carrito porque se agotó").
+
+### Archivos tocados en S11-bis
+`components/cart.js` (corazón del sistema) · `index.html` · `producto.html` · `envios.html` · `sobre-nosotros.html` · `tecnologia-rfid.html` · `seguimiento.html` · `checkout.html`. Total: **8 archivos.**
+
+### ⚠️ Archivo NO tocado: `contacto.html`
+Ese archivo no estaba disponible en la carpeta del proyecto en esta sesión. **Queda pendiente aplicarle el mismo patch manualmente** (lo mismo que `sobre-nosotros.html`): integrar `founderCart` en su `updateCartUI` + reemplazar `openCheckout`. Ver ESTADO para detalle de cambios a aplicar.
+
+---
+
 ## 📋 Sesión 12 — Pendiente de definir
 
-Ver "Propuestas estratégicas" abajo. El plan `PLAN_SESION_11.md` ya quedó obsoleto (todo aplicado) — puede archivarse o borrarse.
+Ver "Propuestas estratégicas" abajo.
 
 | # | Prioridad | Propuesta |
 |---|---|---|
-| 1 | 🟢 Baja | Página "Gracias por tu compra" + cupón fidelización |
-| 2 | 🟡 Media | Filtros en grilla (cuando crezca el catálogo) |
-| 3 | 🟡 Media | Reseñas/testimonios de clientes |
-| 4 | 🔵 Técnica | Migrar JS duplicado (updateCart, isItemSinStock, etc.) a `components/cart.js` — elimina duplicación entre index y producto. **Especialmente relevante ahora**: tras S11 Tarea 4 hay aún más código simétrico entre ambos archivos. |
+| 1 | 🔴 Alta | **Aplicar patch de founderCart a `contacto.html`** (quedó sin tocar en S11-bis) |
+| 2 | 🟢 Baja | Página "Gracias por tu compra" + cupón fidelización |
+| 3 | 🟡 Media | Filtros en grilla (cuando crezca el catálogo) |
+| 4 | 🟡 Media | Reseñas/testimonios de clientes |
 | 5 | 🔵 Técnica | PWA / instalable (manifest + service worker) |
 
 ---

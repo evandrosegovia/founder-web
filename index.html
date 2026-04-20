@@ -615,7 +615,7 @@ select:active,
 .cart__close { background: none; border: none; color: var(--color-muted); font-size: 24px; cursor: pointer; transition: color var(--transition-fast); line-height: 1; }
 .cart__close:hover { color: var(--color-text); }
 .cart__items { flex: 1; overflow-y: auto; padding: 24px 36px; }
-.cart-item { display: flex; flex-wrap: wrap; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--color-border); align-items: flex-start; }
+.cart-item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--color-border); align-items: flex-start; }
 .cart-item__img { width: 56px; height: 56px; min-width: 56px; min-height: 56px; object-fit: cover; border: 1px solid var(--color-border); flex-shrink: 0; background: var(--color-surface2); }
 .cart-item__img-placeholder { width: 56px; height: 56px; min-width: 56px; min-height: 56px; background: var(--color-surface2); border: 1px solid var(--color-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 22px; font-weight: 400; color: var(--color-gold); letter-spacing: 0; }
 .cart-item__info { flex: 1; min-width: 0; }
@@ -631,42 +631,8 @@ select:active,
 .cart__empty { text-align: center; padding: 80px 36px; color: var(--color-muted); }
 .cart__empty p { font-family: var(--font-serif); font-size: 22px; margin-bottom: 8px; }
 .cart__empty span { font-size: 11px; letter-spacing: 2px; }
-/* ── S11 T4: aviso de sin stock POR-ITEM (reemplaza el aviso global) ──
-   Cuando un item del carrito se quedó sin stock en el catálogo actual,
-   se destaca SOLO ese item con borde rojo a la izquierda y aparece un
-   bloque interno con mensaje + 2 acciones: eliminar o ver otros modelos. */
-.cart-item--sin-stock {
-  background: rgba(255, 59, 48, 0.05);
-  border-left: 3px solid var(--color-danger);
-  padding-left: 12px;
-}
-.cart-item__stock-alert {
-  flex-basis: 100%;
-  margin-top: 12px;
-  padding: 10px 12px;
-  background: rgba(255, 59, 48, 0.08);
-  border: 1px solid rgba(255, 59, 48, 0.2);
-  border-radius: 3px;
-  font-size: 11px;
-  color: var(--color-danger);
-  line-height: 1.5;
-}
-.cart-item__stock-alert p { margin: 0 0 8px; letter-spacing: 0.5px; }
-.cart-item__stock-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.stock-btn {
-  flex: 1;
-  min-width: 110px;
-  padding: 8px 12px;
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: opacity var(--transition-fast);
-  font-family: inherit;
-}
-.stock-btn--remove { background: var(--color-danger); color: #fff; border: 1px solid var(--color-danger); }
-.stock-btn--other  { background: transparent; color: var(--color-danger); border: 1px solid var(--color-danger); }
-.stock-btn:hover   { opacity: 0.85; }
+/* Los estilos del aviso .cart-item--sin-stock y .cart-item__stock-alert
+   ahora viven en components/cart.js (se inyectan automáticamente). */
 .cart__footer { padding: 24px 36px 36px; border-top: 1px solid var(--color-border); }
 .cart__subtotal { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .cart__subtotal span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
@@ -1247,9 +1213,18 @@ async function init() {
     state.photoMap  = parsePhotoMap(jF.table.rows);
     state.products  = parseProducts(jP.table.rows);
 
+    // Guardar el snapshot de combos agotados (usado por TODAS las páginas
+    // para que validen stock sin tener que cargar el catálogo ellas).
+    window.founderCart.saveStockSnapshot(state.products);
+
+    // Auto-eliminar items agotados del carrito (el toast se dispara en
+    // el próximo updateCart via flushAutoRemoveToast).
+    const pruned = window.founderCart.pruneSinStock(state.cart);
+    state.cart = pruned.cart;
+
     renderProducts();
-    // S11 T4: catálogo ya disponible → re-render del carrito persistido
-    // para que los avisos "sin stock" aparezcan en los items afectados.
+    // Catálogo ya disponible → re-render del carrito persistido para que
+    // los avisos "Agotado" aparezcan en los items afectados.
     if (state.cart && state.cart.length) updateCart();
     document.querySelectorAll('.rfid-item').forEach(el => revealObserver.observe(el));
 
@@ -1532,11 +1507,8 @@ function closeModal() {
 }
 
 // ── CARRITO → CHECKOUT ───────────────────────────────────────
-/** Redirige al checkout dedicado. El carrito persiste en localStorage. */
-function openCheckout() {
-  if (!state.cart.length) return;
-  window.location.href = 'checkout.html';
-}
+// openCheckout() está definida más abajo — incluye validación de stock
+// via founderCart.canCheckout() antes de redirigir a checkout.html
 
 // ── SHARED CART ─────────────────────────────────────────────────
 function addFromModal() {
@@ -1588,8 +1560,8 @@ function updateCart() {
     // Busca foto directo en photoMap (funciona antes y después de cargar productos)
     const photo = getPhotos(item.name, item.color)[0] || null;
     const inicial = (item.name || '?')[0].toUpperCase();
-    // S11 T4: ¿este item quedó sin stock en el catálogo actual?
-    const sinStock = isItemSinStock(item);
+    // Check agotado via módulo compartido (lee el snapshot cacheado).
+    const sinStock = window.founderCart.isItemSinStock(item);
     return `
       <div class="cart-item${sinStock ? ' cart-item--sin-stock' : ''}">
         ${photo
@@ -1609,14 +1581,7 @@ function updateCart() {
           <div class="cart-item__price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
           <button class="cart-item__remove" onclick="removeItem(${idx})" aria-label="Eliminar producto">✕</button>
         </div>
-        ${sinStock ? `
-        <div class="cart-item__stock-alert">
-          <p>⚠ Este producto se quedó sin stock</p>
-          <div class="cart-item__stock-actions">
-            <button class="stock-btn stock-btn--remove" onclick="removeSinStockItem(${idx})">Eliminar</button>
-            <button class="stock-btn stock-btn--other" onclick="buscarOtroModelo(${idx})">Ver otros modelos</button>
-          </div>
-        </div>` : ''}
+        ${sinStock ? window.founderCart.renderStockAlertHTML(idx) : ''}
       </div>`;
   }).join(''));
 
@@ -1629,6 +1594,8 @@ function updateCart() {
       : `Agregá $${(CONFIG.FREE_SHIPPING - total).toLocaleString('es-UY')} más para envío gratis`;
     note.style.color = total >= CONFIG.FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
   }
+  // Toast de auto-eliminación si había pendientes (sesión anterior)
+  window.founderCart.flushAutoRemoveToast();
 }
 
 function changeQty(idx, delta) {
@@ -1652,26 +1619,14 @@ function toggleCart() {
   if (isOpen) updateCart(); // re-render al abrir para refrescar estado de stock
 }
 
-/** S11 T4: Indica si un item del carrito está sin_stock en el catálogo actual.
- *  Si el catálogo todavía no cargó (state.products vacío), devuelve false para
- *  no mostrar falsos positivos. */
-function isItemSinStock(item) {
-  if (!state.products || !state.products.length) return false;
-  const prod = state.products.find(p => p.name === item.name);
-  if (!prod) return false;
-  const { estado } = getColorEstado(prod, item.color);
-  return estado === 'sin_stock';
-}
-
-/** S11 T4: Elimina un item sin stock y muestra toast de confirmación. */
+/** Elimina un item agotado del carrito + toast de confirmación. */
 function removeSinStockItem(idx) {
   state.cart.splice(idx, 1);
   updateCart();
-  showToast('Producto sin stock eliminado');
+  showToast('Producto agotado eliminado');
 }
 
-/** S11 T4: Elimina el item sin stock, cierra el carrito y hace scroll a
- *  la grilla de productos para que el usuario elija otro modelo. */
+/** Elimina el item agotado, cierra el carrito y hace scroll a la grilla. */
 function buscarOtroModelo(idx) {
   state.cart.splice(idx, 1);
   updateCart();
@@ -1679,6 +1634,28 @@ function buscarOtroModelo(idx) {
   if (sidebar && sidebar.classList.contains('is-open')) toggleCart();
   const productos = document.getElementById('productos');
   if (productos) productos.scrollIntoView({ behavior: 'smooth' });
+}
+
+/** Intercepta el click en "Finalizar compra": si hay items agotados,
+ *  muestra toast de advertencia y hace scroll al item bloqueante.
+ *  Si todo OK, sigue al flujo normal del checkout. */
+function openCheckout() {
+  const check = window.founderCart.canCheckout(state.cart);
+  if (!check.ok) {
+    showToast(check.message);
+    // Asegurar que el carrito esté abierto para ver el item bloqueante
+    const sidebar = $('cartSidebar');
+    if (sidebar && !sidebar.classList.contains('is-open')) toggleCart();
+    // Scroll al primer item agotado dentro del drawer
+    setTimeout(() => {
+      const items = document.querySelectorAll('.cart-item--sin-stock');
+      if (items.length) items[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 200);
+    return;
+  }
+  // Flujo normal — llama a la función original definida en checkout-helpers
+  if (typeof proceedToCheckout === 'function') proceedToCheckout();
+  else window.location.href = 'checkout.html';
 }
 
 function toggleMenu() {
