@@ -821,13 +821,11 @@ function buscarOtroModelo(idx) {
   window.location.href = 'index.html#productos';
 }
 
-// Auto-eliminar items agotados (si vine de index/producto que
-// actualizó el snapshot) antes del primer render del carrito.
-(function bootFounderCart() {
-  const cart = loadCart();
-  window.founderCart.pruneSinStock(cart);
-})();
-updateCartUI();
+// Boot centralizado: el módulo founderCart espera a que el DOM esté
+// listo (drawer inyectado + CSS aplicado), hace prune de items agotados
+// y recién después llama a updateCartUI. Esto resuelve un bug de
+// timing donde el render corría antes de que existiera #cartItems.
+window.founderCart.bootPage(updateCartUI);
 </script>
 </body>
 </html>

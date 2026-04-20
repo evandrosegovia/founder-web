@@ -23,6 +23,7 @@
   - Módulo central en `components/cart.js` con API `window.founderCart`.
   - Bloqueo de "Finalizar compra" si hay items agotados (con toast + scroll al item).
   - Auto-eliminación de items agotados al volver el usuario + toast "Sacamos X de tu carrito porque se agotó".
+- **Sesión 11-bis fix:** resuelto bug crítico de timing donde el auto-remove + toast no funcionaban en páginas secundarias. Causa: el render del carrito se disparaba antes de que el drawer estuviera inyectado en el DOM. Solución: nueva función `window.founderCart.bootPage(updateFn)` que espera `DOMContentLoaded`. Verificado con test end-to-end cross-page (7/7 checks pasan).
 
 **Regla crítica:** la clave interna `'sin_stock'` NO se modifica jamás. Solo el texto visible ("Agotado").
 
@@ -208,6 +209,23 @@ Las reglas CSS del header tenían nomenclatura vieja (`.header__nav`, `.header__
 
 ### Archivos tocados en S11-bis
 `components/cart.js` (corazón del sistema) · `index.html` · `producto.html` · `envios.html` · `sobre-nosotros.html` · `tecnologia-rfid.html` · `seguimiento.html` · `checkout.html`. Total: **8 archivos.**
+
+### Fix del timing (reorganización post-feedback)
+**Bug reportado por el usuario:** el auto-remove + toast NO funcionaban en páginas secundarias (el item agotado seguía ahí, sin alerta).
+
+**Causa raíz encontrada:** el boot inicial de cada página secundaria corría el `updateCartUI()` antes de que `cart.js` terminara de inyectar el markup `<div id="cartItems">` en el DOM. `updateCartUI` entraba, no encontraba el contenedor, y se iba silenciosamente con `return`. El `flushAutoRemoveToast` (llamado al final de `updateCartUI`) nunca se disparaba.
+
+**Solución: `window.founderCart.bootPage(updateFn)`.** Nueva función centralizada en `cart.js` que:
+1. Espera `DOMContentLoaded` si el DOM aún no está listo.
+2. Ejecuta `pruneSinStock` sobre el carrito persistido.
+3. Recién entonces llama a `updateFn` (ej. `updateCartUI`), que internamente hace flush del toast.
+
+**Boot simplificado:** las 4 páginas secundarias ahora tienen una sola línea al final del script inline:
+```js
+window.founderCart.bootPage(updateCartUI);
+```
+
+**Verificación:** test end-to-end simulando "usuario pasa por index → navega a sobre-nosotros" con un item agotado en el carrito. 7/7 checks pasan (auto-remove, toast con texto correcto, queue limpiada).
 
 ### ⚠️ Archivo NO tocado: `contacto.html`
 Ese archivo no estaba disponible en la carpeta del proyecto en esta sesión. **Queda pendiente aplicarle el mismo patch manualmente** (lo mismo que `sobre-nosotros.html`): integrar `founderCart` en su `updateCartUI` + reemplazar `openCheckout`. Ver ESTADO para detalle de cambios a aplicar.
