@@ -3,75 +3,58 @@
    -------------------------------------------------------------
    Responsabilidades:
    1) Inyectar el markup del drawer del carrito (overlay + sidebar).
-   2) Inyectar el CSS del aviso "Agotado" por-item (unificado).
-   3) Exponer una API global window.founderCart con funciones de
-      validación de stock compartidas por las 8 páginas del sitio.
+   2) Inyectar el CSS de la notificación de "producto eliminado por
+      agotarse" (banner recuadrado arriba del carrito).
+   3) Exponer una API global window.founderCart con:
+         - saveStockSnapshot(products): llamado por index/producto
+           tras cargar el catálogo. Guarda qué combos (modelo, color)
+           están en 'sin_stock'.
+         - bootPage(updateFn): llamado por TODAS las páginas al
+           arrancar. Espera DOMContentLoaded, elimina del carrito
+           los items agotados, encola sus nombres para notificación
+           y llama al updateFn de la página.
+         - flushRemovedNotice(): dispara la notificación recuadrada
+           dentro del drawer del carrito con la lista de eliminados.
+
+   REGLA DE NEGOCIO SIMPLE:
+     Si el producto está agotado → se elimina del carrito.
+     El usuario recibe una notificación recuadrada listando los
+     productos que fueron eliminados porque se agotaron.
 
    Cómo usar en cada página HTML:
    ------------------------------
      <div id="site-cart"></div>
      <script src="components/cart.js"></script>
-
-   IDs que este markup expone (consumidos por el JS de cada página):
-     - #cartOverlay, #cartSidebar
-     - #cartItems, #cartFooter
-     - #cartTotal, #cartShipNote
-
-   API global expuesta en window.founderCart:
-   ------------------------------------------
-     getStockSnapshot() → { 'modelo|color': true, ... }
-       Cache de combos sin_stock (escrito por index/producto).
-
-     saveStockSnapshot(products) → void
-       Llamado SOLO por index.html y producto.html tras cargar el
-       catálogo. Guarda qué (modelo, color) están en 'sin_stock'.
-
-     isItemSinStock(item) → boolean
-       Devuelve true si item.name + item.color está marcado agotado.
-
-     renderStockAlertHTML(idx) → string
-       HTML del bloque rojo interno con mensaje + 2 botones.
-       Cada página define removeSinStockItem() y buscarOtroModelo().
-
-     pruneSinStock(cart) → { cart, removed }
-       Auto-elimina items agotados del carrito en memoria. Encola
-       sus nombres en sessionStorage para mostrar toast al iniciar.
-
-     flushAutoRemoveToast() → void
-       Dispara el toast "Sacamos X de tu carrito...". Requiere
-       window.showToast disponible.
-
-     canCheckout(cart) → { ok, blockedItem, blockedIndex, message }
-       Valida si el carrito puede pasar a checkout. ok:false si hay
-       items agotados.
+     ...
+     <script>
+       // ... definir loadCart, updateCartUI, etc. ...
+       window.founderCart.bootPage(updateCartUI);
+     </script>
 
    LocalStorage keys usadas:
      - founder_cart             → carrito persistido
      - founder_stock_snapshot   → { updatedAt, agotados: ['modelo|color',...] }
    SessionStorage keys usadas:
-     - founder_autoremoved      → nombres pendientes de toast
+     - founder_removed_notice   → ['Founder X (Color)',...] pendientes de mostrar
    ============================================================= */
 (function () {
   'use strict';
 
-  // ── Keys centralizadas ───────────────────────────────────────
-  const STOCK_KEY       = 'founder_stock_snapshot';
-  const CART_KEY        = 'founder_cart';
-  const AUTOREMOVED_KEY = 'founder_autoremoved';
+  // ── Storage keys ─────────────────────────────────────────────
+  const CART_KEY     = 'founder_cart';
+  const STOCK_KEY    = 'founder_stock_snapshot';
+  const NOTICE_KEY   = 'founder_removed_notice';
 
-  // ── Helpers de normalización ─────────────────────────────────
-  // Los combos se guardan normalizados a lowercase para que
-  // diferencias de casing no generen falsos negativos.
+  // ── Helpers ──────────────────────────────────────────────────
   const norm = s => String(s || '').trim().toLowerCase();
   const key  = (name, color) => `${norm(name)}|${norm(color)}`;
 
-  // ── Storage helpers seguros ──────────────────────────────────
   function readLS(k, fallback) {
     try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; }
     catch { return fallback; }
   }
   function writeLS(k, v) {
-    try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* quota */ }
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ }
   }
   function readSS(k, fallback) {
     try { const v = sessionStorage.getItem(k); return v ? JSON.parse(v) : fallback; }
@@ -84,8 +67,7 @@
     try { sessionStorage.removeItem(k); } catch (e) { /* ignore */ }
   }
 
-  // ── API: Stock snapshot ──────────────────────────────────────
-
+  // ── Snapshot de agotados ─────────────────────────────────────
   function getStockSnapshot() {
     const raw = readLS(STOCK_KEY, null);
     if (!raw || !Array.isArray(raw.agotados)) return {};
@@ -109,29 +91,11 @@
     writeLS(STOCK_KEY, { updatedAt: Date.now(), agotados });
   }
 
-  function isItemSinStock(item) {
-    if (!item) return false;
+  // ── Prune: elimina items agotados y encola la notificación ───
+  function pruneAndQueue(cart) {
+    if (!Array.isArray(cart) || cart.length === 0) return cart || [];
     const snap = getStockSnapshot();
-    return !!snap[key(item.name, item.color)];
-  }
-
-  function renderStockAlertHTML(idx) {
-    return `
-        <div class="cart-item__stock-alert">
-          <p>⚠ Este producto está agotado</p>
-          <div class="cart-item__stock-actions">
-            <button class="stock-btn stock-btn--remove" onclick="removeSinStockItem(${idx})">Eliminar</button>
-            <button class="stock-btn stock-btn--other" onclick="buscarOtroModelo(${idx})">Ver otros modelos</button>
-          </div>
-        </div>`;
-  }
-
-  function pruneSinStock(cart) {
-    if (!Array.isArray(cart) || cart.length === 0) return { cart: cart || [], removed: [] };
-    const snap = getStockSnapshot();
-    // Si el snapshot está vacío (el usuario nunca pasó por index/producto
-    // en esta sesión) NO hacemos prune — evita falsos positivos.
-    if (Object.keys(snap).length === 0) return { cart, removed: [] };
+    if (Object.keys(snap).length === 0) return cart; // sin snapshot, no tocar
 
     const removed = [];
     const kept = cart.filter(item => {
@@ -144,63 +108,60 @@
 
     if (removed.length > 0) {
       // Encolar en sessionStorage (concatenar con pendientes previos)
-      const prev = readSS(AUTOREMOVED_KEY, []);
-      writeSS(AUTOREMOVED_KEY, prev.concat(removed));
-      // Persistir el carrito limpio
+      const prev = readSS(NOTICE_KEY, []);
+      writeSS(NOTICE_KEY, prev.concat(removed));
       writeLS(CART_KEY, kept);
     }
-    return { cart: kept, removed };
+    return kept;
   }
 
-  function flushAutoRemoveToast() {
-    const queue = readSS(AUTOREMOVED_KEY, []);
+  // ── Notificación recuadrada dentro del drawer ────────────────
+  function flushRemovedNotice() {
+    const queue = readSS(NOTICE_KEY, []);
     if (!queue.length) return;
-    if (typeof window.showToast !== 'function') return;
-    const msg = queue.length === 1
-      ? `Sacamos ${queue[0]} de tu carrito porque se agotó`
-      : `Sacamos ${queue.length} productos de tu carrito porque se agotaron`;
-    window.showToast(msg);
-    removeSS(AUTOREMOVED_KEY);
+    const container = document.getElementById('cartItems');
+    if (!container) return; // drawer no está listo todavía
+
+    // Quitar notificación anterior si existiera
+    const prev = document.getElementById('cartRemovedNotice');
+    if (prev) prev.remove();
+
+    const list = queue.map(n => `<li>${n}</li>`).join('');
+    const label = queue.length === 1 ? 'Se eliminó un producto de tu carrito porque se agotó:' :
+                                       `Se eliminaron ${queue.length} productos de tu carrito porque se agotaron:`;
+    const html = `
+      <div class="cart-removed-notice" id="cartRemovedNotice" role="status" aria-live="polite">
+        <button class="cart-removed-notice__close" onclick="document.getElementById('cartRemovedNotice').remove()" aria-label="Cerrar notificación">✕</button>
+        <p class="cart-removed-notice__title">⚠ ${label}</p>
+        <ul class="cart-removed-notice__list">${list}</ul>
+      </div>`;
+    container.insertAdjacentHTML('afterbegin', html);
+
+    // Auto-cerrar a los 8 segundos (solo dentro del drawer)
+    setTimeout(() => {
+      const el = document.getElementById('cartRemovedNotice');
+      if (el) el.style.opacity = '0';
+      setTimeout(() => {
+        const el2 = document.getElementById('cartRemovedNotice');
+        if (el2) el2.remove();
+      }, 400);
+    }, 8000);
+
+    // Limpiar la queue (ya la mostramos)
+    removeSS(NOTICE_KEY);
   }
 
-  function canCheckout(cart) {
-    if (!Array.isArray(cart) || cart.length === 0) {
-      return { ok: false, blockedItem: null, blockedIndex: -1, message: 'Tu carrito está vacío' };
-    }
-    const snap = getStockSnapshot();
-    for (let i = 0; i < cart.length; i++) {
-      if (snap[key(cart[i].name, cart[i].color)]) {
-        return {
-          ok: false,
-          blockedItem: cart[i],
-          blockedIndex: i,
-          message: 'Eliminá los productos agotados antes de finalizar la compra'
-        };
-      }
-    }
-    return { ok: true, blockedItem: null, blockedIndex: -1, message: '' };
-  }
-
-  /** Boot centralizado para páginas que consumen el módulo.
-   *  Resuelve el problema de timing: garantiza que primero esté el DOM
-   *  listo (incluído el drawer inyectado por cart.js), luego hace prune
-   *  del carrito, y recién entonces llama al updateFn de la página.
-   *
-   *  Las páginas la usan así:
-   *      window.founderCart.bootPage(updateCartUI);
-   *
-   *  Si el DOM ya está listo cuando la llaman, ejecuta inmediatamente.
-   *  Si no, espera al evento DOMContentLoaded. */
+  // ── Boot centralizado ────────────────────────────────────────
+  /** Llama a updateFn después de que el DOM esté listo y tras
+   *  haber purgado los items agotados del carrito persistido. */
   function bootPage(updateFn) {
     const run = () => {
       try {
-        // 1) Leer carrito actual y hacer prune de agotados
         const cart = readLS(CART_KEY, []);
-        pruneSinStock(cart);
-        // 2) Render del carrito — updateFn dentro llama a flushAutoRemoveToast
+        pruneAndQueue(cart);            // elimina + encola notificación
         if (typeof updateFn === 'function') updateFn();
       } catch (e) {
-        console.error('[founderCart.bootPage] Error:', e);
+        console.error('[founderCart.bootPage]', e);
       }
     };
     if (document.readyState === 'loading') {
@@ -210,15 +171,11 @@
     }
   }
 
-  // ── Exponer API global ───────────────────────────────────────
+  // ── API pública ──────────────────────────────────────────────
   window.founderCart = {
-    getStockSnapshot,
     saveStockSnapshot,
-    isItemSinStock,
-    renderStockAlertHTML,
-    pruneSinStock,
-    flushAutoRemoveToast,
-    canCheckout,
+    pruneAndQueue,
+    flushRemovedNotice,
     bootPage
   };
 
@@ -246,50 +203,47 @@
 `.trim();
   }
 
-  // ── CSS del aviso "Agotado" por-item (unificado) ─────────────
-  // Antes vivía duplicado en index.html y producto.html. Ahora se
-  // inyecta desde aquí → aplica en todas las páginas con cart.js.
+  // ── CSS del banner de notificación (inyectado por el componente) ──
   const COMPONENT_CSS = `
-/* ── Aviso de agotado POR-ITEM (reemplaza al aviso global #cartStockWarning) */
-.cart-item--sin-stock {
-  background: rgba(255, 59, 48, 0.05);
-  border: 1px solid var(--color-danger);
-  border-left-width: 3px;
-  border-radius: 4px;
-  padding: 14px;
-  margin-bottom: 14px;
-}
-/* El .cart-item normal que sigue a un agotado recupera el borde superior. */
-.cart-item--sin-stock + .cart-item { border-top: 1px solid var(--color-border); }
-/* flex-wrap permite que el bloque de alerta interno caiga debajo a ancho total. */
-.cart-item { flex-wrap: wrap; }
-.cart-item__stock-alert {
-  flex-basis: 100%;
-  margin-top: 12px;
-  padding: 10px 12px;
+.cart-removed-notice {
+  margin: 12px 16px;
+  padding: 14px 40px 14px 16px;
   background: rgba(255, 59, 48, 0.08);
-  border: 1px solid rgba(255, 59, 48, 0.2);
-  border-radius: 3px;
-  font-size: 11px;
+  border: 1px solid var(--color-danger);
+  border-radius: 4px;
   color: var(--color-danger);
+  font-size: 12px;
   line-height: 1.5;
+  position: relative;
+  transition: opacity .4s ease;
 }
-.cart-item__stock-alert p { margin: 0 0 8px; letter-spacing: 0.5px; }
-.cart-item__stock-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.stock-btn {
-  flex: 1;
-  min-width: 110px;
-  padding: 8px 12px;
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
+.cart-removed-notice__title {
+  margin: 0 0 6px;
+  letter-spacing: 0.3px;
+  font-weight: 500;
+}
+.cart-removed-notice__list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 11px;
+  opacity: 0.9;
+}
+.cart-removed-notice__list li { margin: 2px 0; }
+.cart-removed-notice__close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--color-danger);
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 6px;
   cursor: pointer;
-  transition: opacity var(--transition-fast, 0.2s ease);
-  font-family: inherit;
+  opacity: 0.7;
+  transition: opacity .2s;
 }
-.stock-btn--remove { background: var(--color-danger); color: #fff; border: 1px solid var(--color-danger); }
-.stock-btn--other  { background: transparent; color: var(--color-danger); border: 1px solid var(--color-danger); }
-.stock-btn:hover   { opacity: 0.85; }
+.cart-removed-notice__close:hover { opacity: 1; }
 `;
 
   function injectCSS() {
