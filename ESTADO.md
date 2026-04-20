@@ -16,10 +16,12 @@
 
 ## 🎯 Regla de negocio final: manejo de productos agotados
 
-**Si un producto del carrito se agota → se elimina automáticamente del carrito + notificación recuadrada.**
+**Si un producto del carrito está agotado → se elimina automáticamente del carrito + notificación recuadrada.**
 
-- Sin opciones, sin botones por-item. Decisión final del usuario en esta sesión.
-- La notificación recuadrada aparece dentro del drawer del carrito (al abrirlo) o arriba del formulario de checkout (si el usuario llegó directo al checkout). Lista todos los productos eliminados, tiene un botón ✕ para cerrar, y se cierra automáticamente a los 8 segundos.
+- **TODAS las páginas** consultan el stock actual al cargar — no dependen de que el usuario haya pasado por index/producto antes.
+- La notificación recuadrada aparece dentro del drawer del carrito (páginas con `cart.js`) o arriba del formulario (checkout).
+- En el checkout, hay **doble seguro**: revalidación al cargar + revalidación al confirmar pedido (por si el producto se agotó mientras el usuario llenaba el form).
+- La notificación incluye un link "Ver otros modelos →" que lleva a `index.html#productos`.
 
 ### Reglas críticas NO NEGOCIABLES
 - La clave interna `'sin_stock'` NO se modifica jamás. Solo el texto visible para el usuario.
@@ -41,33 +43,39 @@
 ### API expuesta por `components/cart.js`
 Disponible en `window.founderCart` en TODAS las páginas que carguen el componente:
 
-- **`saveStockSnapshot(products)`** — Guarda la lista de combos `modelo|color` agotados. Solo lo llaman `index.html` y `producto.html` tras cargar el catálogo de Google Sheets.
-- **`pruneAndQueue(cart)`** — Elimina del carrito los items agotados según el snapshot, los encola en sessionStorage para notificar, persiste el cart limpio. Devuelve el cart purgado.
-- **`flushRemovedNotice()`** — Renderiza el banner recuadrado dentro del drawer del carrito (requiere `#cartItems` en el DOM). Se llama al abrir el carrito vía `toggleCart`.
-- **`bootPage(updateFn)`** — Boot centralizado para páginas secundarias. Espera `DOMContentLoaded`, llama `pruneAndQueue(cart)`, luego `updateFn`.
+- **`fetchStockAndPurge()`** — **⭐ CLAVE**: trae el estado de stock fresco desde Google Sheets, actualiza el snapshot en localStorage, purga del carrito los items agotados y encola la notificación. Lo llaman TODAS las páginas vía `bootPage`. Hace que cualquier página sea autónoma (no depende de que el usuario haya pasado por index/producto).
+- **`bootPage(updateFn)`** — Boot centralizado para páginas que usan `updateCartUI`. Espera `DOMContentLoaded`, llama `fetchStockAndPurge`, luego `updateFn`, y si el drawer ya está abierto muestra la notice inmediatamente.
+- **`flushRemovedNotice()`** — Renderiza el banner recuadrado dentro del drawer del carrito. Se llama al abrir el carrito vía `toggleCart`.
+- **`saveStockSnapshot(products)`** — Guarda el snapshot a partir de productos ya parseados. Usado por `index.html` y `producto.html` que ya tienen el catálogo completo en memoria.
+- **`pruneAndQueue(cart)`** — Versión síncrona: purga según el snapshot guardado (sin fetch). Usado por `index.html` y `producto.html`.
+- **`getRemovedQueue()` / `clearRemovedQueue()`** — Lectura/limpieza de la queue de notificaciones pendientes.
 
-### Flujo de datos
+### Flujo de datos (corregido — cada página es autónoma)
 ```
-1. Usuario visita index.html o producto.html
-   → cart.js se carga
-   → Página carga catálogo desde Google Sheets
-   → window.founderCart.saveStockSnapshot(products)  ← snapshot en localStorage
-   → window.founderCart.pruneAndQueue(state.cart)    ← purga cart + encola notice
+CADA PÁGINA (al cargar):
+   ├─ cart.js se carga → expone window.founderCart
+   ├─ bootPage(updateCartUI) [páginas 2ᵃrias]
+   │     OR fetchStockAndPurge() [checkout.html]
+   │
+   ├─ fetchStockAndPurge()
+   │   1) Hace GET al Sheet de productos
+   │   2) Parsea estados de stock (extras.colores_estado)
+   │   3) Guarda snapshot en localStorage
+   │   4) Purga items agotados del carrito en localStorage
+   │   5) Encola nombres en sessionStorage para notificar
+   │
+   └─ updateCartUI() / renderOrderSummary()
+         → pinta el carrito SIN los items agotados
 
-2. Usuario navega a cualquier página secundaria (envios, contacto, etc.)
-   → cart.js se carga (expone API)
-   → window.founderCart.bootPage(updateCartUI)
-       ├─ espera DOMContentLoaded
-       ├─ pruneAndQueue(cart)                        ← purga cart + encola notice
-       └─ updateCartUI()                             ← render del drawer
+USUARIO abre el drawer (toggleCart):
+   └─ flushRemovedNotice()
+         → muestra banner recuadrado rojo arriba del carrito
+         → incluye link "Ver otros modelos →"
 
-3. Usuario abre el drawer (click en ícono de carrito)
-   → toggleCart() → window.founderCart.flushRemovedNotice()
-   → Banner recuadrado aparece arriba del carrito
-
-4. Usuario va a checkout.html
-   → Al arrancar, purgeSinStock() lee snapshot y purga el carrito persistido
-   → Si hubo items eliminados, showRemovedNotice muestra banner arriba del form
+checkout.html (doble seguro):
+   ├─ init()      → fetchStockAndPurge + notice arriba del form
+   └─ processOrder() → REVALIDA stock antes de enviar la orden
+         Si se agotó algo mientras el user llenaba el form → corta el pedido
 ```
 
 ---
@@ -127,27 +135,23 @@ Migración a componentes compartidos. 7 páginas públicas: 11.774 → 7.496 lí
 ### Sesión 11
 4 tareas UX mobile (modal fullscreen, specs 3+3, tabs en mobile, footer link) + primer intento de aviso de sin stock por-item. Mejora de header en `producto.html`.
 
-### Sesión 11 consolidada (esta)
-**Decisión final del usuario después de varias iteraciones:**
-> "Si un producto está agotado, se elimina del carrito automáticamente + notificación recuadrada. En todas las páginas. Punto."
+### Sesión 11 consolidada (esta) — FIX DEFINITIVO
+
+**Bug reportado:** en páginas como `envios.html`, si el usuario tenía un producto agotado en el carrito, el estado NO se detectaba. Iba al checkout y podía finalizar la compra. El problema raíz: el snapshot de stock solo se escribía en `index.html`/`producto.html`. Si el usuario nunca pasaba por ahí, no había snapshot.
+
+**Solución definitiva:** `fetchStockAndPurge()` — cada página carga su propio stock desde Google Sheets.
 
 **Cambios aplicados:**
-- **`components/cart.js` reescrito desde cero** con 4 funciones: `saveStockSnapshot`, `pruneAndQueue`, `flushRemovedNotice`, `bootPage`. Y el CSS del banner recuadrado inyectado automáticamente.
-- **Eliminado código obsoleto de las iteraciones intermedias:**
-  - Funciones `checkCartStock`, `isItemSinStock`, `removeSinStockItem`, `buscarOtroModelo`, `canCheckout`.
-  - Clases CSS `.cart-item--sin-stock`, `.cart-item__stock-alert`, `.stock-btn`, `.cart-stock-warning`.
-  - Elemento `#cartStockWarning` del drawer.
-  - Bloqueos de "Finalizar compra" (ya no son necesarios — el item nunca llega al checkout).
-- **`index.html` y `producto.html`** integrados al nuevo módulo — guardan snapshot tras cargar catálogo + llaman `flushRemovedNotice` al abrir el drawer.
-- **4 páginas secundarias** (`envios`, `sobre-nosotros`, `tecnologia-rfid`, `seguimiento`) — patch idéntico: `bootPage(updateCartUI)` al final + `flushRemovedNotice` en `toggleCart`.
-- **`checkout.html`** — tiene lógica inline (no carga `cart.js`) que purga el carrito al cargar y muestra banner arriba del form si se eliminaron items.
-- **Test end-to-end con JSDOM: 9/9 checks pasan** (snapshot guardado, cart purgado, item agotado eliminado, item OK preservado, bootPage dispara updateCartUI, notificación renderizada, menciona producto, tiene botón cerrar, queue limpiada tras flush).
+- **`components/cart.js` reescrito** con fetch autónomo. La nueva función `fetchStockAndPurge()` hace GET al Sheet, parsea estados, actualiza snapshot y purga el carrito. Se invoca desde `bootPage()` en todas las páginas 2ᵃrias y directamente en `checkout.html`.
+- **`checkout.html`** ahora carga `components/cart.js` (antes no lo hacía). Su `init()` es `async` y llama `fetchStockAndPurge()`. Su `processOrder()` revalida el stock antes de enviar la orden — si algo se agotó mientras el user llenaba el form, corta el pedido con notice.
+- **Link "Ver otros modelos →"** agregado a la notification en drawer y checkout, apunta a `index.html#productos`.
+- **Eliminado código obsoleto:** `purgeSinStock` inline de checkout.html, helpers inline duplicados.
 
-**Arquitectura final validada:**
-- 1 sola responsabilidad por función.
+**Arquitectura final:**
+- 1 sola fuente de verdad del stock: Google Sheets.
+- Todas las páginas son autónomas: cada una consulta el Sheet al cargar.
 - 0 duplicación de lógica entre archivos.
-- 0 referencias a código obsoleto en todo el repo.
-- Sintaxis JS OK en los 10 archivos.
+- Sintaxis JS OK en los 10 archivos + llaves balanceadas.
 
 ---
 

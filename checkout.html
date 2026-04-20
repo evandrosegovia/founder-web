@@ -310,6 +310,18 @@ a, button, [onclick], label, select, .co-toggle-btn { cursor: pointer; }
 .checkout-removed-notice__title { margin: 0 0 6px; font-weight: 500; letter-spacing: 0.3px; }
 .checkout-removed-notice__list { margin: 0; padding-left: 20px; font-size: 12px; opacity: 0.9; }
 .checkout-removed-notice__list li { margin: 2px 0; }
+.checkout-removed-notice__link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-danger);
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+}
+.checkout-removed-notice__link:hover { opacity: 0.75; }
 .checkout-removed-notice__close {
   position: absolute; top: 8px; right: 10px;
   background: none; border: none; color: var(--color-danger);
@@ -518,6 +530,10 @@ a, button, [onclick], label, select, .co-toggle-btn { cursor: pointer; }
   </div>
 </div>
 
+<!-- Cargar módulo compartido para tener API window.founderCart disponible.
+     No inyecta markup porque no hay <div id="site-cart"> en esta página. -->
+<script src="components/cart.js"></script>
+
 <script>
 'use strict';
 
@@ -537,8 +553,7 @@ const CONFIG = Object.freeze({
 });
 
 // ── CARRITO DESDE LOCALSTORAGE ────────────────────────────────
-const CART_KEY  = 'founder_cart';
-const STOCK_KEY = 'founder_stock_snapshot';
+const CART_KEY = 'founder_cart';
 
 function loadCart() {
   try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); }
@@ -549,55 +564,16 @@ function clearCart() {
   catch (e) { console.warn('[Founder] No se pudo limpiar carrito:', e); }
 }
 
-/** Lee el snapshot de combos agotados que escribieron index/producto. */
-function loadStockSnapshot() {
-  try {
-    const raw = localStorage.getItem(STOCK_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (!parsed || !Array.isArray(parsed.agotados)) return {};
-    const map = {};
-    parsed.agotados.forEach(k => { map[k] = true; });
-    return map;
-  } catch { return {}; }
-}
-function _stockKey(name, color) {
-  const norm = s => String(s || '').trim().toLowerCase();
-  return `${norm(name)}|${norm(color)}`;
-}
-/** Purga items agotados del carrito persistido. Devuelve {kept, removed}. */
-function purgeSinStock() {
-  const cart = loadCart();
-  if (!cart.length) return { kept: [], removed: [] };
-  const snap = loadStockSnapshot();
-  if (!Object.keys(snap).length) return { kept: cart, removed: [] };
-
-  const removed = [];
-  const kept = cart.filter(item => {
-    if (snap[_stockKey(item.name, item.color)]) {
-      removed.push(`Founder ${item.name} (${item.color})`);
-      return false;
-    }
-    return true;
-  });
-  if (removed.length > 0) {
-    try { localStorage.setItem(CART_KEY, JSON.stringify(kept)); } catch (e) {}
-  }
-  return { kept, removed };
-}
-
 // ── ESTADO ────────────────────────────────────────────────────
-// Purga carrito al arrancar: elimina items agotados según snapshot
-// actualizado por index/producto. Si hubo eliminados, guardamos en
-// estado para mostrar notificación apenas se renderice el DOM.
-const _purge = purgeSinStock();
+// El carrito se carga inicial con lo que haya en localStorage.
+// Luego, apenas arranque init(), se hace fetchStockAndPurge() para
+// eliminar cualquier producto que se haya agotado desde la última vez.
 const state = {
-  cart:        _purge.kept,
-  removedOnLoad: _purge.removed, // nombres eliminados al cargar esta página
-  entregaMode: 'envio',
-  pagoMode:    'mercadopago',
-  // Cupón aplicado (null si no hay)
-  coupon: null, // { codigo, tipo:'fijo'|'porcentaje', valor, uso, minCompra }
+  cart:          loadCart(),
+  removedOnLoad: [],   // llenado por init() tras el fetch
+  entregaMode:   'envio',
+  pagoMode:      'mercadopago',
+  coupon:        null,
 };
 
 // ── DOM HELPERS ───────────────────────────────────────────────
@@ -634,32 +610,45 @@ function getPhoto(name, color) {
   return photoMap[name]?.[color]?.[0] || null;
 }
 
-function init() {
+async function init() {
+  // 1) Fetch fresco del Sheet para saber el stock ACTUAL (no depende
+  //    de que el usuario haya pasado antes por index/producto).
+  try {
+    const result = await window.founderCart.fetchStockAndPurge();
+    if (result && result.removed && result.removed.length) {
+      state.removedOnLoad = result.removed;
+      state.cart = loadCart(); // recargar cart ya purgado
+    }
+  } catch (e) {
+    console.warn('[checkout] fetchStockAndPurge falló:', e);
+  }
+
+  // 2) Si el carrito quedó vacío (todo se agotó), mostrar empty + notice.
   if (!state.cart.length) {
     $('checkoutForm').style.display = 'none';
     $('emptyCart').style.display    = 'flex';
-    // Si el carrito quedó vacío por purga de agotados, avisar
     if (state.removedOnLoad.length > 0) {
-      setTimeout(() => showRemovedNotice(state.removedOnLoad), 500);
+      setTimeout(() => showRemovedNotice(state.removedOnLoad), 300);
     }
     return;
   }
-  renderOrderSummary(); // render inmediato sin fotos
-  loadPhotos();         // luego actualiza con fotos reales
-  // Si se purgaron algunos items (pero quedaron otros), avisar al usuario
+
+  // 3) Render normal + notice arriba si se purgó algo.
+  renderOrderSummary();
+  loadPhotos();
   if (state.removedOnLoad.length > 0) {
-    setTimeout(() => showRemovedNotice(state.removedOnLoad), 500);
+    setTimeout(() => showRemovedNotice(state.removedOnLoad), 300);
   }
 }
 
 /** Muestra una notificación recuadrada arriba del formulario listando
- *  los productos que fueron eliminados del carrito porque se agotaron. */
+ *  los productos que fueron eliminados del carrito porque se agotaron.
+ *  Incluye enlace a "index.html#productos" para elegir otro modelo. */
 function showRemovedNotice(items) {
   if (!items || !items.length) return;
-  // Evitar duplicados si la función se llama dos veces
   if (document.getElementById('checkoutRemovedNotice')) return;
 
-  const list = items.map(n => `<li>${n}</li>`).join('');
+  const list  = items.map(n => `<li>${n}</li>`).join('');
   const label = items.length === 1
     ? 'Se eliminó un producto de tu carrito porque se agotó:'
     : `Se eliminaron ${items.length} productos de tu carrito porque se agotaron:`;
@@ -668,9 +657,9 @@ function showRemovedNotice(items) {
       <button class="checkout-removed-notice__close" onclick="document.getElementById('checkoutRemovedNotice').remove()" aria-label="Cerrar">✕</button>
       <p class="checkout-removed-notice__title">⚠ ${label}</p>
       <ul class="checkout-removed-notice__list">${list}</ul>
+      <a class="checkout-removed-notice__link" href="index.html#productos">Ver otros modelos →</a>
     </div>`;
 
-  // Insertar antes del formulario o del emptyCart, lo que esté visible
   const target = $('checkoutForm').style.display !== 'none' ? $('checkoutForm') : $('emptyCart');
   if (target && target.parentNode) {
     target.insertAdjacentHTML('beforebegin', html);
@@ -893,7 +882,30 @@ function showFeedback(msg, ok) {
 }
 
 // ── PROCESAR PEDIDO ───────────────────────────────────────────
-function processOrder() {
+async function processOrder() {
+  // REVALIDACIÓN DE STOCK EN TIEMPO REAL
+  // El usuario puede haber estado un rato llenando el formulario.
+  // Antes de confirmar, volvemos a consultar el Sheet. Si algún item
+  // se agotó mientras tanto, lo eliminamos, avisamos y cortamos.
+  try {
+    const check = await window.founderCart.fetchStockAndPurge();
+    if (check && check.removed && check.removed.length) {
+      state.cart = loadCart();
+      showRemovedNotice(check.removed);
+      showToast('Se eliminaron productos agotados de tu carrito');
+      if (!state.cart.length) {
+        $('checkoutForm').style.display = 'none';
+        $('emptyCart').style.display    = 'flex';
+      } else {
+        renderOrderSummary();
+      }
+      return; // cortar: no enviar la orden
+    }
+  } catch (e) {
+    console.warn('[checkout] revalidación de stock falló:', e);
+    // Seguimos adelante: no bloqueamos al usuario por un fallo de red.
+  }
+
   // Validación de datos personales
   const nombre   = $('coNombre').value.trim();
   const apellido = $('coApellido').value.trim();
