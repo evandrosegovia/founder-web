@@ -1,38 +1,108 @@
 # FOUNDER.UY — Estado del proyecto
-**Última actualización:** Abril 2026 — Cierre completo de Sesión 11 + S11-bis (sistema global de validación de stock)
+
+**Última actualización:** Abril 2026 — Cierre de Sesión 11 consolidada
 **URL del sitio:** https://founder-web-gules.vercel.app
-**Deploy:** Vercel → GitHub (auto-deploy en push a main)
+**Deploy:** Vercel → GitHub (auto-deploy en push a `main`)
 
 ---
 
-## ⚠️ NOTA PARA LA PRÓXIMA SESIÓN
+## ⚠️ INSTRUCCIONES PARA LA PRÓXIMA SESIÓN
 
-**Al iniciar la próxima sesión, leer en este orden:**
-
-1. Leer este archivo (`ESTADO.md`) primero — contexto general.
-2. Confirmar con el usuario qué tarea abordar. Hay 4 propuestas estratégicas pendientes (ver sección al final).
-
-**Resumen rápido:**
-- Sesión 9: migración a componentes compartidos — completa.
-- Sesión 10: 4 tareas UX — completa.
-- Sesión 10 EXTRA: reconstrucción de `seguimiento.html` usando `envios.html` como plantilla — resolvió bugs crónicos.
-- Sesión 11: 4 tareas UX mobile + aviso de sin stock por-item — completa.
-- **Sesión 11-bis:**
-  - Header de `producto.html` arreglado (clases viejas `.header__nav` → estándar `.nav`).
-  - Aviso "Agotado" ahora se valida y muestra en **TODO el sitio** (las 7 páginas públicas + checkout), no solo en index/producto.
-  - Módulo central en `components/cart.js` con API `window.founderCart`.
-  - Bloqueo de "Finalizar compra" si hay items agotados (con toast + scroll al item).
-  - Auto-eliminación de items agotados al volver el usuario + toast "Sacamos X de tu carrito porque se agotó".
-- **Sesión 11-bis fix:** resuelto bug crítico de timing donde el auto-remove + toast no funcionaban en páginas secundarias. Causa: el render del carrito se disparaba antes de que el drawer estuviera inyectado en el DOM. Solución: nueva función `window.founderCart.bootPage(updateFn)` que espera `DOMContentLoaded`. Verificado con test end-to-end cross-page (7/7 checks pasan).
-
-**Regla crítica:** la clave interna `'sin_stock'` NO se modifica jamás. Solo el texto visible ("Agotado").
+1. Leer este archivo (`ESTADO.md`) primero — es la única fuente de verdad del proyecto.
+2. Confirmar con el usuario qué tarea abordar (ver **Propuestas estratégicas** al final).
+3. Respetar las reglas críticas listadas más abajo.
 
 ---
 
-## Datos clave del proyecto
+## 🎯 Regla de negocio final: manejo de productos agotados
+
+**Si un producto del carrito se agota → se elimina automáticamente del carrito + notificación recuadrada.**
+
+- Sin opciones, sin botones por-item. Decisión final del usuario en esta sesión.
+- La notificación recuadrada aparece dentro del drawer del carrito (al abrirlo) o arriba del formulario de checkout (si el usuario llegó directo al checkout). Lista todos los productos eliminados, tiene un botón ✕ para cerrar, y se cierra automáticamente a los 8 segundos.
+
+### Reglas críticas NO NEGOCIABLES
+- La clave interna `'sin_stock'` NO se modifica jamás. Solo el texto visible para el usuario.
+- El sistema de componentes (`components/header.js`, `footer.js`, `cart.js`) es la única fuente de verdad para header/footer/carrito. No replicar markup en HTMLs.
+- `checkout.html` y `admin.html` quedan excluidos del sistema de componentes — ambos tienen header propio.
+- Cuando se toque `cart.js`, recordar que 6 páginas dependen de él. Validar sintaxis + probar el flujo completo.
+
+---
+
+## 📂 Arquitectura del sistema de carrito
+
+### Datos persistidos
+| Clave | Storage | Escrito por | Leído por |
+|---|---|---|---|
+| `founder_cart` | localStorage | todas las páginas (vía cart.js) | todas las páginas |
+| `founder_stock_snapshot` | localStorage | `index.html`, `producto.html` | todas las páginas (vía cart.js) |
+| `founder_removed_notice` | sessionStorage | `cart.js` (al purgar) | `cart.js` (al abrir drawer) |
+
+### API expuesta por `components/cart.js`
+Disponible en `window.founderCart` en TODAS las páginas que carguen el componente:
+
+- **`saveStockSnapshot(products)`** — Guarda la lista de combos `modelo|color` agotados. Solo lo llaman `index.html` y `producto.html` tras cargar el catálogo de Google Sheets.
+- **`pruneAndQueue(cart)`** — Elimina del carrito los items agotados según el snapshot, los encola en sessionStorage para notificar, persiste el cart limpio. Devuelve el cart purgado.
+- **`flushRemovedNotice()`** — Renderiza el banner recuadrado dentro del drawer del carrito (requiere `#cartItems` en el DOM). Se llama al abrir el carrito vía `toggleCart`.
+- **`bootPage(updateFn)`** — Boot centralizado para páginas secundarias. Espera `DOMContentLoaded`, llama `pruneAndQueue(cart)`, luego `updateFn`.
+
+### Flujo de datos
+```
+1. Usuario visita index.html o producto.html
+   → cart.js se carga
+   → Página carga catálogo desde Google Sheets
+   → window.founderCart.saveStockSnapshot(products)  ← snapshot en localStorage
+   → window.founderCart.pruneAndQueue(state.cart)    ← purga cart + encola notice
+
+2. Usuario navega a cualquier página secundaria (envios, contacto, etc.)
+   → cart.js se carga (expone API)
+   → window.founderCart.bootPage(updateCartUI)
+       ├─ espera DOMContentLoaded
+       ├─ pruneAndQueue(cart)                        ← purga cart + encola notice
+       └─ updateCartUI()                             ← render del drawer
+
+3. Usuario abre el drawer (click en ícono de carrito)
+   → toggleCart() → window.founderCart.flushRemovedNotice()
+   → Banner recuadrado aparece arriba del carrito
+
+4. Usuario va a checkout.html
+   → Al arrancar, purgeSinStock() lee snapshot y purga el carrito persistido
+   → Si hubo items eliminados, showRemovedNotice muestra banner arriba del form
+```
+
+---
+
+## 🗂️ Archivos del proyecto
+
+| Archivo | Descripción | Usa cart.js |
+|---|---|:-:|
+| `index.html` | Tienda principal — carga catálogo, guarda snapshot | ✅ |
+| `producto.html` | Ficha de producto — carga catálogo, guarda snapshot | ✅ |
+| `envios.html` | Envíos y devoluciones | ✅ |
+| `sobre-nosotros.html` | Sobre nosotros | ✅ |
+| `tecnologia-rfid.html` | Tecnología RFID | ✅ |
+| `seguimiento.html` | Seguimiento de pedido | ✅ |
+| `contacto.html` | Contacto | ⚠️ pendiente integrar |
+| `checkout.html` | Checkout — header propio, purga inline | ❌ (lógica inline) |
+| `admin.html` | Admin — password protegido | ❌ |
+| `components/header.js` | Header compartido + menú mobile | — |
+| `components/footer.js` | Footer compartido + modales legales + burbuja WA | — |
+| `components/cart.js` | **Drawer del carrito + API `window.founderCart` (corazón del sistema)** | — |
+| `ESTADO.md` | Este archivo — fuente de verdad del proyecto | — |
+
+### ⚠️ `contacto.html` — patch pendiente
+Este archivo no estaba disponible en esta sesión. Para la próxima, el patch es simple:
+1. En `toggleCart()`, agregar: `if (isOpen) window.founderCart.flushRemovedNotice();`
+2. Al final del `<script>`, reemplazar `updateCartUI();` por `window.founderCart.bootPage(updateCartUI);`
+
+Es idéntico al patch aplicado a `sobre-nosotros.html`.
+
+---
+
+## 📦 Datos clave del proyecto
 
 | Dato | Valor |
-|------|------|
+|---|---|
 | Google Sheet ID | `1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8` |
 | Apps Script URL | `https://script.google.com/macros/s/AKfycbx8LByXXY7QwzHEB0RyvP0Ejbmqyw099F4ntbbwRIdkRv8JlUDaryn_vQj2aL9kANA/exec` |
 | WhatsApp | 598098550096 |
@@ -46,199 +116,46 @@
 
 ---
 
-## Archivos del proyecto
+## ✅ Historial
 
-| Archivo | Descripción | Estado |
-|---------|-------------|--------|
-| `index.html` | Tienda principal — modal fullscreen mobile + aviso sin stock + integra módulo founderCart (S11-bis) | ✅ |
-| `producto.html` | Página producto — header arreglado + 4 ajustes mobile + integra módulo founderCart (S11-bis) | ✅ |
-| `checkout.html` | Checkout — revalida stock al cargar + bloquea processOrder si hay agotados (S11-bis) | ✅ |
-| `seguimiento.html` | Seguimiento — integra módulo founderCart (S11-bis) | ✅ |
-| `envios.html` | Envíos — integra módulo founderCart (S11-bis) | ✅ |
-| `admin.html` | Admin (NO usa componentes) | ✅ |
-| `contacto.html` | Contacto — ⚠️ pendiente integrar módulo founderCart manualmente | ⚠️ |
-| `tecnologia-rfid.html` | RFID — integra módulo founderCart (S11-bis) | ✅ |
-| `sobre-nosotros.html` | Sobre nosotros — integra módulo founderCart (S11-bis) | ✅ |
-| `components/header.js` | Header + menú mobile — soporta `data-cart` (S10) | ✅ |
-| `components/footer.js` | Footer — link "Envíos y Devoluciones" en mobile (S11) | ✅ |
-| `components/cart.js` | Drawer del carrito + **módulo central `window.founderCart`** + CSS unificado del aviso "Agotado" (S11-bis) | ✅ |
-| `ESTADO.md` | Este archivo | 📄 |
+### Sesión 9
+Migración a componentes compartidos. 7 páginas públicas: 11.774 → 7.496 líneas (–36%). Unificación BEM, deduplicación modales legales.
 
----
+### Sesión 10
+4 tareas UX + reconstrucción de `seguimiento.html` usando `envios.html` como plantilla.
 
-## Sistema de componentes compartidos
+### Sesión 11
+4 tareas UX mobile (modal fullscreen, specs 3+3, tabs en mobile, footer link) + primer intento de aviso de sin stock por-item. Mejora de header en `producto.html`.
 
-### Arquitectura
-- Carpeta `components/`. Patrón IIFE que inyecta markup en placeholders `<div id="site-*">`.
-- Configurables por atributo: `header.js` lee `data-cart` del mount (default `true`).
-
-### Páginas que usan los 3 componentes (header + footer + cart)
-Todas las públicas EXCEPTO `checkout.html` y `admin.html`:
-- `index.html`, `producto.html`, `contacto.html`, `envios.html`, `sobre-nosotros.html`, `tecnologia-rfid.html`, `seguimiento.html`
-
-### Footer responsive (S10)
-- Desktop/tablet (>600px): grilla 4 columnas + bottom bar.
-- Mobile (≤600px): logo + 4 links inline (Contacto · WhatsApp · Privacidad · Términos) + copyright. Navegación completa en el menú hamburguesa.
-
----
-
-## ✅ Sesión 9 (resumen)
-Sistema de componentes compartidos completo. 7 páginas públicas: 11.774 → 7.496 líneas (–36%). Unificación BEM, deduplicación modales legales, micro-ajuste badges.
-
----
-
-## ✅ Sesión 10 — Cambios aplicados
-
-### Tarea 1 — Header en `producto.html` + botón Volver
-- Reglas CSS viejas (`.header__nav`, etc.) renombradas al estándar (`.nav`, `.nav__link`).
-- Botón "← Volver" restaurado via page-script. Función `goBack()` con patrón de checkout.html.
-- Oculto en mobile (<900px).
-
-### Tarea 2 — `seguimiento.html` sin carrito + alineaciones
-- `header.js`: botón carrito opcional vía `data-cart="false"` (retrocompatible).
-- Variables CSS completadas en `:root`.
-- CSS muerto eliminado.
-
-### Tarea 3 — Footer mobile minimalista
-- `components/footer.js`: nuevo bloque `.footer__mobile` con logo + 4 links inline + copyright.
-- CSS autocontenido. En mobile (≤600px) oculta grilla y bottom-bar.
-
-### Tarea 4 — Modal vista rápida en `index.html`
-- 4a: Botón "Ver página completa" en blanco.
-- 4b: Specs en grilla 2×3.
-- 4c: Eliminada estrella ★ del swatch oferta.
-- 4d: Filtro mobile solo 3 specs (monedero/rfid/tarjeta) con fallback.
-- 4e: Título modal en mobile en una sola línea.
-
-### S10 EXTRA — Reconstrucción de `seguimiento.html`
-- **Problema:** CSS divergente, `.logo` duplicado, `main` con padding insuficiente (título cortado), faltaba `cart.js`.
-- **Decisión del usuario:** aplicar las MISMAS condiciones que `envios.html`.
-- **Solución:** reconstrucción completa usando `envios.html` como plantilla. Mismo head, tokens CSS, header `position: sticky`, los 3 componentes activos. Contenido propio intacto.
-- Resultado: 1498 → 1875 líneas (aumento porque ahora incluye sistema de carrito completo que antes no tenía).
-
-### Decisiones del usuario S10
-- Orden: bugs primero (1, 2), luego mejoras (3, 4).
-- Botón "← Volver" en producto: restaurar solo en esa página.
-- Footer mobile: Opción C minimalista.
-- `seguimiento.html`: aplicar las mismas condiciones que `envios.html`.
-
----
-
-## ✅ Sesión 11 — Cambios aplicados
-
-### Tarea 3 — Footer mobile: link "Envíos y Devoluciones"
-- `components/footer.js`: en el bloque `footer__mobile-links`, el link a WhatsApp fue reemplazado por un link a `envios.html` con texto "Envíos y Devoluciones".
-- Mantiene la misma capitalización que el link del footer desktop (consistencia con `FOOTER_INFO`).
-- La burbuja flotante de WhatsApp (`.wa-bubble`) NO se tocó — sigue disponible globalmente.
-
-### Tarea 2 — 4 ajustes mobile en `producto.html`
-- **2a — Specs 3+3:** en `@media (max-width: 900px)` se cambió `.specs-list { grid-template-columns: 1fr; }` por `1fr 1fr` con gap ajustado. Los 6 puntos quedan en 2 columnas.
-- **2b — Burbuja WA no tapa "Agregar al carrito":** se extendió el `IntersectionObserver` existente del sticky para que también toggle la clase `has-sticky-add` en `body`. Nueva regla `body.has-sticky-add .wa-bubble { opacity: 0; pointer-events: none; }` en mobile. Al aparecer el footer, el sticky desaparece y la burbuja WA vuelve a mostrarse.
-- **2c — Menos separación bajo trust-badges:** `.trust-badges { margin-bottom: 4px; }` + `.details-section { padding: 28px 24px 60px; }` (antes era `60px 24px`) en mobile.
-- **2d — 3 tabs entran sin scroll:** en `@media (max-width: 600px)` se agregó override `.tabs { overflow-x: visible }` + `.tab-btn { flex: 1; padding: 14px 6px; font-size: 9px; letter-spacing: 1.5px; white-space: normal; text-align: center; line-height: 1.3; }`. Desktop queda igual.
-
-### Tarea 1 — Modal fullscreen mobile en `index.html`
-- En `@media (max-width: 600px)` se agregó bloque `S11 T1`:
-  - `.modal-overlay { padding: 0 }` — elimina el padding de 40px.
-  - `.modal` pasa a `100vw` × `100dvh` sin borde (uso de `100dvh` para iOS — altura dinámica de viewport).
-  - `.modal__close` pasa a `position: fixed` arriba-derecha, 40×40, círculo semi-transparente con `backdrop-filter: blur(8px)` para ser siempre visible al scrollear.
-- Desktop queda exactamente igual (max-width 900px, max-height 90vh centrado).
-
-### Tarea 4 — Aviso de sin stock por-item (reemplaza el aviso global)
-**Decisión arquitectónica clave:** el aviso global `#cartStockWarning` vivía en `components/cart.js`, pero sólo se activaba desde `checkCartStock()` en `index.html` y `producto.html`. Las otras 5 páginas que usan `cart.js` (contacto, envios, sobre-nosotros, tecnologia-rfid, seguimiento) nunca lo activaban → era código muerto en esas páginas.
+### Sesión 11 consolidada (esta)
+**Decisión final del usuario después de varias iteraciones:**
+> "Si un producto está agotado, se elimina del carrito automáticamente + notificación recuadrada. En todas las páginas. Punto."
 
 **Cambios aplicados:**
-- **`components/cart.js`:** removido el `<div id="cartStockWarning">` y actualizada la documentación del header del archivo. La lista de IDs expuestos ya no incluye `#cartStockWarning`.
-- **`index.html` y `producto.html`** (idénticos para consistencia):
-  - CSS: se reemplazó `.cart-stock-warning` por 3 clases nuevas: `.cart-item--sin-stock` (borde rojo izquierdo al item), `.cart-item__stock-alert` (bloque rojo interno con mensaje + botones), `.stock-btn` / `.stock-btn--remove` / `.stock-btn--other`.
-  - `.cart-item` recibió `flex-wrap: wrap` para que la alerta interna caiga debajo ocupando todo el ancho del item.
-  - `updateCart()`: ahora marca cada item con `.cart-item--sin-stock` y renderiza el bloque de alerta con 2 botones si `isItemSinStock(item)` es true.
-  - Nueva función `isItemSinStock(item)`: reemplaza a la vieja `checkCartStock()`. Resuelve según el state disponible: en `index.html` usa `state.products`; en `producto.html` usa `state.allProducts` con fallback a `state.product` si el catálogo completo aún no cargó.
-  - Nuevas funciones `removeSinStockItem(idx)` (elimina + toast) y `buscarOtroModelo(idx)` (elimina + cierra carrito + scroll a grilla en index.html o `window.location.href = 'index.html#productos'` desde producto.html).
-  - `toggleCart()` ahora llama a `updateCart()` al abrir (antes llamaba `checkCartStock()`).
-  - Tras cargar el catálogo se llama `updateCart()` si hay carrito persistido — garantiza que los avisos aparezcan desde la primera vez que el usuario abre el carrito.
-  - Eliminada la función `checkCartStock()` en ambos archivos.
+- **`components/cart.js` reescrito desde cero** con 4 funciones: `saveStockSnapshot`, `pruneAndQueue`, `flushRemovedNotice`, `bootPage`. Y el CSS del banner recuadrado inyectado automáticamente.
+- **Eliminado código obsoleto de las iteraciones intermedias:**
+  - Funciones `checkCartStock`, `isItemSinStock`, `removeSinStockItem`, `buscarOtroModelo`, `canCheckout`.
+  - Clases CSS `.cart-item--sin-stock`, `.cart-item__stock-alert`, `.stock-btn`, `.cart-stock-warning`.
+  - Elemento `#cartStockWarning` del drawer.
+  - Bloqueos de "Finalizar compra" (ya no son necesarios — el item nunca llega al checkout).
+- **`index.html` y `producto.html`** integrados al nuevo módulo — guardan snapshot tras cargar catálogo + llaman `flushRemovedNotice` al abrir el drawer.
+- **4 páginas secundarias** (`envios`, `sobre-nosotros`, `tecnologia-rfid`, `seguimiento`) — patch idéntico: `bootPage(updateCartUI)` al final + `flushRemovedNotice` en `toggleCart`.
+- **`checkout.html`** — tiene lógica inline (no carga `cart.js`) que purga el carrito al cargar y muestra banner arriba del form si se eliminaron items.
+- **Test end-to-end con JSDOM: 9/9 checks pasan** (snapshot guardado, cart purgado, item agotado eliminado, item OK preservado, bootPage dispara updateCartUI, notificación renderizada, menciona producto, tiene botón cerrar, queue limpiada tras flush).
 
-### Decisiones del usuario S11
-- Orden de ejecución: 3 → 2 → 1 → 4 (recomendado, de menos a más riesgoso).
-- Tarea 3: aplicar solo en footer mobile (desktop queda con "Envíos y Devoluciones" ya existente).
-- Tarea 2b: **ocultar** la burbuja WA cuando el sticky-add está visible (no subirla).
-
----
-
-## ✅ Sesión 11-bis — Cambios aplicados (refuerzo post-Sesión 11)
-
-### Bug reportado por el usuario
-1. Header de `producto.html` roto (menú desalineado en mobile y desktop).
-2. Aviso del item sin stock con recuadro "no cerrado" — estética pobre.
-3. Texto "Sin stock" → preferencia "Agotado".
-4. **Bug funcional crítico**: si el comprador navegaba a una página secundaria (envios, contacto, etc.), el aviso de agotado NO se mostraba, y peor: podía **finalizar compra igual** desde ahí.
-
-### Fix 1 — Header de `producto.html`
-Las reglas CSS del header tenían nomenclatura vieja (`.header__nav`, `.header__nav-link`, `.header__right`, `.header__back`) que no matcheaba el markup inyectado por `components/header.js` (que usa `.nav` y `.nav__link`). Renombradas al estándar. CSS muerto eliminado.
-
-### Fix 2 — Recuadro cerrado + texto "Agotado"
-- El `.cart-item--sin-stock` pasó de tener solo `border-left: 3px` a ser un **recuadro completo** con borde en los 4 lados, padding uniforme (14px) y border-radius. La alerta interna queda simétrica adentro.
-- Texto del mensaje: "Este producto se quedó sin stock" → **"Este producto está agotado"**.
-- Texto del toast al eliminar: "Producto sin stock eliminado" → "Producto agotado eliminado".
-
-### Fix 3 — Sistema global de validación de stock (cambio arquitectónico mayor)
-
-**Problema raíz:** la lógica `isItemSinStock()` vivía duplicada en `index.html` y `producto.html`, dependía de variables locales (`state.products`, `state.allProducts`) que no existen en las 5 páginas secundarias. Resultado: navegar a otra página hacía "desaparecer" los avisos y el usuario podía confirmar la compra.
-
-**Solución: módulo central en `components/cart.js` con API `window.founderCart`:**
-
-- **`getStockSnapshot()` / `saveStockSnapshot(products)`**: cache en `localStorage` (key `founder_stock_snapshot`) con la lista de combos `modelo|color` agotados. Lo **escriben** solo `index.html` y `producto.html` (que cargan el catálogo desde Google Sheets); lo **leen** TODAS las páginas.
-- **`isItemSinStock(item)`**: devuelve `true/false` leyendo el cache. No requiere tener el catálogo en memoria.
-- **`renderStockAlertHTML(idx)`**: devuelve el HTML del bloque rojo interno con mensaje + 2 botones. Consumido por `updateCart()`/`updateCartUI()` en cada página.
-- **`pruneSinStock(cart)`**: auto-elimina items agotados al arrancar la página (respuesta a la decisión del usuario: "auto-eliminar con toast"). Encola los nombres eliminados en `sessionStorage` (key `founder_autoremoved`).
-- **`flushAutoRemoveToast()`**: dispara el toast **"Sacamos X de tu carrito porque se agotó"** en la próxima llamada a `updateCart`. Centralizado y consistente en todas las páginas.
-- **`canCheckout(cart)`**: valida el carrito antes de ir al checkout. Devuelve `{ ok, blockedItem, message }`.
-
-**CSS unificado:** los estilos de `.cart-item--sin-stock`, `.cart-item__stock-alert`, `.stock-btn` se migraron desde `index.html`/`producto.html` hacia `components/cart.js` (se inyectan automáticamente). Elimina duplicación.
-
-**Bloqueo de "Finalizar compra":** en las 6 páginas con `cart.js`, `openCheckout()` ahora llama `founderCart.canCheckout()` antes de redirigir. Si hay agotados → toast de advertencia + scroll al item bloqueante. Botón **activo** (no deshabilitado), coherente con la decisión del usuario.
-
-**Doble seguro en `checkout.html`:** como `checkout.html` no carga `cart.js` (tiene header propio), inyecté inline las helpers `_stockSnapshot()` y `findSinStockInCart()` que leen el mismo cache. Esto revalida al cargar la página y vuelve a chequear dentro de `processOrder()` — ni siquiera con link directo se puede confirmar un pedido con agotados.
-
-### Decisiones del usuario S11-bis
-- Recuadro: **cerrado** con bordes parejos.
-- Texto: "⚠ Este producto está agotado".
-- Botón "Finalizar compra": **activo pero con toast de advertencia al click**.
-- Auto-eliminación: **silenciosa + toast al volver** ("Sacamos X de tu carrito porque se agotó").
-
-### Archivos tocados en S11-bis
-`components/cart.js` (corazón del sistema) · `index.html` · `producto.html` · `envios.html` · `sobre-nosotros.html` · `tecnologia-rfid.html` · `seguimiento.html` · `checkout.html`. Total: **8 archivos.**
-
-### Fix del timing (reorganización post-feedback)
-**Bug reportado por el usuario:** el auto-remove + toast NO funcionaban en páginas secundarias (el item agotado seguía ahí, sin alerta).
-
-**Causa raíz encontrada:** el boot inicial de cada página secundaria corría el `updateCartUI()` antes de que `cart.js` terminara de inyectar el markup `<div id="cartItems">` en el DOM. `updateCartUI` entraba, no encontraba el contenedor, y se iba silenciosamente con `return`. El `flushAutoRemoveToast` (llamado al final de `updateCartUI`) nunca se disparaba.
-
-**Solución: `window.founderCart.bootPage(updateFn)`.** Nueva función centralizada en `cart.js` que:
-1. Espera `DOMContentLoaded` si el DOM aún no está listo.
-2. Ejecuta `pruneSinStock` sobre el carrito persistido.
-3. Recién entonces llama a `updateFn` (ej. `updateCartUI`), que internamente hace flush del toast.
-
-**Boot simplificado:** las 4 páginas secundarias ahora tienen una sola línea al final del script inline:
-```js
-window.founderCart.bootPage(updateCartUI);
-```
-
-**Verificación:** test end-to-end simulando "usuario pasa por index → navega a sobre-nosotros" con un item agotado en el carrito. 7/7 checks pasan (auto-remove, toast con texto correcto, queue limpiada).
-
-### ⚠️ Archivo NO tocado: `contacto.html`
-Ese archivo no estaba disponible en la carpeta del proyecto en esta sesión. **Queda pendiente aplicarle el mismo patch manualmente** (lo mismo que `sobre-nosotros.html`): integrar `founderCart` en su `updateCartUI` + reemplazar `openCheckout`. Ver ESTADO para detalle de cambios a aplicar.
+**Arquitectura final validada:**
+- 1 sola responsabilidad por función.
+- 0 duplicación de lógica entre archivos.
+- 0 referencias a código obsoleto en todo el repo.
+- Sintaxis JS OK en los 10 archivos.
 
 ---
 
-## 📋 Sesión 12 — Pendiente de definir
-
-Ver "Propuestas estratégicas" abajo.
+## 🎯 Propuestas estratégicas (pendientes)
 
 | # | Prioridad | Propuesta |
 |---|---|---|
-| 1 | 🔴 Alta | **Aplicar patch de founderCart a `contacto.html`** (quedó sin tocar en S11-bis) |
+| 1 | 🔴 Alta | **Aplicar patch de founderCart a `contacto.html`** (quedó sin tocar en esta sesión) |
 | 2 | 🟢 Baja | Página "Gracias por tu compra" + cupón fidelización |
 | 3 | 🟡 Media | Filtros en grilla (cuando crezca el catálogo) |
 | 4 | 🟡 Media | Reseñas/testimonios de clientes |
@@ -246,29 +163,32 @@ Ver "Propuestas estratégicas" abajo.
 
 ---
 
-## Navegación
+## 🧪 Cómo probar que todo funciona
+
+1. Agregá un producto al carrito (ej: Founder Confort color Crema) desde `index.html` o `producto.html`.
+2. En el Google Sheet, cambiá el estado de ese color a `sin_stock`.
+3. Recargá cualquier página del sitio (incluso una secundaria como `envios.html`).
+4. **Resultado esperado:**
+   - El item desaparece del carrito (el contador en el header se actualiza).
+   - Al abrir el drawer del carrito aparece un banner rojo recuadrado arriba listando el producto eliminado.
+   - El banner tiene un botón ✕ para cerrar.
+   - A los 8 segundos se cierra solo con fade out.
+5. Si el usuario está en `checkout.html` cuando se agota → banner aparece arriba del formulario.
+6. Si quedó con el carrito vacío → pantalla de "carrito vacío" + notificación.
+
+---
+
+## Navegación del sitio
 
 ### Nav del header (`components/header.js` → `NAV_LINKS`)
 ```
 Inicio | Productos | Tecnología RFID | Seguí tu compra | Sobre nosotros | Contacto
 ```
 
-| Página | Link activo | Carrito | Notas |
-|---|---|---|---|
-| `index.html` | Inicio | ✅ | Modal vista rápida + grilla |
-| `producto.html` | — | ✅ | + botón "← Volver" |
-| `tecnologia-rfid.html` | Tecnología RFID | ✅ | — |
-| `seguimiento.html` | Seguí tu compra | ✅ | S10 extra: reconstruido base envios |
-| `sobre-nosotros.html` | Sobre nosotros | ✅ | — |
-| `contacto.html` | Contacto | ✅ | — |
-| `envios.html` | — (solo footer) | ✅ | — |
-| `checkout.html` | Excluido | ❌ | Header propio |
-| `admin.html` | Excluido | ❌ | Panel con password |
+### Footer (desktop)
+- **Productos:** Simple · Classic · Confort · Essential
+- **Info:** Tecnología RFID · Envíos y Devoluciones · Seguimiento · Sobre nosotros · Contacto
+- **Legal:** Política de Privacidad · Términos · Cambios y Devoluciones
 
-**Footer columna Info:** Tecnología RFID · Envíos y Devoluciones · Seguimiento · Sobre nosotros · Contacto
-**Footer mobile (S11):** FOUNDER · Contacto · Envíos y Devoluciones · Privacidad · Términos · © 2026
-
----
-
-## Menú mobile (hamburguesa)
-En todas las páginas públicas excepto `checkout.html`. Vive en `components/header.js`.
+### Footer (mobile)
+FOUNDER · Contacto · Envíos y Devoluciones · Privacidad · Términos · © 2026

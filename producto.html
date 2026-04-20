@@ -101,6 +101,7 @@ select:active,
 .btn:active,
 .wa-bubble:active,
 .cart-btn:active,
+.header__back:active,
 .breadcrumb a:active,
 .tab-btn:active,
 .sticky-add-btn:active {
@@ -118,19 +119,18 @@ select:active,
 /* ── SHARED — Header ─────────────────────────────────────────── */
 .header { position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-header); height: 70px; padding: 0 var(--space-lg); display: flex; align-items: center; justify-content: space-between; background: #111111; background: rgba(14,14,14,.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--color-border-solid); }
 .logo { font-family: var(--font-serif); font-size: 22px; font-weight: 500; letter-spacing: 6px; color: var(--color-text); }
-/* Nomenclatura estándar .nav / .nav__link para coincidir con el markup
-   que inyecta components/header.js. Antes este archivo tenía
-   .header__nav / .header__nav-link (nombres viejos) que no matcheaban
-   el markup → los links del menú aparecían sin estilo. */
-.nav { display: flex; gap: 32px; align-items: center; }
-.nav__link { color: var(--color-muted); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; text-decoration: none; transition: color var(--transition-fast); }
-.nav__link:hover { color: var(--color-text); }
-.nav__link.is-active { color: var(--color-text); }
+.header__nav { display: flex; gap: 32px; align-items: center; }
+.header__nav-link { color: var(--color-muted); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; text-decoration: none; transition: color var(--transition-fast); }
+.header__nav-link:hover { color: var(--color-text); }
+.header__nav-link.is-active { color: var(--color-text); }
+.header__right { display: flex; align-items: center; gap: 24px; }
+.header__back { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-muted); transition: color var(--transition-fast); }
+.header__back:hover { color: var(--color-text); }
 .cart-btn { position: relative; background: none; border: 1px solid var(--color-border); color: var(--color-text); padding: 10px 20px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; transition: all var(--transition-base); }
 .cart-btn:hover { background: var(--color-text); color: var(--color-bg); }
 .cart-count { position: absolute; top: -8px; right: -8px; background: var(--color-gold); color: var(--color-bg); width: 18px; height: 18px; border-radius: 50%; font-size: 9px; display: none; align-items: center; justify-content: center; font-weight: 600; }
 .cart-count.is-visible { display: flex; }
-@media (max-width: 900px) { .nav { display: none; } }
+@media (max-width: 900px) { .header__nav { display: none; } }
 
 /* ── PRODUCTO — Breadcrumb ─────────────────────────────────── */
 .breadcrumb { padding: 90px var(--space-lg) 0; display: flex; align-items: center; gap: 12px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
@@ -382,8 +382,6 @@ select:active,
 .cart-item__remove:hover { color: var(--color-danger); }
 .cart__empty { text-align: center; padding: 80px 36px; color: var(--color-muted); }
 .cart__empty p { font-family: var(--font-serif); font-size: 22px; margin-bottom: 8px; }
-/* Los estilos del aviso .cart-item--sin-stock y .cart-item__stock-alert
-   ahora viven en components/cart.js (se inyectan automáticamente). */
 .cart__footer { padding: 24px 36px 36px; border-top: 1px solid var(--color-border); }
 .cart__subtotal { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .cart__subtotal span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
@@ -423,9 +421,8 @@ select:active,
   .product-info__desc   { order: 4; }
   .specs-list           { order: 5; }
   .purchase             { order: 6; }
-  .details-section { padding: 28px 24px 60px; }                        /* S11 T2c: menos espacio arriba */
-  .specs-list { grid-template-columns: 1fr 1fr; gap: 14px 16px; }       /* S11 T2a: specs en 2 cols (3+3) */
-  .trust-badges { margin-bottom: 4px; }                                 /* S11 T2c: menos separación debajo */
+  .details-section { padding: 60px 24px; }
+  .specs-list { grid-template-columns: 1fr; } /* en móvil specs en 1 col */
   .specs-grid { grid-template-columns: 1fr; }
   .rfid-explain { grid-template-columns: 1fr; }
   .related-section { padding: 60px 24px; }
@@ -443,17 +440,6 @@ select:active,
   .footer__grid { grid-template-columns: 1fr; gap: 24px; }
   .footer__bottom { flex-direction: column; text-align: center; gap: 12px; }
   .footer__legal { flex-direction: column; align-items: center; gap: 12px; }
-  /* S11 T2d: tabs reparten el ancho y entran sin scroll horizontal */
-  .tabs { overflow-x: visible; gap: 0; }
-  .tab-btn {
-    flex: 1;
-    padding: 14px 6px;
-    font-size: 9px;
-    letter-spacing: 1.5px;
-    white-space: normal;
-    text-align: center;
-    line-height: 1.3;
-  }
 }
 
 /* ── SHARED — Checkout ──────────────────────────────────────── */
@@ -511,13 +497,6 @@ select:active,
 .wa-bubble__btn svg { width: 28px; height: 28px; fill: #ffffff; }
 /* En móvil sube para no tapar el botón sticky de "Agregar al carrito" (altura ~66px + padding) */
 @media (max-width: 900px) { .wa-bubble { bottom: 88px; right: 16px; } .wa-bubble__tooltip { display: none; } }
-/* S11 T2b: ocultar burbuja WA cuando el sticky-add está visible en mobile,
-   para que no tape el botón "Agregar al carrito". La clase has-sticky-add
-   la pone/saca el IntersectionObserver (abajo en el JS) — misma lógica
-   que ya controla .sticky-btn-wrap.is-hidden. */
-@media (max-width: 900px) {
-  body.has-sticky-add .wa-bubble { opacity: 0; pointer-events: none; transition: opacity .3s; }
-}
 @media (min-width: 901px) and (max-width: 1100px) { .wa-bubble { bottom: 28px; right: 20px; } }
 
 /* ── Burbuja WA — se desplaza cuando el carrito está abierto ── */
@@ -922,21 +901,17 @@ async function init() {
       return;
     }
 
-    // Guardar el snapshot de combos agotados (usado por TODAS las páginas
-    // para que validen stock sin tener que cargar el catálogo ellas).
+    // Guardar snapshot de combos agotados — usado por TODAS las páginas.
     window.founderCart.saveStockSnapshot(state.allProducts);
-
-    // Auto-eliminar items agotados del carrito (el toast se dispara en
-    // el próximo updateCart via flushAutoRemoveToast).
-    const pruned = window.founderCart.pruneSinStock(state.cart);
-    state.cart = pruned.cart;
+    // Purgar carrito local: items agotados se eliminan y se encola
+    // la notificación para mostrar en el próximo abrir del carrito.
+    state.cart = window.founderCart.pruneAndQueue(state.cart);
 
     renderProduct();
     hide('loadingScreen');
     show('productContent');
-    // Catálogo ya disponible → re-render del carrito persistido para que
-    // los avisos "Agotado" aparezcan en los items afectados.
-    if (state.cart && state.cart.length) updateCart();
+    // Refrescar el contador del carrito y la vista del drawer.
+    updateCart();
 
   } catch (err) {
     console.error('[Founder] Error cargando producto:', err);
@@ -1289,8 +1264,11 @@ function renderRelated() {
 }
 
 // ── CARRITO → CHECKOUT ───────────────────────────────────────
-// openCheckout() está definida más abajo — incluye validación de stock
-// via founderCart.canCheckout() antes de redirigir a checkout.html
+/** Redirige al checkout dedicado. El carrito persiste en localStorage. */
+function openCheckout() {
+  if (!state.cart.length) return;
+  window.location.href = 'checkout.html';
+}
 
 // ── SHARED CART ─────────────────────────────────────────────────
 function addToCart() {
@@ -1342,10 +1320,8 @@ function updateCart() {
   setHTML('cartItems', state.cart.map((item, idx) => {
     const photo = getPhotos(item.name, item.color)[0] || null;
     const inicial = (item.name || '?')[0].toUpperCase();
-    // Check agotado via módulo compartido (lee el snapshot cacheado).
-    const sinStock = window.founderCart.isItemSinStock(item);
     return `
-      <div class="cart-item${sinStock ? ' cart-item--sin-stock' : ''}">
+      <div class="cart-item">
         ${photo
           ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
                onerror="recoverCartPhoto(this,'${item.name.replace(/'/g,"\\'")}','${item.color.replace(/'/g,"\\'")}');">`
@@ -1363,7 +1339,6 @@ function updateCart() {
           <div class="cart-item__price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
           <button class="cart-item__remove" onclick="removeItem(${idx})" aria-label="Eliminar">✕</button>
         </div>
-        ${sinStock ? window.founderCart.renderStockAlertHTML(idx) : ''}
       </div>`;
   }).join(''));
 
@@ -1376,8 +1351,6 @@ function updateCart() {
       : `Agregá $${(CONFIG.FREE_SHIPPING - total).toLocaleString('es-UY')} más para envío gratis`;
     note.style.color = total >= CONFIG.FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
   }
-  // Toast de auto-eliminación si había pendientes (sesión anterior)
-  window.founderCart.flushAutoRemoveToast();
 }
 
 function changeQty(idx, delta) {
@@ -1395,41 +1368,9 @@ function toggleCart() {
   overlay.classList.toggle('is-open', isOpen);
   document.body.classList.toggle('cart-open', isOpen);
   document.body.style.overflow = isOpen ? 'hidden' : '';
-  if (isOpen) updateCart(); // re-render al abrir para refrescar estado de stock
-}
-
-/** Elimina un item agotado del carrito + toast de confirmación. */
-function removeSinStockItem(idx) {
-  state.cart.splice(idx, 1);
-  updateCart();
-  showToast('Producto agotado eliminado');
-}
-
-/** Elimina el item agotado, cierra el carrito y lleva al usuario a la
- *  grilla de productos (index.html#productos) para que elija otro modelo. */
-function buscarOtroModelo(idx) {
-  state.cart.splice(idx, 1);
-  updateCart();
-  const sidebar = $('cartSidebar');
-  if (sidebar && sidebar.classList.contains('is-open')) toggleCart();
-  window.location.href = 'index.html#productos';
-}
-
-/** Intercepta el click en "Finalizar compra": si hay items agotados,
- *  muestra toast de advertencia y hace scroll al item bloqueante. */
-function openCheckout() {
-  const check = window.founderCart.canCheckout(state.cart);
-  if (!check.ok) {
-    showToast(check.message);
-    const sidebar = $('cartSidebar');
-    if (sidebar && !sidebar.classList.contains('is-open')) toggleCart();
-    setTimeout(() => {
-      const items = document.querySelectorAll('.cart-item--sin-stock');
-      if (items.length) items[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 200);
-    return;
-  }
-  window.location.href = 'checkout.html';
+  // Al abrir el carrito, mostrar la notificación de productos eliminados
+  // por agotarse (si hay pendientes en la cola de sesión).
+  if (isOpen) window.founderCart.flushRemovedNotice();
 }
 
 function toggleMenu() {
@@ -1457,16 +1398,9 @@ function showToast(msg) {
   if (!wrap || !footer) return;
   const obs = new IntersectionObserver(entries => {
     // Cuando el footer es visible, ocultar el botón sticky
-    const footerVisible = entries[0].isIntersecting;
-    wrap.classList.toggle('is-hidden', footerVisible);
-    // S11 T2b: reflejar el estado en el body para que la burbuja WA
-    // pueda ocultarse vía CSS cuando el sticky-add está visible.
-    document.body.classList.toggle('has-sticky-add', !footerVisible);
+    wrap.classList.toggle('is-hidden', entries[0].isIntersecting);
   }, { threshold: 0.1 });
   obs.observe(footer);
-  // Estado inicial: al cargar la página el footer todavía no fue observado,
-  // pero el sticky-add ya es visible en mobile → marcamos el body.
-  document.body.classList.add('has-sticky-add');
 })();
 
 // ── SHARED UI — Páginas legales ──────────────────────────────────

@@ -294,6 +294,29 @@ a, button, [onclick], label, select, .co-toggle-btn { cursor: pointer; }
   .wa-bubble { bottom: 20px; right: 16px; }
   .wa-bubble__tooltip { display: none; }
 }
+/* Notificación recuadrada de productos eliminados por agotarse */
+.checkout-removed-notice {
+  max-width: 900px;
+  margin: 24px auto 0;
+  padding: 14px 44px 14px 18px;
+  background: rgba(255, 59, 48, 0.08);
+  border: 1px solid var(--color-danger);
+  border-radius: 4px;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 1.5;
+  position: relative;
+}
+.checkout-removed-notice__title { margin: 0 0 6px; font-weight: 500; letter-spacing: 0.3px; }
+.checkout-removed-notice__list { margin: 0; padding-left: 20px; font-size: 12px; opacity: 0.9; }
+.checkout-removed-notice__list li { margin: 2px 0; }
+.checkout-removed-notice__close {
+  position: absolute; top: 8px; right: 10px;
+  background: none; border: none; color: var(--color-danger);
+  font-size: 16px; line-height: 1; padding: 4px 8px; cursor: pointer;
+  opacity: 0.7; transition: opacity .2s;
+}
+.checkout-removed-notice__close:hover { opacity: 1; }
 </style>
 </head>
 <body>
@@ -526,12 +549,8 @@ function clearCart() {
   catch (e) { console.warn('[Founder] No se pudo limpiar carrito:', e); }
 }
 
-// ── VALIDACIÓN DE STOCK (lee el mismo snapshot que cart.js) ──
-// checkout.html no carga components/cart.js (tiene header propio),
-// pero puede leer el snapshot de agotados del localStorage. Esto
-// garantiza que ni siquiera llegando por link directo al checkout
-// se pueda confirmar un pedido con productos agotados.
-function _stockSnapshot() {
+/** Lee el snapshot de combos agotados que escribieron index/producto. */
+function loadStockSnapshot() {
   try {
     const raw = localStorage.getItem(STOCK_KEY);
     if (!raw) return {};
@@ -546,16 +565,35 @@ function _stockKey(name, color) {
   const norm = s => String(s || '').trim().toLowerCase();
   return `${norm(name)}|${norm(color)}`;
 }
-/** Devuelve el primer item del carrito que está agotado, o null. */
-function findSinStockInCart(cart) {
-  const snap = _stockSnapshot();
-  if (Object.keys(snap).length === 0) return null;
-  return (cart || []).find(it => snap[_stockKey(it.name, it.color)]) || null;
+/** Purga items agotados del carrito persistido. Devuelve {kept, removed}. */
+function purgeSinStock() {
+  const cart = loadCart();
+  if (!cart.length) return { kept: [], removed: [] };
+  const snap = loadStockSnapshot();
+  if (!Object.keys(snap).length) return { kept: cart, removed: [] };
+
+  const removed = [];
+  const kept = cart.filter(item => {
+    if (snap[_stockKey(item.name, item.color)]) {
+      removed.push(`Founder ${item.name} (${item.color})`);
+      return false;
+    }
+    return true;
+  });
+  if (removed.length > 0) {
+    try { localStorage.setItem(CART_KEY, JSON.stringify(kept)); } catch (e) {}
+  }
+  return { kept, removed };
 }
 
 // ── ESTADO ────────────────────────────────────────────────────
+// Purga carrito al arrancar: elimina items agotados según snapshot
+// actualizado por index/producto. Si hubo eliminados, guardamos en
+// estado para mostrar notificación apenas se renderice el DOM.
+const _purge = purgeSinStock();
 const state = {
-  cart:        loadCart(),
+  cart:        _purge.kept,
+  removedOnLoad: _purge.removed, // nombres eliminados al cargar esta página
   entregaMode: 'envio',
   pagoMode:    'mercadopago',
   // Cupón aplicado (null si no hay)
@@ -600,17 +638,43 @@ function init() {
   if (!state.cart.length) {
     $('checkoutForm').style.display = 'none';
     $('emptyCart').style.display    = 'flex';
+    // Si el carrito quedó vacío por purga de agotados, avisar
+    if (state.removedOnLoad.length > 0) {
+      setTimeout(() => showRemovedNotice(state.removedOnLoad), 500);
+    }
     return;
-  }
-  // Si hay items agotados, avisamos apenas carga la página. El bloqueo
-  // real ocurre cuando el usuario intenta confirmar (en processOrder).
-  const blocked = findSinStockInCart(state.cart);
-  if (blocked) {
-    // Damos tiempo a que el DOM termine de pintar antes del toast.
-    setTimeout(() => showToast(`"Founder ${blocked.name}" está agotado. Volvé al carrito y eliminalo antes de continuar.`), 500);
   }
   renderOrderSummary(); // render inmediato sin fotos
   loadPhotos();         // luego actualiza con fotos reales
+  // Si se purgaron algunos items (pero quedaron otros), avisar al usuario
+  if (state.removedOnLoad.length > 0) {
+    setTimeout(() => showRemovedNotice(state.removedOnLoad), 500);
+  }
+}
+
+/** Muestra una notificación recuadrada arriba del formulario listando
+ *  los productos que fueron eliminados del carrito porque se agotaron. */
+function showRemovedNotice(items) {
+  if (!items || !items.length) return;
+  // Evitar duplicados si la función se llama dos veces
+  if (document.getElementById('checkoutRemovedNotice')) return;
+
+  const list = items.map(n => `<li>${n}</li>`).join('');
+  const label = items.length === 1
+    ? 'Se eliminó un producto de tu carrito porque se agotó:'
+    : `Se eliminaron ${items.length} productos de tu carrito porque se agotaron:`;
+  const html = `
+    <div class="checkout-removed-notice" id="checkoutRemovedNotice" role="status" aria-live="polite">
+      <button class="checkout-removed-notice__close" onclick="document.getElementById('checkoutRemovedNotice').remove()" aria-label="Cerrar">✕</button>
+      <p class="checkout-removed-notice__title">⚠ ${label}</p>
+      <ul class="checkout-removed-notice__list">${list}</ul>
+    </div>`;
+
+  // Insertar antes del formulario o del emptyCart, lo que esté visible
+  const target = $('checkoutForm').style.display !== 'none' ? $('checkoutForm') : $('emptyCart');
+  if (target && target.parentNode) {
+    target.insertAdjacentHTML('beforebegin', html);
+  }
 }
 
 // ── NAVEGACIÓN ────────────────────────────────────────────────
@@ -830,14 +894,6 @@ function showFeedback(msg, ok) {
 
 // ── PROCESAR PEDIDO ───────────────────────────────────────────
 function processOrder() {
-  // Validación de stock — si algún item del carrito está agotado
-  // según el último snapshot, cortamos antes de tocar los datos.
-  const blocked = findSinStockInCart(state.cart);
-  if (blocked) {
-    showToast(`"Founder ${blocked.name} (${blocked.color})" está agotado. Volvé y eliminalo del carrito.`);
-    return;
-  }
-
   // Validación de datos personales
   const nombre   = $('coNombre').value.trim();
   const apellido = $('coApellido').value.trim();

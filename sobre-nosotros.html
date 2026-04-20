@@ -456,9 +456,8 @@ function updateCartUI() {
 
   itemsEl.innerHTML = cart.map((item, i) => {
     const inicial = (item.name || '?')[0].toUpperCase();
-    const sinStock = window.founderCart.isItemSinStock(item);
     return `
-      <div class="cart-item${sinStock ? ' cart-item--sin-stock' : ''}">
+      <div class="cart-item">
         <div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>
         <div class="cart-item__info">
           <div class="cart-item__name">Founder ${item.name}</div>
@@ -473,7 +472,6 @@ function updateCartUI() {
           <div class="cart-item__price">${formatPrice(item.price * item.qty)}</div>
           <button class="cart-item__remove" onclick="removeItem(${i})" aria-label="Eliminar">✕</button>
         </div>
-        ${sinStock ? window.founderCart.renderStockAlertHTML(i) : ''}
       </div>`;
   }).join('');
 
@@ -486,7 +484,6 @@ function updateCartUI() {
       shipNote.style.color = total >= FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
     }
   }
-  window.founderCart.flushAutoRemoveToast();
 }
 
 function changeQty(idx, delta) {
@@ -507,6 +504,9 @@ function toggleCart() {
   overlay.classList.toggle('is-open', isOpen);
   document.body.classList.toggle('cart-open', isOpen);
   document.body.style.overflow = isOpen ? 'hidden' : '';
+  // Al abrir el carrito, mostrar la notificación de productos eliminados
+  // por agotarse (si hay pendientes en la cola de sesión).
+  if (isOpen) window.founderCart.flushRemovedNotice();
 }
 function toggleMenu() {
   const drawer  = document.getElementById('menuDrawer');
@@ -515,59 +515,10 @@ function toggleMenu() {
   overlay.classList.toggle('is-open', isOpen);
   document.body.style.overflow = isOpen ? 'hidden' : '';
 }
-function openCheckout() {
-  const cart = loadCart();
-  const check = window.founderCart.canCheckout(cart);
-  if (!check.ok) {
-    showToast(check.message);
-    const sidebar = document.getElementById('cartSidebar');
-    if (sidebar && !sidebar.classList.contains('is-open')) toggleCart();
-    setTimeout(() => {
-      const items = document.querySelectorAll('.cart-item--sin-stock');
-      if (items.length) items[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 200);
-    return;
-  }
-  window.location.href = 'checkout.html';
-}
+function openCheckout() { window.location.href = 'checkout.html'; }
 
-
-/* __FOUNDERCART_INJECTED__ */
-// ── Integración con founderCart (componente compartido) ──────
-function showToast(msg) {
-  let t = document.getElementById('toast');
-  if (!t) {
-    t = document.createElement('div');
-    t.id = 'toast';
-    t.className = 'toast';
-    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--color-surface);color:var(--color-text);padding:14px 22px;border:1px solid var(--color-gold);font-size:12px;letter-spacing:1px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90vw;text-align:center;';
-    document.body.appendChild(t);
-  }
-  t.textContent = msg;
-  t.style.opacity = '1';
-  clearTimeout(window.__toastTimer);
-  window.__toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 3500);
-}
-
-function removeSinStockItem(idx) {
-  const cart = loadCart();
-  cart.splice(idx, 1);
-  localStorage.setItem(CART_KEY, JSON.stringify(cart));
-  updateCartUI();
-  showToast('Producto agotado eliminado');
-}
-
-function buscarOtroModelo(idx) {
-  const cart = loadCart();
-  cart.splice(idx, 1);
-  localStorage.setItem(CART_KEY, JSON.stringify(cart));
-  window.location.href = 'index.html#productos';
-}
-
-// Boot centralizado: el módulo founderCart espera a que el DOM esté
-// listo (drawer inyectado + CSS aplicado), hace prune de items agotados
-// y recién después llama a updateCartUI. Esto resuelve un bug de
-// timing donde el render corría antes de que existiera #cartItems.
+// Boot centralizado: espera al DOM listo, purga items agotados
+// del carrito y llama a updateCartUI para renderizar.
 window.founderCart.bootPage(updateCartUI);
 </script>
 </body>

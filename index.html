@@ -631,8 +631,6 @@ select:active,
 .cart__empty { text-align: center; padding: 80px 36px; color: var(--color-muted); }
 .cart__empty p { font-family: var(--font-serif); font-size: 22px; margin-bottom: 8px; }
 .cart__empty span { font-size: 11px; letter-spacing: 2px; }
-/* Los estilos del aviso .cart-item--sin-stock y .cart-item__stock-alert
-   ahora viven en components/cart.js (se inyectan automáticamente). */
 .cart__footer { padding: 24px 36px 36px; border-top: 1px solid var(--color-border); }
 .cart__subtotal { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .cart__subtotal span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
@@ -705,33 +703,6 @@ select:active,
   }
   /* En mobile las specs vuelven a columna única para mejor lectura */
   .modal__specs { grid-template-columns: 1fr; gap: 10px; }
-  /* ── S11 T1: Modal fullscreen en mobile ──────────────────────
-     El modal ocupa toda la pantalla para aprovechar el espacio,
-     el overlay pierde el padding y el botón de cerrar queda fijo
-     arriba-derecha sobre fondo semi-transparente para que siempre
-     sea visible aunque se scrollee el contenido del modal. */
-  .modal-overlay { padding: 0; }
-  .modal {
-    max-width: 100%;
-    width: 100vw;
-    max-height: 100dvh;
-    height: 100dvh;
-    border: none;
-  }
-  .modal__close {
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 20;
-  }
-  .modal__info { padding: 24px 20px 40px; }
-  .modal__gallery { min-height: 280px; }
 }
 
 /* ── PÁGINAS LEGALES ─────────────────────────────────────────── */
@@ -1213,19 +1184,17 @@ async function init() {
     state.photoMap  = parsePhotoMap(jF.table.rows);
     state.products  = parseProducts(jP.table.rows);
 
-    // Guardar el snapshot de combos agotados (usado por TODAS las páginas
-    // para que validen stock sin tener que cargar el catálogo ellas).
+    // Guardar snapshot de combos agotados — usado por TODAS las páginas
+    // para saber qué productos eliminar del carrito si se agotaron.
     window.founderCart.saveStockSnapshot(state.products);
 
-    // Auto-eliminar items agotados del carrito (el toast se dispara en
-    // el próximo updateCart via flushAutoRemoveToast).
-    const pruned = window.founderCart.pruneSinStock(state.cart);
-    state.cart = pruned.cart;
+    // Purgar el carrito local: si hay items agotados, se eliminan y se
+    // encola la notificación para mostrar en el próximo abrir del carrito.
+    state.cart = window.founderCart.pruneAndQueue(state.cart);
 
     renderProducts();
-    // Catálogo ya disponible → re-render del carrito persistido para que
-    // los avisos "Agotado" aparezcan en los items afectados.
-    if (state.cart && state.cart.length) updateCart();
+    // Refrescar visualmente el contador del carrito en el header.
+    updateCart();
     document.querySelectorAll('.rfid-item').forEach(el => revealObserver.observe(el));
 
     // Event delegation para modal — se registra UNA SOLA VEZ aquí, no en renderProducts()
@@ -1507,8 +1476,11 @@ function closeModal() {
 }
 
 // ── CARRITO → CHECKOUT ───────────────────────────────────────
-// openCheckout() está definida más abajo — incluye validación de stock
-// via founderCart.canCheckout() antes de redirigir a checkout.html
+/** Redirige al checkout dedicado. El carrito persiste en localStorage. */
+function openCheckout() {
+  if (!state.cart.length) return;
+  window.location.href = 'checkout.html';
+}
 
 // ── SHARED CART ─────────────────────────────────────────────────
 function addFromModal() {
@@ -1560,10 +1532,8 @@ function updateCart() {
     // Busca foto directo en photoMap (funciona antes y después de cargar productos)
     const photo = getPhotos(item.name, item.color)[0] || null;
     const inicial = (item.name || '?')[0].toUpperCase();
-    // Check agotado via módulo compartido (lee el snapshot cacheado).
-    const sinStock = window.founderCart.isItemSinStock(item);
     return `
-      <div class="cart-item${sinStock ? ' cart-item--sin-stock' : ''}">
+      <div class="cart-item">
         ${photo
           ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
                onerror="recoverCartPhoto(this,'${item.name.replace(/'/g,"\\'")}','${item.color.replace(/'/g,"\\'")}');">`
@@ -1581,7 +1551,6 @@ function updateCart() {
           <div class="cart-item__price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
           <button class="cart-item__remove" onclick="removeItem(${idx})" aria-label="Eliminar producto">✕</button>
         </div>
-        ${sinStock ? window.founderCart.renderStockAlertHTML(idx) : ''}
       </div>`;
   }).join(''));
 
@@ -1594,8 +1563,6 @@ function updateCart() {
       : `Agregá $${(CONFIG.FREE_SHIPPING - total).toLocaleString('es-UY')} más para envío gratis`;
     note.style.color = total >= CONFIG.FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
   }
-  // Toast de auto-eliminación si había pendientes (sesión anterior)
-  window.founderCart.flushAutoRemoveToast();
 }
 
 function changeQty(idx, delta) {
@@ -1616,46 +1583,9 @@ function toggleCart() {
   overlay.classList.toggle('is-open', isOpen);
   document.body.classList.toggle('cart-open', isOpen);
   document.body.style.overflow = isOpen ? 'hidden' : '';
-  if (isOpen) updateCart(); // re-render al abrir para refrescar estado de stock
-}
-
-/** Elimina un item agotado del carrito + toast de confirmación. */
-function removeSinStockItem(idx) {
-  state.cart.splice(idx, 1);
-  updateCart();
-  showToast('Producto agotado eliminado');
-}
-
-/** Elimina el item agotado, cierra el carrito y hace scroll a la grilla. */
-function buscarOtroModelo(idx) {
-  state.cart.splice(idx, 1);
-  updateCart();
-  const sidebar = $('cartSidebar');
-  if (sidebar && sidebar.classList.contains('is-open')) toggleCart();
-  const productos = document.getElementById('productos');
-  if (productos) productos.scrollIntoView({ behavior: 'smooth' });
-}
-
-/** Intercepta el click en "Finalizar compra": si hay items agotados,
- *  muestra toast de advertencia y hace scroll al item bloqueante.
- *  Si todo OK, sigue al flujo normal del checkout. */
-function openCheckout() {
-  const check = window.founderCart.canCheckout(state.cart);
-  if (!check.ok) {
-    showToast(check.message);
-    // Asegurar que el carrito esté abierto para ver el item bloqueante
-    const sidebar = $('cartSidebar');
-    if (sidebar && !sidebar.classList.contains('is-open')) toggleCart();
-    // Scroll al primer item agotado dentro del drawer
-    setTimeout(() => {
-      const items = document.querySelectorAll('.cart-item--sin-stock');
-      if (items.length) items[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 200);
-    return;
-  }
-  // Flujo normal — llama a la función original definida en checkout-helpers
-  if (typeof proceedToCheckout === 'function') proceedToCheckout();
-  else window.location.href = 'checkout.html';
+  // Al abrir el carrito, mostrar la notificación de productos eliminados
+  // por agotarse (si hay pendientes en la cola de sesión).
+  if (isOpen) window.founderCart.flushRemovedNotice();
 }
 
 function toggleMenu() {
