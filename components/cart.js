@@ -181,6 +181,35 @@
     return { ok: true, blockedItem: null, blockedIndex: -1, message: '' };
   }
 
+  /** Boot centralizado para páginas que consumen el módulo.
+   *  Resuelve el problema de timing: garantiza que primero esté el DOM
+   *  listo (incluído el drawer inyectado por cart.js), luego hace prune
+   *  del carrito, y recién entonces llama al updateFn de la página.
+   *
+   *  Las páginas la usan así:
+   *      window.founderCart.bootPage(updateCartUI);
+   *
+   *  Si el DOM ya está listo cuando la llaman, ejecuta inmediatamente.
+   *  Si no, espera al evento DOMContentLoaded. */
+  function bootPage(updateFn) {
+    const run = () => {
+      try {
+        // 1) Leer carrito actual y hacer prune de agotados
+        const cart = readLS(CART_KEY, []);
+        pruneSinStock(cart);
+        // 2) Render del carrito — updateFn dentro llama a flushAutoRemoveToast
+        if (typeof updateFn === 'function') updateFn();
+      } catch (e) {
+        console.error('[founderCart.bootPage] Error:', e);
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', run, { once: true });
+    } else {
+      run();
+    }
+  }
+
   // ── Exponer API global ───────────────────────────────────────
   window.founderCart = {
     getStockSnapshot,
@@ -189,7 +218,8 @@
     renderStockAlertHTML,
     pruneSinStock,
     flushAutoRemoveToast,
-    canCheckout
+    canCheckout,
+    bootPage
   };
 
   // ── Markup del drawer ────────────────────────────────────────
