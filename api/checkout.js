@@ -1,7 +1,7 @@
 // ═════════════════════════════════════════════════════════════════
 // FOUNDER — /api/checkout
 // ─────────────────────────────────────────────────────────────────
-// Endpoint POST que reemplaza al Apps Script del checkout.
+// Endpoint POST del flujo de compra.
 // Dos acciones posibles, según body.action:
 //
 //  1) action = "validate_coupon"

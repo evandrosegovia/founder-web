@@ -1,7 +1,8 @@
 // ═════════════════════════════════════════════════════════════════
 // FOUNDER — /api/seguimiento
 // ─────────────────────────────────────────────────────────────────
-// POST que reemplaza la consulta GViz al Google Sheet.
+// Endpoint POST que busca un pedido en Supabase a partir de su
+// número + email.
 //
 // Body: { numero, email }
 //
