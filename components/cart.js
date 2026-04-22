@@ -24,9 +24,9 @@
 (function () {
   'use strict';
 
-  // ── Config del Sheet (misma que el resto del sitio) ──────────
-  const SHEET_ID        = '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8';
-  const SHEET_PRODUCTOS = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`;
+  // ── Fuente de datos ──────────────────────────────────────────
+  // Los estados de stock se leen desde Supabase vía window.founderDB
+  // (definido en supabase-client.js). No leemos el Google Sheet.
 
   // ── Storage keys ─────────────────────────────────────────────
   const CART_KEY   = 'founder_cart';
@@ -55,25 +55,20 @@
     try { sessionStorage.removeItem(k); } catch (e) { /* ignore */ }
   }
 
-  // ── Parsing del Sheet ────────────────────────────────────────
-  async function fetchProductosRaw() {
-    const res  = await fetch(`${SHEET_PRODUCTOS}&t=${Date.now()}`);
-    const text = await res.text();
-    return JSON.parse(text.substring(47, text.length - 2));
-  }
-
-  /** Parsea la hoja y devuelve la lista de combos agotados. */
-  function extractAgotadosFromRows(rows) {
+  // ── Lectura de combos agotados desde Supabase ────────────────
+  /** Trae de Supabase solo los colores con estado='sin_stock' y devuelve
+   *  un array de keys ["modelo|color", ...] compatible con el snapshot. */
+  async function fetchAgotadosFromSupabase() {
+    if (!window.founderDB || typeof window.founderDB.fetchProducts !== 'function') {
+      throw new Error('supabase-client.js no cargado (window.founderDB no existe)');
+    }
+    const products = await window.founderDB.fetchProducts();
     const agotados = [];
-    (rows || []).forEach(row => {
-      const name = (row.c[0]?.v || '').trim();
-      if (!name) return;
-      const colorsRaw = (row.c[3]?.v || '').split(',').map(c => c.trim()).filter(Boolean);
-      let extras = {};
-      try { extras = JSON.parse(row.c[6]?.v || '{}'); } catch { extras = {}; }
-      const ce = extras.colores_estado || {};
-      colorsRaw.forEach(colorName => {
-        if (ce[colorName] === 'sin_stock') agotados.push(key(name, colorName));
+    (products || []).forEach(p => {
+      const ce = p.extras?.colores_estado || {};
+      Object.keys(ce).forEach(colorName => {
+        if (colorName.endsWith('_precio_oferta')) return; // skip claves auxiliares
+        if (ce[colorName] === 'sin_stock') agotados.push(key(p.name, colorName));
       });
     });
     return agotados;
@@ -124,14 +119,13 @@
 
   // ── API principal: fetch autónomo + purga ────────────────────
   /** Cada página llama esta función al cargar. Trae el estado fresco
-   *  desde el Sheet, actualiza el snapshot y purga el carrito local.
+   *  desde Supabase, actualiza el snapshot y purga el carrito local.
    *  Es segura ante errores de red (si falla, no borra nada).
    *  Retorna promesa con { removed: [nombres] }. */
   async function fetchStockAndPurge() {
     let agotados = [];
     try {
-      const data = await fetchProductosRaw();
-      agotados   = extractAgotadosFromRows(data.table?.rows || []);
+      agotados = await fetchAgotadosFromSupabase();
       saveSnapshot(agotados);
     } catch (e) {
       console.warn('[founderCart] No se pudo refrescar stock:', e);
