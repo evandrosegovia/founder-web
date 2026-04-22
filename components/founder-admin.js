@@ -1,20 +1,16 @@
 /* =============================================================
    FOUNDER — components/founder-admin.js
    -------------------------------------------------------------
-   Lógica específica de admin.html migrada desde el script inline
-   original. Cambios respecto a la versión previa:
-     • Login valida contra /api/admin (action:"login"). El password
-       se guarda en sessionStorage durante la sesión del navegador.
+   Lógica del panel de administración.
+
+   Qué hace:
+     • Login contra /api/admin (action:"login"). El password se
+       guarda en sessionStorage durante la sesión del navegador.
      • Pedidos, cupones, productos y banner leen/escriben en
-       Supabase vía /api/admin — ya NO se usan Google Sheets ni
-       la gviz JSONP.
-     • Fotos suben directo a Supabase Storage usando una signed URL
-       pedida al server (action:"get_upload_url"). El binario NO
-       pasa por Vercel.
-     • Eliminadas TODAS las referencias a gapi, accounts.google.com,
-       apis.google.com y el SHEET_ID.
-     • UX preservada: textos, navegación, modales, barra de
-       progreso, filtros, toast — todo idéntico al admin viejo.
+       Supabase a través de /api/admin.
+     • Las fotos suben directo a Supabase Storage usando una
+       signed URL pedida al server (action:"get_upload_url"), así
+       el binario NO pasa por Vercel.
 
    Precondiciones:
      - Se carga al final del body de admin.html con
@@ -201,7 +197,7 @@
 
   /**
    * Cambia la página activa del panel.
-   * @param {string} page    nombre de la página (dashboard|pedidos|productos|cupones|banner|imagenes)
+   * @param {string} page    nombre de la página (dashboard|pedidos|productos|cupones|banner)
    * @param {HTMLElement} el botón clickeado (opcional, para marcarlo activo)
    */
   function nav(page, el) {
@@ -1579,65 +1575,6 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // CONVERSOR DE LINKS DE DRIVE — herramienta de utilidad legacy
-  // ───────────────────────────────────────────────────────────────
-  // Se mantiene porque es útil para convertir links antiguos que
-  // el usuario pueda tener guardados. No depende de Drive ni API —
-  // solo parsea strings localmente.
-  // ═══════════════════════════════════════════════════════════════
-
-  function extractDriveId(url) {
-    const m = url.match(/\/d\/([a-zA-Z0-9_-]{15,})/);
-    return m ? m[1] : (url.match(/^[a-zA-Z0-9_-]{15,}$/) ? url : null);
-  }
-  function convertToDirectLink(id) {
-    return `https://lh3.googleusercontent.com/d/${id}`;
-  }
-
-  function convertDriveLink() {
-    const val = ($('driveInput')?.value || '').trim();
-    const id  = extractDriveId(val);
-    if (!id) { toast('Link inválido', true); return; }
-    const link = convertToDirectLink(id);
-    setText('convertedLink', link);
-    const preview = $('convertedPreview');
-    if (preview) preview.src = link;
-    const resultBox = $('convertResult');
-    if (resultBox) resultBox.style.display = 'block';
-  }
-
-  function copyConverted() {
-    const txt = $('convertedLink')?.textContent || '';
-    if (!txt) return;
-    navigator.clipboard.writeText(txt)
-      .then(() => toast('📋 Copiado'))
-      .catch(() => toast('No se pudo copiar', true));
-  }
-
-  function convertBulk() {
-    const lines = ($('bulkInput')?.value || '').split('\n').map(l => l.trim()).filter(l => l);
-    const res = $('bulkResult');
-    if (!res) return;
-    if (!lines.length) { res.style.display = 'none'; return; }
-    res.style.display = 'flex';
-    res.innerHTML = lines.map(line => {
-      const id = extractDriveId(line);
-      if (!id) return `<div style="font-size:10px;color:var(--red)">❌ Inválido: ${esc(line)}</div>`;
-      const link = convertToDirectLink(id);
-      return `<div class="conv-result" onclick="copyBulkLink(this)" data-link="${esc(link)}">${esc(link)}</div>`;
-    }).join('');
-  }
-
-  /** Click handler para copiar un link individual del resultado bulk. */
-  function copyBulkLink(el) {
-    const link = el.getAttribute('data-link');
-    if (!link) return;
-    navigator.clipboard.writeText(link)
-      .then(() => toast('📋 Copiado'))
-      .catch(() => toast('No se pudo copiar', true));
-  }
-
-  // ═══════════════════════════════════════════════════════════════
   // EXPONER FUNCIONES USADAS POR onclick INLINE DEL HTML
   // ───────────────────────────────────────────────────────────────
   // El HTML del admin usa atributos onclick="xxx()" por toda la
@@ -1690,12 +1627,6 @@
   window.saveBanner          = saveBanner;
   window.clearBanner         = clearBanner;
   window.pickBannerFile      = pickBannerFile;
-
-  // Conversor de links
-  window.convertDriveLink    = convertDriveLink;
-  window.copyConverted       = copyConverted;
-  window.convertBulk         = convertBulk;
-  window.copyBulkLink        = copyBulkLink;
 
   // ═══════════════════════════════════════════════════════════════
   // BOOT — decidir si mostrar login o entrar directo

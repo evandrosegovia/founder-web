@@ -1,19 +1,22 @@
 /* =============================================================
    FOUNDER — components/founder-checkout.js
    -------------------------------------------------------------
-   Lógica específica de checkout.html migrada desde el script
-   inline original. Cambios respecto a la versión previa:
-     • fetchCupon()  → llama a /api/checkout (validate_coupon)
-     • processOrder()→ llama a /api/checkout (create_order)
-     • Se eliminó la dependencia del Google Sheet (GViz) y del
-       Apps Script. Ahora toda la persistencia es Supabase.
-     • Se mantiene 100% la UX: textos, WhatsApp, flujos, validaciones.
+   Lógica del flujo de checkout.
+
+   Qué hace:
+     • fetchCupon()   → valida cupones contra /api/checkout
+                        (action:"validate_coupon").
+     • processOrder() → crea el pedido en /api/checkout
+                        (action:"create_order"). La persistencia
+                        es transaccional en Supabase.
+     • Mantiene la UX completa: textos, WhatsApp, flujos,
+       validaciones, pantalla de confirmación.
 
    Precondiciones:
      - Cargado DESPUÉS de components/supabase-client.js y cart.js.
      - El DOM de checkout.html ya debe estar presente (se usa
        el tag <script src="components/founder-checkout.js">
-       al final del body, como en la versión anterior).
+       al final del body).
    ============================================================= */
 'use strict';
 

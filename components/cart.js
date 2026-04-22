@@ -26,7 +26,7 @@
 
   // ── Fuente de datos ──────────────────────────────────────────
   // Los estados de stock se leen desde Supabase vía window.founderDB
-  // (definido en supabase-client.js). No leemos el Google Sheet.
+  // (definido en supabase-client.js).
 
   // ── Storage keys ─────────────────────────────────────────────
   const CART_KEY   = 'founder_cart';

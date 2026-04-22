@@ -1,21 +1,23 @@
 /* =============================================================
    FOUNDER — components/founder-seguimiento.js
    -------------------------------------------------------------
-   Lógica específica de seguimiento.html migrada desde el script
-   inline original. Cambios respecto a la versión previa:
-     • buscarPedido()  → llama a /api/seguimiento (POST)
-     • mostrarResultado() acepta el objeto plano de Supabase
-       (antes recibía una fila del formato GViz de Google Sheets).
-     • renderProductos() usa order_items estructurado cuando está
-       disponible, con fallback al parseo del string `productos`.
-     • Las fotos se leen de Supabase vía window.founderDB.fetchPhotoMap()
-       en vez de consultar GViz por cada producto.
+   Lógica de la página pública de seguimiento de pedidos.
+
+   Qué hace:
+     • buscarPedido()    → consulta /api/seguimiento por POST
+                           (body: { numero, email }).
+     • mostrarResultado()→ renderiza el pedido devuelto por Supabase.
+     • renderProductos() → usa order_items estructurado cuando
+                           está disponible, con fallback al parseo
+                           del string `productos`.
+     • Las fotos de los productos se leen de Supabase vía
+       window.founderDB.fetchPhotoMap().
 
    Precondiciones:
      - Cargado DESPUÉS de components/supabase-client.js y cart.js.
      - El DOM de seguimiento.html ya debe estar presente.
 
-   Se mantiene 100% la UX:
+   UX incluida:
      - Formulario (inputs Pedido + Email).
      - Barra de progreso de 4 pasos.
      - Panel de tracking (envío) / coordinar retiro.
