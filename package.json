@@ -1,0 +1,12 @@
+{
+  "name": "founder-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend serverless para FOUNDER.UY (Fase 3 — checkout / seguimiento / admin)",
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  }
+}

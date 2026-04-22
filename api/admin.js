@@ -1,0 +1,457 @@
+// ═════════════════════════════════════════════════════════════════
+// FOUNDER — /api/admin
+// ─────────────────────────────────────────────────────────────────
+// Endpoint único del panel de administración. TODAS las acciones
+// pasan por acá, cada una identificada por body.action.
+//
+// Seguridad:
+//   - Todas las requests deben incluir password === ADMIN_PASSWORD.
+//   - Si falta o está mal, se devuelve 401 (unauthorized).
+//   - El password viaja en el body, no en la URL (nunca en logs).
+//   - Se usa comparación en tiempo constante para mitigar timing attacks.
+//
+// Acciones soportadas:
+//   LOGIN / AUTH
+//     - login                    → valida password (frontend guarda token en sessionStorage)
+//
+//   PEDIDOS
+//     - list_orders              → lista completa con items embebidos
+//     - update_order_status      → cambia orders.estado
+//     - update_order_tracking    → guarda nro_seguimiento + url_seguimiento
+//
+//   CUPONES
+//     - list_coupons             → lista todos los cupones
+//     - create_coupon            → crea uno nuevo
+//     - update_coupon            → toggle activo / editar campos
+//     - delete_coupon            → elimina
+//
+//   PRODUCTOS
+//     - list_products            → lista + colores + fotos (para editor)
+//     - save_product             → upsert de producto + colores + fotos
+//     - delete_product           → elimina producto (cascada)
+//
+//   BANNER / SETTINGS
+//     - get_setting              → lee site_settings[key]
+//     - set_setting              → escribe site_settings[key]
+//
+//   STORAGE
+//     - get_upload_url           → genera URL firmada para subir foto al bucket
+//                                  (cliente sube la imagen DIRECTO a Supabase,
+//                                  evitando pasar el binario por Vercel)
+// ═════════════════════════════════════════════════════════════════
+
+import { supabase, createHandler, ok, fail, parseBody } from './_lib/supabase.js';
+import crypto from 'node:crypto';
+
+const BUCKET_PHOTOS = 'product-photos';
+
+// ── Autenticación ─────────────────────────────────────────────
+/** Compara en tiempo constante para no filtrar info vía timing. */
+function safeEqual(a, b) {
+  const bufA = Buffer.from(String(a || ''), 'utf8');
+  const bufB = Buffer.from(String(b || ''), 'utf8');
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function requireAuth(body, res) {
+  const expected = process.env.ADMIN_PASSWORD || '';
+  if (!expected) {
+    fail(res, 500, 'server_misconfigured', 'ADMIN_PASSWORD no configurada en Vercel.');
+    return false;
+  }
+  const provided = body.password || '';
+  if (!safeEqual(provided, expected)) {
+    fail(res, 401, 'unauthorized', 'Contraseña incorrecta');
+    return false;
+  }
+  return true;
+}
+
+// ═════════════════════════════════════════════════════════════════
+// LOGIN
+// ═════════════════════════════════════════════════════════════════
+async function handleLogin(body, res) {
+  if (!requireAuth(body, res)) return;
+  return ok(res);
+}
+
+// ═════════════════════════════════════════════════════════════════
+// PEDIDOS
+// ═════════════════════════════════════════════════════════════════
+async function handleListOrders(body, res) {
+  if (!requireAuth(body, res)) return;
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      id, numero, fecha, nombre, apellido, celular, email,
+      entrega, direccion, productos,
+      subtotal, descuento, envio, total,
+      pago, estado, notas, cupon_codigo,
+      nro_seguimiento, url_seguimiento,
+      created_at, updated_at,
+      order_items ( id, product_name, color, cantidad, precio_unitario )
+    `)
+    .order('created_at', { ascending: false });
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res, { orders: data || [] });
+}
+
+async function handleUpdateOrderStatus(body, res) {
+  if (!requireAuth(body, res)) return;
+  const id     = String(body.id || '').trim();
+  const estado = String(body.estado || '').trim();
+  if (!id)     return fail(res, 400, 'id_required');
+  if (!estado) return fail(res, 400, 'estado_required');
+
+  const { error } = await supabase
+    .from('orders')
+    .update({ estado })
+    .eq('id', id);
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res);
+}
+
+async function handleUpdateOrderTracking(body, res) {
+  if (!requireAuth(body, res)) return;
+  const id = String(body.id || '').trim();
+  if (!id) return fail(res, 400, 'id_required');
+
+  const nro = String(body.nro_seguimiento || '').replace(/[<>"']/g, '').substring(0, 100);
+  const url = String(body.url_seguimiento || '').replace(/[<>"'\s]/g, '').substring(0, 500);
+
+  if (url && !/^https?:\/\//i.test(url)) {
+    return fail(res, 400, 'invalid_url', 'La URL debe empezar con https://');
+  }
+
+  const { error } = await supabase
+    .from('orders')
+    .update({ nro_seguimiento: nro, url_seguimiento: url })
+    .eq('id', id);
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res);
+}
+
+// ═════════════════════════════════════════════════════════════════
+// CUPONES
+// ═════════════════════════════════════════════════════════════════
+async function handleListCoupons(body, res) {
+  if (!requireAuth(body, res)) return;
+  const { data, error } = await supabase
+    .from('coupons')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res, { coupons: data || [] });
+}
+
+async function handleCreateCoupon(body, res) {
+  if (!requireAuth(body, res)) return;
+  const c = body.coupon || {};
+
+  // Validaciones mínimas
+  const codigo = String(c.codigo || '').trim().toUpperCase();
+  if (!codigo) return fail(res, 400, 'codigo_required');
+  if (!c.valor || Number(c.valor) <= 0) return fail(res, 400, 'valor_required');
+
+  const row = {
+    codigo,
+    tipo:       c.tipo       || 'porcentaje',
+    valor:      Number(c.valor) || 0,
+    uso:        c.uso        || 'multiuso',
+    min_compra: c.min_compra != null ? Number(c.min_compra) : 0,
+    activo:     c.activo !== false,  // default true
+    usos_count: 0,
+    emails_usados: [],
+    desde:      c.desde || null,   // formato YYYY-MM-DD
+    hasta:      c.hasta || null,
+  };
+
+  const { data, error } = await supabase
+    .from('coupons')
+    .insert(row)
+    .select()
+    .maybeSingle();
+  if (error) {
+    if ((error.message || '').toLowerCase().includes('duplicate')) {
+      return fail(res, 409, 'codigo_duplicate', 'Ya existe un cupón con ese código');
+    }
+    return fail(res, 500, 'db_error', error.message);
+  }
+  return ok(res, { coupon: data });
+}
+
+async function handleUpdateCoupon(body, res) {
+  if (!requireAuth(body, res)) return;
+  const id = String(body.id || '').trim();
+  if (!id) return fail(res, 400, 'id_required');
+
+  // Solo campos whitelisted se pueden actualizar
+  const allowed = ['codigo', 'tipo', 'valor', 'uso', 'min_compra', 'activo', 'desde', 'hasta'];
+  const patch = {};
+  for (const k of allowed) {
+    if (body.patch && Object.prototype.hasOwnProperty.call(body.patch, k)) {
+      patch[k] = body.patch[k];
+    }
+  }
+  if (typeof patch.codigo === 'string') patch.codigo = patch.codigo.trim().toUpperCase();
+  if (Object.keys(patch).length === 0) return fail(res, 400, 'nothing_to_update');
+
+  const { error } = await supabase.from('coupons').update(patch).eq('id', id);
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res);
+}
+
+async function handleDeleteCoupon(body, res) {
+  if (!requireAuth(body, res)) return;
+  const id = String(body.id || '').trim();
+  if (!id) return fail(res, 400, 'id_required');
+  const { error } = await supabase.from('coupons').delete().eq('id', id);
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res);
+}
+
+// ═════════════════════════════════════════════════════════════════
+// PRODUCTOS
+// ═════════════════════════════════════════════════════════════════
+async function handleListProducts(body, res) {
+  if (!requireAuth(body, res)) return;
+  // Traemos TODO (incluso inactivos), con colores y fotos embebidas.
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      id, slug, nombre, precio, descripcion, especificaciones,
+      capacidad, dimensiones, material, nota,
+      lleva_billetes, lleva_monedas, banner_url,
+      orden, activo, created_at, updated_at,
+      product_colors (
+        id, nombre, estado, precio_oferta, orden,
+        product_photos ( id, url, orden, es_principal )
+      )
+    `)
+    .order('orden', { ascending: true });
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res, { products: data || [] });
+}
+
+/**
+ * Upsert completo de un producto con sus colores y fotos.
+ * Body: { action, password, product: { ... }, colors: [ { nombre, estado, precio_oferta, fotos:[url] } ] }
+ *
+ * Para simplificar y evitar inconsistencias, seguimos esta estrategia:
+ *   1) upsert del producto por slug (si es nuevo, se crea; si existe, se actualiza).
+ *   2) Delete de TODOS los product_colors del producto (cascadea fotos).
+ *   3) Insert de todos los colores nuevos + sus fotos.
+ *
+ * Es atómico desde el punto de vista del cliente: si el paso 2 falla, no hay
+ * cambios; si el paso 3 falla a la mitad, el admin puede reintentar.
+ */
+async function handleSaveProduct(body, res) {
+  if (!requireAuth(body, res)) return;
+  const p = body.product || {};
+  const colors = Array.isArray(body.colors) ? body.colors : [];
+
+  const nombre = String(p.nombre || '').trim();
+  if (!nombre) return fail(res, 400, 'nombre_required');
+  const precio = parseInt(p.precio, 10);
+  if (!precio || precio <= 0) return fail(res, 400, 'precio_required');
+
+  // Slug = nombre en minúsculas, con guiones. Solo generado automático si no vino.
+  const slug = p.slug
+    ? String(p.slug).trim().toLowerCase()
+    : nombre.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  const productRow = {
+    slug,
+    nombre,
+    precio,
+    descripcion:      p.descripcion || '',
+    especificaciones: Array.isArray(p.especificaciones) ? p.especificaciones : [],
+    capacidad:        p.capacidad   || null,
+    dimensiones:      p.dimensiones || null,
+    material:         p.material    || null,
+    nota:             p.nota        || null,
+    lleva_billetes:   p.lleva_billetes === true || p.lleva_billetes === 'si',
+    lleva_monedas:    p.lleva_monedas  === true || p.lleva_monedas  === 'si',
+    orden:            parseInt(p.orden, 10) || 1,
+    activo:           p.activo !== false,
+    // banner_url NO se toca acá (se maneja por site_settings ahora),
+    // pero preservamos si vino explícitamente:
+    ...(p.banner_url !== undefined ? { banner_url: p.banner_url } : {}),
+  };
+
+  // 1) Upsert del producto
+  const { data: upsertedProduct, error: upsertErr } = await supabase
+    .from('products')
+    .upsert(productRow, { onConflict: 'slug' })
+    .select()
+    .maybeSingle();
+  if (upsertErr) return fail(res, 500, 'db_error', upsertErr.message);
+
+  const productId = upsertedProduct.id;
+
+  // 2) Borrar colores existentes (cascadea fotos)
+  const { error: delErr } = await supabase
+    .from('product_colors')
+    .delete()
+    .eq('product_id', productId);
+  if (delErr) return fail(res, 500, 'db_error', delErr.message);
+
+  // 3) Insertar colores + fotos
+  for (let i = 0; i < colors.length; i++) {
+    const c = colors[i];
+    const colorName = String(c.nombre || '').trim();
+    if (!colorName) continue;
+
+    const estado = ['activo','sin_stock','oferta'].includes(c.estado) ? c.estado : 'activo';
+    const precioOferta = (estado === 'oferta' && c.precio_oferta)
+      ? parseInt(c.precio_oferta, 10)
+      : null;
+
+    const { data: insertedColor, error: colorErr } = await supabase
+      .from('product_colors')
+      .insert({
+        product_id:    productId,
+        nombre:        colorName,
+        estado,
+        precio_oferta: precioOferta,
+        orden:         i + 1,
+      })
+      .select()
+      .maybeSingle();
+    if (colorErr) return fail(res, 500, 'db_error', colorErr.message);
+
+    // Fotos del color
+    const fotos = Array.isArray(c.fotos) ? c.fotos.filter(u => u && u.trim()) : [];
+    if (fotos.length > 0) {
+      const photoRows = fotos.map((url, idx) => ({
+        color_id:     insertedColor.id,
+        url:          String(url).trim(),
+        orden:        idx + 1,
+        es_principal: idx === 0,
+      }));
+      const { error: photoErr } = await supabase.from('product_photos').insert(photoRows);
+      if (photoErr) return fail(res, 500, 'db_error', photoErr.message);
+    }
+  }
+
+  return ok(res, { id: productId });
+}
+
+async function handleDeleteProduct(body, res) {
+  if (!requireAuth(body, res)) return;
+  const id = String(body.id || '').trim();
+  if (!id) return fail(res, 400, 'id_required');
+  // La FK de product_colors tiene ON DELETE CASCADE → elimina todo en cadena.
+  const { error } = await supabase.from('products').delete().eq('id', id);
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res);
+}
+
+// ═════════════════════════════════════════════════════════════════
+// SITE SETTINGS (banner y futuras configs)
+// ═════════════════════════════════════════════════════════════════
+async function handleGetSetting(body, res) {
+  if (!requireAuth(body, res)) return;
+  const key = String(body.key || '').trim();
+  if (!key) return fail(res, 400, 'key_required');
+  const { data, error } = await supabase
+    .from('site_settings')
+    .select('value')
+    .eq('key', key)
+    .maybeSingle();
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res, { value: data?.value ?? '' });
+}
+
+async function handleSetSetting(body, res) {
+  if (!requireAuth(body, res)) return;
+  const key = String(body.key || '').trim();
+  if (!key) return fail(res, 400, 'key_required');
+  const value = String(body.value ?? '');
+
+  const { error } = await supabase
+    .from('site_settings')
+    .upsert({ key, value }, { onConflict: 'key' });
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res);
+}
+
+// ═════════════════════════════════════════════════════════════════
+// STORAGE — URL firmada para subir foto al bucket
+// ═════════════════════════════════════════════════════════════════
+/**
+ * Flujo de subida en 2 pasos:
+ *   1) Frontend pide a /api/admin { action:"get_upload_url", filename, ... }.
+ *      El servidor valida password y devuelve una URL firmada.
+ *   2) Frontend hace PUT directo a esa URL con el binario de la imagen.
+ *      El archivo queda en Supabase Storage bucket "product-photos".
+ *      Como el bucket es público, la URL pública se puede armar y usar.
+ *
+ * Esto evita que el binario pase por Vercel (ahorra tiempo + límites).
+ */
+async function handleGetUploadUrl(body, res) {
+  if (!requireAuth(body, res)) return;
+
+  const filename = String(body.filename || '').trim();
+  if (!filename) return fail(res, 400, 'filename_required');
+
+  // Sanitizar: solo caracteres seguros para path, agregar timestamp.
+  // Ejemplo: "Confort_Camel_foto1.jpg" → "confort-camel-foto1-1761234567890.jpg"
+  const safe = filename
+    .toLowerCase()
+    .replace(/[^a-z0-9.-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const ext = safe.includes('.') ? safe.split('.').pop() : 'jpg';
+  const base = safe.replace(/\.[^.]+$/, '') || 'photo';
+  const path = `${base}-${Date.now()}.${ext}`;
+
+  const { data, error } = await supabase
+    .storage
+    .from(BUCKET_PHOTOS)
+    .createSignedUploadUrl(path);
+
+  if (error) return fail(res, 500, 'storage_error', error.message);
+
+  // URL pública que el frontend guardará en product_photos.url
+  const { data: pubData } = supabase
+    .storage
+    .from(BUCKET_PHOTOS)
+    .getPublicUrl(path);
+
+  return ok(res, {
+    path,                                  // ruta dentro del bucket
+    uploadUrl: data.signedUrl,             // URL firmada para PUT
+    token:     data.token,                 // (Supabase moderno incluye el token)
+    publicUrl: pubData.publicUrl,          // URL pública final (la que se guarda en DB)
+  });
+}
+
+// ═════════════════════════════════════════════════════════════════
+// HANDLER PRINCIPAL — router por action
+// ═════════════════════════════════════════════════════════════════
+const ACTIONS = {
+  login:                 handleLogin,
+  list_orders:           handleListOrders,
+  update_order_status:   handleUpdateOrderStatus,
+  update_order_tracking: handleUpdateOrderTracking,
+  list_coupons:          handleListCoupons,
+  create_coupon:         handleCreateCoupon,
+  update_coupon:         handleUpdateCoupon,
+  delete_coupon:         handleDeleteCoupon,
+  list_products:         handleListProducts,
+  save_product:          handleSaveProduct,
+  delete_product:        handleDeleteProduct,
+  get_setting:           handleGetSetting,
+  set_setting:           handleSetSetting,
+  get_upload_url:        handleGetUploadUrl,
+};
+
+export default createHandler(async (req, res) => {
+  const body   = parseBody(req);
+  const action = String(body.action || '').trim();
+  const fn = ACTIONS[action];
+  if (!fn) return fail(res, 400, 'unknown_action', `action desconocida: "${action}"`);
+  return fn(body, res);
+});
