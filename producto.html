@@ -704,6 +704,8 @@ body.cart-open .wa-bubble {
 
 <!-- ── CARRITO LATERAL (componente compartido) ─────────────── -->
 <div id="site-cart"></div>
+<!-- supabase-client.js debe ir ANTES que cart.js (cart.js depende de window.founderDB) -->
+<script src="components/supabase-client.js"></script>
 <script src="components/cart.js"></script>
 
 
@@ -718,13 +720,14 @@ body.cart-open .wa-bubble {
    ============================================================= */
 
 // ── SHARED CONFIG — actualizar también en index.html si cambia ──
+// NOTA (Fase 2B Supabase): productos/fotos se leen desde Supabase.
+// Campos legacy (SHEET_ID, APPS_SCRIPT_URL) se mantienen para compat
+// con checkout.html (cupones + envío de pedidos → Fase 3).
 const CONFIG = Object.freeze({
   SHEET_ID:      '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8',
   WA_NUMBER:     '598098550096',
   FREE_SHIPPING: 2000,
   SHIPPING_COST: 250,
-  get SHEET_PRODUCTOS() { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=productos`; },
-  get SHEET_FOTOS()     { return `https://docs.google.com/spreadsheets/d/${this.SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos`; },
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx8LByXXY7QwzHEB0RyvP0Ejbmqyw099F4ntbbwRIdkRv8JlUDaryn_vQj2aL9kANA/exec',
 });
 
@@ -785,34 +788,22 @@ function getProductNameFromURL() {
   return (params.get('p') || '').trim();
 }
 
-// ── SHARED API — Google Sheets ──────────────────────────────────
-async function fetchSheet(url) {
-  const res  = await fetch(`${url}&t=${Date.now()}`);
-  const text = await res.text();
-  return JSON.parse(text.substring(47, text.length - 2));
-}
+// ── SHARED API — Supabase (Fase 2B) ─────────────────────────────
+// window.founderDB viene de supabase-client.js (cargado antes de este script).
+// Devuelve los productos ya con la forma que este archivo consume —
+// solo falta agregarles los datos visuales del COLOR_MAP.
 
-function parseProducts(rows) {
-  return (rows || [])
-    .map((row, i) => ({
-      id:     i + 1,
-      name:   (row.c[0]?.v || '').trim(),
-      price:  parseInt(row.c[1]?.v) || 0,
-      desc:   row.c[2]?.v || '',
-      colors: (row.c[3]?.v || '').split(',').map(c => {
-        const name = c.trim();
-        return { name, ...(COLOR_MAP[name] || { hex: '#555' }) };
-      }).filter(c => c.name),
-      specs:  (row.c[4]?.v || '').split('|').map(s => s.trim()).filter(Boolean),
-      extras: parseExtras(row.c[6]?.v || ''),  // col G — estados de colores, material, nota, etc.
-    }))
-    .filter(p => p.name);
-}
-
-/** Parsea el JSON de extras de la col G. Retorna {} si está vacío o es inválido. */
-function parseExtras(str) {
-  if (!str) return {};
-  try { return JSON.parse(str); } catch { return {}; }
+/** Mixin: inyecta hex/css/pattern a cada color usando COLOR_MAP.
+ *  El cliente Supabase devuelve [{name:"Camel"},...] y esta función
+ *  lo completa a [{name:"Camel", hex:"#d4a96e", css:"var(...)"},...]. */
+function enrichColors(products) {
+  return (products || []).map(p => ({
+    ...p,
+    colors: (p.colors || []).map(c => ({
+      ...c,
+      ...(COLOR_MAP[c.name] || { hex: '#555' }),
+    })),
+  }));
 }
 
 /** Retorna el estado y precio de oferta de un color dado.
@@ -823,20 +814,6 @@ function getColorEstado(product, colorName) {
   const estado = ce[colorName] || 'activo';
   const precioOferta = estado === 'oferta' ? (ce[`${colorName}_precio_oferta`] || null) : null;
   return { estado, precioOferta };
-}
-
-function parsePhotoMap(rows) {
-  const map = {};
-  (rows || []).forEach(row => {
-    const modelo = (row.c[0]?.v || '').trim();
-    const color  = (row.c[1]?.v || '').trim();
-    const fotos  = [row.c[2]?.v, row.c[3]?.v, row.c[4]?.v, row.c[5]?.v, row.c[6]?.v].filter(Boolean);
-    if (modelo && color) {
-      if (!map[modelo]) map[modelo] = {};
-      map[modelo][color] = fotos;
-    }
-  });
-  return map;
 }
 
 function getPhotos(model, color) {
@@ -853,23 +830,16 @@ function cartPhotoPlaceholder(name) {
   return el;
 }
 
-/** Si una imagen del carrito falla, intenta reconstruir la URL desde el Sheet de fotos.
+/** Si una imagen del carrito falla, intenta reconstruir la URL desde Supabase.
  *  Si eso también falla, muestra el placeholder elegante. */
 async function recoverCartPhoto(imgEl, name, color) {
   try {
-    const data = await fetchSheet(CONFIG.SHEET_FOTOS);
-    const rows = data?.table?.rows || [];
-    for (const row of rows) {
-      const modelo = (row.c[0]?.v || '').trim();
-      const col    = (row.c[1]?.v || '').trim();
-      if (modelo === name && col === color) {
-        const foto = [row.c[2]?.v, row.c[3]?.v, row.c[4]?.v, row.c[5]?.v, row.c[6]?.v].find(Boolean);
-        if (foto) {
-          imgEl.src = foto;
-          imgEl.onerror = () => imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
-          return;
-        }
-      }
+    const photoMap = await window.founderDB.fetchPhotoMap();
+    const foto = photoMap[name]?.[color]?.[0];
+    if (foto) {
+      imgEl.src = foto;
+      imgEl.onerror = () => imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
+      return;
     }
   } catch (_) {}
   imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
@@ -885,13 +855,14 @@ async function init() {
   }
 
   try {
-    const [jP, jF] = await Promise.all([
-      fetchSheet(CONFIG.SHEET_PRODUCTOS),
-      fetchSheet(CONFIG.SHEET_FOTOS),
+    // Cargamos productos y fotos en paralelo desde Supabase.
+    const [rawProducts, photoMap] = await Promise.all([
+      window.founderDB.fetchProducts(),
+      window.founderDB.fetchPhotoMap(),
     ]);
 
-    state.photoMap    = parsePhotoMap(jF.table.rows);
-    state.allProducts = parseProducts(jP.table.rows);
+    state.photoMap    = photoMap;
+    state.allProducts = enrichColors(rawProducts);
     state.product     = state.allProducts.find(
       p => p.name.toLowerCase() === productName.toLowerCase()
     );

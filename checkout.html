@@ -532,6 +532,8 @@ a, button, [onclick], label, select, .co-toggle-btn { cursor: pointer; }
 
 <!-- Cargar módulo compartido para tener API window.founderCart disponible.
      No inyecta markup porque no hay <div id="site-cart"> en esta página. -->
+<!-- supabase-client.js debe ir ANTES que cart.js (cart.js depende de window.founderDB) -->
+<script src="components/supabase-client.js"></script>
 <script src="components/cart.js"></script>
 
 <script>
@@ -583,23 +585,12 @@ const setText = (id, text) => { const el = $(id); if (el) el.textContent = text;
 const toggle  = (el, cls, force) => el?.classList.toggle(cls, force);
 
 // ── INICIALIZACIÓN ────────────────────────────────────────────
-// Mapa de fotos cargado desde Sheets (modelo → color → [urls])
+// Mapa de fotos cargado desde Supabase (modelo → color → [urls])
 let photoMap = {};
 
 async function loadPhotos() {
   try {
-    const res  = await fetch(`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=fotos&t=${Date.now()}`);
-    const text = await res.text();
-    const data = JSON.parse(text.substring(47, text.length - 2));
-    (data.table.rows || []).forEach(row => {
-      const model = (row.c[0]?.v || '').trim();
-      const color = (row.c[1]?.v || '').trim();
-      const fotos = [row.c[2]?.v, row.c[3]?.v, row.c[4]?.v, row.c[5]?.v, row.c[6]?.v].filter(Boolean);
-      if (model && color) {
-        if (!photoMap[model]) photoMap[model] = {};
-        photoMap[model][color] = fotos;
-      }
-    });
+    photoMap = await window.founderDB.fetchPhotoMap();
     renderOrderSummary(); // re-renderizar con fotos
   } catch (e) {
     console.warn('[Founder] No se pudieron cargar fotos:', e);
