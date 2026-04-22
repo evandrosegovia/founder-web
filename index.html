@@ -1045,17 +1045,13 @@ body.cart-open .wa-bubble {
    ============================================================= */
 
 // ── SHARED CONFIG — única fuente de verdad. Actualizar también en producto.html ──
-// NOTA (Fase 2B Supabase): los productos/fotos ya NO se leen del Sheet.
-// Se leen desde Supabase vía window.founderDB (supabase-client.js).
-// SHEET_ID + Apps Script siguen vivos porque checkout.html los usa para
-// cupones y envío de pedidos (se migran en Fase 3).
+// El catálogo se lee desde Supabase (window.founderDB en supabase-client.js).
+// El checkout persiste en Supabase vía /api/checkout (Vercel Serverless).
 const CONFIG = Object.freeze({
-  SHEET_ID:       '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8',
   WA_NUMBER:      '598098550096',
   FREE_SHIPPING:  2000,
   SHIPPING_COST:  250,
   THUMBS_VISIBLE: 5,
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx8LByXXY7QwzHEB0RyvP0Ejbmqyw099F4ntbbwRIdkRv8JlUDaryn_vQj2aL9kANA/exec',
 });
 
 const COLOR_MAP = Object.freeze({

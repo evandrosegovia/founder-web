@@ -716,19 +716,16 @@ body.cart-open .wa-bubble {
 /* =============================================================
    FOUNDER producto.html
    Lee el producto desde la URL (?p=NombreDelProducto)
-   y carga todos los datos desde Google Sheets en tiempo real.
+   y carga todos los datos desde Supabase en tiempo real.
    ============================================================= */
 
 // ── SHARED CONFIG — actualizar también en index.html si cambia ──
-// NOTA (Fase 2B Supabase): productos/fotos se leen desde Supabase.
-// Campos legacy (SHEET_ID, APPS_SCRIPT_URL) se mantienen para compat
-// con checkout.html (cupones + envío de pedidos → Fase 3).
+// El catálogo se lee desde Supabase (window.founderDB en supabase-client.js).
+// El checkout persiste en Supabase vía /api/checkout (Vercel Serverless).
 const CONFIG = Object.freeze({
-  SHEET_ID:      '1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8',
   WA_NUMBER:     '598098550096',
   FREE_SHIPPING: 2000,
   SHIPPING_COST: 250,
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx8LByXXY7QwzHEB0RyvP0Ejbmqyw099F4ntbbwRIdkRv8JlUDaryn_vQj2aL9kANA/exec',
 });
 
 const COLOR_MAP = Object.freeze({
