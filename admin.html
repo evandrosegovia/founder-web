@@ -328,7 +328,6 @@ textarea.fi{resize:vertical;min-height:70px}
       <div class="nav-section">Herramientas</div>
       <div class="nav-item" onclick="nav('cupones',this)"><span class="nav-icon">🏷️</span>Cupones</div>
       <div class="nav-item" onclick="nav('banner',this)"><span class="nav-icon">🖼️</span>Banner inicio</div>
-      <div class="nav-item" onclick="nav('imagenes',this)"><span class="nav-icon">🔗</span>Conversor imágenes</div>
       <div class="nav-section">Accesos</div>
       <div class="nav-item" onclick="window.open('https://founder-web-gules.vercel.app','_blank')"><span class="nav-icon">🌐</span>Ver tienda</div>
       <div class="nav-item" onclick="window.open('https://wa.me/598098550096','_blank')"><span class="nav-icon">💬</span>WhatsApp</div>
@@ -570,46 +569,6 @@ textarea.fi{resize:vertical;min-height:70px}
         </div>
       </div>
 
-      <!-- CONVERSOR IMAGENES -->
-      <div class="page" id="page-imagenes">
-        <div class="ph"><div><div class="ph-title">Conversor de imágenes</div><div class="ph-sub">Utilidad: convertir links de Google Drive antiguos</div></div></div>
-        <div class="card">
-          <div class="card-head"><div class="card-title">¿Cuándo usar esto?</div></div>
-          <div class="card-body" style="font-size:12px;color:var(--muted);line-height:2">
-            Esta herramienta es útil <strong style="color:var(--white)">solo si tenés links viejos de Google Drive</strong> que querés seguir usando.<br>
-            Para fotos nuevas, lo recomendado es subirlas desde el botón 📁 del editor de productos — se guardan automáticamente en la base de datos.
-          </div>
-        </div>
-        <div class="card" style="margin-top:12px">
-          <div class="card-head"><div class="card-title">Convertir link</div></div>
-          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
-            <div class="fg">
-              <div class="fl">Link de Google Drive</div>
-              <div class="conv-row">
-                <input type="text" class="conv-inp" id="driveInput" placeholder="https://drive.google.com/file/d/...">
-                <button class="conv-btn" onclick="convertDriveLink()">Convertir →</button>
-              </div>
-            </div>
-            <div id="convertResult" style="display:none">
-              <div class="fl" style="margin-bottom:6px">✅ Hacé click para copiar</div>
-              <div class="conv-result" id="convertedLink" onclick="copyConverted()"></div>
-              <img id="convertedPreview" src="" style="max-width:220px;max-height:150px;object-fit:cover;border:1px solid var(--border);margin-top:10px">
-            </div>
-          </div>
-        </div>
-        <div class="card" style="margin-top:12px">
-          <div class="card-head"><div class="card-title">Convertir varios</div></div>
-          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
-            <div class="fg">
-              <div class="fl">Links (uno por línea)</div>
-              <textarea class="fi" id="bulkInput" placeholder="https://drive.google.com/file/d/ID1/view&#10;https://drive.google.com/file/d/ID2/view" style="min-height:90px"></textarea>
-            </div>
-            <button class="btn btn-primary btn-sm" onclick="convertBulk()" style="align-self:flex-start">Convertir todos</button>
-            <div id="bulkResult" style="display:none;flex-direction:column;gap:7px"></div>
-          </div>
-        </div>
-      </div>
-
     </div><!-- /main-content -->
   </div><!-- /body-layout -->
 </div><!-- /adminPanel -->
@@ -718,8 +677,8 @@ textarea.fi{resize:vertical;min-height:70px}
 
 
 <!-- Lógica del panel de administración -->
-<!-- Toda la funcionalidad vive en components/founder-admin.js.
-     Usa /api/admin (Vercel Serverless) + Supabase, sin Google Sheets ni Drive. -->
+<!-- Toda la funcionalidad vive en components/founder-admin.js,
+     que habla con /api/admin (Vercel Serverless) + Supabase. -->
 <script src="components/founder-admin.js"></script>
 
 </body>
