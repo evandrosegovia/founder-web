@@ -1,7 +1,7 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 17 — inicio (22/04/2026)
-**En curso:** 17 — Fase 4 (Dominio custom + Meta Pixel + CAPI)
+**Última actualización:** Sesión 17 — cierre (23/04/2026)
+**Próxima sesión:** 18 — Pendientes de limpieza + evaluación de campañas pagas
 
 ---
 
@@ -9,14 +9,11 @@
 
 Pegale a Claude este mensaje al arrancar:
 
-> Leé `ESTADO.md` y arrancá con la **Fase 4** (Meta Pixel + CAPI).
-> Las Fases 1, 2, 3A, 3B y 3C están completas. El sitio corre 100% sobre
-> Supabase + Vercel Serverless. Ya no existe ninguna dependencia de Google
-> (Sheets, Apps Script, Drive, OAuth, Cloud) — todo fue apagado y archivado.
-> El repo está completamente libre de código legacy (grep confirmado).
-> Queda: integrar Meta Pixel del lado cliente + Conversion API del lado server,
-> para tracking de Facebook/Instagram Ads. Antes de tocar nada, hacé los checks
-> preventivos de `ESTADO.md` sección "Plan técnico para Fase 4".
+> Leé `ESTADO.md` y retomamos después de Sesión 17. Todas las fases principales
+> están completas. El sitio corre 100% sobre Supabase + Vercel, con dominio
+> custom `www.founder.uy` y tracking de Meta (Pixel + CAPI con deduplicación
+> dual) funcionando. Hay una lista de pendientes menores al final del archivo.
+> Decidime qué querés priorizar de esa lista.
 
 ---
 
@@ -29,8 +26,8 @@ Pegale a Claude este mensaje al arrancar:
 | **2B** — Frontend público | ✅ Completa | index/producto/carrito leen de Supabase |
 | **3A** — Checkout + Seguimiento | ✅ Completa | Ambos migrados a `/api/checkout` y `/api/seguimiento` |
 | **3B** — Admin | ✅ Completa | `admin.html` migrado a `/api/admin` — sin Sheets ni Drive |
-| **3C** — Limpieza | ✅ **Completa** | Apps Script apagado, Sheet archivado, OAuth y proyecto Cloud borrados, código 100% libre de legacy |
-| **4** — Meta Pixel + CAPI | ⏳ **Pendiente** | Tracking para Facebook/Instagram Ads |
+| **3C** — Limpieza | ✅ Completa | Apps Script apagado, Sheet archivado, código libre de legacy |
+| **4** — Meta Pixel + CAPI | ✅ **Completa** | Dominio custom activo, tracking dual operativo |
 
 ---
 
@@ -273,46 +270,62 @@ founder-web/
 `event_id`. Si el Pixel es bloqueado (ad blocker, Brave, etc.), CAPI salva el
 evento.
 
-### Precondiciones antes de arrancar
-1. Tener un **Business Manager de Meta** y haber creado un **Pixel ID**
-   (ej. `1234567890123456`).
-2. Haber generado un **Access Token de CAPI** desde Events Manager → Settings.
-3. Tener definido el **dominio de Meta**: `www.founder.uy` (dominio custom
-   activo desde Sesión 17 — con redirect 301 desde `founder.uy` y desde
-   `founder-web-gules.vercel.app`).
-4. Verificación de dominio en Meta (requerida para iOS 14+).
+### Estado de precondiciones (actualizado Sesión 17)
+1. ✅ **Business Manager de Meta** creado (`founder.uy` — Business portfolio).
+2. ✅ **Facebook Page** conectada (`founder.uy.oficial`, ID `1058647090653828`).
+3. ✅ **Instagram Business** conectado (`@founder.uy`, ID `17841474091434639`).
+4. ✅ **Ad Account** conectada (`Publicidad FOUNDER`, ID `1653222205862527`).
+5. ✅ **Pixel / Dataset** creado (`Founder Pixel`, ID `2898267450518541`).
+6. ✅ **Access Token de CAPI** generado (guardado fuera del repo — va como
+   env var en Vercel).
+7. ⚠️ **Dominio de Meta**: `www.founder.uy` (dominio custom activo, con
+   redirect 301 desde `founder.uy` y desde `founder-web-gules.vercel.app`).
+8. 🚫 **Verificación de dominio en Meta**: BLOQUEADA por bug de Meta con
+   ccTLDs `.uy` — el validador del campo "Add domain" rechaza `founder.uy`,
+   `www.founder.uy` y variantes con error *"Confirm your domain is correctly
+   formatted"*. Ver sección "Pendientes externos" abajo.
 
-### Checks preventivos al arrancar Sesión 17
-- Confirmar que no hay ningún Pixel instalado ya (buscar `fbq(` o
+### Pendientes externos (no bloqueantes para Pixel + CAPI)
+- **Verificación de dominio en Meta**: Meta bloquea el alta del dominio por
+  bug conocido con ccTLDs regionales (Public Suffix List). No afecta el
+  funcionamiento del Pixel ni de CAPI — solo impacta la optimización AEM
+  (Aggregated Event Measurement) para campañas pagas en iOS 14.5+. Plan:
+  abrir ticket con Meta Pro Support cuando vayamos a arrancar campañas
+  pagas, o esperar que Meta corrija el bug en su lado.
+
+### Checks preventivos al arrancar implementación (Paso 4)
+- Confirmar que no hay ningún Pixel instalado ya (grep `fbq(` y
   `connect.facebook.net/en_US/fbevents.js` en el repo).
-- Confirmar que existe el `event_id` único generado en el checkout (actualmente
-  se usa el `order.numero` estilo `F910752` — servirá).
-- Identificar el mejor lugar para inyectar el Pixel: probablemente en el
-  `<head>` de cada HTML vía un componente nuevo `components/meta-pixel.js`.
-- Evaluar si usar consentimiento de cookies previo (GDPR/LGPD) — en UY no es
-  legalmente obligatorio, pero es buena práctica.
+- Confirmar que existe el `event_id` único generado en el checkout
+  (actualmente se usa el `order.numero` estilo `F910752` — servirá).
+- Identificar el mejor lugar para inyectar el Pixel: `<head>` de cada HTML
+  vía un componente nuevo `components/meta-pixel.js`.
+- Evaluar si usar consentimiento de cookies previo (GDPR/LGPD) — en UY no
+  es legalmente obligatorio, pero es buena práctica.
 
 ### Variables de entorno nuevas en Vercel
-- `META_PIXEL_ID` (pública, puede ir al frontend)
-- `META_CAPI_TOKEN` (sensitive, solo server-side)
-- `META_TEST_EVENT_CODE` (opcional, para pruebas en Events Manager)
+- `META_PIXEL_ID` = `2898267450518541` (pública, puede ir al frontend).
+- `META_CAPI_TOKEN` = `EAA...` (sensitive, solo server-side).
+- `META_TEST_EVENT_CODE` (opcional, para pruebas en Events Manager).
 
 ### Archivos a crear/modificar (estimado)
-- `components/meta-pixel.js` — nuevo, ~100 líneas. Expone `window.fbq(evento, params)`.
-- `index.html`, `producto.html`, `checkout.html` — agregar tag en el `<head>`.
-- `founder-checkout.js` — disparar `InitiateCheckout` al cargar, `AddToCart`
-  al agregar (este ya está en `cart.js`).
-- `cart.js` — disparar `AddToCart` al agregar un producto.
+- `components/meta-pixel.js` — nuevo, ~100 líneas. Carga `fbevents.js` y
+  expone `window.fbq(evento, params)`.
+- `index.html`, `producto.html`, `checkout.html`, `seguimiento.html`,
+  `contacto.html`, `sobre-nosotros.html`, `envios.html`,
+  `tecnologia-rfid.html` — agregar tag en el `<head>`.
+- `producto.html` — disparar `ViewContent` cuando carga un producto.
+- `cart.js` — disparar `AddToCart` al agregar un producto al carrito.
+- `founder-checkout.js` — disparar `InitiateCheckout` al cargar.
 - `api/checkout.js` — en el handler de `create_order`, al final, llamar a
-  CAPI con el Purchase duplicado.
+  CAPI con el Purchase duplicado (con `event_id = order.numero`).
 
-### Decisiones a confirmar al arrancar Sesión 17
-1. ¿Ya existe el Pixel ID en Meta Business Manager? Si no, crearlo primero.
-2. ¿Usar un solo Pixel o múltiples (uno por campaña)? Recomendado: uno solo.
-3. ¿Incluir datos personales del cliente en el CAPI Purchase (email, teléfono
-   hasheados)? Recomendado sí — mejora la match rate, es la práctica estándar.
-4. ¿Agregar consentimiento de cookies antes de activar el Pixel? Decisión
-   producto-legal.
+### Decisiones tomadas al arrancar Sesión 17
+1. ✅ Usar un solo Pixel (`Founder Pixel`).
+2. ✅ Incluir datos personales hasheados (email, teléfono) en CAPI Purchase
+   para mejorar match rate. Se hashean con SHA-256 antes de enviar.
+3. ⏳ Consentimiento de cookies: diferir — se puede agregar después si se
+   decide. UY no lo exige legalmente.
 
 ---
 
@@ -430,12 +443,133 @@ delete from public.orders where email = 'test@prueba.com';
   resuelto con `GRANT ALL`. Código 100% libre de legacy (grep confirmado en 7
   categorías). Apps Script apagado, Sheet archivado con backup, proyecto de
   Google Cloud marcado para eliminación (se borra el ~22/05/2026). `api/ping.js`
-  eliminado. ← **Acá terminamos.**
-- **Sesión 17 (Fase 4):** Meta Pixel + CAPI para tracking de Facebook/Instagram
-  Ads. ← **Próxima.**
+  eliminado.
+- **Sesión 17 (Fase 4):** Dominio custom `founder.uy` conectado a Vercel con
+  SSL. Dominio principal: `www.founder.uy`; redirects 301/308 desde `founder.uy`
+  y desde `founder-web-gules.vercel.app`. Meta Business Portfolio creado con
+  Facebook Page + Instagram Business + Pixel (`2898267450518541`) + Access
+  Token CAPI. Componente nuevo `components/meta-pixel.js` implementado con
+  helpers tipados (ViewContent, AddToCart, InitiateCheckout, Purchase). Módulo
+  nuevo `api/_lib/meta-capi.js` para tracking dual server-side. Checkout
+  modificado con `await` + timeout 3s para que Vercel no mate el fetch antes
+  de que complete. Test end-to-end confirmado: `events_received: 1` con
+  `fbtrace_id` válido. ← **Acá terminamos.**
+- **Sesión 18:** Pendientes menores + evaluación de campañas pagas. ← **Próxima.**
 
 ---
 
-**FIN** — Cerramos Sesión 16. Fase 3C completa. El sitio corre 100% sobre
-Supabase + Vercel, sin ninguna dependencia viva de Google. Próximo paso:
-integrar Meta Pixel + Conversion API para tracking de campañas. 🎯
+## ✅ Lo que quedó funcionando en Sesión 17 (Fase 4)
+
+### Dominio custom
+- `founder.uy` comprado y conectado a Vercel con SSL automático.
+- **Dominio principal**: `www.founder.uy` (con www).
+- `founder.uy` (sin www) → redirect 308 → `www.founder.uy`.
+- `founder-web-gules.vercel.app` → redirect 301 → `www.founder.uy`.
+- Código actualizado: 9 referencias en `index.html`, `producto.html`,
+  `admin.html`, `components/founder-admin.js` ahora apuntan a `www.founder.uy`.
+
+### Meta Business Portfolio
+- Business: `founder.uy`.
+- Facebook Page: `founder.uy.oficial` (ID `1058647090653828`).
+  - Nota: Meta no aceptó el username `founder.uy` ni `founderuy` — tuvimos
+    que conformarnos con `founder.uy.oficial`. Cuando Meta libere `founder.uy`
+    (puede ser en meses), vale la pena cambiarlo.
+- Instagram Business: `@founder.uy` (ID `17841474091434639`).
+- Ad Account: `Publicidad FOUNDER` (ID `1653222205862527`).
+- Hay una Ad Account sin nombre (`26140748312219895`) auto-creada por Meta —
+  ignorada, se evalúa limpieza en Sesión 18.
+- Dataset/Pixel: `Founder Pixel` (ID `2898267450518541`).
+- Hay un dataset "NO" (ID `1472474751248750`) creado por accidente al testear
+  — no afecta nada pero conviene eliminarlo en Sesión 18.
+
+### Meta Pixel + CAPI
+- `META_PIXEL_ID` y `META_CAPI_TOKEN` configurados en Vercel Environment
+  Variables. **Importante**: NO marcadas como "Sensitive" por issues de
+  propagación en el plan Hobby. Funcionan bien sin ese flag.
+- `components/meta-pixel.js` (nuevo, ~230 líneas): wrapper oficial del Pixel
+  con API pública `window.founderPixel`. Dispara PageView automático + helpers
+  tipados para ViewContent, AddToCart, InitiateCheckout, Purchase.
+- Script `<script src="components/meta-pixel.js">` agregado a los 8 HTML del
+  sitio.
+- `producto.html` dispara ViewContent al renderizar + AddToCart al agregar.
+- `index.html` dispara AddToCart al agregar desde modal.
+- `components/founder-checkout.js` dispara InitiateCheckout + Purchase cliente.
+- `api/_lib/meta-capi.js` (nuevo, ~230 líneas): módulo CAPI con hasheado
+  SHA-256 de email/teléfono/nombre, extracción de IP/UA/fbp/fbc, POST a
+  `graph.facebook.com/v19.0/{pixel_id}/events`. Fallo silencioso si faltan
+  env vars.
+- `api/checkout.js` modificado para invocar `sendPurchaseEvent` con `await`
+  + `Promise.race` con timeout de 3s — crítico para que Vercel Serverless no
+  mate el fetch antes de que complete. Sin esto, el evento se perdía.
+- `event_id` unificado = `order.numero` (ej. `F378204`) → Meta deduplica
+  automáticamente los eventos Pixel y CAPI que llegan con mismo ID.
+
+### Verificación end-to-end (pedido F378204)
+```
+23:02:59.125  [meta-capi] sendPurchaseEvent invoked { token_length: 201 }
+23:02:59.343  [meta-capi] Purchase enviado OK { received: 1, trace: A3wc3i... }
+23:02:59.343  [checkout] CAPI result: { ok: true, events_received: 1 }
+```
+218ms desde invocación hasta confirmación de Meta. `messages: []` = payload
+perfecto, sin warnings.
+
+---
+
+## 📋 Pendientes para Sesión 18 (no bloqueantes)
+
+### Prioridad alta — solo cuando se arranquen campañas pagas
+1. **Verificación de dominio en Meta**: actualmente BLOQUEADA por bug del
+   Public Suffix List con ccTLDs `.uy`. El validador del campo "Add domain"
+   rechaza `founder.uy`, `www.founder.uy` y variantes con "Confirm your
+   domain is correctly formatted". No afecta el funcionamiento de Pixel ni
+   CAPI — solo impacta AEM (Aggregated Event Measurement) para optimización
+   en iOS 14.5+. Plan: abrir ticket con Meta Pro Support cuando se vayan a
+   correr ads con optimización de Purchase.
+
+### Prioridad media — mejoras de orden
+2. **Limpiar dataset "NO"** (ID `1472474751248750`) creado por error en Meta.
+3. **Evaluar Ad Account `26140748312219895`** sin nombre (probablemente
+   auto-generada por Meta) — renombrar o eliminar.
+4. **Resolver warning de Vercel**: "Node.js functions compiled from ESM to
+   CommonJS". Agregar `"type": "module"` al `package.json` raíz.
+5. **Limpiar archivo duplicado `api/supabase.js`** — hay una copia idéntica
+   en `api/_lib/supabase.js` que es la que consumen los endpoints. El
+   duplicado suelto no se usa pero ocupa espacio.
+6. **Agregar email de contacto al Instagram** en Meta Business Portfolio
+   (badge "Missing contact info" en Users → People).
+
+### Prioridad baja — pulido
+7. **Reintentar username `founder.uy` para la Page de Facebook** cuando Meta
+   lo libere (actualmente quedó como `founder.uy.oficial`).
+8. **Borrar el pedido de prueba `F378204`** (testcapi3@prueba.com) y otros
+   pedidos de prueba acumulados durante esta sesión:
+   ```sql
+   delete from public.orders
+   where email like '%@prueba.com' or email like 'testcapi%';
+   ```
+
+### Incidentes resueltos durante Sesión 17 (documentados por si se repiten)
+- **Meta rechazó `founder.uy` en verificación de dominio**: bug del Public
+  Suffix List con ccTLDs. Workaround: decidimos saltear la verificación ya que
+  no bloquea el tracking.
+- **Upload parcial a GitHub**: la interfaz web a veces no sube todos los
+  archivos cuando son muchos. Regla: verificar archivo por archivo, o subir
+  en tandas chicas (2-3 archivos).
+- **Archivo subido a carpeta equivocada**: `meta-capi.js` se subió a `api/`
+  en vez de `api/_lib/`. Causa: al dar "Add file → Upload" hay que verificar
+  el breadcrumb antes de arrastrar.
+- **Variables "Sensitive" en Vercel Hobby**: las env vars marcadas Sensitive
+  tuvieron issues de propagación en runtime. Solución: crear sin el flag.
+- **Fire-and-forget cortado por Vercel Serverless**: el primer diseño del
+  CAPI usaba `sendPurchaseEvent().catch(...)` sin await. Vercel mataba el
+  proceso al retornar la respuesta HTTP, perdiendo el fetch a Meta. Fix:
+  `await Promise.race([capiPromise, timeoutPromise(3000)])`. Lección: en
+  serverless, fire-and-forget NO funciona — siempre await + timeout.
+
+---
+
+**FIN** — Cerramos Sesión 17. Fase 4 completa. El sitio corre 100% sobre
+Supabase + Vercel, con dominio custom `www.founder.uy` + tracking dual de
+Meta (Pixel + CAPI) operativo. Pedido de prueba F378204 confirmó
+deduplicación funcionando end-to-end. Próximo paso: limpieza de pendientes
+menores + evaluación de primera campaña paga. 🎯
