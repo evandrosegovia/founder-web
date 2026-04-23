@@ -123,6 +123,16 @@ export async function sendPurchaseEvent({ order, items, req }) {
   const ACCESS_TOKEN    = process.env.META_CAPI_TOKEN;
   const TEST_EVENT_CODE = process.env.META_TEST_EVENT_CODE; // opcional
 
+  // Log diagnóstico: confirma que la función se invocó y qué env vars
+  // están disponibles en runtime. No loguea los tokens (solo su longitud).
+  console.log('[meta-capi] sendPurchaseEvent invoked', {
+    order_numero:        order?.numero,
+    has_pixel_id:        !!PIXEL_ID,
+    has_capi_token:      !!ACCESS_TOKEN,
+    token_length:        ACCESS_TOKEN ? ACCESS_TOKEN.length : 0,
+    has_test_event_code: !!TEST_EVENT_CODE,
+  });
+
   if (!PIXEL_ID || !ACCESS_TOKEN) {
     console.warn('[meta-capi] Faltan META_PIXEL_ID o META_CAPI_TOKEN — evento NO enviado');
     return { ok: false, error: 'missing_env_vars' };
