@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title id="pageTitle">FOUNDER — Producto</title>
   <meta name="description" id="pageDesc" content="Billetera premium con tecnología RFID. Founder Uruguay.">
-  <link rel="canonical" id="pageCanonical" href="https://founder-web-gules.vercel.app/producto.html">
+  <link rel="canonical" id="pageCanonical" href="https://founder.uy/producto.html">
 
   <!-- OG dinámico (se actualiza por JS) -->
   <meta property="og:type" content="product">
@@ -959,7 +959,7 @@ function renderProduct() {
   if (metaDesc) metaDesc.setAttribute('content', `Founder ${p.name} — Billetera premium con tecnología RFID. $${p.price.toLocaleString('es-UY')} UYU. Envíos a todo Uruguay.`);
   // Canonical: actualizar href
   const metaCan = document.getElementById('pageCanonical');
-  if (metaCan) metaCan.setAttribute('href', `https://founder-web-gules.vercel.app/producto.html?p=${encodeURIComponent(p.name)}`);
+  if (metaCan) metaCan.setAttribute('href', `https://founder.uy/producto.html?p=${encodeURIComponent(p.name)}`);
   setText('breadcrumbProduct', `Founder ${p.name}`);
 
   // Info básica
