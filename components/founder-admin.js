@@ -26,7 +26,7 @@
   const CONFIG = Object.freeze({
     API_ADMIN:  '/api/admin',
     PW_KEY:     'founder_admin_pw',   // sessionStorage key
-    SITE_URL:   'https://founder.uy',
+    SITE_URL:   'https://www.founder.uy',
     WA_NUMBER:  '598098550096',
   });
 
