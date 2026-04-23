@@ -277,8 +277,9 @@ evento.
 1. Tener un **Business Manager de Meta** y haber creado un **Pixel ID**
    (ej. `1234567890123456`).
 2. Haber generado un **Access Token de CAPI** desde Events Manager → Settings.
-3. Tener definido el **dominio de Meta**: `founder.uy` (dominio custom
-   activo desde Sesión 17).
+3. Tener definido el **dominio de Meta**: `www.founder.uy` (dominio custom
+   activo desde Sesión 17 — con redirect 301 desde `founder.uy` y desde
+   `founder-web-gules.vercel.app`).
 4. Verificación de dominio en Meta (requerida para iOS 14+).
 
 ### Checks preventivos al arrancar Sesión 17
@@ -350,7 +351,7 @@ evento.
 ## 🧪 Cómo probar todo lo que está hecho
 
 ### Prueba end-to-end de compra
-1. Abrir https://founder.uy
+1. Abrir https://www.founder.uy
 2. Agregar producto al carrito → checkout.
 3. Completar, confirmar pedido.
 4. Ver "🎉 ¡Pedido enviado!" con número `F######`.
@@ -383,8 +384,9 @@ delete from public.orders where email = 'test@prueba.com';
 
 | Recurso | Valor |
 |---|---|
-| URL sitio producción | https://founder.uy |
-| URL sitio Vercel (legacy) | https://founder-web-gules.vercel.app (redirect 301 → founder.uy) |
+| URL sitio producción | https://www.founder.uy |
+| URL sin www (redirect 308 → www) | https://founder.uy |
+| URL Vercel legacy (redirect 301 → www) | https://founder-web-gules.vercel.app |
 | Repo GitHub | github.com/evandrosegovia-1171s-projects/founder-web |
 | Usuario Vercel | evandrosegovia-1171s-projects |
 | Password admin | `nerito20` |
