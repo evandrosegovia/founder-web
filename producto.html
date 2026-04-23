@@ -707,6 +707,7 @@ body.cart-open .wa-bubble {
 <!-- supabase-client.js debe ir ANTES que cart.js (cart.js depende de window.founderDB) -->
 <script src="components/supabase-client.js"></script>
 <script src="components/cart.js"></script>
+<script src="components/meta-pixel.js"></script>
 
 
 
@@ -961,6 +962,9 @@ function renderProduct() {
   const metaCan = document.getElementById('pageCanonical');
   if (metaCan) metaCan.setAttribute('href', `https://www.founder.uy/producto.html?p=${encodeURIComponent(p.name)}`);
   setText('breadcrumbProduct', `Founder ${p.name}`);
+
+  // Meta Pixel — ViewContent (el usuario llegó a la página del producto)
+  if (window.founderPixel) window.founderPixel.trackViewContent(p);
 
   // Info básica
   setText('productName',     `Founder ${p.name}`);
@@ -1257,6 +1261,9 @@ function addToCart() {
 
   updateCart();
   showToast(`Founder ${p.name} — ${color} agregado`);
+
+  // Meta Pixel — AddToCart
+  if (window.founderPixel) window.founderPixel.trackAddToCart(p.name, color, precio);
 
   // Abrir carrito
   setTimeout(() => {

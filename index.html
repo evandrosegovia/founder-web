@@ -1006,6 +1006,7 @@ body.cart-open .wa-bubble {
 <!-- supabase-client.js debe ir ANTES que cart.js (cart.js depende de window.founderDB) -->
 <script src="components/supabase-client.js"></script>
 <script src="components/cart.js"></script>
+<script src="components/meta-pixel.js"></script>
 
 <!-- ── PRODUCT MODAL ─────────────────────────────────────────── -->
 <div class="modal-overlay" id="modalOverlay" onclick="handleModalOverlayClick(event)" role="dialog" aria-modal="true" aria-label="Detalle del producto">
@@ -1477,6 +1478,9 @@ function addToCart(product, color, precio) {
   }
   updateCart();
   showToast(`Founder ${product.name} — ${color.name} agregado`);
+
+  // Meta Pixel — AddToCart
+  if (window.founderPixel) window.founderPixel.trackAddToCart(product.name, color.name, precioFinal);
 }
 
 function updateCart() {
