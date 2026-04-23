@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Backend serverless para FOUNDER.UY (Fase 3 — checkout / seguimiento / admin)",
+  "type": "module",
   "engines": {
     "node": "20.x"
   },
