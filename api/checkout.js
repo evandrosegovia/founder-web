@@ -162,14 +162,24 @@ async function handleCreateOrder(body, res, req) {
     return fail(res, 500, 'db_error', error.message);
   }
 
-  // ── Meta Conversion API — disparar Purchase en paralelo ──────
-  // Fire-and-forget: no esperamos la respuesta de Meta para no demorar
-  // al usuario. El evento Pixel del cliente ya se disparó en el checkout;
-  // este CAPI duplica el evento con el mismo event_id = numero → Meta
-  // deduplica. Si Meta falla o tarda, el pedido igual está creado en DB
-  // y el cliente recibe su confirmación sin esperar.
-  sendPurchaseEvent({ order: cleanOrder, items: cleanItems, req })
-    .catch(err => console.error('[checkout] CAPI Purchase falló:', err));
+  // ── Meta Conversion API — disparar Purchase con timeout ──────
+  // En Vercel Serverless, si la función retorna antes de que el fetch
+  // complete, el runtime puede matar el proceso y perdemos el evento.
+  // Solución: await con timeout de 3s. Si Meta responde en ≤3s, bien.
+  // Si tarda más, igual respondemos al cliente para no demorar el
+  // checkout; el pedido ya está creado en Supabase independientemente.
+  try {
+    const CAPI_TIMEOUT_MS = 3000;
+    const capiPromise = sendPurchaseEvent({ order: cleanOrder, items: cleanItems, req });
+    const timeoutPromise = new Promise(resolve =>
+      setTimeout(() => resolve({ ok: false, error: 'timeout' }), CAPI_TIMEOUT_MS)
+    );
+    const capiResult = await Promise.race([capiPromise, timeoutPromise]);
+    console.log('[checkout] CAPI result:', capiResult);
+  } catch (err) {
+    // No debería caer acá porque sendPurchaseEvent nunca tira, pero por las dudas
+    console.error('[checkout] CAPI Purchase falló:', err?.message || err);
+  }
 
   return ok(res, {
     id:     data?.id,
