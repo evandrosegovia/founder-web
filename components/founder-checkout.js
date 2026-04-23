@@ -121,6 +121,12 @@
     if (state.removedOnLoad.length > 0) {
       setTimeout(() => showRemovedNotice(state.removedOnLoad), 300);
     }
+
+    // Meta Pixel — InitiateCheckout (carrito con items, checkout abierto)
+    if (window.founderPixel) {
+      const { total } = calculateOrderTotals();
+      window.founderPixel.trackInitiateCheckout(state.cart, total);
+    }
   }
 
   /** Muestra una notificación recuadrada arriba del formulario listando
@@ -495,6 +501,17 @@
     // Pedido creado OK — uso el numero que devolvió el servidor (por las dudas
     // que alguna vez el servidor reescriba el formato, ej: añadir prefijo).
     const numeroConfirmado = apiResp.data.numero || orderId;
+
+    // Meta Pixel — Purchase (lado cliente)
+    // El servidor también va a emitir este evento por CAPI con el mismo
+    // event_id = numeroConfirmado → Meta deduplica automáticamente.
+    if (window.founderPixel) {
+      window.founderPixel.trackPurchase({
+        numero: numeroConfirmado,
+        total,
+        cart: state.cart,
+      });
+    }
 
     // ── 2. Abrir WhatsApp con resumen ─────────────────────────
     const waMsg = [
