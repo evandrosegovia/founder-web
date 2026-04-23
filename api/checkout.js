@@ -24,6 +24,7 @@
 // ═════════════════════════════════════════════════════════════════
 
 import { supabase, createHandler, ok, fail, parseBody } from './_lib/supabase.js';
+import { sendPurchaseEvent } from './_lib/meta-capi.js';
 
 // ── Mapa de errores SQL → código HTTP + mensaje amigable ──────
 // La función SQL lanza excepciones con mensajes específicos; acá
@@ -101,7 +102,7 @@ async function handleValidateCoupon(body, res) {
 // ═════════════════════════════════════════════════════════════════
 // ACCIÓN 2: create_order — transacción atómica vía RPC
 // ═════════════════════════════════════════════════════════════════
-async function handleCreateOrder(body, res) {
+async function handleCreateOrder(body, res, req) {
   const order = body.order;
   const items = body.items;
   const cupon = body.cupon || null; // string | null
@@ -161,6 +162,15 @@ async function handleCreateOrder(body, res) {
     return fail(res, 500, 'db_error', error.message);
   }
 
+  // ── Meta Conversion API — disparar Purchase en paralelo ──────
+  // Fire-and-forget: no esperamos la respuesta de Meta para no demorar
+  // al usuario. El evento Pixel del cliente ya se disparó en el checkout;
+  // este CAPI duplica el evento con el mismo event_id = numero → Meta
+  // deduplica. Si Meta falla o tarda, el pedido igual está creado en DB
+  // y el cliente recibe su confirmación sin esperar.
+  sendPurchaseEvent({ order: cleanOrder, items: cleanItems, req })
+    .catch(err => console.error('[checkout] CAPI Purchase falló:', err));
+
   return ok(res, {
     id:     data?.id,
     numero: data?.numero,
@@ -176,7 +186,7 @@ export default createHandler(async (req, res) => {
 
   switch (action) {
     case 'validate_coupon': return handleValidateCoupon(body, res);
-    case 'create_order':    return handleCreateOrder(body, res);
+    case 'create_order':    return handleCreateOrder(body, res, req);
     default:                return fail(res, 400, 'unknown_action',
                                         'action debe ser "validate_coupon" o "create_order"');
   }
