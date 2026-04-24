@@ -1,7 +1,7 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 18 — cierre (23/04/2026)
-**Próxima sesión:** 19 — Cierre de pendientes Meta + primer pedido de prueba del sistema archivar/eliminar + evaluación de campañas pagas
+**Última actualización:** Sesión 19 — cierre (24/04/2026)
+**Próxima sesión:** 20 — Mejoras UX en producto.html (ajuste de imagen principal + carrusel automático) + cierre de pendientes Meta + evaluación de campañas pagas
 
 ---
 
@@ -9,13 +9,14 @@
 
 Pegale a Claude este mensaje al arrancar:
 
-> Leé `ESTADO.md` y retomamos después de Sesión 18. Todas las fases principales
-> están completas. El sitio corre 100% sobre Supabase + Vercel con dominio
-> custom `www.founder.uy`, tracking dual de Meta (Pixel + CAPI) operativo y
-> **dominio verificado en Meta Business**. En Sesión 18 también se agregó un
-> sistema de archivar/eliminar pedidos en el admin. Quedan 3 pendientes menores
-> en Meta y la prueba manual del sistema de archivar/eliminar con los pedidos
-> de prueba acumulados. Decidime qué querés priorizar.
+> Leé `ESTADO.md` y retomamos después de Sesión 19. En Sesión 19 se arregló
+> el bloqueo de WhatsApp automático en iOS post-checkout y el CSS roto del
+> header en `producto.html`. Para Sesión 20 quiero atacar las mejoras UX de
+> `producto.html` — hay un plan detallado en la sección "Pendientes para
+> Sesión 20" con 5 ítems ya decididos (ajuste imagen, autoplay, zoom hover,
+> swipe mobile, lazy-loading). Arrancá por el primero (Opción A del ajuste
+> de imagen). Sobre el autoplay, proponeme el intervalo concreto antes de
+> implementar.
 
 ---
 
@@ -31,6 +32,85 @@ Pegale a Claude este mensaje al arrancar:
 | **3C** — Limpieza | ✅ Completa | Apps Script apagado, Sheet archivado, código libre de legacy |
 | **4** — Meta Pixel + CAPI | ✅ Completa | Dominio custom activo, tracking dual operativo, **dominio verificado en Meta** |
 | **5** — Hardening admin | ✅ Completa | Archivar + Eliminar pedidos desde UI con protecciones (ver Sesión 18) |
+
+---
+
+## ✅ Lo que quedó funcionando en Sesión 19
+
+Sesión corta, enfocada en dos bugs reportados por el usuario tras el uso real
+del sitio: **WhatsApp no abría automáticamente en iOS tras finalizar compra
+por transferencia** y **el header de `producto.html` estaba visualmente roto**
+(menú central sin estilos). Ambos resueltos con cambios limpios y modulares,
+sin parches.
+
+### 🐛 Fix 1 — WhatsApp automático en iOS post-checkout
+
+**Causa raíz:** Safari iOS bloquea `window.open('url', '_blank')` si se llama
+después de un `await` (pierde el "gesto de usuario" que autoriza popups).
+En Chrome/Android no pasa. El flujo actual hacía `await apiCheckout(...)` y
+luego `window.open(wa.me/...)` — el await tarda 1-3s → iOS bloqueaba.
+
+**Solución:** patrón **pre-open + fallback** en `components/founder-checkout.js`:
+
+- Nuevo helper modular con 3 funciones:
+  - `preOpenWhatsAppTab()` → abre `about:blank` como placeholder ANTES del await.
+  - `openWhatsApp(tab, url)` → asigna la URL a la pestaña pre-abierta. Fallback
+    a `window.open` directo y finalmente a `window.location.href` si todo falla.
+  - `closeWhatsAppTab(tab)` → cierra el placeholder si el pedido falla.
+- `processOrder()`:
+  - Llama a `preOpenWhatsAppTab()` al arrancar (dentro del tap del usuario).
+  - 8 puntos de limpieza con `closeWhatsAppTab(waTab)` en los 7 returns de
+    validación + 2 returns post-fetch (error de red, error de API).
+  - En el happy path: `openWhatsApp(waTab, waUrl)` reemplaza al `window.open`.
+- `reenviarPedido()` **no tocada** (no tiene `await` antes del `window.open`,
+  funciona bien tal cual — principio: no refactorizar sin motivo).
+
+### 🐛 Fix 2 — CSS del header roto en `producto.html`
+
+**Causa raíz:** desfasaje de nomenclatura. `components/header.js` inyecta HTML
+con clases BEM nuevas (`.nav`, `.nav__link`), pero el CSS de `producto.html`
+se quedó con las viejas (`.header__nav`, `.header__nav-link`, `.header__back`,
+`.header__right`). Las otras 8 páginas ya habían sido migradas en sesiones
+anteriores — solo `producto.html` quedó desfasada. Resultado visible: el menú
+central se renderizaba como texto plano sin espaciado ni tipografía correcta.
+
+**Solución:** alineación con `index.html` como fuente de verdad.
+
+- Reemplazado el bloque `/* SHARED — Header */` de `producto.html` con el
+  mismo CSS que usa `index.html` (verificado con diff).
+- Eliminadas selectores legacy inutilizados: `.header__back:active` del bloque
+  de `:active` unificado.
+- Eliminada `.header__nav-link`, `.header__right`, `.header__back` (ninguna
+  usada en HTML — solo CSS muerto).
+- Actualizada la regla responsive: `@media (max-width: 900px) { .nav { display: none; } }`
+  reemplaza a `.header__nav { display: none; }`.
+
+### Chequeos automáticos aplicados durante la sesión
+
+- Sintaxis válida en `founder-checkout.js` (`node --check`).
+- Grep de `header__nav|header__back|header__right` en los 9 HTML → 0 ocurrencias
+  en cualquier archivo (previo a Sesión 19: 8 en producto.html, 0 en el resto).
+- Grep de `.nav\b|.nav__link` en producto.html = 6 ocurrencias = mismo número
+  que index.html (paridad confirmada).
+- Las 3 nuevas funciones helper definidas 1 vez cada una, invocadas 1 + 8 + 1
+  veces respectivamente (valores esperados).
+- Comparación de archivos: producto.html pasó de 1397 → 1394 líneas (−3 por
+  selectores duplicados eliminados); founder-checkout.js pasó de 636 → 717
+  líneas (+81 por 3 helpers con JSDoc + 9 cierres de pestaña defensivos).
+
+### Validación post-deploy
+
+1. ✅ Deploys en verde tras ambos commits.
+2. ✅ Usuario confirmó que el menú de `producto.html` se ve igual que el de
+   `index.html` (Chrome de incógnito).
+3. ✅ Usuario confirmó que tras finalizar compra por transferencia en iPhone
+   Safari, WhatsApp se abre automáticamente con el mensaje cargado.
+
+### Deploys a producción
+
+Dos commits durante la sesión, ambos validados:
+- Commit 1: *"fix: alinear CSS del header en producto.html con BEM (.nav)"*
+- Commit 2: *"fix: WhatsApp se abre automáticamente en iOS post-checkout (pre-open pattern)"*
 
 ---
 
@@ -552,28 +632,114 @@ Aplicarlo en checkout → debe restar 10% + sumar 1 a `usos_count`.
   + eliminado `api/supabase.js` duplicado. **Nueva feature: sistema archivar/
   eliminar pedidos** con 3 actions en backend, 3 funciones frontend, doble
   confirmación para delete, vista separada de archivados, nueva columna
-  `archivado` en `orders` + índice parcial. ← **Acá terminamos.**
-- **Sesión 19:** 3 pendientes menores de Meta + prueba del sistema archivar/
-  eliminar con pedidos de prueba acumulados + evaluación de campañas pagas.
-  ← **Próxima.**
+  `archivado` en `orders` + índice parcial.
+- **Sesión 19 (Bugfixes UX):** Dos bugs reportados por el usuario tras uso
+  real del sitio. Fix 1: WhatsApp no abría automáticamente en iOS tras
+  finalizar compra por transferencia — causa raíz era Safari bloqueando
+  `window.open()` post-`await`. Resuelto con patrón pre-open + fallback en
+  `founder-checkout.js` (3 helpers nuevos + 8 puntos de limpieza defensiva).
+  Fix 2: header de `producto.html` visualmente roto — CSS legacy
+  (`.header__nav*`) no coincidía con HTML nuevo de `header.js` (`.nav*`).
+  Resuelto alineando con `index.html` como fuente de verdad.
+  ← **Acá terminamos.**
+- **Sesión 20:** Mejoras UX en producto.html (ajuste tamaño imagen principal +
+  carrusel automático), cierre de pendientes menores de Meta, evaluación de
+  primera campaña paga. ← **Próxima.**
 
 ---
 
-## 📋 Pendientes para Sesión 19
+## 📋 Pendientes para Sesión 20
 
-### Prioridad media — 3 clics en Chrome
+### Prioridad alta — Mejoras UX en `producto.html`
+**Origen:** usuario reportó tras uso real del sitio. Propuesta experta
+presentada al cierre de Sesión 19 con decisiones tomadas por el usuario.
+
+**Contexto técnico relevante (Sesión 19):** Análisis del CSS actual de la
+galería en desktop reveló que `.product-main` tiene `padding: 40px` arriba y
+`.gallery` usa `position: sticky; top: 70px; height: calc(100vh - 70px)`. En
+laptops de 13"–14" (~700-800px útiles) los thumbnails quedan casi cortados en
+el borde inferior por el padding excesivo + breadcrumb. Los thumbs en sí
+miden 80px fijos. Matemáticamente entran, pero visualmente se sienten
+cortados.
+
+#### 1. Ajuste de imagen principal desktop — **Opción A (tentativa)**
+- Reducir `padding-top` de `.product-main` de `40px` a `20px`.
+- Ajustar `top` de `.gallery` de `70px` a `76px` para respirar con el
+  breadcrumb.
+- **Usuario pidió probarla primero, no cerrar como definitiva.** Si tras
+  ver el resultado no es suficiente, **aplicar Opción B como fallback**:
+  cambiar `.gallery` de `height: calc(100vh - 70px)` a
+  `height: calc(100vh - 110px)` para dejar ~40px de aire garantizado.
+- Considerar breakpoint extra para monitores < 700px de alto (raros pero
+  posibles en laptops viejas).
+
+#### 2. Autoplay del carrusel de thumbnails — **intervalo a definir en Sesión 20**
+- Usuario NO eligió intervalo aún — pidió que se le proponga concreto al
+  empezar Sesión 20, viendo el sitio en producción.
+- **Recomendación experta pendiente de aplicar: 4 segundos** (ritmo
+  showcase Instagram, balance ideal entre agresivo y lento). Amazon/MercadoLibre
+  usan ~4s, Apple ~5s. Founder tiene imágenes limpias → 4s encaja.
+- **Comportamientos obligatorios del autoplay** (no negociables — separan
+  autoplay bueno de molesto):
+  - Pausa al `hover` sobre `.gallery__main` en desktop.
+  - Pausa al click manual en un thumb durante 10-15s (el usuario eligió).
+  - Reinicio desde foto 0 al cambiar de color (dispara `setActivePhoto(0)`
+    + resetea timer).
+  - Respetar `@media (prefers-reduced-motion: reduce)` → autoplay
+    deshabilitado para usuarios con sensibilidad vestibular.
+  - Pausa con Page Visibility API cuando la tab no está activa.
+  - Parar tras 2-3 ciclos completos para evitar fatiga visual.
+- **Implementación sugerida:** nueva función `startPhotoAutoplay()` +
+  `stopPhotoAutoplay()` en el bloque JS de producto.html, llamadas desde
+  `renderGallery()` y `setActivePhoto()`. Variable `autoplayTimer` como
+  `setInterval`. Contador de ciclos en `state.autoplayCycles`.
+
+#### 3. Zoom al hover en desktop (extra seleccionado)
+- Al pasar el mouse sobre `.gallery__main`, zoom 2x sobre la parte apuntada.
+- Estándar premium (Apple, Hermès, Louis Vuitton). Refuerza percepción de
+  calidad del cuero — **clave para Founder**.
+- Implementación sugerida: `background-image` con `background-size: 200%` +
+  cálculo de `background-position` con eventos `mousemove`. Sin librerías.
+- Solo desktop (`@media (min-width: 901px)`) — en mobile el zoom se hace
+  con pinch nativo.
+
+#### 4. Swipe en mobile + flechas laterales (extra seleccionado)
+- Swipe natural con el dedo sobre `.gallery__main` para cambiar foto.
+- Flechas `‹ ›` superpuestas en los laterales de la imagen.
+- Hoy mobile requiere tocar thumbs → UX pobre comparado con Instagram/Tinder.
+- Implementación sugerida: eventos `touchstart`/`touchend` calculando
+  `deltaX` (si > 50px → cambiar foto). Flechas solo en mobile, posición
+  absoluta sobre `.gallery__main`, ocultas en desktop.
+
+#### 5. Lazy-loading + precarga inteligente (extra seleccionado)
+- Hoy todas las fotos del color activo cargan simultáneamente.
+- **Estrategia propuesta:**
+  - Cargar solo la primera foto del color activo al entrar (`loading="eager"`).
+  - Precargar las siguientes 1-2 en segundo plano (`loading="lazy"` + tag
+    `<link rel="preload">` dinámico para la próxima).
+  - NO cargar fotos de colores no seleccionados hasta el click.
+- Beneficio: página más rápida en 3G/4G — crítico porque muchos clientes
+  uruguayos entran desde datos móviles.
+- **Cuidado:** no romper el flujo actual de `renderGallery()` que ya maneja
+  el swap entre colores con `photoMap`.
+
+#### Descartado (por ahora)
+- **Indicador de posición "1/4"** sobre la imagen → el usuario no lo eligió.
+  Se puede sumar más adelante si el autoplay confunde.
+
+### Prioridad media — 3 clics en Chrome (Meta)
 Las 3 se intentaron en Sesión 18 pero Meta Business Manager **no ofrece delete
 en la UI** para estos recursos. Alternativas aceptables:
 
-1. **Renombrar dataset "NO"** (ID `1472474751248750`) con prefijo `ZZ-` para
+4. **Renombrar dataset "NO"** (ID `1472474751248750`) con prefijo `ZZ-` para
    que quede al final alfabéticamente. Si ni renombrar deja, ignorar.
-2. **Renombrar o ignorar Ad Account `26140748312219895`** (auto-creada, sin
+5. **Renombrar o ignorar Ad Account `26140748312219895`** (auto-creada, sin
    nombre).
-3. **Agregar email de contacto al Instagram** en Meta Business Portfolio
+6. **Agregar email de contacto al Instagram** en Meta Business Portfolio
    (badge "Missing contact info" en Users → People).
 
 ### Prioridad media — usar la nueva funcionalidad
-4. **Borrar pedidos de prueba acumulados** con el nuevo sistema de eliminar
+7. **Borrar pedidos de prueba acumulados** con el nuevo sistema de eliminar
    desde el admin (en lugar del SQL). Candidatos detectados en captura de
    Sesión 18:
    - `F237553`, `F839362`, `F029945` — Evandro Segovia con CIs tipo `77777777`
@@ -585,11 +751,11 @@ en la UI** para estos recursos. Alternativas aceptables:
      → parece un pedido real, confirmar antes de tocar.
 
 ### Prioridad baja — pulido
-5. **Reintentar username `founder.uy` para la Page de Facebook** cuando Meta
+8. **Reintentar username `founder.uy` para la Page de Facebook** cuando Meta
    lo libere (actualmente `founder.uy.oficial`).
 
 ### Prioridad alta (no bloqueante) — solo cuando arranquen ads
-6. **Evaluar primera campaña paga de Meta Ads** con optimización de Purchase.
+9. **Evaluar primera campaña paga de Meta Ads** con optimización de Purchase.
    Con el dominio verificado, AEM debería funcionar correctamente en iOS 14.5+.
    Definir: presupuesto diario, producto destacado, público objetivo
    (remarketing a visitantes de `producto.html` vs frío).
@@ -597,6 +763,12 @@ en la UI** para estos recursos. Alternativas aceptables:
 ---
 
 ## 📜 Historial de incidentes resueltos
+
+### Sesión 19 (2 incidentes)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | En iOS Safari, WhatsApp no abría automáticamente tras finalizar compra por transferencia (sí abría manualmente con el botón de reenvío) | Safari bloquea `window.open('url','_blank')` si se llama después de un `await` — pierde el "user gesture". Android no tiene esta restricción | Patrón pre-open: abrir `about:blank` ANTES del `await`, asignar URL después. Fallback a `window.location.href` si el pre-open falla |
+| 2 | Menú central del header en `producto.html` sin estilos (solo texto plano) | CSS con clases legacy (`.header__nav*`) no coincidía con HTML nuevo de `header.js` que usa BEM (`.nav*`) — las otras 8 páginas ya migradas, solo producto.html quedó desfasada | Reemplazado bloque CSS del header en producto.html por el mismo que usa index.html (fuente de verdad) |
 
 ### Sesión 18 (3 incidentes)
 | # | Síntoma | Causa raíz | Fix |
@@ -629,9 +801,11 @@ en la UI** para estos recursos. Alternativas aceptables:
 
 ---
 
-**FIN** — Cerramos Sesión 18. Fase 4 definitivamente completa (dominio verificado
-en Meta). Fase 5 iniciada con el sistema archivar/eliminar pedidos. El sitio
-corre 100% sobre Supabase + Vercel, con dominio custom `www.founder.uy`
-verificado en Meta, tracking dual (Pixel + CAPI) operativo, y admin con
-herramientas de gestión escalable. Próximo paso: cerrar los 3 pendientes
-menores de Meta y evaluar primera campaña paga. 🎯
+**FIN** — Cerramos Sesión 19. Dos bugs de UX detectados por el uso real del
+sitio, ambos resueltos con código limpio y modular (sin parches). El sitio
+sigue corriendo 100% sobre Supabase + Vercel, con dominio custom
+`www.founder.uy` verificado en Meta, tracking dual (Pixel + CAPI) operativo,
+admin con herramientas de gestión escalable, y ahora **flujo de checkout
+confiable en iOS**. Próximo paso: mejoras UX en `producto.html` (imagen
+principal + carrusel automático), cerrar pendientes menores de Meta y evaluar
+primera campaña paga. 🎯
