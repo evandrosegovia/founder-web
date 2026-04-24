@@ -60,6 +60,70 @@
   const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
   const toggle  = (el, cls, force) => el?.classList.toggle(cls, force);
 
+  // ── WHATSAPP HELPER — iOS-safe ───────────────────────────────
+  /**
+   * Abre WhatsApp en una pestaña nueva de forma confiable en iOS Safari.
+   *
+   * Problema que resuelve:
+   *   iOS Safari bloquea window.open() cuando se llama DESPUÉS de un
+   *   await (por ej. fetch al backend), porque ya perdió el "gesto de
+   *   usuario" que autoriza la apertura de pestañas. Chrome y Android
+   *   son más permisivos y no tienen este problema.
+   *
+   * Estrategia:
+   *   1. preOpenWhatsAppTab() se llama al comenzar el handler (dentro
+   *      del tap del usuario). Abre about:blank como placeholder.
+   *   2. Si el pedido se crea OK → navegamos esa pestaña a wa.me/...
+   *   3. Si el pedido falla → cerramos la pestaña placeholder.
+   *   4. Si el pre-open fue bloqueado (ej. popup blocker muy estricto)
+   *      → fallback a window.location.href en la misma pestaña.
+   *
+   * Uso:
+   *   const waTab = preOpenWhatsAppTab();      // ANTES del await
+   *   const data  = await apiCheckout(...);    // await
+   *   if (data.ok) {
+   *     openWhatsApp(waTab, url);              // DESPUÉS del await
+   *   } else {
+   *     closeWhatsAppTab(waTab);               // limpiar
+   *   }
+   */
+  function preOpenWhatsAppTab() {
+    // Intentar abrir pestaña en blanco. iOS permite esto si se llama
+    // dentro del handler del click. Chrome/Firefox también.
+    try {
+      return window.open('about:blank', '_blank');
+    } catch {
+      return null;
+    }
+  }
+
+  function openWhatsApp(preOpenedTab, url) {
+    // Si logramos pre-abrir la pestaña, le asignamos la URL ahora.
+    if (preOpenedTab && !preOpenedTab.closed) {
+      try {
+        preOpenedTab.location.href = url;
+        return;
+      } catch {
+        // raro: la pestaña se bloqueó después. Caemos al fallback.
+      }
+    }
+    // Fallback 1: intentar abrir una pestaña nueva directamente.
+    // En iOS post-await esto generalmente falla, pero si el usuario
+    // permitió popups de nuestro dominio, puede funcionar.
+    const fresh = (() => { try { return window.open(url, '_blank'); } catch { return null; } })();
+    if (fresh) return;
+
+    // Fallback 2: navegar la pestaña actual a WhatsApp.
+    // Es un último recurso: el usuario puede volver con "atrás" del navegador.
+    window.location.href = url;
+  }
+
+  function closeWhatsAppTab(preOpenedTab) {
+    if (preOpenedTab && !preOpenedTab.closed) {
+      try { preOpenedTab.close(); } catch { /* ignore */ }
+    }
+  }
+
   // ── API helper: POST JSON a /api/checkout ────────────────────
   /** Hace POST a /api/checkout con el body dado. Devuelve la respuesta
    *  JSON parseada, independientemente del status. Así cada caller
@@ -333,6 +397,13 @@
 
   // ── PROCESAR PEDIDO ──────────────────────────────────────────
   async function processOrder() {
+    // PRE-OPEN DE PESTAÑA WHATSAPP (iOS-safe)
+    // iOS Safari bloquea window.open() si se llama después de un await
+    // (pierde el "gesto de usuario"). Lo abrimos ahora — dentro del tap —
+    // y más adelante le asignamos la URL real. Si el pedido falla, se cierra.
+    // En Android/desktop esto funciona igual sin penalidad.
+    const waTab = preOpenWhatsAppTab();
+
     // REVALIDACIÓN DE STOCK EN TIEMPO REAL
     // El usuario puede haber estado un rato llenando el formulario.
     // Antes de confirmar, volvemos a consultar Supabase. Si algún item
@@ -340,6 +411,7 @@
     try {
       const check = await window.founderCart.fetchStockAndPurge();
       if (check && check.removed && check.removed.length) {
+        closeWhatsAppTab(waTab); // cortamos: cerrar placeholder
         state.cart = loadCart();
         showRemovedNotice(check.removed);
         showToast('Se eliminaron productos agotados de tu carrito');
@@ -363,6 +435,7 @@
     const email    = $('coEmail').value.trim();
 
     if (!nombre || !apellido || !celular || !email) {
+      closeWhatsAppTab(waTab);
       showToast('Completá todos los datos personales');
       return;
     }
@@ -370,6 +443,7 @@
     // Validación de formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
+      closeWhatsAppTab(waTab);
       showToast('Ingresá un email válido');
       return;
     }
@@ -377,6 +451,7 @@
     // Validación básica de celular — solo dígitos, espacios y guiones, mínimo 7 caracteres
     const celularClean = celular.replace(/[\s\-\+]/g, '');
     if (!/^\d{7,15}$/.test(celularClean)) {
+      closeWhatsAppTab(waTab);
       showToast('Ingresá un número de celular válido');
       return;
     }
@@ -384,17 +459,20 @@
     // Validación de entrega
     if (state.entregaMode === 'envio') {
       if (!$('coDepartamento').value || !$('coDireccion').value.trim()) {
+        closeWhatsAppTab(waTab);
         showToast('Completá los datos de envío');
         return;
       }
     } else {
       if (!$('coNombreRetira').value.trim() || !$('coCIRetira').value.trim()) {
+        closeWhatsAppTab(waTab);
         showToast('Completá los datos de retiro');
         return;
       }
     }
 
     if (!$('coConsent').checked) {
+      closeWhatsAppTab(waTab);
       showToast('Debés aceptar la política de privacidad');
       return;
     }
@@ -475,6 +553,7 @@
       });
     } catch (err) {
       console.error('[Founder] Error de red creando pedido:', err);
+      closeWhatsAppTab(waTab);
       showToast('No se pudo conectar. Verificá tu internet e intentá de nuevo.');
       btn.disabled    = false;
       btn.textContent = pagoStr === 'Transferencia'
@@ -490,6 +569,7 @@
       const errMsg  = apiResp.data.detail
         || (errCode === 'numero_duplicate' ? 'Intentá de nuevo en un segundo' : 'No pudimos procesar el pedido');
       console.warn('[Founder] Error creando pedido:', errCode, errMsg);
+      closeWhatsAppTab(waTab);
       showToast(errMsg);
       btn.disabled    = false;
       btn.textContent = pagoStr === 'Transferencia'
@@ -532,7 +612,8 @@
       `🔖 *ID:* ${numeroConfirmado}`,
     ].join('\n');
 
-    window.open(`https://wa.me/${CONFIG.WA_NUMBER}?text=${encodeURIComponent(waMsg)}`, '_blank');
+    const waUrl = `https://wa.me/${CONFIG.WA_NUMBER}?text=${encodeURIComponent(waMsg)}`;
+    openWhatsApp(waTab, waUrl);
 
     // ── 3. Guardar snapshot en sessionStorage (para reenvío + ver detalles) ──
     const orderSnapshot = {
