@@ -1,7 +1,7 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 17 — cierre (23/04/2026)
-**Próxima sesión:** 18 — Pendientes de limpieza + evaluación de campañas pagas
+**Última actualización:** Sesión 18 — cierre (23/04/2026)
+**Próxima sesión:** 19 — Cierre de pendientes Meta + primer pedido de prueba del sistema archivar/eliminar + evaluación de campañas pagas
 
 ---
 
@@ -9,11 +9,13 @@
 
 Pegale a Claude este mensaje al arrancar:
 
-> Leé `ESTADO.md` y retomamos después de Sesión 17. Todas las fases principales
-> están completas. El sitio corre 100% sobre Supabase + Vercel, con dominio
-> custom `www.founder.uy` y tracking de Meta (Pixel + CAPI con deduplicación
-> dual) funcionando. Hay una lista de pendientes menores al final del archivo.
-> Decidime qué querés priorizar de esa lista.
+> Leé `ESTADO.md` y retomamos después de Sesión 18. Todas las fases principales
+> están completas. El sitio corre 100% sobre Supabase + Vercel con dominio
+> custom `www.founder.uy`, tracking dual de Meta (Pixel + CAPI) operativo y
+> **dominio verificado en Meta Business**. En Sesión 18 también se agregó un
+> sistema de archivar/eliminar pedidos en el admin. Quedan 3 pendientes menores
+> en Meta y la prueba manual del sistema de archivar/eliminar con los pedidos
+> de prueba acumulados. Decidime qué querés priorizar.
 
 ---
 
@@ -27,434 +29,167 @@ Pegale a Claude este mensaje al arrancar:
 | **3A** — Checkout + Seguimiento | ✅ Completa | Ambos migrados a `/api/checkout` y `/api/seguimiento` |
 | **3B** — Admin | ✅ Completa | `admin.html` migrado a `/api/admin` — sin Sheets ni Drive |
 | **3C** — Limpieza | ✅ Completa | Apps Script apagado, Sheet archivado, código libre de legacy |
-| **4** — Meta Pixel + CAPI | ✅ **Completa** | Dominio custom activo, tracking dual operativo |
+| **4** — Meta Pixel + CAPI | ✅ Completa | Dominio custom activo, tracking dual operativo, **dominio verificado en Meta** |
+| **5** — Hardening admin | ✅ Completa | Archivar + Eliminar pedidos desde UI con protecciones (ver Sesión 18) |
 
 ---
 
-## ✅ Lo que quedó funcionando en Sesión 16 (Fase 3C)
+## ✅ Lo que quedó funcionando en Sesión 18
 
-La Fase 3C se ejecutó en 2 grandes frentes: limpieza del código + apagado de todos los servicios de Google.
+La Sesión 18 se ejecutó en 3 frentes: **desbloqueo de la verificación de dominio** (crítico, estaba marcado como indefinido), **cierre de pendientes técnicos de código**, y **feature nueva de gestión de pedidos** (archivar/eliminar desde admin).
 
-### Incidente inicial resuelto
-Al arrancar la sesión, el admin no cargaba productos: `/api/admin` devolvía 500
-`"permission denied for table products"`. Causa raíz: `service_role` no tenía
-`GRANT ALL` sobre las 3 tablas del catálogo (`products`, `product_colors`,
-`product_photos`). La tabla de permisos documentada en Sesión 14 era incorrecta
-(decía que `service_role` usaba RLS, cuando en realidad necesita GRANTs
-explícitos — `service_role` bypassea RLS pero no GRANTs).
+### 🏆 Logro principal — Verificación de dominio en Meta
 
-**Fix aplicado (SQL):** `grant all on public.<tabla> to service_role` sobre las
-7 tablas del sistema. Idempotente. Ver snippet guardado en Supabase como
-*"Fix service_role Table Permissions"*.
+**El "bloqueo" de Sesión 17 era un bug del navegador, no de Meta.**
 
-### Limpieza del código
-- **`index.html` + `producto.html`**: eliminadas las constantes `SHEET_ID` y
-  `APPS_SCRIPT_URL` del `CONFIG` (eran código muerto sin consumidores). Comentarios
-  de cabezal actualizados para reflejar que el catálogo vive en Supabase.
-- **`admin.html`**: eliminada la página completa *"Conversor de imágenes"* (sidebar
-  item + `<div id="page-imagenes">` + contenido). -42 líneas. Las clases CSS
-  `.conv-row`, `.conv-inp`, `.conv-btn`, `.conv-result` se preservaron porque las
-  reutiliza la página Banner.
-- **`founder-admin.js`**: eliminadas las 6 funciones del conversor
-  (`extractDriveId`, `convertToDirectLink`, `convertDriveLink`, `copyConverted`,
-  `convertBulk`, `copyBulkLink`) + sus 4 exports a `window`. -70 líneas.
-- **Cabezales reescritos** en `founder-admin.js`, `founder-checkout.js`,
-  `founder-seguimiento.js`, `checkout.js`, `seguimiento.js` y `cart.js`: eliminadas
-  todas las menciones históricas a GViz, gapi, Apps Script, Google Sheet, Drive.
-- **`api/ping.js` eliminado**: era endpoint de diagnóstico temporal, cumplido.
+- El validador "Add domain" de Meta rechazaba `founder.uy` / `www.founder.uy` con
+  error *"Confirm your domain is correctly formatted"* cuando se usaba **Opera**.
+- En **Google Chrome**, el mismo formulario acepta el dominio sin problemas.
+- Se agregó `www.founder.uy` en Meta Business Settings → Dominios.
+- Meta generó una metaetiqueta única:
+  ```
+  <meta name="facebook-domain-verification" content="6qpwim4axainj6z7q5d06778d8qsxd">
+  ```
+- La metaetiqueta se insertó en el `<head>` de **los 9 HTML del sitio**:
+  - `index.html`, `producto.html`, `checkout.html`, `seguimiento.html`
+  - `contacto.html`, `sobre-nosotros.html`, `envios.html`, `tecnologia-rfid.html`
+  - `admin.html`
+- Posición: inmediatamente después del `<meta name="viewport">`, con comentario
+  explicativo `<!-- Meta (Facebook) Domain Verification — Fase 4 / Sesión 18 -->`.
+- Estilo respetado por archivo: archivos con `<meta ... />` (seguimiento, contacto,
+  sobre-nosotros, envios, tecnologia-rfid) usan cierre autocerrado; el resto usa
+  `<meta ...>` sin slash.
+- Resultado: Meta confirmó **"Verified"** tras clic en "Verify domain".
 
-### Validación final con grep
-Las 7 categorías del chequeo quedaron en cero resultados:
-```bash
-grep -rn "1dna_Tf8kmJNHLhzhozVAzBxTMAVTT_Tvi7fARdbZvh8"   # ✅ limpio
-grep -rn "script\.google\.com\|Apps Script"               # ✅ limpio
-grep -rn "gviz\|GViz"                                     # ✅ limpio
-grep -rn "gapi\|google\.accounts\|apis\.google\.com"      # ✅ limpio
-grep -rn "SHEET_ID\|APPS_SCRIPT_URL"                      # ✅ limpio
-grep -rn "Google Sheet\|Google Drive"                     # ✅ limpio
-grep -rn "convertDriveLink\|page-imagenes\|driveInput"    # ✅ limpio (huérfanos)
+**Impacto:** desbloquea AEM (Aggregated Event Measurement) para optimización de
+eventos en iOS 14.5+ cuando se arranquen campañas pagas.
+
+### ✅ Tarea 4 — `"type": "module"` en `package.json`
+
+- Agregada línea `"type": "module"` después de `"description"`.
+- Elimina el warning de Vercel *"Node.js functions compiled from ESM to CommonJS"*.
+- Chequeo previo: `grep -rn "require(\|module.exports" /api/*.js` devolvió 0
+  resultados. Todos los endpoints ya usaban sintaxis ESM (`import/export`).
+- Riesgo: cero. Cambio validado post-deploy con los 5 chequeos (ver sección
+  "Cómo probar").
+
+### ✅ Tarea 5 — Eliminado `api/supabase.js` duplicado
+
+- Había un archivo `api/supabase.js` idéntico a `api/_lib/supabase.js`.
+- Los 4 endpoints (`checkout.js`, `seguimiento.js`, `admin.js`, `meta-capi.js`)
+  importan desde `./_lib/supabase.js` (verificado con grep).
+- El duplicado suelto no tenía consumidores → eliminado del repo sin impacto.
+
+### 🆕 Feature nueva — Sistema archivar/eliminar pedidos (Fase 5 — Hardening admin)
+
+**Motivación:** los pedidos se acumulan con el tiempo. Sin un mecanismo de
+depuración, la lista del admin se vuelve inmanejable. Además había 6 pedidos
+de prueba acumulados de Sesión 17 (ver "Pendientes" abajo).
+
+**Arquitectura elegida: soft delete reversible + hard delete con doble confirmación.**
+
+#### Cambios en Supabase (schema)
+```sql
+-- Columna nueva en orders + índice parcial
+alter table public.orders
+  add column if not exists archivado boolean not null default false;
+
+create index if not exists orders_archivado_idx
+  on public.orders (archivado)
+  where archivado = false;
 ```
+- Snippet guardado en Supabase como *"Sesión 18 — Agregar archivado a orders"*.
+- Idempotente (se puede correr varias veces).
+- El índice parcial acelera la query principal (solo pedidos activos).
 
-### Apagados/archivados en Google
-1. **Apps Script**: implementación archivada. La URL `/exec` ahora devuelve
-   error. El código del proyecto se conserva en la cuenta por si alguna vez se
-   quiere consultar.
-2. **Google Sheet**: renombrado a
-   `[ARCHIVADO 2026-04] FOUNDER — legacy pre-Supabase` y movido a la carpeta
-   `FOUNDER — archivo legacy (pre-Supabase)` en Drive. Backup `.xlsx` descargado
-   y guardado localmente + copia en la misma carpeta de archivo.
-3. **Proyecto de Google Cloud**: marcado para eliminación. Google lo conserva
-   30 días (hasta ~22/05/2026), después se borra definitivamente. Con esto se
-   elimina también el OAuth Client asociado.
+#### Cambios en `api/admin.js` (+75 / −2 líneas)
+- **3 actions nuevas** registradas en el dispatcher:
+  - `archive_order` — soft delete (update `archivado=true`), reversible.
+  - `unarchive_order` — restaurar (update `archivado=false`).
+  - `delete_order` — DELETE definitivo, cascade a `order_items`. Requiere
+    `body.confirm === true` como defensa en profundidad contra requests
+    accidentales.
+- **`list_orders` extendido:** acepta `body.include_archived`:
+  - `'only'` → solo archivados (vista "Archivados").
+  - `'all'` → activos + archivados (sin uso actual, disponible para futuro).
+  - resto → solo activos (default, la lista principal).
+- Cada action registra auth en el body y valida `id_required`.
+
+#### Cambios en `components/founder-admin.js` (+150 / −16 líneas)
+- **Nuevo estado:** `state.currentView = 'active' | 'archived'`.
+- **`loadOrders(opts)` aceptó un parámetro `view`** para alternar entre vistas.
+  Las métricas del dashboard SOLO se recalculan cuando `view === 'active'` —
+  los archivados no ensucian las estadísticas.
+- **`filterOrders(filter, btn)` extendida:**
+  - Filtro especial `'archivados'` → dispara recarga desde el server con
+    `include_archived: 'only'`.
+  - Cualquier filtro normal estando en vista archivados → vuelve a `'active'`.
+- **`renderOrders` muestra botones condicionales:**
+  - En vista activa: botones de estado + `📁 Archivar` + `🗑 Eliminar`.
+  - En vista archivados: badge "ARCHIVADO" + `↩ Desarchivar` + `🗑 Eliminar`.
+- **3 funciones nuevas** con confirmaciones graduales:
+  - `archiveOrder(id, numero)` → 1 confirm (reversible, baja fricción).
+  - `unarchiveOrder(id)` → 1 confirm.
+  - `deleteOrder(id, numero)` → **doble confirmación obligatoria**:
+    1. `confirm()` con warning ⚠️.
+    2. `prompt()` exige escribir el número exacto (ej: `F515156`).
+    3. Backend valida `body.confirm === true` (3ra capa de defensa).
+- Todas las funciones actualizan `state.allOrders` localmente tras el ok del
+  server (no hacen full reload — UX rápida).
+- 3 nuevas exposiciones a `window`: `archiveOrder`, `unarchiveOrder`, `deleteOrder`.
+
+#### Cambios en `admin.html` (+1 línea)
+- Botón nuevo al final de la barra de filtros: `📁 Archivados`.
+- Alineado a la derecha (`margin-left: auto`) para separarlo visualmente de
+  los filtros de estado.
+- Borde sutil con tono gold para distinguirlo.
+
+### Chequeos automáticos aplicados durante la sesión
+- Sintaxis válida en los 2 `.js` (`node --check`).
+- Meta-verification presente y única en los 9 HTML.
+- 3 handlers backend registrados + 3 entradas en dispatcher (verificado).
+- 3 funciones frontend definidas + exportadas a `window` (verificado).
+- Funciones existentes intactas (`loadOrders`, `filterOrders`, `renderOrders`,
+  `changeOrderStatus`, `viewOrder`, `saveTracking` — todas con exactamente 1
+  definición).
+- Filtro "Archivados" presente en `admin.html` (1 ocurrencia).
+- Comunicación frontend↔backend usa mismo nombre `include_archived`.
+
+### Validación post-deploy (5 chequeos)
+1. ✅ Los 2 deploys (package.json + delete de supabase.js) quedaron en verde.
+2. ✅ Warning de ESM→CommonJS desaparecido de los Build Logs.
+3. ✅ Sitio público carga normal (home, producto, carrito).
+4. ✅ Admin carga productos y pedidos sin errores.
+5. ✅ Seguimiento funciona (endpoint `/api/seguimiento`).
+
+### Validación visual del sistema archivar/eliminar
+- Captura del usuario confirmó: tarjetas de pedido con botones `📁 Archivar`
+  y `🗑 Eliminar` visibles en los 5 pedidos activos.
+- Filtro `📁 Archivados` visible en la barra (confirmado en Chrome y Opera
+  tras hard refresh — Opera había cacheado el `admin.html` viejo).
+
+### Incidentes resueltos durante Sesión 18
+- **Opera cacheó `admin.html` viejo** tras el deploy: el filtro "Archivados"
+  no aparecía hasta forzar `Ctrl+F5`. Lección: en cambios de HTML, siempre
+  validar primero en Chrome (menos cache agresivo) o en ventana incógnito.
+- **Meta NO aceptaba dominio en Opera pero SÍ en Chrome**: bug del validador
+  del formulario. Invalida el diagnóstico de Sesión 17 que decía "Meta rechaza
+  ccTLDs `.uy`". El problema era el navegador, no Meta. Lección: ante errores
+  de validación extraños en paneles de Meta, probar Chrome antes de asumir bug
+  del lado del proveedor.
+- **Datasets y Ad Accounts sin botón de eliminar** en Business Manager UI:
+  Meta no ofrece delete para datasets/ad accounts auto-creados. Workaround
+  aceptable: dejarlos como están (no afectan nada) o renombrar con prefijo
+  `ZZ-` para que queden al final alfabéticamente.
 
 ### Deploys a producción
-Dos deploys durante la sesión, ambos validados en incógnito:
-- Commit 1: *"Fase 3C paso 1: limpiar CONFIG legacy..."*
-- Commit 2: *"Fase 3C paso 2: eliminar Conversor imágenes + limpiar comentarios legacy"*
-- Commit 3: *"Fase 3C paso 3: borrar api/ping.js"*
-
-Todas las funciones del sitio (home, producto, carrito, checkout, seguimiento,
-admin completo) validadas post-deploy y OK.
-
----
-
-## ✅ Lo que quedó funcionando en Sesión 15 (Fase 3B)
-
-### Admin migrado completo
-- **`components/founder-admin.js`** — ~1660 líneas (-70 tras limpieza Sesión 16),
-  IIFE. Contiene toda la lógica del panel. Expone a `window` las 34 funciones
-  que el HTML usa por `onclick=` inline (antes eran 38, -4 del conversor).
-- **`admin.html`** — 685 líneas (tras limpieza Sesión 16). HTML/CSS preservados
-  salvo la eliminación del bloque del Conversor de imágenes.
-
-### Cambios funcionales
-- **Login**: valida contra `/api/admin` (action `login`). Password en
-  `sessionStorage['founder_admin_pw']`. Logout automático en 401.
-- **Pedidos**: lista, filtros por estado, detalle con barra de progreso, cambio
-  de estado y tracking de envío — todo sobre `/api/admin`.
-- **Productos**: CRUD completo con colores y fotos (hasta 5 por color).
-- **Fotos**: upload directo a Supabase Storage con signed URL. El binario NO
-  pasa por Vercel. Bucket `product-photos` público.
-- **Cupones**: CRUD completo.
-- **Banner del hero**: se persiste en `products.banner_url` del primer producto
-  activo (mismo campo que lee `supabase-client.js → fetchBannerUrl`).
-
----
-
-## ✅ Lo que quedó funcionando en Sesión 14 (Fase 3A)
-
-### Infraestructura
-- **Vercel Serverless Functions** desplegadas en `/api/*`:
-  - `/api/checkout` — validar cupón + crear pedido (atómico via RPC)
-  - `/api/seguimiento` — buscar pedido por número+email
-  - `/api/admin` — 14 acciones para el panel
-- **Variables de entorno en Vercel** (Production+Preview):
-  - `SUPABASE_URL` ✅
-  - `SUPABASE_SERVICE_ROLE_KEY` (Sensitive) ✅
-  - `ADMIN_PASSWORD` = `nerito20` (Sensitive) ✅
-- **Storage bucket `product-photos`** en Supabase (público).
-- **RPC `apply_coupon_and_create_order(jsonb, jsonb, text)`** — transacción
-  atómica con lock FOR UPDATE del cupón.
-
-### Componentes frontend
-- `components/founder-checkout.js` — ~620 líneas, IIFE. Expone 10 funciones a `window`.
-- `components/founder-seguimiento.js` — ~620 líneas, IIFE. Expone 5 funciones.
-
-### Pedido de prueba vigente
-- **Número:** `F910752` / **Email:** `test@prueba.com`
-- **Producto:** Confort Negro × 1 — $2.490
-- **Estado:** Pendiente
-- Visible en `/seguimiento.html?pedido=F910752&email=test@prueba.com`
-
----
-
-## 🗄️ Schema Supabase — estado actual
-
-### Proyecto
-| Dato | Valor |
-|---|---|
-| URL | `https://qedwqbxuyhieznrqryhb.supabase.co` |
-| Región | São Paulo (sa-east-1) |
-| Plan | Free |
-| Anon key | En `components/supabase-client.js` (pública por diseño) |
-| Service role key | En Vercel env `SUPABASE_SERVICE_ROLE_KEY` — NUNCA al frontend |
-
-### Tablas (7)
-
-1. **`products`** — id, slug, nombre, precio, descripcion, especificaciones,
-   capacidad, dimensiones, material, nota, lleva_billetes, lleva_monedas,
-   banner_url, orden, activo, created_at, updated_at.
-2. **`product_colors`** — id, product_id, nombre, estado
-   (check: `activo`/`sin_stock`/`oferta`), precio_oferta, orden, created_at.
-3. **`product_photos`** — id, color_id, url, orden, es_principal, created_at.
-4. **`orders`** — 22 columnas: id (uuid), numero (unique), fecha, nombre,
-   apellido, celular, email, entrega, direccion, productos, subtotal,
-   descuento, envio, total, pago, estado, notas, nro_seguimiento,
-   url_seguimiento, cupon_codigo, created_at, updated_at.
-5. **`order_items`** — id, order_id (FK cascade), product_name, color,
-   cantidad, precio_unitario.
-6. **`coupons`** — id, codigo (unique), tipo (`fijo`/`porcentaje`), valor,
-   uso (`multiuso`/`unico`/`por-email`), min_compra, activo, usos_count,
-   emails_usados (text[]), desde, hasta, created_at.
-7. **`site_settings`** — key (PK), value, updated_at.
-
-### Constraints CHECK en `orders` (alineados con frontend)
-- `orders_entrega_check` → `entrega IN ('Envío','Retiro')`
-- `orders_pago_check` → `pago IN ('Mercado Pago','Transferencia')`
-- `orders_estado_check` → `estado IN ('Pendiente pago','Pendiente confirmación','Confirmado','En preparación','En camino','Listo para retirar','Entregado','Cancelado')`
-- `orders_subtotal/descuento/envio/total_check` → todos `>= 0`
-
-### Permisos (corregidos en Sesión 16)
-
-| Tabla | anon | authenticated | service_role |
-|---|---|---|---|
-| `products` | SELECT (RLS) | SELECT (RLS) | **ALL** ✅ |
-| `product_colors` | SELECT (RLS) | SELECT (RLS) | **ALL** ✅ |
-| `product_photos` | SELECT (RLS) | SELECT (RLS) | **ALL** ✅ |
-| `site_settings` | SELECT | SELECT | ALL |
-| `orders` | ❌ | ❌ | ALL |
-| `order_items` | ❌ | ❌ | ALL |
-| `coupons` | ❌ | ❌ | ALL |
-
-⚠️ **Corrección respecto al doc anterior:** en las 3 primeras tablas del
-catálogo `service_role` NECESITA `ALL` explícito, aunque solo usemos RLS para
-`anon`/`authenticated`. PostgreSQL requiere GRANT + policy — `service_role`
-bypassea RLS pero NO bypassea GRANTs de tabla.
-
-### Trigger
-- `trg_orders_updated_at` — actualiza `updated_at` en cada UPDATE de `orders`.
-- `set_updated_at()` en `products` (ya existía).
-
----
-
-## 📂 Archivos del proyecto (estructura actual en GitHub)
-
-```
-founder-web/
-├── index.html                     ✅ (limpio Sesión 16)
-├── producto.html                  ✅ (limpio Sesión 16)
-├── checkout.html                  ✅
-├── seguimiento.html               ✅
-├── admin.html                     ✅ (685 líneas tras Sesión 16)
-├── contacto.html                  ✅
-├── sobre-nosotros.html            ✅
-├── envios.html                    ✅
-├── tecnologia-rfid.html           ✅
-├── components/
-│   ├── header.js                  ✅
-│   ├── footer.js                  ✅
-│   ├── cart.js                    ✅ (limpio Sesión 16)
-│   ├── supabase-client.js         ✅ (fuente de verdad del catálogo)
-│   ├── founder-checkout.js        ✅ (limpio Sesión 16)
-│   ├── founder-seguimiento.js     ✅ (limpio Sesión 16)
-│   └── founder-admin.js           ✅ (1660 líneas tras Sesión 16)
-├── api/
-│   ├── _lib/supabase.js           ✅
-│   ├── checkout.js                ✅ (limpio Sesión 16)
-│   ├── seguimiento.js             ✅ (limpio Sesión 16)
-│   └── admin.js                   ✅
-├── package.json                   ✅ (declara @supabase/supabase-js)
-├── vercel.json                    ✅ (CORS + maxDuration 15s)
-├── README.md                      ✅
-└── ESTADO.md                      ← este archivo
-```
-
-**Eliminado en Sesión 16:** `api/ping.js`.
-
----
-
-## 🎯 Plan técnico para Fase 4 (Meta Pixel + Conversion API)
-
-### Qué es
-- **Meta Pixel**: script JS de Facebook/Meta que corre en el navegador del
-  visitante. Registra eventos como PageView, ViewContent, AddToCart, Purchase.
-  Permite optimizar campañas de Facebook/Instagram Ads y armar audiencias
-  de retargeting.
-- **Conversion API (CAPI)**: llamada del lado servidor desde Vercel hacia
-  Meta, que **duplica** los eventos importantes (especialmente Purchase). Sirve
-  para tener datos confiables cuando el usuario tiene bloqueadores de ads,
-  navega en iOS con ITP, etc.
-
-### Eventos a trackear
-
-| Evento | Disparo | Pixel | CAPI |
-|---|---|---|---|
-| `PageView` | Carga de cualquier página | ✅ | — |
-| `ViewContent` | Carga de `producto.html` | ✅ | — |
-| `AddToCart` | Click en "Agregar al carrito" | ✅ | — |
-| `InitiateCheckout` | Carga de `checkout.html` | ✅ | — |
-| `Purchase` | `/api/checkout` responde ok en `create_order` | ✅ | ✅ (source of truth) |
-
-**Decisión clave:** Purchase SIEMPRE va por CAPI desde el server, con `event_id`
-único. Si además llega por Pixel del cliente, Meta hace deduplicación por
-`event_id`. Si el Pixel es bloqueado (ad blocker, Brave, etc.), CAPI salva el
-evento.
-
-### Estado de precondiciones (actualizado Sesión 17)
-1. ✅ **Business Manager de Meta** creado (`founder.uy` — Business portfolio).
-2. ✅ **Facebook Page** conectada (`founder.uy.oficial`, ID `1058647090653828`).
-3. ✅ **Instagram Business** conectado (`@founder.uy`, ID `17841474091434639`).
-4. ✅ **Ad Account** conectada (`Publicidad FOUNDER`, ID `1653222205862527`).
-5. ✅ **Pixel / Dataset** creado (`Founder Pixel`, ID `2898267450518541`).
-6. ✅ **Access Token de CAPI** generado (guardado fuera del repo — va como
-   env var en Vercel).
-7. ⚠️ **Dominio de Meta**: `www.founder.uy` (dominio custom activo, con
-   redirect 301 desde `founder.uy` y desde `founder-web-gules.vercel.app`).
-8. 🚫 **Verificación de dominio en Meta**: BLOQUEADA por bug de Meta con
-   ccTLDs `.uy` — el validador del campo "Add domain" rechaza `founder.uy`,
-   `www.founder.uy` y variantes con error *"Confirm your domain is correctly
-   formatted"*. Ver sección "Pendientes externos" abajo.
-
-### Pendientes externos (no bloqueantes para Pixel + CAPI)
-- **Verificación de dominio en Meta**: Meta bloquea el alta del dominio por
-  bug conocido con ccTLDs regionales (Public Suffix List). No afecta el
-  funcionamiento del Pixel ni de CAPI — solo impacta la optimización AEM
-  (Aggregated Event Measurement) para campañas pagas en iOS 14.5+. Plan:
-  abrir ticket con Meta Pro Support cuando vayamos a arrancar campañas
-  pagas, o esperar que Meta corrija el bug en su lado.
-
-### Checks preventivos al arrancar implementación (Paso 4)
-- Confirmar que no hay ningún Pixel instalado ya (grep `fbq(` y
-  `connect.facebook.net/en_US/fbevents.js` en el repo).
-- Confirmar que existe el `event_id` único generado en el checkout
-  (actualmente se usa el `order.numero` estilo `F910752` — servirá).
-- Identificar el mejor lugar para inyectar el Pixel: `<head>` de cada HTML
-  vía un componente nuevo `components/meta-pixel.js`.
-- Evaluar si usar consentimiento de cookies previo (GDPR/LGPD) — en UY no
-  es legalmente obligatorio, pero es buena práctica.
-
-### Variables de entorno nuevas en Vercel
-- `META_PIXEL_ID` = `2898267450518541` (pública, puede ir al frontend).
-- `META_CAPI_TOKEN` = `EAA...` (sensitive, solo server-side).
-- `META_TEST_EVENT_CODE` (opcional, para pruebas en Events Manager).
-
-### Archivos a crear/modificar (estimado)
-- `components/meta-pixel.js` — nuevo, ~100 líneas. Carga `fbevents.js` y
-  expone `window.fbq(evento, params)`.
-- `index.html`, `producto.html`, `checkout.html`, `seguimiento.html`,
-  `contacto.html`, `sobre-nosotros.html`, `envios.html`,
-  `tecnologia-rfid.html` — agregar tag en el `<head>`.
-- `producto.html` — disparar `ViewContent` cuando carga un producto.
-- `cart.js` — disparar `AddToCart` al agregar un producto al carrito.
-- `founder-checkout.js` — disparar `InitiateCheckout` al cargar.
-- `api/checkout.js` — en el handler de `create_order`, al final, llamar a
-  CAPI con el Purchase duplicado (con `event_id = order.numero`).
-
-### Decisiones tomadas al arrancar Sesión 17
-1. ✅ Usar un solo Pixel (`Founder Pixel`).
-2. ✅ Incluir datos personales hasheados (email, teléfono) en CAPI Purchase
-   para mejorar match rate. Se hashean con SHA-256 antes de enviar.
-3. ⏳ Consentimiento de cookies: diferir — se puede agregar después si se
-   decide. UY no lo exige legalmente.
-
----
-
-## ⚠️ Reglas críticas NO NEGOCIABLES
-
-### Reglas de código
-- La clave interna `'sin_stock'` NO se modifica jamás.
-- Sistema de componentes (`header.js`, `footer.js`, `cart.js`,
-  `supabase-client.js`, `founder-checkout.js`, `founder-seguimiento.js`,
-  `founder-admin.js`) es la **única fuente de verdad**. No replicar
-  markup/lógica en HTMLs.
-- `supabase-client.js` SIEMPRE antes que `cart.js` (y antes que cualquier
-  componente que use `window.founderDB`).
-- `checkout.html` y `admin.html` quedan excluidos del sistema de header/footer
-  compartido — tienen header propio.
-- `service_role` NUNCA va al frontend — solo en `/api/*` Vercel Functions con
-  env var.
-
-### Reglas de base de datos
-- **Cuando se cree una tabla o se active RLS, SIEMPRE emitir explícitamente
-  `GRANT SELECT/ALL ... TO anon|authenticated|service_role`**. Las RLS policies
-  por sí solas **NO alcanzan** — PostgreSQL requiere los dos niveles
-  (GRANT + policy).
-- **Los constraints CHECK de `orders` deben coincidir EXACTO con los strings
-  que manda el frontend**. Cualquier desalineamiento rompe el INSERT.
-- **`service_role` NO bypassea GRANTs de tabla** — solo bypassea RLS. Siempre
-  `GRANT ALL` a service_role en TODAS las tablas, sean privadas o del catálogo.
-- Las 4 tablas privadas (`orders`, `order_items`, `coupons`, + parcialmente
-  `site_settings`) **SOLO se tocan vía `/api/*`**. El frontend con anon key
-  no tiene acceso directo.
-- NO tocar manualmente las tablas desde el dashboard. Todos los cambios vía
-  SQL versionado guardado como snippet en Supabase.
-
----
-
-## 🧪 Cómo probar todo lo que está hecho
-
-### Prueba end-to-end de compra
-1. Abrir https://www.founder.uy
-2. Agregar producto al carrito → checkout.
-3. Completar, confirmar pedido.
-4. Ver "🎉 ¡Pedido enviado!" con número `F######`.
-5. Verificar en Supabase Dashboard → Table Editor → `orders` + `order_items`.
-
-### Prueba de seguimiento
-Ir a `/seguimiento.html?pedido=F910752&email=test@prueba.com` — debe mostrar
-el detalle del pedido.
-
-### Prueba de admin
-Entrar a `/admin.html` con password `nerito20`. Deberían cargar productos,
-pedidos y cupones sin errores 500.
-
-### Prueba de cupón
-```sql
-insert into public.coupons (codigo, tipo, valor, uso, min_compra, activo)
-values ('TEST10', 'porcentaje', 10, 'multiuso', 0, true);
-```
-Aplicarlo en checkout → debe restar 10% + sumar 1 a `usos_count`.
-
-### Limpieza de pedidos de prueba
-```sql
-delete from public.orders where email = 'test@prueba.com';
--- Los order_items asociados se borran en cascada.
-```
-
----
-
-## 🔐 Datos clave (guardar en lugar seguro)
-
-| Recurso | Valor |
-|---|---|
-| URL sitio producción | https://www.founder.uy |
-| URL sin www (redirect 308 → www) | https://founder.uy |
-| URL Vercel legacy (redirect 301 → www) | https://founder-web-gules.vercel.app |
-| Repo GitHub | github.com/evandrosegovia-1171s-projects/founder-web |
-| Usuario Vercel | evandrosegovia-1171s-projects |
-| Password admin | `nerito20` |
-| Supabase URL | `https://qedwqbxuyhieznrqryhb.supabase.co` |
-| Supabase región | São Paulo (sa-east-1) |
-| Pedido de prueba vigente | `F910752` / `test@prueba.com` / Confort Negro / $2.490 |
-| Backup del Sheet viejo | `.xlsx` guardado localmente + en carpeta "FOUNDER — archivo legacy (pre-Supabase)" en Drive |
-
----
-
-## 📜 Historial de incidentes resueltos
-
-### Sesión 16 (1 incidente)
-| # | Síntoma | Causa raíz | Fix |
-|---|---|---|---|
-| 1 | Admin 500 `"permission denied for table products"` | `service_role` sin `GRANT ALL` sobre las 3 tablas del catálogo (la doc Sesión 14 era incorrecta) | SQL `grant all on public.<tabla> to service_role` sobre las 7 tablas |
-
-### Sesión 14 (6 incidentes en cascada)
-| # | Síntoma | Causa raíz | Fix |
-|---|---|---|---|
-| 1 | Home sin fotos, 401 `"permission denied for table product_photos"` | Políticas RLS con rol `{public}` | `04_fix_rls.sql` |
-| 2 | Persiste 401 tras fix RLS | Faltaba GRANT SELECT a nivel tabla | `05_fix_grants.sql` |
-| 3 | Checkout: `"column productos does not exist"` | Columna `productos` (y 11 más) faltaban en `orders` | `06_fix_orders_schema.sql` |
-| 4 | Checkout: `"violates check constraint orders_entrega_check"` | Constraint viejo rechazaba `'Envío'` | `07_fix_entrega_check.sql` |
-| 5 | Checkout: `"violates check constraint orders_pago_check"` | Mismo caso con `pago` | `08_fix_pago_check.sql` |
-| 6 | Seguimiento: `"permission denied for table orders"` | Faltaba `GRANT ALL` a service_role en tablas privadas | `09_fix_service_role_grants.sql` |
-
----
-
-## 📋 Historial de sesiones
-
-- **Sesión 9-11:** Setup inicial, componentes, catálogo en Google Sheets.
-- **Sesión 12:** Supabase configurado, schema inicial, catálogo migrado.
-- **Sesión 13 (Fase 2):** Frontend público migrado a `window.founderDB`.
-- **Sesión 14 (Fase 3A):** Checkout y seguimiento migrados a Supabase vía
-  Vercel Serverless. 6 incidentes resueltos en cascada.
-- **Sesión 15 (Fase 3B):** Admin migrado a `/api/admin` + Supabase Storage.
-  `founder-admin.js` creado. `admin.html` bajó 70%. Eliminadas dependencias
-  de Google (gapi/OAuth/Sheets/Drive) del código.
-- **Sesión 16 (Fase 3C):** Limpieza final. Incidente inicial de permisos
-  resuelto con `GRANT ALL`. Código 100% libre de legacy (grep confirmado en 7
-  categorías). Apps Script apagado, Sheet archivado con backup, proyecto de
-  Google Cloud marcado para eliminación (se borra el ~22/05/2026). `api/ping.js`
-  eliminado.
-- **Sesión 17 (Fase 4):** Dominio custom `founder.uy` conectado a Vercel con
-  SSL. Dominio principal: `www.founder.uy`; redirects 301/308 desde `founder.uy`
-  y desde `founder-web-gules.vercel.app`. Meta Business Portfolio creado con
-  Facebook Page + Instagram Business + Pixel (`2898267450518541`) + Access
-  Token CAPI. Componente nuevo `components/meta-pixel.js` implementado con
-  helpers tipados (ViewContent, AddToCart, InitiateCheckout, Purchase). Módulo
-  nuevo `api/_lib/meta-capi.js` para tracking dual server-side. Checkout
-  modificado con `await` + timeout 3s para que Vercel no mate el fetch antes
-  de que complete. Test end-to-end confirmado: `events_received: 1` con
-  `fbtrace_id` válido. ← **Acá terminamos.**
-- **Sesión 18:** Pendientes menores + evaluación de campañas pagas. ← **Próxima.**
+Cinco deploys durante la sesión, todos validados:
+- Commit 1: *"feat: agregar meta-verification de Meta en los 9 HTML"*
+- Commit 2: *"chore: agregar \"type\": \"module\" al package.json"*
+- Commit 3: *"chore: eliminar api/supabase.js duplicado"*
+- Commit 4: *"feat: agregar archive/unarchive/delete para pedidos (api/admin.js)"*
+- Commit 5: *"feat: botones archivar/desarchivar/eliminar en tarjetas de pedido (founder-admin.js)"*
+- Commit 6: *"feat: filtro Archivados en barra de pedidos (admin.html)"*
 
 ---
 
@@ -477,32 +212,29 @@ delete from public.orders where email = 'test@prueba.com';
 - Instagram Business: `@founder.uy` (ID `17841474091434639`).
 - Ad Account: `Publicidad FOUNDER` (ID `1653222205862527`).
 - Hay una Ad Account sin nombre (`26140748312219895`) auto-creada por Meta —
-  ignorada, se evalúa limpieza en Sesión 18.
+  se evaluó en Sesión 18 y Meta no permite eliminarla. Se deja.
 - Dataset/Pixel: `Founder Pixel` (ID `2898267450518541`).
 - Hay un dataset "NO" (ID `1472474751248750`) creado por accidente al testear
-  — no afecta nada pero conviene eliminarlo en Sesión 18.
+  — se intentó eliminar en Sesión 18 pero Meta no permite delete vía UI. Se deja.
 
 ### Meta Pixel + CAPI
 - `META_PIXEL_ID` y `META_CAPI_TOKEN` configurados en Vercel Environment
   Variables. **Importante**: NO marcadas como "Sensitive" por issues de
   propagación en el plan Hobby. Funcionan bien sin ese flag.
-- `components/meta-pixel.js` (nuevo, ~230 líneas): wrapper oficial del Pixel
-  con API pública `window.founderPixel`. Dispara PageView automático + helpers
-  tipados para ViewContent, AddToCart, InitiateCheckout, Purchase.
-- Script `<script src="components/meta-pixel.js">` agregado a los 8 HTML del
-  sitio.
+- `components/meta-pixel.js` (~230 líneas): wrapper oficial del Pixel con API
+  pública `window.founderPixel`. Dispara PageView automático + helpers tipados
+  para ViewContent, AddToCart, InitiateCheckout, Purchase.
+- Script `<script src="components/meta-pixel.js">` en los 8 HTML públicos.
 - `producto.html` dispara ViewContent al renderizar + AddToCart al agregar.
 - `index.html` dispara AddToCart al agregar desde modal.
 - `components/founder-checkout.js` dispara InitiateCheckout + Purchase cliente.
-- `api/_lib/meta-capi.js` (nuevo, ~230 líneas): módulo CAPI con hasheado
-  SHA-256 de email/teléfono/nombre, extracción de IP/UA/fbp/fbc, POST a
+- `api/_lib/meta-capi.js` (~230 líneas): módulo CAPI con hasheado SHA-256 de
+  email/teléfono/nombre, extracción de IP/UA/fbp/fbc, POST a
   `graph.facebook.com/v19.0/{pixel_id}/events`. Fallo silencioso si faltan
   env vars.
-- `api/checkout.js` modificado para invocar `sendPurchaseEvent` con `await`
-  + `Promise.race` con timeout de 3s — crítico para que Vercel Serverless no
-  mate el fetch antes de que complete. Sin esto, el evento se perdía.
-- `event_id` unificado = `order.numero` (ej. `F378204`) → Meta deduplica
-  automáticamente los eventos Pixel y CAPI que llegan con mismo ID.
+- `api/checkout.js` invoca `sendPurchaseEvent` con `await` + `Promise.race`
+  con timeout de 3s — crítico para que Vercel Serverless no mate el fetch.
+- `event_id` unificado = `order.numero` → Meta deduplica automáticamente.
 
 ### Verificación end-to-end (pedido F378204)
 ```
@@ -511,65 +243,395 @@ delete from public.orders where email = 'test@prueba.com';
 23:02:59.343  [checkout] CAPI result: { ok: true, events_received: 1 }
 ```
 218ms desde invocación hasta confirmación de Meta. `messages: []` = payload
-perfecto, sin warnings.
+perfecto.
 
 ---
 
-## 📋 Pendientes para Sesión 18 (no bloqueantes)
+## ✅ Lo que quedó funcionando en Sesión 16 (Fase 3C)
 
-### Prioridad alta — solo cuando se arranquen campañas pagas
-1. **Verificación de dominio en Meta**: actualmente BLOQUEADA por bug del
-   Public Suffix List con ccTLDs `.uy`. El validador del campo "Add domain"
-   rechaza `founder.uy`, `www.founder.uy` y variantes con "Confirm your
-   domain is correctly formatted". No afecta el funcionamiento de Pixel ni
-   CAPI — solo impacta AEM (Aggregated Event Measurement) para optimización
-   en iOS 14.5+. Plan: abrir ticket con Meta Pro Support cuando se vayan a
-   correr ads con optimización de Purchase.
+### Incidente inicial resuelto
+`/api/admin` devolvía 500 `"permission denied for table products"`. Causa:
+`service_role` no tenía `GRANT ALL` sobre las 3 tablas del catálogo. Fix:
+`grant all on public.<tabla> to service_role` sobre las 7 tablas (snippet
+*"Fix service_role Table Permissions"*).
 
-### Prioridad media — mejoras de orden
-2. **Limpiar dataset "NO"** (ID `1472474751248750`) creado por error en Meta.
-3. **Evaluar Ad Account `26140748312219895`** sin nombre (probablemente
-   auto-generada por Meta) — renombrar o eliminar.
-4. **Resolver warning de Vercel**: "Node.js functions compiled from ESM to
-   CommonJS". Agregar `"type": "module"` al `package.json` raíz.
-5. **Limpiar archivo duplicado `api/supabase.js`** — hay una copia idéntica
-   en `api/_lib/supabase.js` que es la que consumen los endpoints. El
-   duplicado suelto no se usa pero ocupa espacio.
-6. **Agregar email de contacto al Instagram** en Meta Business Portfolio
+### Limpieza del código
+- `index.html` + `producto.html`: eliminadas `SHEET_ID` y `APPS_SCRIPT_URL`.
+- `admin.html`: eliminada página *"Conversor de imágenes"* (-42 líneas).
+- `founder-admin.js`: eliminadas 6 funciones del conversor (-70 líneas).
+- Cabezales reescritos en 6 archivos (sin menciones a GViz/gapi/Apps Script/Drive).
+- `api/ping.js` eliminado.
+
+### Apagados en Google
+1. Apps Script: archivado. La URL `/exec` devuelve error.
+2. Google Sheet: renombrado `[ARCHIVADO 2026-04]`, movido a carpeta de archivo.
+   Backup `.xlsx` local + en Drive.
+3. Proyecto de Google Cloud: marcado para eliminación (~22/05/2026).
+
+---
+
+## ✅ Lo que quedó funcionando en Sesión 15 (Fase 3B)
+
+- `components/founder-admin.js` — IIFE, expone 37 funciones a `window` tras
+  Sesión 18 (eran 34 tras Sesión 16, ahora +3 por archivar/desarchivar/eliminar).
+- `admin.html` — 686 líneas tras Sesión 18.
+- Login valida contra `/api/admin` action `login`. Password en sessionStorage.
+- Pedidos, productos (con upload directo a Storage), cupones y banner todos
+  sobre `/api/admin`.
+
+---
+
+## ✅ Lo que quedó funcionando en Sesión 14 (Fase 3A)
+
+### Infraestructura
+- Vercel Serverless Functions en `/api/*`:
+  - `/api/checkout` — validar cupón + crear pedido (atómico via RPC)
+  - `/api/seguimiento` — buscar pedido por número+email
+  - `/api/admin` — 17 acciones (14 + 3 nuevas de Sesión 18)
+- Variables de entorno en Vercel:
+  - `SUPABASE_URL` ✅
+  - `SUPABASE_SERVICE_ROLE_KEY` (Sensitive) ✅
+  - `ADMIN_PASSWORD` = `nerito20` (Sensitive) ✅
+  - `META_PIXEL_ID` ✅ (agregada Sesión 17)
+  - `META_CAPI_TOKEN` ✅ (agregada Sesión 17)
+- Storage bucket `product-photos` público.
+- RPC `apply_coupon_and_create_order(jsonb, jsonb, text)` — transacción atómica.
+
+### Pedido de prueba histórico
+- Número: `F910752` / `test@prueba.com` / Confort Negro × 1 / $2.490.
+
+---
+
+## 🗄️ Schema Supabase — estado actual
+
+### Proyecto
+| Dato | Valor |
+|---|---|
+| URL | `https://qedwqbxuyhieznrqryhb.supabase.co` |
+| Región | São Paulo (sa-east-1) |
+| Plan | Free |
+| Anon key | En `components/supabase-client.js` (pública por diseño) |
+| Service role key | En Vercel env `SUPABASE_SERVICE_ROLE_KEY` — NUNCA al frontend |
+
+### Tablas (7)
+
+1. **`products`** — id, slug, nombre, precio, descripcion, especificaciones,
+   capacidad, dimensiones, material, nota, lleva_billetes, lleva_monedas,
+   banner_url, orden, activo, created_at, updated_at.
+2. **`product_colors`** — id, product_id, nombre, estado
+   (check: `activo`/`sin_stock`/`oferta`), precio_oferta, orden, created_at.
+3. **`product_photos`** — id, color_id, url, orden, es_principal, created_at.
+4. **`orders`** — 23 columnas (Sesión 18: +`archivado`): id (uuid), numero
+   (unique), fecha, nombre, apellido, celular, email, entrega, direccion,
+   productos, subtotal, descuento, envio, total, pago, estado, notas,
+   nro_seguimiento, url_seguimiento, cupon_codigo, **archivado** (bool,
+   default false), created_at, updated_at.
+5. **`order_items`** — id, order_id (FK cascade), product_name, color,
+   cantidad, precio_unitario.
+6. **`coupons`** — id, codigo (unique), tipo (`fijo`/`porcentaje`), valor,
+   uso (`multiuso`/`unico`/`por-email`), min_compra, activo, usos_count,
+   emails_usados (text[]), desde, hasta, created_at.
+7. **`site_settings`** — key (PK), value, updated_at.
+
+### Constraints CHECK en `orders` (alineados con frontend)
+- `orders_entrega_check` → `entrega IN ('Envío','Retiro')`
+- `orders_pago_check` → `pago IN ('Mercado Pago','Transferencia')`
+- `orders_estado_check` → `estado IN ('Pendiente pago','Pendiente confirmación','Confirmado','En preparación','En camino','Listo para retirar','Entregado','Cancelado')`
+- `orders_subtotal/descuento/envio/total_check` → todos `>= 0`
+
+### Índices (Sesión 18)
+- `orders_archivado_idx` — parcial sobre `archivado = false`. Acelera la
+  query principal del admin que lista solo pedidos activos.
+
+### Permisos
+
+| Tabla | anon | authenticated | service_role |
+|---|---|---|---|
+| `products` | SELECT (RLS) | SELECT (RLS) | **ALL** ✅ |
+| `product_colors` | SELECT (RLS) | SELECT (RLS) | **ALL** ✅ |
+| `product_photos` | SELECT (RLS) | SELECT (RLS) | **ALL** ✅ |
+| `site_settings` | SELECT | SELECT | ALL |
+| `orders` | ❌ | ❌ | ALL |
+| `order_items` | ❌ | ❌ | ALL |
+| `coupons` | ❌ | ❌ | ALL |
+
+⚠️ En las 3 primeras tablas del catálogo `service_role` NECESITA `ALL` explícito,
+aunque solo usemos RLS para `anon`/`authenticated`. PostgreSQL requiere GRANT +
+policy — `service_role` bypassea RLS pero NO bypassea GRANTs de tabla.
+
+### Triggers
+- `trg_orders_updated_at` — actualiza `updated_at` en cada UPDATE de `orders`.
+- `set_updated_at()` en `products`.
+
+---
+
+## 📂 Archivos del proyecto (estructura actual en GitHub)
+
+```
+founder-web/
+├── index.html                     ✅ (Sesión 18: +meta-verification)
+├── producto.html                  ✅ (Sesión 18: +meta-verification)
+├── checkout.html                  ✅ (Sesión 18: +meta-verification)
+├── seguimiento.html               ✅ (Sesión 18: +meta-verification)
+├── admin.html                     ✅ (686 líneas — Sesión 18: +meta-verif + filtro Archivados)
+├── contacto.html                  ✅ (Sesión 18: +meta-verification)
+├── sobre-nosotros.html            ✅ (Sesión 18: +meta-verification)
+├── envios.html                    ✅ (Sesión 18: +meta-verification)
+├── tecnologia-rfid.html           ✅ (Sesión 18: +meta-verification)
+├── components/
+│   ├── header.js                  ✅
+│   ├── footer.js                  ✅
+│   ├── cart.js                    ✅
+│   ├── supabase-client.js         ✅ (fuente de verdad del catálogo)
+│   ├── meta-pixel.js              ✅ (Sesión 17)
+│   ├── founder-checkout.js        ✅
+│   ├── founder-seguimiento.js     ✅
+│   └── founder-admin.js           ✅ (~1810 líneas — Sesión 18: +150 por archive/delete)
+├── api/
+│   ├── _lib/
+│   │   ├── supabase.js            ✅
+│   │   └── meta-capi.js           ✅ (Sesión 17)
+│   ├── checkout.js                ✅
+│   ├── seguimiento.js             ✅
+│   └── admin.js                   ✅ (Sesión 18: +75 por archive/unarchive/delete)
+├── package.json                   ✅ (Sesión 18: +"type": "module")
+├── vercel.json                    ✅ (CORS + maxDuration 15s)
+├── README.md                      ✅
+└── ESTADO.md                      ← este archivo
+```
+
+**Eliminado en Sesión 18:** `api/supabase.js` (era duplicado de `api/_lib/supabase.js`).
+**Eliminado en Sesión 16:** `api/ping.js`.
+
+---
+
+## 🔧 API /api/admin — Acciones (17 totales)
+
+| Categoría | Action | Qué hace |
+|---|---|---|
+| **Auth** | `login` | Valida password, devuelve 200 si es correcto |
+| **Pedidos** | `list_orders` | Lista con filtro `include_archived` (`'only'`/`'all'`/default=activos) |
+| | `update_order_status` | Cambia `orders.estado` |
+| | `update_order_tracking` | Guarda nro_seguimiento + url_seguimiento |
+| | `archive_order` 🆕 | Soft delete (archivado=true). Reversible |
+| | `unarchive_order` 🆕 | Restaurar (archivado=false) |
+| | `delete_order` 🆕 | DELETE definitivo. Requiere `body.confirm=true` |
+| **Cupones** | `list_coupons` | Lista todos |
+| | `create_coupon` | Alta |
+| | `update_coupon` | Toggle activo + editar |
+| | `delete_coupon` | Elimina |
+| **Productos** | `list_products` | Lista con colores y fotos |
+| | `save_product` | Upsert (producto + colores + fotos) |
+| | `delete_product` | Elimina con cascada |
+| **Settings** | `get_setting` | Lee `site_settings[key]` |
+| | `set_setting` | Escribe `site_settings[key]` |
+| **Storage** | `get_upload_url` | Genera signed URL para upload directo al bucket |
+
+---
+
+## ⚠️ Reglas críticas NO NEGOCIABLES
+
+### Reglas de código
+- La clave interna `'sin_stock'` NO se modifica jamás.
+- Sistema de componentes (`header.js`, `footer.js`, `cart.js`,
+  `supabase-client.js`, `meta-pixel.js`, `founder-checkout.js`,
+  `founder-seguimiento.js`, `founder-admin.js`) es la **única fuente de
+  verdad**. No replicar markup/lógica en HTMLs.
+- `supabase-client.js` SIEMPRE antes que `cart.js` (y antes que cualquier
+  componente que use `window.founderDB`).
+- `checkout.html` y `admin.html` quedan excluidos del sistema de header/footer
+  compartido — tienen header propio.
+- `service_role` NUNCA va al frontend — solo en `/api/*` Vercel Functions con
+  env var.
+- **El `delete_order` del admin requiere DOBLE confirmación del usuario** +
+  backend valida `body.confirm === true`. Nunca eliminar esa defensa.
+
+### Reglas de base de datos
+- **Cuando se cree una tabla o se active RLS, SIEMPRE emitir explícitamente
+  `GRANT SELECT/ALL ... TO anon|authenticated|service_role`**. Las RLS policies
+  por sí solas **NO alcanzan** — PostgreSQL requiere los dos niveles.
+- **Los constraints CHECK de `orders` deben coincidir EXACTO con los strings
+  que manda el frontend**. Cualquier desalineamiento rompe el INSERT.
+- **`service_role` NO bypassea GRANTs de tabla** — solo bypassea RLS.
+- Las 4 tablas privadas (`orders`, `order_items`, `coupons`, + parcialmente
+  `site_settings`) **SOLO se tocan vía `/api/*`**.
+- NO tocar manualmente las tablas desde el dashboard. Todos los cambios vía
+  SQL versionado guardado como snippet en Supabase.
+
+### Reglas de navegador (nuevo — Sesión 18)
+- **Para probar cambios en paneles de Meta Business, usar Google Chrome**.
+  Opera tiene bugs de validación intermitentes que causan diagnósticos
+  erróneos. Firefox y Edge tampoco están recomendados.
+- **Para probar deploys en Vercel, hacer hard refresh (`Ctrl+F5`) o usar
+  ventana incógnito**. Opera (y a veces Chrome) cachean HTML agresivamente.
+
+---
+
+## 🧪 Cómo probar todo lo que está hecho
+
+### Prueba end-to-end de compra
+1. Abrir https://www.founder.uy
+2. Agregar producto al carrito → checkout.
+3. Completar, confirmar pedido.
+4. Ver "🎉 ¡Pedido enviado!" con número `F######`.
+5. Verificar en Supabase Dashboard → Table Editor → `orders` + `order_items`.
+
+### Prueba de seguimiento
+Ir a `/seguimiento.html?pedido=F910752&email=test@prueba.com` — debe mostrar
+el detalle del pedido.
+
+### Prueba de admin
+Entrar a `/admin.html` con password `nerito20`. Deberían cargar productos,
+pedidos y cupones sin errores 500.
+
+### Prueba del sistema archivar/eliminar (Sesión 18)
+1. En `/admin.html → Pedidos`, verificar que cada tarjeta muestre al final:
+   botones de estado + `📁 Archivar` + `🗑 Eliminar` (rojo).
+2. Clic en **📁 Archivar** sobre un pedido → confirmar → debe desaparecer
+   de la lista con toast verde.
+3. Clic en filtro **📁 Archivados** (último botón de la barra, alineado a
+   la derecha) → debe aparecer el pedido con badge "ARCHIVADO".
+4. Clic en **↩ Desarchivar** → confirmar → desaparece de ahí.
+5. Volver a filtro "Todos" → reaparece en la lista normal.
+6. Clic en **🗑 Eliminar** sobre un pedido de prueba → confirmar warning →
+   prompt pide escribir el número exacto (ej: `F515156`) → escribir → aceptar
+   → borrado definitivo con toast.
+7. Verificar en Supabase que `orders` y `order_items` asociados se borraron.
+
+### Prueba de cupón
+```sql
+insert into public.coupons (codigo, tipo, valor, uso, min_compra, activo)
+values ('TEST10', 'porcentaje', 10, 'multiuso', 0, true);
+```
+Aplicarlo en checkout → debe restar 10% + sumar 1 a `usos_count`.
+
+---
+
+## 🔐 Datos clave (guardar en lugar seguro)
+
+| Recurso | Valor |
+|---|---|
+| URL sitio producción | https://www.founder.uy |
+| URL sin www (redirect 308 → www) | https://founder.uy |
+| URL Vercel legacy (redirect 301 → www) | https://founder-web-gules.vercel.app |
+| Repo GitHub | github.com/evandrosegovia-1171s-projects/founder-web |
+| Usuario Vercel | evandrosegovia-1171s-projects |
+| Password admin | `nerito20` |
+| Supabase URL | `https://qedwqbxuyhieznrqryhb.supabase.co` |
+| Supabase región | São Paulo (sa-east-1) |
+| Meta Business | founder.uy (Business portfolio) |
+| Meta Pixel ID | `2898267450518541` (Founder Pixel) |
+| Meta domain-verification token | `6qpwim4axainj6z7q5d06778d8qsxd` (en los 9 HTML) |
+| Pedido de prueba histórico | `F910752` / `test@prueba.com` / Confort Negro / $2.490 |
+| Backup del Sheet viejo | `.xlsx` guardado localmente + en carpeta "FOUNDER — archivo legacy (pre-Supabase)" en Drive |
+
+---
+
+## 📋 Historial de sesiones
+
+- **Sesión 9-11:** Setup inicial, componentes, catálogo en Google Sheets.
+- **Sesión 12:** Supabase configurado, schema inicial, catálogo migrado.
+- **Sesión 13 (Fase 2):** Frontend público migrado a `window.founderDB`.
+- **Sesión 14 (Fase 3A):** Checkout y seguimiento migrados a Supabase vía
+  Vercel Serverless. 6 incidentes resueltos en cascada.
+- **Sesión 15 (Fase 3B):** Admin migrado a `/api/admin` + Supabase Storage.
+  `founder-admin.js` creado. `admin.html` bajó 70%. Eliminadas dependencias
+  de Google (gapi/OAuth/Sheets/Drive) del código.
+- **Sesión 16 (Fase 3C):** Limpieza final. Incidente inicial de permisos
+  resuelto con `GRANT ALL`. Código 100% libre de legacy. Apps Script apagado,
+  Sheet archivado con backup, proyecto de Google Cloud marcado para
+  eliminación (se borra ~22/05/2026). `api/ping.js` eliminado.
+- **Sesión 17 (Fase 4):** Dominio custom `founder.uy` conectado a Vercel.
+  Meta Business Portfolio creado con Facebook Page + Instagram Business +
+  Pixel + Access Token CAPI. Componente `meta-pixel.js` + módulo
+  `api/_lib/meta-capi.js`. Tracking dual operativo. Test end-to-end F378204
+  confirmó deduplicación.
+- **Sesión 18 (Fase 4 cierre + Fase 5 inicio):** Desbloqueada y completada la
+  verificación de dominio en Meta (era bug de Opera, no de Meta). Metaetiqueta
+  agregada en los 9 HTML. Limpieza técnica: `"type": "module"` en package.json
+  + eliminado `api/supabase.js` duplicado. **Nueva feature: sistema archivar/
+  eliminar pedidos** con 3 actions en backend, 3 funciones frontend, doble
+  confirmación para delete, vista separada de archivados, nueva columna
+  `archivado` en `orders` + índice parcial. ← **Acá terminamos.**
+- **Sesión 19:** 3 pendientes menores de Meta + prueba del sistema archivar/
+  eliminar con pedidos de prueba acumulados + evaluación de campañas pagas.
+  ← **Próxima.**
+
+---
+
+## 📋 Pendientes para Sesión 19
+
+### Prioridad media — 3 clics en Chrome
+Las 3 se intentaron en Sesión 18 pero Meta Business Manager **no ofrece delete
+en la UI** para estos recursos. Alternativas aceptables:
+
+1. **Renombrar dataset "NO"** (ID `1472474751248750`) con prefijo `ZZ-` para
+   que quede al final alfabéticamente. Si ni renombrar deja, ignorar.
+2. **Renombrar o ignorar Ad Account `26140748312219895`** (auto-creada, sin
+   nombre).
+3. **Agregar email de contacto al Instagram** en Meta Business Portfolio
    (badge "Missing contact info" en Users → People).
 
-### Prioridad baja — pulido
-7. **Reintentar username `founder.uy` para la Page de Facebook** cuando Meta
-   lo libere (actualmente quedó como `founder.uy.oficial`).
-8. **Borrar el pedido de prueba `F378204`** (testcapi3@prueba.com) y otros
-   pedidos de prueba acumulados durante esta sesión:
-   ```sql
-   delete from public.orders
-   where email like '%@prueba.com' or email like 'testcapi%';
-   ```
+### Prioridad media — usar la nueva funcionalidad
+4. **Borrar pedidos de prueba acumulados** con el nuevo sistema de eliminar
+   desde el admin (en lugar del SQL). Candidatos detectados en captura de
+   Sesión 18:
+   - `F237553`, `F839362`, `F029945` — Evandro Segovia con CIs tipo `77777777`
+     / `5555555` / `11111458` y direcciones random (`erwre`, `dsfsdf`, `erf`).
+   - `F264440`, `F515156` — `enadro e eeef` + `enadro e eddd` / `fdfd@gmail.com`
+     con CIs random.
+   - `F378204` — pedido de prueba de CAPI (Sesión 17).
+   - ⚠️ **NO BORRAR**: `F203641` — Florencia Risso / `florenciar.1196@gmail.com`
+     → parece un pedido real, confirmar antes de tocar.
 
-### Incidentes resueltos durante Sesión 17 (documentados por si se repiten)
-- **Meta rechazó `founder.uy` en verificación de dominio**: bug del Public
-  Suffix List con ccTLDs. Workaround: decidimos saltear la verificación ya que
-  no bloquea el tracking.
-- **Upload parcial a GitHub**: la interfaz web a veces no sube todos los
-  archivos cuando son muchos. Regla: verificar archivo por archivo, o subir
-  en tandas chicas (2-3 archivos).
-- **Archivo subido a carpeta equivocada**: `meta-capi.js` se subió a `api/`
-  en vez de `api/_lib/`. Causa: al dar "Add file → Upload" hay que verificar
-  el breadcrumb antes de arrastrar.
-- **Variables "Sensitive" en Vercel Hobby**: las env vars marcadas Sensitive
-  tuvieron issues de propagación en runtime. Solución: crear sin el flag.
-- **Fire-and-forget cortado por Vercel Serverless**: el primer diseño del
-  CAPI usaba `sendPurchaseEvent().catch(...)` sin await. Vercel mataba el
-  proceso al retornar la respuesta HTTP, perdiendo el fetch a Meta. Fix:
-  `await Promise.race([capiPromise, timeoutPromise(3000)])`. Lección: en
-  serverless, fire-and-forget NO funciona — siempre await + timeout.
+### Prioridad baja — pulido
+5. **Reintentar username `founder.uy` para la Page de Facebook** cuando Meta
+   lo libere (actualmente `founder.uy.oficial`).
+
+### Prioridad alta (no bloqueante) — solo cuando arranquen ads
+6. **Evaluar primera campaña paga de Meta Ads** con optimización de Purchase.
+   Con el dominio verificado, AEM debería funcionar correctamente en iOS 14.5+.
+   Definir: presupuesto diario, producto destacado, público objetivo
+   (remarketing a visitantes de `producto.html` vs frío).
 
 ---
 
-**FIN** — Cerramos Sesión 17. Fase 4 completa. El sitio corre 100% sobre
-Supabase + Vercel, con dominio custom `www.founder.uy` + tracking dual de
-Meta (Pixel + CAPI) operativo. Pedido de prueba F378204 confirmó
-deduplicación funcionando end-to-end. Próximo paso: limpieza de pendientes
-menores + evaluación de primera campaña paga. 🎯
+## 📜 Historial de incidentes resueltos
+
+### Sesión 18 (3 incidentes)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | Meta rechazaba agregar `www.founder.uy` en Business Settings (Sesión 17 lo reportó como "bug del PSL con ccTLDs .uy") | Bug del validador del formulario en Opera — en Chrome funciona | Usar Chrome para operaciones en Meta Business Manager |
+| 2 | Filtro "📁 Archivados" no aparecía en admin tras deploy | Cache agresivo de Opera — el HTML antiguo seguía sirviéndose | `Ctrl+F5` (hard refresh) o ventana incógnito |
+| 3 | Intento de eliminar dataset "NO" y Ad Account sin nombre en Meta | Meta no ofrece botón delete en UI para recursos auto-creados | Dejar como están o renombrar con prefijo `ZZ-` |
+
+### Sesión 17 (5 incidentes)
+- Meta rechazó `founder.uy` en verificación de dominio → **era Opera**, resuelto en Sesión 18.
+- Upload parcial a GitHub con la interfaz web → subir en tandas chicas de 2-3 archivos.
+- Archivo subido a carpeta equivocada (`meta-capi.js` en `api/` en vez de `api/_lib/`) → verificar breadcrumb antes de arrastrar.
+- Variables "Sensitive" en Vercel Hobby con issues de propagación → crear sin el flag.
+- Fire-and-forget cortado por Vercel Serverless → `await Promise.race([capiPromise, timeoutPromise(3000)])`.
+
+### Sesión 16 (1 incidente)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | Admin 500 `"permission denied for table products"` | `service_role` sin `GRANT ALL` sobre las 3 tablas del catálogo | SQL `grant all on public.<tabla> to service_role` sobre las 7 tablas |
+
+### Sesión 14 (6 incidentes en cascada)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | Home sin fotos, 401 `"permission denied for table product_photos"` | Políticas RLS con rol `{public}` | `04_fix_rls.sql` |
+| 2 | Persiste 401 tras fix RLS | Faltaba GRANT SELECT a nivel tabla | `05_fix_grants.sql` |
+| 3 | Checkout: `"column productos does not exist"` | Columna `productos` (y 11 más) faltaban en `orders` | `06_fix_orders_schema.sql` |
+| 4 | Checkout: `"violates check constraint orders_entrega_check"` | Constraint viejo rechazaba `'Envío'` | `07_fix_entrega_check.sql` |
+| 5 | Checkout: `"violates check constraint orders_pago_check"` | Mismo caso con `pago` | `08_fix_pago_check.sql` |
+| 6 | Seguimiento: `"permission denied for table orders"` | Faltaba `GRANT ALL` a service_role en tablas privadas | `09_fix_service_role_grants.sql` |
+
+---
+
+**FIN** — Cerramos Sesión 18. Fase 4 definitivamente completa (dominio verificado
+en Meta). Fase 5 iniciada con el sistema archivar/eliminar pedidos. El sitio
+corre 100% sobre Supabase + Vercel, con dominio custom `www.founder.uy`
+verificado en Meta, tracking dual (Pixel + CAPI) operativo, y admin con
+herramientas de gestión escalable. Próximo paso: cerrar los 3 pendientes
+menores de Meta y evaluar primera campaña paga. 🎯
