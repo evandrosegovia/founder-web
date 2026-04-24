@@ -54,6 +54,7 @@
     // Pedidos (viene de /api/admin action:"list_orders")
     allOrders: [],
     currentFilter: 'todos',
+    currentView:   'active',    // 'active' = activos (default) | 'archived' = archivados
     // Cupones (viene de /api/admin action:"list_coupons")
     coupons: [],
     // Editor de producto — estado del modal
@@ -505,20 +506,27 @@
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Carga todos los pedidos desde Supabase vía /api/admin.
-   * Se guardan en state.allOrders con `productos` como string
-   * "Founder Confort (Negro) x1 | Founder Simple (Camel) x2",
-   * derivado de order_items[] para compatibilidad con los
-   * gráficos del dashboard y el renderer de la lista.
+   * Carga los pedidos desde Supabase vía /api/admin.
    *
-   * @param {{silent?: boolean}} opts  si silent=true no cambia UI mientras carga
+   * Hay dos vistas mutuamente excluyentes:
+   *   - 'active'   → pedidos NO archivados. Es la vista principal y la que
+   *                  alimenta las métricas del dashboard.
+   *   - 'archived' → pedidos archivados. Solo se ven al clickear el filtro
+   *                  "Archivados"; no afectan al dashboard.
+   *
+   * @param {{silent?: boolean, view?: 'active'|'archived'}} opts
    */
   async function loadOrders(opts = {}) {
     const silent = !!opts.silent;
+    const view   = (opts.view === 'archived') ? 'archived' : 'active';
+    state.currentView = view;
+
     const btn = document.querySelector('#page-pedidos .ph .btn-primary');
     if (!silent && btn) { btn.textContent = '⏳ Cargando...'; btn.disabled = true; }
 
-    const { ok, data } = await apiAdmin('list_orders');
+    const { ok, data } = await apiAdmin('list_orders', {
+      include_archived: view === 'archived' ? 'only' : ''
+    });
     if (btn) { btn.textContent = '↻ Actualizar'; btn.disabled = false; }
 
     if (!ok) {
@@ -543,17 +551,44 @@
     filterOrders(state.currentFilter, null);
     setText('statPedidos', state.allOrders.length);
 
-    // Re-renderizamos dashboard porque cambian las métricas de ventas
-    renderDashboard();
+    // Solo la vista 'active' alimenta el dashboard: los archivados
+    // no deben contar en métricas ni ventas.
+    if (view === 'active') renderDashboard();
   }
 
-  /** Filtra la lista visible por estado. */
+  /**
+   * Filtra la lista visible por estado.
+   * El filtro especial 'archivados' conmuta la vista entera a archivados
+   * (dispara una recarga desde el server con include_archived='only').
+   */
   function filterOrders(filter, btn) {
-    state.currentFilter = filter;
+    // Marca del botón activo en la barra de filtros
     if (btn) {
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
     }
+
+    // Filtro especial: cambiar a vista archivados
+    if (filter === 'archivados') {
+      state.currentFilter = 'archivados';
+      // Si no estamos ya en esa vista, recargamos desde el server
+      if (state.currentView !== 'archived') {
+        loadOrders({ view: 'archived' });
+        return;
+      }
+      renderOrders(state.allOrders);
+      return;
+    }
+
+    // Cualquier filtro normal estando en vista archivados → volver a activos
+    if (state.currentView === 'archived') {
+      state.currentFilter = filter;
+      loadOrders({ view: 'active' });
+      return;
+    }
+
+    // Filtro normal dentro de la vista 'active'
+    state.currentFilter = filter;
     const list = filter === 'todos'
       ? state.allOrders
       : state.allOrders.filter(o => o.estado === filter);
@@ -589,9 +624,25 @@
       // Siempre usamos `o.productos` (ya normalizado en loadOrders)
       const prodsText = o.productos || '—';
       const numero    = o.numero || o.id || '—';
+      const isArchived = !!o.archivado;
+
+      // Botones de estado — solo para pedidos ACTIVOS (no archivados)
+      const estadoBtns = isArchived ? '' : ['Pendiente pago','Pendiente confirmación','Confirmado','Entregado','Cancelado'].map(s =>
+        `<button class="btn btn-sm ${o.estado === s ? 'btn-primary' : 'btn-secondary'}"
+          onclick="changeOrderStatus('${esc(o.id)}','${esc(s)}')">${esc(s)}</button>`
+      ).join('');
+
+      // Botón archivar ↔ desarchivar según la vista actual
+      const archivoBtn = isArchived
+        ? `<button class="btn btn-sm btn-secondary" onclick="unarchiveOrder('${esc(o.id)}')" title="Devolver a la lista de pedidos activos">↩ Desarchivar</button>`
+        : `<button class="btn btn-sm btn-secondary" onclick="archiveOrder('${esc(o.id)}','${esc(numero)}')" title="Ocultar de la lista principal sin borrar">📁 Archivar</button>`;
+
+      // Botón eliminar (siempre, tanto en activos como en archivados)
+      const deleteBtn = `<button class="btn btn-sm btn-danger" onclick="deleteOrder('${esc(o.id)}','${esc(numero)}')" title="Borrar definitivamente — no se puede deshacer">🗑 Eliminar</button>`;
+
       return `<div class="order-card">
         <div class="order-head">
-          <div class="order-id">#${esc(numero)}</div>
+          <div class="order-id">#${esc(numero)}${isArchived ? ' <span style="font-size:8px;letter-spacing:2px;color:var(--muted);padding:2px 6px;border:1px solid var(--border);margin-left:6px">ARCHIVADO</span>' : ''}</div>
           <div class="order-status ${cls}">${esc(o.estado || '—')}</div>
         </div>
         <div class="order-body">
@@ -606,10 +657,9 @@
         </div>
         <div class="order-foot">
           <button class="btn btn-secondary btn-sm" onclick="viewOrder('${esc(o.id)}')">👁 Ver detalle</button>
-          ${['Pendiente pago','Pendiente confirmación','Confirmado','Entregado','Cancelado'].map(s =>
-            `<button class="btn btn-sm ${o.estado === s ? 'btn-primary' : 'btn-secondary'}"
-              onclick="changeOrderStatus('${esc(o.id)}','${esc(s)}')">${esc(s)}</button>`
-          ).join('')}
+          ${estadoBtns}
+          ${archivoBtn}
+          ${deleteBtn}
         </div>
       </div>`;
     }).join('');
@@ -637,6 +687,87 @@
     }
     toast(`✅ Estado: ${newStatus}`);
     renderDashboard();
+  }
+
+  /**
+   * Archiva un pedido (soft delete). Lo oculta de la lista principal
+   * pero no lo borra. Los archivados no aparecen en métricas del
+   * dashboard. Se puede revertir con unarchiveOrder.
+   *
+   * Se pide 1 confirmación (acción reversible).
+   */
+  async function archiveOrder(id, numero) {
+    if (!confirm(`¿Archivar el pedido #${numero}?\n\nDesaparece de la lista pero los datos se conservan. Podés recuperarlo en el filtro "Archivados".`)) return;
+
+    const { ok, data } = await apiAdmin('archive_order', { id });
+    if (!ok) {
+      toast('Error al archivar' + (data?.message ? ': ' + data.message : ''), true);
+      return;
+    }
+    // Lo sacamos del array local y re-renderizamos
+    state.allOrders = state.allOrders.filter(x => x.id !== id);
+    filterOrders(state.currentFilter, null);
+    setText('statPedidos', state.allOrders.length);
+    renderDashboard();
+    toast(`📁 Pedido #${numero} archivado`);
+  }
+
+  /**
+   * Desarchiva un pedido — lo vuelve a la lista principal.
+   * Operación reversible, 1 confirmación.
+   */
+  async function unarchiveOrder(id) {
+    const o = state.allOrders.find(x => x.id === id);
+    const numero = o?.numero || id;
+    if (!confirm(`¿Desarchivar el pedido #${numero}?\n\nVuelve a la lista principal de pedidos.`)) return;
+
+    const { ok, data } = await apiAdmin('unarchive_order', { id });
+    if (!ok) {
+      toast('Error al desarchivar' + (data?.message ? ': ' + data.message : ''), true);
+      return;
+    }
+    // Lo sacamos de la lista actual (que es la de archivados)
+    state.allOrders = state.allOrders.filter(x => x.id !== id);
+    filterOrders(state.currentFilter, null);
+    setText('statPedidos', state.allOrders.length);
+    toast(`↩ Pedido #${numero} desarchivado`);
+  }
+
+  /**
+   * ELIMINA DEFINITIVAMENTE un pedido de la base de datos.
+   * Irreversible. Requiere DOBLE confirmación:
+   *   1) confirm() genérico.
+   *   2) prompt() que exige escribir el número del pedido.
+   * Backend también valida con body.confirm:true (defensa en profundidad).
+   */
+  async function deleteOrder(id, numero) {
+    const msg1 = `⚠️ ELIMINAR pedido #${numero}\n\n` +
+                 'Esto BORRA definitivamente el pedido y sus items de la base de datos.\n' +
+                 'NO se puede deshacer.\n\n' +
+                 '¿Continuar?';
+    if (!confirm(msg1)) return;
+
+    const tip = prompt(
+      `Para confirmar la eliminación del pedido #${numero}, escribí su número exacto:\n\n` +
+      `(Incluí la letra "F" si la tiene, ej: ${numero})`
+    );
+    if (tip === null) return;   // canceló
+    if (String(tip).trim() !== String(numero).trim()) {
+      toast('El número no coincide. Eliminación cancelada.', true);
+      return;
+    }
+
+    const { ok, data } = await apiAdmin('delete_order', { id, confirm: true });
+    if (!ok) {
+      toast('Error al eliminar' + (data?.message ? ': ' + data.message : ''), true);
+      return;
+    }
+    // Lo sacamos del array local
+    state.allOrders = state.allOrders.filter(x => x.id !== id);
+    filterOrders(state.currentFilter, null);
+    setText('statPedidos', state.allOrders.length);
+    renderDashboard();
+    toast(`🗑 Pedido #${numero} eliminado`);
   }
 
   // ── DETALLE DE PEDIDO — barra de progreso + modal ──────────────
@@ -1591,6 +1722,9 @@
   window.viewOrder           = viewOrder;
   window.closeOrderDetail    = closeOrderDetail;
   window.changeOrderStatus   = changeOrderStatus;
+  window.archiveOrder        = archiveOrder;
+  window.unarchiveOrder      = unarchiveOrder;
+  window.deleteOrder         = deleteOrder;
   window.setOrderStep        = setOrderStep;
   window.setOrderCancelado   = setOrderCancelado;
   window.saveTracking        = saveTracking;
