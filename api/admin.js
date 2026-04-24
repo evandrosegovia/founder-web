@@ -15,9 +15,14 @@
 //     - login                    → valida password (frontend guarda token en sessionStorage)
 //
 //   PEDIDOS
-//     - list_orders              → lista completa con items embebidos
+//     - list_orders              → lista pedidos con items embebidos
+//                                  body.include_archived: 'only' | 'all' | (default: activos)
 //     - update_order_status      → cambia orders.estado
 //     - update_order_tracking    → guarda nro_seguimiento + url_seguimiento
+//     - archive_order            → marca archivado=true (soft delete, reversible)
+//     - unarchive_order          → marca archivado=false (restaurar)
+//     - delete_order             → DELETE definitivo (cascada a order_items).
+//                                  Requiere body.confirm === true para evitar accidentes.
 //
 //   CUPONES
 //     - list_coupons             → lista todos los cupones
@@ -81,7 +86,14 @@ async function handleLogin(body, res) {
 // ═════════════════════════════════════════════════════════════════
 async function handleListOrders(body, res) {
   if (!requireAuth(body, res)) return;
-  const { data, error } = await supabase
+
+  // include_archived controla qué subconjunto traer:
+  //   'only' → solo archivados          (vista "Archivados")
+  //   'all'  → activos + archivados     (uso poco frecuente)
+  //   resto  → solo activos             (default, lista principal)
+  const mode = String(body.include_archived || '').trim();
+
+  let q = supabase
     .from('orders')
     .select(`
       id, numero, fecha, nombre, apellido, celular, email,
@@ -89,10 +101,16 @@ async function handleListOrders(body, res) {
       subtotal, descuento, envio, total,
       pago, estado, notas, cupon_codigo,
       nro_seguimiento, url_seguimiento,
+      archivado,
       created_at, updated_at,
       order_items ( id, product_name, color, cantidad, precio_unitario )
     `)
     .order('created_at', { ascending: false });
+
+  if (mode === 'only')      q = q.eq('archivado', true);
+  else if (mode !== 'all')  q = q.eq('archivado', false);
+
+  const { data, error } = await q;
   if (error) return fail(res, 500, 'db_error', error.message);
   return ok(res, { orders: data || [] });
 }
@@ -127,6 +145,58 @@ async function handleUpdateOrderTracking(body, res) {
   const { error } = await supabase
     .from('orders')
     .update({ nro_seguimiento: nro, url_seguimiento: url })
+    .eq('id', id);
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res);
+}
+
+/**
+ * Archivar un pedido (soft delete).
+ * Los archivados se ocultan de la lista principal pero no se pierden datos.
+ * Reversible con unarchive_order.
+ */
+async function handleArchiveOrder(body, res) {
+  if (!requireAuth(body, res)) return;
+  const id = String(body.id || '').trim();
+  if (!id) return fail(res, 400, 'id_required');
+
+  const { error } = await supabase
+    .from('orders')
+    .update({ archivado: true })
+    .eq('id', id);
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res);
+}
+
+/** Desarchivar un pedido — lo vuelve a mostrar en la lista principal. */
+async function handleUnarchiveOrder(body, res) {
+  if (!requireAuth(body, res)) return;
+  const id = String(body.id || '').trim();
+  if (!id) return fail(res, 400, 'id_required');
+
+  const { error } = await supabase
+    .from('orders')
+    .update({ archivado: false })
+    .eq('id', id);
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res);
+}
+
+/**
+ * DELETE definitivo de un pedido.
+ * - Irreversible. order_items cae por ON DELETE CASCADE (FK en schema).
+ * - Requiere body.confirm === true para mitigar requests accidentales
+ *   (defensa en profundidad; la confirmación primaria la hace el frontend).
+ */
+async function handleDeleteOrder(body, res) {
+  if (!requireAuth(body, res)) return;
+  const id = String(body.id || '').trim();
+  if (!id) return fail(res, 400, 'id_required');
+  if (body.confirm !== true) return fail(res, 400, 'confirm_required');
+
+  const { error } = await supabase
+    .from('orders')
+    .delete()
     .eq('id', id);
   if (error) return fail(res, 500, 'db_error', error.message);
   return ok(res);
@@ -436,6 +506,9 @@ const ACTIONS = {
   list_orders:           handleListOrders,
   update_order_status:   handleUpdateOrderStatus,
   update_order_tracking: handleUpdateOrderTracking,
+  archive_order:         handleArchiveOrder,
+  unarchive_order:       handleUnarchiveOrder,
+  delete_order:          handleDeleteOrder,
   list_coupons:          handleListCoupons,
   create_coupon:         handleCreateCoupon,
   update_coupon:         handleUpdateCoupon,
