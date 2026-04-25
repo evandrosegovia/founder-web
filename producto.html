@@ -835,6 +835,7 @@ const state = {
   autoplayEventsBound: false, // listeners globales (hover/visibility) ya enganchados
   zoomEventsBound:     false, // listeners del zoom hover ya enganchados
   swipeEventsBound:    false, // listeners de swipe touch ya enganchados
+  colorPreloadDone:    false, // primera foto de cada color ya pre-cargada al cache
   cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
 };
 
@@ -953,6 +954,9 @@ async function init() {
     bindZoomEvents();
     // Enganchar listeners de swipe touch (solo activa en dispositivos touch).
     bindSwipeEvents();
+    // Pre-cargar primera foto de cada color en background (cambio de color
+    // instantáneo). Se hace una sola vez por carga de página.
+    preloadFirstPhotoOfEachColor();
 
   } catch (err) {
     console.error('[Founder] Error cargando producto:', err);
@@ -1230,14 +1234,19 @@ function renderGallery() {
   if (placeholder) placeholder.style.display = 'none';
   main.style.background = '';
 
-  // Render imágenes principales
+  // Render imágenes principales.
+  // - La foto activa carga eager + fetchpriority high (queremos verla YA).
+  // - Las demás del mismo color cargan lazy + fetchpriority low (no compiten
+  //   por ancho de banda con la activa, pero quedan listas para el swap).
   main.querySelectorAll('.gallery__img').forEach(el => el.remove());
   photos.forEach((url, i) => {
+    const isActive = (i === state.activePhoto);
     const img = document.createElement('img');
     img.src     = url;
     img.alt     = `Founder ${state.product.name} — foto ${i + 1}`;
-    img.className = `gallery__img${i === state.activePhoto ? ' is-active' : ''}`;
-    img.loading = 'lazy';
+    img.className = `gallery__img${isActive ? ' is-active' : ''}`;
+    img.loading        = isActive ? 'eager' : 'lazy';
+    img.fetchPriority  = isActive ? 'high'  : 'low';
     main.insertBefore(img, main.querySelector('.gallery__rfid-badge'));
   });
 
@@ -1261,6 +1270,40 @@ function updateArrowsVisibility() {
   const hasMultiple = currentPhotoCount() >= 2;
   toggle(prev, 'is-hidden', !hasMultiple);
   toggle(next, 'is-hidden', !hasMultiple);
+}
+
+/** Pre-carga en background la PRIMERA foto de cada color del producto activo.
+ *  Pone los archivos en cache HTTP del navegador → cambio de color instantáneo.
+ *  - Solo primera foto por color (no todas → no satura ancho de banda).
+ *  - Salta el color ya cargado (la activa ya está descargando con priority high).
+ *  - Idempotente: se marca state.colorPreloadDone para que corra una sola vez.
+ *  - Usa requestIdleCallback si está disponible para no competir con primer paint. */
+function preloadFirstPhotoOfEachColor() {
+  if (state.colorPreloadDone) return;
+  state.colorPreloadDone = true;
+
+  if (!state.product) return;
+  const colors = state.photoMap[state.product.name] || {};
+  const activeColorName = state.selectedColor?.name;
+
+  const run = () => {
+    Object.entries(colors).forEach(([colorName, urls]) => {
+      if (colorName === activeColorName) return; // ya está cargando con priority high
+      const firstUrl = urls && urls[0];
+      if (!firstUrl) return;
+      const img = new Image();
+      // fetchPriority low: el navegador la baja cuando hay ancho libre.
+      // No se inserta al DOM → solo va al cache HTTP y luego es garbage-collected.
+      if ('fetchPriority' in img) img.fetchPriority = 'low';
+      img.src = firstUrl;
+    });
+  };
+
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(run, { timeout: 2000 });
+  } else {
+    setTimeout(run, 800); // fallback Safari/iOS antes de iOS 16.4
+  }
 }
 
 function setActivePhoto(i, byUser = false) {
