@@ -151,10 +151,10 @@ select:active,
 .error-screen__btn:hover { background: var(--color-gold); }
 
 /* ── PRODUCTO — Layout principal ───────────────────────────── */
-.product-main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 40px var(--space-lg) 0; min-height: 90vh; }
+.product-main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 20px var(--space-lg) 0; min-height: 90vh; }
 
 /* ── PRODUCTO — Galería de fotos ───────────────────────────── */
-.gallery { position: sticky; top: 70px; height: calc(100vh - 70px); display: flex; flex-direction: column; gap: 2px; padding-right: 40px; }
+.gallery { position: sticky; top: 76px; height: calc(100vh - 70px); display: flex; flex-direction: column; gap: 2px; padding-right: 40px; }
 .gallery__main { flex: 1; background: var(--color-surface); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .gallery__main-inner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; transition: background 0.6s ease; }
 .gallery__img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; opacity: 0; transition: opacity .4s ease; }
@@ -753,6 +753,15 @@ function swatchBackground(color) {
 // ── SHARED STATE + PAGE STATE ────────────────────────────────────
 const CART_KEY = 'founder_cart'; // clave compartida con index.html
 
+/** Configuración del autoplay de la galería de fotos.
+ *  Comportamientos: pausa al hover desktop + pausa al click manual + reset al cambiar
+ *  de color + respeto a prefers-reduced-motion + Page Visibility API + límite de ciclos. */
+const AUTOPLAY = Object.freeze({
+  INTERVAL_MS:        4000,  // intervalo entre fotos (4s — ritmo showcase)
+  PAUSE_AFTER_CLICK:  12000, // pausa tras click manual en thumb (12s)
+  MAX_CYCLES:         3,     // ciclos completos antes de detenerse (anti-fatiga)
+});
+
 // Estas funciones deben estar ANTES de state para que loadCartFromStorage() funcione
 function loadCartFromStorage() {
   try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
@@ -768,6 +777,10 @@ const state = {
   selectedColor: null,  // color seleccionado
   precioEfectivo: null, // precio activo (puede ser precio de oferta)
   activePhoto:   0,     // índice de foto activa
+  autoplayTimer:       null, // setInterval del autoplay de la galería (null si está parado)
+  autoplayCycles:      0,    // ciclos completos ya recorridos (se para al llegar a AUTOPLAY_MAX_CYCLES)
+  autoplayPausedUntil: 0,    // timestamp en ms hasta el cual el autoplay queda pausado tras click manual
+  autoplayEventsBound: false, // listeners globales (hover/visibility) ya enganchados
   cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
 };
 
@@ -880,6 +893,8 @@ async function init() {
     show('productContent');
     // Refrescar el contador del carrito y la vista del drawer.
     updateCart();
+    // Enganchar listeners del autoplay de la galería (hover + visibility).
+    bindAutoplayEvents();
 
   } catch (err) {
     console.error('[Founder] Error cargando producto:', err);
@@ -1047,6 +1062,13 @@ function selectColor(i) {
   renderColors();
   renderGallery();
 
+  // Cambio de color → reset completo del autoplay (vuelve a foto 0, contador
+  // de ciclos a 0, y arranca con timer fresco).
+  stopPhotoAutoplay();
+  state.autoplayCycles      = 0;
+  state.autoplayPausedUntil = 0;
+  startPhotoAutoplay();
+
   const addBtn        = $('addCartBtn');
   const stickyBtn     = $('stickyAddBtn');
   const sinStockAviso = $('sinStockAviso');
@@ -1163,12 +1185,12 @@ function renderGallery() {
   // Render thumbnails
   thumbs.innerHTML = photos.map((url, i) => `
     <div class="gallery__thumb ${i === state.activePhoto ? 'is-active' : ''}"
-      onclick="setActivePhoto(${i})" role="button" aria-label="Foto ${i + 1}" tabindex="0">
+      onclick="setActivePhoto(${i}, true)" role="button" aria-label="Foto ${i + 1}" tabindex="0">
       <img src="${url}" alt="Foto ${i + 1}" loading="lazy">
     </div>`).join('');
 }
 
-function setActivePhoto(i) {
+function setActivePhoto(i, byUser = false) {
   state.activePhoto = i;
 
   // Actualizar imagen principal
@@ -1179,6 +1201,90 @@ function setActivePhoto(i) {
   // Actualizar thumbnail activo
   document.querySelectorAll('.gallery__thumb').forEach((t, idx) => {
     toggle(t, 'is-active', idx === i);
+  });
+
+  // Click manual del usuario → pausar autoplay temporalmente
+  if (byUser) pausePhotoAutoplay(AUTOPLAY.PAUSE_AFTER_CLICK);
+}
+
+// ── PRODUCTO — Autoplay de la galería ───────────────────────────
+// Diseño: 5 funciones puras + 3 listeners enganchados 1 sola vez en bootstrap.
+// Reglas: pausa al hover desktop, pausa 12s al click manual, reset al cambiar
+// de color, respeta prefers-reduced-motion, pausa con Page Visibility, para
+// tras MAX_CYCLES para evitar fatiga visual.
+
+/** ¿El usuario pidió reducir movimiento? Se evalúa en cada start
+ *  porque la preferencia puede cambiar en caliente. */
+function prefersReducedMotion() {
+  return window.matchMedia &&
+         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** Avanza el autoplay un paso. Detiene al completar MAX_CYCLES. */
+function advancePhotoAutoplay() {
+  // Si está pausado por click manual, no avanza pero sigue vivo el timer
+  if (Date.now() < state.autoplayPausedUntil) return;
+
+  const photos = getPhotos(state.product.name, state.selectedColor.name);
+  if (photos.length < 2) { stopPhotoAutoplay(); return; }
+
+  const nextIdx = (state.activePhoto + 1) % photos.length;
+  setActivePhoto(nextIdx);
+
+  // Cuando volvemos a la foto 0 cerramos un ciclo completo
+  if (nextIdx === 0) {
+    state.autoplayCycles += 1;
+    if (state.autoplayCycles >= AUTOPLAY.MAX_CYCLES) stopPhotoAutoplay();
+  }
+}
+
+/** Arranca el autoplay si las condiciones lo permiten.
+ *  Idempotente — si ya hay un timer corriendo, no abre otro. */
+function startPhotoAutoplay() {
+  if (state.autoplayTimer) return;                            // ya corriendo
+  if (prefersReducedMotion()) return;                         // accesibilidad
+  if (document.hidden) return;                                // tab oculta
+  if (!state.product || !state.selectedColor) return;         // no listo
+
+  const photos = getPhotos(state.product.name, state.selectedColor.name);
+  if (photos.length < 2) return;                              // 1 sola foto
+
+  state.autoplayTimer = setInterval(advancePhotoAutoplay, AUTOPLAY.INTERVAL_MS);
+}
+
+/** Detiene el autoplay sin tocar el contador de ciclos.
+ *  Usado por hover, Page Visibility, límite de ciclos y casos sin fotos.
+ *  Idempotente — seguro llamarla múltiples veces. */
+function stopPhotoAutoplay() {
+  if (state.autoplayTimer) {
+    clearInterval(state.autoplayTimer);
+    state.autoplayTimer = null;
+  }
+}
+
+/** Pausa el autoplay durante `ms` milisegundos sin matarlo.
+ *  Lo usa el click manual en thumbnails para dar tiempo de mirar. */
+function pausePhotoAutoplay(ms) {
+  state.autoplayPausedUntil = Date.now() + ms;
+}
+
+/** Engancha los listeners globales del autoplay UNA sola vez por carga.
+ *  - Hover sobre la imagen principal (desktop) → pausa/reanuda.
+ *  - Page Visibility (tab oculta) → pausa/reanuda.
+ *  En mobile el hover no se dispara → no afecta. */
+function bindAutoplayEvents() {
+  if (state.autoplayEventsBound) return;
+  state.autoplayEventsBound = true;
+
+  const main = document.querySelector('.gallery__main');
+  if (main) {
+    main.addEventListener('mouseenter', stopPhotoAutoplay);
+    main.addEventListener('mouseleave', startPhotoAutoplay);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopPhotoAutoplay();
+    else                 startPhotoAutoplay();
   });
 }
 
