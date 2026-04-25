@@ -170,6 +170,35 @@ select:active,
   .gallery__main { cursor: default; }
   .gallery__main.is-zooming .gallery__img.is-active { transform: none; }
 }
+
+/* Flechas prev/next — solo en mobile. Posición absoluta sobre .gallery__main.
+ * Se ocultan por default y se muestran en el media query de mobile (≤900px).
+ * Tap target 44x44px (estándar iOS HIG). z-index sobre .gallery__img pero
+ * debajo de .gallery__oferta-badge (que es z-index: 3). */
+.gallery__arrow {
+  display: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(20, 20, 20, 0.55);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  font-family: var(--font-serif);
+  cursor: pointer;
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition-fast);
+}
+.gallery__arrow:active   { background: rgba(20, 20, 20, 0.8); }
+.gallery__arrow--prev    { left: 12px; }
+.gallery__arrow--next    { right: 12px; }
+.gallery__arrow.is-hidden { display: none !important; }
+
 .gallery__placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 40px; color: var(--color-muted); font-family: var(--font-serif); font-size: 11px; letter-spacing: 4px; text-transform: uppercase; }
 .gallery__rfid-badge { position: absolute; bottom: 24px; left: 24px; background: rgba(201,169,110,0.12); border: 1px solid var(--color-gold); padding: 8px 16px; display: flex; align-items: center; gap: 10px; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-gold); }
 .gallery__oferta-badge { position: absolute; top: 14px; right: 14px; background: var(--color-gold); color: #141414; font-family: var(--font-sans); font-size: 8px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 6px 12px; border-radius: 2px; z-index: 3; pointer-events: none; display: none; }
@@ -417,6 +446,7 @@ select:active,
   .product-main { grid-template-columns: 1fr; padding: 24px; }
   .gallery { position: static; height: auto; padding-right: 0; }
   .gallery__main { min-height: 280px; }
+  .gallery__arrow { display: flex; align-items: center; justify-content: center; }
   /* En móvil: product-info es flex-column — color-section sube al primer lugar */
   .product-info {
     padding: 0 0 80px;
@@ -595,6 +625,10 @@ body.cart-open .wa-bubble {
           </div>
           <div class="gallery__oferta-badge" id="ofertaBadge">Oferta</div>
         </div>
+        <button class="gallery__arrow gallery__arrow--prev" id="galleryPrev"
+                type="button" aria-label="Foto anterior" onclick="goToPrevPhoto()">‹</button>
+        <button class="gallery__arrow gallery__arrow--next" id="galleryNext"
+                type="button" aria-label="Foto siguiente" onclick="goToNextPhoto()">›</button>
       </div>
       <div class="gallery__thumbs" id="galleryThumbs"></div>
     </div>
@@ -793,6 +827,7 @@ const state = {
   autoplayPausedUntil: 0,    // timestamp en ms hasta el cual el autoplay queda pausado tras click manual
   autoplayEventsBound: false, // listeners globales (hover/visibility) ya enganchados
   zoomEventsBound:     false, // listeners del zoom hover ya enganchados
+  swipeEventsBound:    false, // listeners de swipe touch ya enganchados
   cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
 };
 
@@ -909,6 +944,8 @@ async function init() {
     bindAutoplayEvents();
     // Enganchar listeners del zoom hover (solo activa en desktop ≥901px).
     bindZoomEvents();
+    // Enganchar listeners de swipe touch (solo activa en dispositivos touch).
+    bindSwipeEvents();
 
   } catch (err) {
     console.error('[Founder] Error cargando producto:', err);
@@ -1179,6 +1216,7 @@ function renderGallery() {
     // Limpiar imágenes previas
     main.querySelectorAll('.gallery__img').forEach(el => el.remove());
     thumbs.innerHTML = '';
+    updateArrowsVisibility();
     return;
   }
 
@@ -1202,6 +1240,20 @@ function renderGallery() {
       onclick="setActivePhoto(${i}, true)" role="button" aria-label="Foto ${i + 1}" tabindex="0">
       <img src="${url}" alt="Foto ${i + 1}" loading="lazy">
     </div>`).join('');
+
+  updateArrowsVisibility();
+}
+
+/** Muestra u oculta las flechas prev/next según haya o no ≥2 fotos.
+ *  CSS controla cuándo se ven (solo mobile). Esta función decide SI están
+ *  habilitadas. Con 1 foto o ninguna se ocultan completamente. */
+function updateArrowsVisibility() {
+  const prev = $('galleryPrev');
+  const next = $('galleryNext');
+  if (!prev || !next) return;
+  const hasMultiple = currentPhotoCount() >= 2;
+  toggle(prev, 'is-hidden', !hasMultiple);
+  toggle(next, 'is-hidden', !hasMultiple);
 }
 
 function setActivePhoto(i, byUser = false) {
@@ -1219,6 +1271,28 @@ function setActivePhoto(i, byUser = false) {
 
   // Click manual del usuario → pausar autoplay temporalmente
   if (byUser) pausePhotoAutoplay(AUTOPLAY.PAUSE_AFTER_CLICK);
+}
+
+/** Cantidad de fotos del color activo. Devuelve 0 si no hay producto cargado. */
+function currentPhotoCount() {
+  if (!state.product || !state.selectedColor) return 0;
+  return getPhotos(state.product.name, state.selectedColor.name).length;
+}
+
+/** Navega a la foto anterior con loop circular. Marca como interacción del usuario. */
+function goToPrevPhoto() {
+  const total = currentPhotoCount();
+  if (total < 2) return;
+  const next = (state.activePhoto - 1 + total) % total;
+  setActivePhoto(next, true);
+}
+
+/** Navega a la foto siguiente con loop circular. Marca como interacción del usuario. */
+function goToNextPhoto() {
+  const total = currentPhotoCount();
+  if (total < 2) return;
+  const next = (state.activePhoto + 1) % total;
+  setActivePhoto(next, true);
 }
 
 // ── PRODUCTO — Autoplay de la galería ───────────────────────────
@@ -1367,6 +1441,45 @@ function bindZoomEvents() {
   main.addEventListener('mouseenter', onEnter);
   main.addEventListener('mousemove',  onMove);
   main.addEventListener('mouseleave', onLeave);
+}
+
+// ── PRODUCTO — Swipe touch en imagen principal (mobile) ─────────
+// Detección con touchstart + touchend (no touchmove → menos eventos).
+// Umbral 50px para deltaX. Si |deltaY| > |deltaX| el gesto se ignora
+// (es scroll vertical, no swipe horizontal). passive:true para no
+// bloquear el scroll nativo del navegador.
+
+const SWIPE_THRESHOLD_PX = 50;
+
+/** Engancha los listeners de swipe touch UNA sola vez por carga.
+ *  En desktop sin touch los eventos no se disparan → no afecta. */
+function bindSwipeEvents() {
+  if (state.swipeEventsBound) return;
+  state.swipeEventsBound = true;
+
+  const main = document.querySelector('.gallery__main');
+  if (!main) return;
+
+  let startX = 0, startY = 0;
+
+  main.addEventListener('touchstart', (e) => {
+    if (!e.touches || e.touches.length !== 1) return; // ignorar pinch
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  main.addEventListener('touchend', (e) => {
+    if (!e.changedTouches || e.changedTouches.length !== 1) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+
+    // Si el gesto fue más vertical que horizontal, lo ignoramos (scroll)
+    if (Math.abs(dy) > Math.abs(dx)) return;
+    if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
+
+    if (dx < 0) goToNextPhoto(); // swipe izquierda → siguiente
+    else        goToPrevPhoto(); // swipe derecha  → anterior
+  }, { passive: true });
 }
 
 // ── PRODUCTO — Tabs de detalles ─────────────────────────────────
