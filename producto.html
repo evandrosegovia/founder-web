@@ -160,11 +160,11 @@ select:active,
 .gallery__img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; opacity: 0; transition: opacity .4s ease, transform .4s ease; transform-origin: center center; }
 .gallery__img.is-active { opacity: 1; }
 
-/* Zoom 2x al hover en desktop. Se activa solo sobre la imagen activa via .is-zooming
+/* Zoom 1.5x al hover en desktop. Se activa solo sobre la imagen activa via .is-zooming
  * en .gallery__main. transform-origin se setea inline desde JS según el cursor. */
 @media (min-width: 901px) {
   .gallery__main { cursor: zoom-in; }
-  .gallery__main.is-zooming .gallery__img.is-active { transform: scale(2); transition: transform .15s ease-out; }
+  .gallery__main.is-zooming .gallery__img.is-active { transform: scale(1.5); transition: transform .15s ease-out; }
 }
 @media (prefers-reduced-motion: reduce) {
   .gallery__main { cursor: default; }
@@ -1303,7 +1303,7 @@ function bindAutoplayEvents() {
 }
 
 // ── PRODUCTO — Zoom hover en imagen principal (solo desktop) ─────
-// Estrategia: transform: scale(2) + transform-origin dinámico siguiendo el
+// Estrategia: transform: scale(1.5) + transform-origin dinámico siguiendo el
 // cursor. Usa requestAnimationFrame para batchear mousemove a 1 paint por
 // frame. El rect del contenedor se cachea en mouseenter (no cambia mientras
 // el cursor está adentro). En mobile el media query desactiva la regla CSS
