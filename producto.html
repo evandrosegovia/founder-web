@@ -157,8 +157,19 @@ select:active,
 .gallery { position: sticky; top: 76px; height: calc(100vh - 70px); display: flex; flex-direction: column; gap: 2px; padding-right: 40px; }
 .gallery__main { flex: 1; background: var(--color-surface); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .gallery__main-inner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; transition: background 0.6s ease; }
-.gallery__img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; opacity: 0; transition: opacity .4s ease; }
+.gallery__img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; opacity: 0; transition: opacity .4s ease, transform .4s ease; transform-origin: center center; }
 .gallery__img.is-active { opacity: 1; }
+
+/* Zoom 2x al hover en desktop. Se activa solo sobre la imagen activa via .is-zooming
+ * en .gallery__main. transform-origin se setea inline desde JS según el cursor. */
+@media (min-width: 901px) {
+  .gallery__main { cursor: zoom-in; }
+  .gallery__main.is-zooming .gallery__img.is-active { transform: scale(2); transition: transform .15s ease-out; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gallery__main { cursor: default; }
+  .gallery__main.is-zooming .gallery__img.is-active { transform: none; }
+}
 .gallery__placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 40px; color: var(--color-muted); font-family: var(--font-serif); font-size: 11px; letter-spacing: 4px; text-transform: uppercase; }
 .gallery__rfid-badge { position: absolute; bottom: 24px; left: 24px; background: rgba(201,169,110,0.12); border: 1px solid var(--color-gold); padding: 8px 16px; display: flex; align-items: center; gap: 10px; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-gold); }
 .gallery__oferta-badge { position: absolute; top: 14px; right: 14px; background: var(--color-gold); color: #141414; font-family: var(--font-sans); font-size: 8px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 6px 12px; border-radius: 2px; z-index: 3; pointer-events: none; display: none; }
@@ -781,6 +792,7 @@ const state = {
   autoplayCycles:      0,    // ciclos completos ya recorridos (se para al llegar a AUTOPLAY_MAX_CYCLES)
   autoplayPausedUntil: 0,    // timestamp en ms hasta el cual el autoplay queda pausado tras click manual
   autoplayEventsBound: false, // listeners globales (hover/visibility) ya enganchados
+  zoomEventsBound:     false, // listeners del zoom hover ya enganchados
   cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
 };
 
@@ -895,6 +907,8 @@ async function init() {
     updateCart();
     // Enganchar listeners del autoplay de la galería (hover + visibility).
     bindAutoplayEvents();
+    // Enganchar listeners del zoom hover (solo activa en desktop ≥901px).
+    bindZoomEvents();
 
   } catch (err) {
     console.error('[Founder] Error cargando producto:', err);
@@ -1286,6 +1300,73 @@ function bindAutoplayEvents() {
     if (document.hidden) stopPhotoAutoplay();
     else                 startPhotoAutoplay();
   });
+}
+
+// ── PRODUCTO — Zoom hover en imagen principal (solo desktop) ─────
+// Estrategia: transform: scale(2) + transform-origin dinámico siguiendo el
+// cursor. Usa requestAnimationFrame para batchear mousemove a 1 paint por
+// frame. El rect del contenedor se cachea en mouseenter (no cambia mientras
+// el cursor está adentro). En mobile el media query desactiva la regla CSS
+// y los listeners no se enganchan (matchMedia comprueba al inicio).
+
+/** Engancha los listeners del zoom al hover UNA sola vez por carga.
+ *  Solo en desktop (>=901px) y respetando prefers-reduced-motion.
+ *  En mobile y con reduced-motion no se enganchan listeners (zoom desactivado). */
+function bindZoomEvents() {
+  if (state.zoomEventsBound) return;
+  state.zoomEventsBound = true;
+
+  // Media query para desktop — misma definición que en CSS
+  const desktopMQ = window.matchMedia('(min-width: 901px)');
+  const main = document.querySelector('.gallery__main');
+  if (!main) return;
+
+  let rect = null;        // bounding del contenedor, cacheado en mouseenter
+  let pendingFrame = null; // id del rAF pendiente (para no apilar paints)
+  let lastX = 0, lastY = 0;
+
+  function paintZoom() {
+    pendingFrame = null;
+    if (!rect) return;
+    const xPct = ((lastX - rect.left) / rect.width)  * 100;
+    const yPct = ((lastY - rect.top)  / rect.height) * 100;
+    const activeImg = main.querySelector('.gallery__img.is-active');
+    if (activeImg) activeImg.style.transformOrigin = `${xPct}% ${yPct}%`;
+  }
+
+  function onEnter() {
+    if (!desktopMQ.matches) return;
+    if (prefersReducedMotion()) return;
+    rect = main.getBoundingClientRect();
+    main.classList.add('is-zooming');
+  }
+
+  function onMove(e) {
+    if (!main.classList.contains('is-zooming')) return;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    if (pendingFrame === null) {
+      pendingFrame = requestAnimationFrame(paintZoom);
+    }
+  }
+
+  function onLeave() {
+    main.classList.remove('is-zooming');
+    rect = null;
+    if (pendingFrame !== null) {
+      cancelAnimationFrame(pendingFrame);
+      pendingFrame = null;
+    }
+    // Resetear transform-origin de TODAS las imágenes para evitar que la
+    // próxima imagen activa herede una posición vieja.
+    main.querySelectorAll('.gallery__img').forEach(img => {
+      img.style.transformOrigin = '';
+    });
+  }
+
+  main.addEventListener('mouseenter', onEnter);
+  main.addEventListener('mousemove',  onMove);
+  main.addEventListener('mouseleave', onLeave);
 }
 
 // ── PRODUCTO — Tabs de detalles ─────────────────────────────────
