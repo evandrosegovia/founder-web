@@ -173,28 +173,35 @@ select:active,
 
 /* Flechas prev/next — solo en mobile. Posición absoluta sobre .gallery__main.
  * Se ocultan por default y se muestran en el media query de mobile (≤900px).
- * Tap target 44x44px (estándar iOS HIG). z-index sobre .gallery__img pero
- * debajo de .gallery__oferta-badge (que es z-index: 3). */
+ * Tap target 32x32px (visualmente discretas, suficiente para tap cómodo).
+ * z-index sobre .gallery__img pero debajo de .gallery__oferta-badge (z-index 3).
+ * Centrado del símbolo: span interno con micro-translate compensa el baseline
+ * asimétrico de los caracteres ‹ › en fuente serif. */
 .gallery__arrow {
   display: none;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: none;
   border-radius: 50%;
   background: rgba(20, 20, 20, 0.55);
   color: #fff;
-  font-size: 28px;
+  font-size: 20px;
   line-height: 1;
   font-family: var(--font-serif);
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   z-index: 2;
   -webkit-tap-highlight-color: transparent;
   transition: background var(--transition-fast);
 }
-.gallery__arrow:active   { background: rgba(20, 20, 20, 0.8); }
+.gallery__arrow:active    { background: rgba(20, 20, 20, 0.8); }
+.gallery__arrow--prev > span { transform: translateY(-1px) translateX(-1px); }
+.gallery__arrow--next > span { transform: translateY(-1px) translateX(1px);  }
 .gallery__arrow--prev    { left: 12px; }
 .gallery__arrow--next    { right: 12px; }
 .gallery__arrow.is-hidden { display: none !important; }
@@ -446,7 +453,7 @@ select:active,
   .product-main { grid-template-columns: 1fr; padding: 24px; }
   .gallery { position: static; height: auto; padding-right: 0; }
   .gallery__main { min-height: 280px; }
-  .gallery__arrow { display: flex; align-items: center; justify-content: center; }
+  .gallery__arrow { display: flex; }
   /* En móvil: product-info es flex-column — color-section sube al primer lugar */
   .product-info {
     padding: 0 0 80px;
@@ -626,9 +633,9 @@ body.cart-open .wa-bubble {
           <div class="gallery__oferta-badge" id="ofertaBadge">Oferta</div>
         </div>
         <button class="gallery__arrow gallery__arrow--prev" id="galleryPrev"
-                type="button" aria-label="Foto anterior" onclick="goToPrevPhoto()">‹</button>
+                type="button" aria-label="Foto anterior" onclick="goToPrevPhoto()"><span aria-hidden="true">‹</span></button>
         <button class="gallery__arrow gallery__arrow--next" id="galleryNext"
-                type="button" aria-label="Foto siguiente" onclick="goToNextPhoto()">›</button>
+                type="button" aria-label="Foto siguiente" onclick="goToNextPhoto()"><span aria-hidden="true">›</span></button>
       </div>
       <div class="gallery__thumbs" id="galleryThumbs"></div>
     </div>
