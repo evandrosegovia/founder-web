@@ -32,6 +32,53 @@
   const CART_KEY   = 'founder_cart';
   const STOCK_KEY  = 'founder_stock_snapshot';
   const NOTICE_KEY = 'founder_removed_notice';
+  const PHOTOS_READY_EVENT = 'founder-cart-photos-ready';
+
+  // ── Mapa de fotos compartido ─────────────────────────────────
+  // Se carga UNA vez por carga de página desde Supabase y queda en memoria
+  // para que el carrito (en cualquier página) pueda mostrar las fotos reales
+  // de cada producto en lugar del placeholder con la inicial.
+  let photoMap = {};
+  let photoMapReady = false;
+  let photoMapPromise = null;
+
+  /** Devuelve la URL de la primera foto del producto+color, o null si no
+   *  hay foto (catálogo aún no cargado, producto sin fotos, etc.). */
+  function getPhotoUrl(name, color) {
+    if (!name || !color) return null;
+    const urls = photoMap?.[name]?.[color];
+    return Array.isArray(urls) && urls.length > 0 ? urls[0] : null;
+  }
+
+  /** Carga el photoMap desde Supabase de forma idempotente. Cuando termina,
+   *  dispara un evento custom 'founder-cart-photos-ready' en window que las
+   *  páginas pueden escuchar para re-renderizar el carrito con las fotos. */
+  function ensurePhotoMap() {
+    if (photoMapReady) return Promise.resolve(photoMap);
+    if (photoMapPromise) return photoMapPromise;
+
+    if (!window.founderDB || typeof window.founderDB.fetchPhotoMap !== 'function') {
+      photoMapReady = true; // marca como "intentado" para no reintentar
+      return Promise.resolve({});
+    }
+
+    photoMapPromise = window.founderDB.fetchPhotoMap()
+      .then(map => {
+        photoMap = map || {};
+        photoMapReady = true;
+        try {
+          window.dispatchEvent(new CustomEvent(PHOTOS_READY_EVENT));
+        } catch (e) { /* IE no soporta CustomEvent constructor — ignorar */ }
+        return photoMap;
+      })
+      .catch(err => {
+        console.warn('[founderCart] No se pudo cargar photoMap:', err);
+        photoMapReady = true; // evitar reintentos infinitos
+        return {};
+      });
+
+    return photoMapPromise;
+  }
 
   // ── Helpers ──────────────────────────────────────────────────
   const norm = s => String(s || '').trim().toLowerCase();
@@ -207,9 +254,14 @@
 
   // ── Boot centralizado ────────────────────────────────────────
   /** Para páginas secundarias: espera DOM, hace fetch del stock,
-   *  purga el carrito y recién ahí llama al updateFn de la página. */
+   *  purga el carrito y recién ahí llama al updateFn de la página.
+   *  En paralelo, dispara la carga del photoMap (no bloqueante) — cuando
+   *  termina, dispara el evento 'founder-cart-photos-ready' que las páginas
+   *  pueden escuchar para re-renderizar el carrito con las fotos reales. */
   function bootPage(updateFn) {
     const run = async () => {
+      // Disparar fotos en background (sin await — no bloquea el render inicial)
+      ensurePhotoMap();
       try {
         await fetchStockAndPurge();
       } catch (e) {
@@ -240,7 +292,10 @@
     saveStockSnapshot,
     pruneAndQueue,
     // Render
-    flushRemovedNotice
+    flushRemovedNotice,
+    // Fotos del carrito (compartidas entre páginas)
+    getPhotoUrl,
+    ensurePhotoMap
   };
 
   // ── Markup del drawer ────────────────────────────────────────
