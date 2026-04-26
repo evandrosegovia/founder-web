@@ -1,2422 +1,849 @@
-<!DOCTYPE html>
-<html lang="es" style="color-scheme: dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Meta (Facebook) Domain Verification — Fase 4 / Sesión 18 -->
-  <meta name="facebook-domain-verification" content="6qpwim4axainj6z7q5d06778d8qsxd">
-  <title id="pageTitle">FOUNDER — Producto</title>
-  <meta name="description" id="pageDesc" content="Billetera premium con tecnología RFID. Founder Uruguay.">
-  <link rel="canonical" id="pageCanonical" href="https://www.founder.uy/producto.html">
+# 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-  <!-- OG dinámico (se actualiza por JS) -->
-  <meta property="og:type" content="product">
-  <meta property="og:site_name" content="Founder.uy">
+**Última actualización:** Sesión 20 — cierre (26/04/2026)
+**Próxima sesión:** 21 — Definir prioridades tras la gran cantidad de mejoras UX cerradas en Sesión 20. Posibles caminos: cerrar pendientes menores de Meta, evaluar primera campaña paga, agregar features admin (campo `stock_bajo` en producto), o trabajar otras páginas (index.html / contacto / etc).
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+---
 
-<style>
-/* =============================================================
-   FOUNDER producto.html — Design System (mismo que index.html)
-   ============================================================= */
+## 🚀 Para iniciar el próximo chat
 
-/* ── DESIGN TOKENS ────────────────────────────────────────── */
-:root {
-  --color-bg:       #141414;
-  --color-surface:  #222222;
-  --color-surface2: #2e2e2e;
-  --color-surface3: #3a3a3a;
-  --color-text:     #f8f8f4;
-  --color-muted:    #9a9a9a;
-  --color-gold:     #c9a96e;
-  --color-border:        rgba(255,255,255,0.08);
-  --color-border-solid: #282828;
-  --color-danger:   #ff3b30;
-  --color-success:  #4caf82;
-  --font-serif:     'Cormorant Garamond', serif;
-  --font-sans:      'Montserrat', sans-serif;
-  --space-xs: 8px; --space-sm: 16px; --space-md: 24px;
-  --space-lg: 48px; --space-xl: 80px;
-  --transition-fast: 0.2s ease;
-  --transition-base: 0.3s ease;
-  --transition-slow: 0.5s cubic-bezier(.4,0,.2,1);
-  --z-header: 100; --z-cart: 200; --z-modal: 300; --z-toast: 9999;
-  /* Colores de productos — definidos aquí para renderizado consistente en todos los dispositivos */
-  --swatch-negro:       #3a3f4a;
-  --swatch-camel:       #d4a96e;
-  --swatch-marron:      #6b3820;
-  --swatch-gris-oscuro: #6a6a7a;
-  --swatch-azul:        #2a5a8c;
-  --swatch-rosa:        #e8b8b8;
-  --swatch-rojo:        #b52a2a;
-  --swatch-crema:       #e4d8b8;
-  --swatch-carbon:      #3a3a3a;
-  --swatch-verde-oliva: #6a7a3a;
+Pegale a Claude este mensaje al arrancar:
 
-  /* ── Escala tipográfica — textos informativos ─────────────────
-     Solo afecta párrafos, descripciones y textos secundarios.
-     Labels de UI (9-10px), títulos y botones NO se modifican.   */
-  --text-body-sm:  12px;   /* antes 11px — textos descriptivos secundarios */
-  --text-body-md:  13px;   /* antes 12px — textos de cuerpo medio          */
-  --text-body-lg:  14px;   /* antes 13px — descripciones principales       */
-  --lh-body-sm:   1.85;    /* antes 1.8  — mejorar legibilidad en móvil    */
-  --lh-body-md:   1.85;    /* antes 1.8  — consistente con sm              */
-  --lh-body-lg:   1.95;    /* antes 1.9  — textos largos más aireados      */
-}
-/* Forzar renderizado de color nativo — sin ajuste automático del navegador móvil */
-.color-item__swatch, .color-dot, .color-swatch {
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-}
+> Leé `ESTADO.md` y retomamos después de Sesión 20. La Sesión 20 fue muy
+> larga y ahí cerramos un paquete enorme de mejoras UX en `producto.html`
+> (galería con autoplay/zoom/swipe, sección comparativa, reseñas con
+> carrusel mobile, SEO dinámico, sticky CTA mobile+desktop coordinado con
+> burbuja WhatsApp, fix touch iOS, política garantía/cambios separadas en
+> 5 archivos, fotos del carrito en todas las páginas). Ver sección
+> "Lo que quedó funcionando en Sesión 20" para todo el detalle. Para
+> Sesión 21, decime opciones según los pendientes que quedan abiertos:
+> Meta, ads, admin (campo stock_bajo), o trabajar otras páginas.
 
-/* ── RESET ────────────────────────────────────────────────── */
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans); font-weight: 300; overflow-x: hidden; cursor: auto; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
-img { display: block; max-width: 100%; }
-button { font-family: var(--font-sans); }
-a { color: inherit; text-decoration: none; }
+---
 
-/* ── Cursor: se usa el cursor nativo del sistema ─────────────── */
-* { cursor: auto; }
-a, button, [onclick], label, select,
-.color-item, .gallery__thumb, .related-card { cursor: pointer; }
+## 🗺️ Hoja de ruta de fases
 
-/* ── TAP HIGHLIGHT — elimina el flash azul en Android/iOS ────────
-   Chrome Android y WebView inyectan un highlight azul por defecto
-   en cada tap. Se elimina globalmente y se reemplaza por un
-   feedback táctil premium (opacidad suave) acorde a la estética. */
-* { -webkit-tap-highlight-color: transparent; }
+| Fase | Estado | Descripción |
+|---|---|---|
+| **1** — Setup inicial | ✅ Completa | Supabase creado, 6 tablas, schema base |
+| **2A** — Migrar catálogo | ✅ Completa | products, product_colors, product_photos cargados |
+| **2B** — Frontend público | ✅ Completa | index/producto/carrito leen de Supabase |
+| **3A** — Checkout + Seguimiento | ✅ Completa | Ambos migrados a `/api/checkout` y `/api/seguimiento` |
+| **3B** — Admin | ✅ Completa | `admin.html` migrado a `/api/admin` — sin Sheets ni Drive |
+| **3C** — Limpieza | ✅ Completa | Apps Script apagado, Sheet archivado, código libre de legacy |
+| **4** — Meta Pixel + CAPI | ✅ Completa | Dominio custom activo, tracking dual operativo, **dominio verificado en Meta** |
+| **5** — Hardening admin | ✅ Completa | Archivar + Eliminar pedidos desde UI con protecciones (ver Sesión 18) |
+| **6** — Polish UX producto.html | ✅ Completa | Galería, comparativa, reseñas, SEO, sticky CTA, share, mobile fixes (Sesión 20) |
 
-/* Feedback táctil premium: opacidad sutil al presionar */
-a:active,
-button:active,
-[onclick]:active,
-label:active,
-select:active,
-.color-item:active,
-.color-item__swatch:active,
-.gallery__thumb:active,
-.related-card:active,
-.btn:active,
-.wa-bubble:active,
-.cart-btn:active,
-.nav__link:active,
-.breadcrumb a:active,
-.tab-btn:active {
-  opacity: 0.72;
-  transition: opacity 0.08s ease;
-}
+---
 
-/* Accesibilidad: focus visible solo con teclado/navegación */
-:focus-visible {
-  outline: 1px solid var(--color-gold);
-  outline-offset: 2px;
-}
-:focus:not(:focus-visible) { outline: none; }
+## ✅ Lo que quedó funcionando en Sesión 20
 
-/* ── SHARED — Header ─────────────────────────────────────────── */
-.header { position: fixed; top: 0; left: 0; right: 0; z-index: var(--z-header); height: 70px; padding: 0 var(--space-lg); display: flex; align-items: center; justify-content: space-between; background: #111111; background: rgba(14,14,14,.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--color-border-solid); }
-.logo { font-family: var(--font-serif); font-size: 22px; font-weight: 500; letter-spacing: 6px; color: var(--color-text); }
-.nav { display: flex; gap: 36px; }
-.nav__link { color: var(--color-muted); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; text-decoration: none; transition: color var(--transition-base); }
-.nav__link:hover { color: var(--color-text); }
-.nav__link.is-active { color: var(--color-text); }
-.cart-btn { position: relative; background: none; border: 1px solid var(--color-border); color: var(--color-text); padding: 10px 20px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; transition: all var(--transition-base); }
-.cart-btn:hover { background: var(--color-text); color: var(--color-bg); }
-.cart-count { position: absolute; top: -8px; right: -8px; background: var(--color-gold); color: var(--color-bg); width: 18px; height: 18px; border-radius: 50%; font-size: 9px; display: none; align-items: center; justify-content: center; font-weight: 600; }
-.cart-count.is-visible { display: flex; }
-@media (max-width: 900px) { .nav { display: none; } }
+Sesión muy larga centrada en **producto.html**. Se abordaron múltiples bloques
+de mejoras UX, todas validadas en producción por el usuario. El archivo pasó
+de ~1394 líneas a 2422 líneas (+1028) sumando galería interactiva, sección
+comparativa, sección de reseñas con carrusel mobile, SEO dinámico, sticky CTA
+inteligente, integración con burbuja WhatsApp, y un fix crítico de iOS.
 
-/* ── PRODUCTO — Breadcrumb ─────────────────────────────────── */
-.breadcrumb { padding: 90px var(--space-lg) 0; display: flex; align-items: center; gap: 12px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
-.breadcrumb a { color: var(--color-muted); transition: color var(--transition-fast); }
-.breadcrumb a:hover { color: var(--color-text); }
-.breadcrumb__sep { color: var(--color-gold); }
-.breadcrumb__current { color: var(--color-text); }
+### 🎨 Bloque 1 — Galería de fotos producto.html (5 mejoras)
 
-/* ── PRODUCTO — Estado de carga ────────────────────────────── */
-.loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 20px; color: var(--color-muted); }
-.loading-screen__title { font-family: var(--font-serif); font-size: 32px; font-weight: 300; }
-.loading-screen__sub { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; }
+#### 1. Ajuste de imagen principal desktop (Opción A aplicada)
+- `.product-main`: `padding-top` de `40px` a `20px`.
+- `.gallery`: `top` sticky de `70px` a `76px`.
+- Resultado: thumbnails respiran mejor en laptops 13-14". Usuario validó OK.
 
-/* ── PRODUCTO — Estado de error ────────────────────────────── */
-.error-screen { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 20px; text-align: center; padding: var(--space-lg); }
-.error-screen__title { font-family: var(--font-serif); font-size: 48px; font-weight: 300; }
-.error-screen__msg { font-size: var(--text-body-lg); color: var(--color-muted); line-height: var(--lh-body-sm); }
-.error-screen__btn { display: inline-block; background: var(--color-text); color: var(--color-bg); padding: 16px 36px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 600; margin-top: 8px; cursor: pointer; transition: background var(--transition-base); }
-.error-screen__btn:hover { background: var(--color-gold); }
+#### 2. Autoplay del carrusel de fotos
+- Constante `AUTOPLAY` con `INTERVAL_MS: 4000`, `PAUSE_AFTER_CLICK: 12000`,
+  `MAX_CYCLES: 3`.
+- Funciones nuevas: `startPhotoAutoplay`, `stopPhotoAutoplay`,
+  `pausePhotoAutoplay`, `advancePhotoAutoplay`, `bindAutoplayEvents`,
+  `prefersReducedMotion`.
+- Pausa hover desktop, pausa 12s click manual, reset al cambiar color, respeta
+  `prefers-reduced-motion`, Page Visibility API, para tras 3 ciclos.
 
-/* ── PRODUCTO — Layout principal ───────────────────────────── */
-.product-main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 20px var(--space-lg) 0; min-height: 90vh; }
+#### 3. Zoom hover desktop
+- `transform: scale(1.5)` (originalmente 2x, bajado a pedido del usuario).
+- `transform-origin` dinámico siguiendo cursor con `requestAnimationFrame`
+  para batchear paints a 1 por frame.
+- Solo aplica en `@media (min-width: 901px)` — mobile usa pinch nativo.
+- Función `bindZoomEvents()` engancha listeners una sola vez.
 
-/* ── PRODUCTO — Galería de fotos ───────────────────────────── */
-.gallery { position: sticky; top: 76px; height: calc(100vh - 70px); display: flex; flex-direction: column; gap: 2px; padding-right: 40px; }
-.gallery__main { flex: 1; background: var(--color-surface); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: pan-y; }
-.gallery__main-inner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; transition: background 0.6s ease; }
-.gallery__img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; opacity: 0; transition: opacity .4s ease, transform .4s ease; transform-origin: center center; }
-.gallery__img.is-active { opacity: 1; }
+#### 4. Swipe touch mobile + flechas laterales
+- Touch listeners passive sobre `.gallery__main`.
+- Flechas circulares 32x32px (achicadas de 44px) con corrección óptica
+  del span interno (translateY -1px, translateX ±1px).
+- Funciones: `goToPrevPhoto`, `goToNextPhoto`, `currentPhotoCount`,
+  `updateArrowsVisibility`.
 
-/* Zoom 1.5x al hover en desktop. Se activa solo sobre la imagen activa via .is-zooming
- * en .gallery__main. transform-origin se setea inline desde JS según el cursor. */
-@media (min-width: 901px) {
-  .gallery__main { cursor: zoom-in; }
-  .gallery__main.is-zooming .gallery__img.is-active { transform: scale(1.5); transition: transform .15s ease-out; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .gallery__main { cursor: default; }
-  .gallery__main.is-zooming .gallery__img.is-active { transform: none; }
-}
+#### 5. Lazy-loading inteligente
+- Foto activa: `loading="eager"` + `fetchpriority="high"`.
+- Fotos no activas: `loading="lazy"` + `fetchpriority="low"`.
+- `preloadFirstPhotoOfEachColor()` con `requestIdleCallback` (fallback
+  `setTimeout 800ms` para Safari iOS antiguo).
 
-/* Flechas prev/next — solo en mobile. Posición absoluta sobre .gallery__main.
- * Se ocultan por default y se muestran en el media query de mobile (≤900px).
- * Tap target 32x32px (visualmente discretas, suficiente para tap cómodo).
- * z-index sobre .gallery__img pero debajo de .gallery__oferta-badge (z-index 3).
- * Centrado del símbolo: span interno con micro-translate compensa el baseline
- * asimétrico de los caracteres ‹ › en fuente serif. */
-.gallery__arrow {
-  display: none;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: rgba(20, 20, 20, 0.55);
-  color: #fff;
-  font-size: 20px;
-  line-height: 1;
-  font-family: var(--font-serif);
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 2;
-  -webkit-tap-highlight-color: transparent;
-  transition: background var(--transition-fast);
-}
-.gallery__arrow:active    { background: rgba(20, 20, 20, 0.8); }
-.gallery__arrow--prev > span { transform: translateY(-1px) translateX(-1px); }
-.gallery__arrow--next > span { transform: translateY(-1px) translateX(1px);  }
-.gallery__arrow--prev    { left: 12px; }
-.gallery__arrow--next    { right: 12px; }
-.gallery__arrow.is-hidden { display: none !important; }
+### 📱 Bloque 2 — Mobile UX (3 ajustes)
+- Specs en 2 columnas (3+3) en mobile, gap 14px 12px.
+- Tabs sin scroll horizontal: `flex: 1`, padding 14px 8px, font-size 9px.
+- Espacio vacío reducido: `.product-info` padding-bottom 80→40px,
+  `.details-section` 60→32px.
 
-.gallery__placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 40px; color: var(--color-muted); font-family: var(--font-serif); font-size: 11px; letter-spacing: 4px; text-transform: uppercase; }
-.gallery__rfid-badge { position: absolute; bottom: 24px; left: 24px; background: rgba(201,169,110,0.12); border: 1px solid var(--color-gold); padding: 8px 16px; display: flex; align-items: center; gap: 10px; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-gold); }
-.gallery__oferta-badge { position: absolute; top: 14px; right: 14px; background: var(--color-gold); color: #141414; font-family: var(--font-sans); font-size: 8px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 6px 12px; border-radius: 2px; z-index: 3; pointer-events: none; display: none; }
-.gallery__thumbs { display: flex; gap: 2px; height: 80px; }
-.gallery__thumb { flex: 1; background: var(--color-surface); cursor: pointer; border: 2px solid transparent; transition: all var(--transition-fast); overflow: hidden; position: relative; }
-.gallery__thumb img { width: 100%; height: 100%; object-fit: cover; }
-.gallery__thumb.is-active { border-color: var(--color-gold); }
-.gallery__thumb:hover { border-color: rgba(255,255,255,.3); }
+### 🛡️ Bloque 3 — Política Garantía 60d vs Cambios 7d (5 archivos)
+**Decisión clave:** separadas en 2 políticas distintas (corrigió error de
+unificación previa).
+- **Cambios 7 días, sin uso** (devolución por arrepentimiento).
+- **Garantía 60 días por defectos de fábrica** (NO cubre mal uso, desgaste,
+  accidentes).
 
-/* ── PRODUCTO — Panel de información ───────────────────────── */
-.product-info { padding: 0 0 80px 40px; border-left: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 36px; }
-.product-info__label { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--color-gold); display: flex; align-items: center; gap: 12px; }
-.product-info__label::before { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
-.product-info__name { font-family: var(--font-serif); font-size: clamp(48px, 5vw, 72px); font-weight: 300; line-height: 1; letter-spacing: -1px; }
-.product-info__subtitle { font-size: 12px; color: var(--color-muted); letter-spacing: 3px; text-transform: uppercase; margin-top: 12px; }
-.product-info__desc { font-size: var(--text-body-lg); line-height: 2; color: var(--color-muted); letter-spacing: .3px; border-left: 2px solid var(--color-gold); padding-left: 20px; }
+Archivos modificados con consistencia exacta:
+- `producto.html`: trust-badge "Garantía 60 días" con ✅ verde (cambiado de
+  🔒 al final de la sesión); 2 spec-cells separadas en tab Envíos.
+- `components/footer.js` + `checkout.html`: modal legal con 3 secciones.
+- `envios.html`: 2 info-cards separadas (Cambios + Garantía de fábrica).
+- `sobre-nosotros.html`: ítem combinado "Cambios y garantía".
 
-/* ── PRODUCTO — Selector de color ──────────────────────────── */
-.color-section__label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--color-muted); margin-bottom: 16px; }
-.color-section__name { color: var(--color-text); font-size: 11px; letter-spacing: 2px; margin-left: 8px; }
-.colors-grid { display: flex; gap: 12px; flex-wrap: wrap; }
-.color-item { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
-.color-item__swatch { width: 22px; height: 36px; border-radius: 3px; border: 2px solid transparent; transition: all .25s; position: relative; }
-.color-item:hover .color-item__swatch,
-.color-item.is-active .color-item__swatch { border-color: var(--color-text); transform: scale(1.12); }
-.color-item.is-active .color-item__swatch::after { content: ''; position: absolute; inset: -5px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.3); }
-.color-item__name { font-size: 8px; letter-spacing: 1px; color: var(--color-muted); text-transform: uppercase; text-align: center; max-width: 50px; }
+### 📊 Bloque 4 — Tabla comparativa Founder vs billetera tradicional
+- 8 puntos comparativos.
+- Item "Organización" con ✓ en ambas columnas (credibilidad — no decimos que
+  somos mejores en todo).
+- Variables CSS `--color-success` y `--color-muted`.
+- Tras feedback: max-width 880→720px, padding celdas 20→12px, íconos 28→24px
+  para hacer la sección más compacta.
 
-/* ── Estados de color ──────────────────────────────────────── */
-/* Agotado: clickeable para ver fotos, solo bloquea el carrito */
-.color-item--sin-stock { position: relative; opacity: 1; cursor: pointer !important; }
-.color-item--sin-stock .color-item__swatch { cursor: pointer !important; }
-.color-item--sin-stock .color-item__name::after { content: none; }
+### 🛒 Bloque 5 — Fotos del carrito en todas las páginas
+**Decisión clave:** centralizado en `cart.js` (no duplicado en cada página).
 
-/* Oferta */
-.color-item--oferta { position: relative; }
+Cambios en `cart.js`:
+- `photoMap` privado, carga idempotente con `ensurePhotoMap()`.
+- Helper `window.founderCart.getPhotoUrl(name, color)`.
+- Evento custom `founder-cart-photos-ready` para auto-update cuando llegan fotos.
+- Integrado en `bootPage()`.
 
-/* Badge rectangular flotante sobre el swatch — espejo visual de OFERTA y AGOTADO */
-.color-item__badge {
-  position: absolute;
-  top: -7px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 5px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  padding: 2px 2px;
-  border-radius: 2px;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 3;
-}
-.color-item__badge--oferta  { background: var(--color-gold);   color: var(--color-bg); }
-.color-item__badge--agotado { background: var(--color-danger); color: #fff; }
+5 páginas modificadas con render condicional + onerror fallback al placeholder
++ listener del evento. Casos especiales:
+- `contacto.html`: agregado `ensurePhotoMap()` manual (no usaba bootPage).
+- `sobre-nosotros.html`: agregada regla CSS `.cart-item__img` que faltaba.
 
-/* Precio tachado cuando hay oferta */
-.purchase__price-original {
-  font-family: var(--font-serif);
-  font-size: 22px;
-  font-weight: 300;
-  color: var(--color-muted);
-  text-decoration: line-through;
-  text-decoration-color: var(--color-danger, #e05555);
-}
-.purchase__price-oferta-label {
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--color-gold);
-  text-transform: uppercase;
-  align-self: center;
-}
+### 🎯 Bloque 6 — 9 mejoras finales en producto.html
 
-/* ── PRODUCTO — Especificaciones inline ────────────────────── */
-.specs-list { border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); padding: 28px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
-.specs-list__item { display: flex; align-items: flex-start; gap: 14px; font-size: var(--text-body-sm); color: var(--color-muted); line-height: var(--lh-body-sm); }
-.specs-list__icon { color: var(--color-gold); font-size: 10px; margin-top: 2px; flex-shrink: 0; width: 16px; }
+#### 1. Sticky CTA mobile + desktop coordinado
+- Mismo `<div id="stickyBtnWrap">` para ambos viewports.
+- Mobile: barra completa abajo con `padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px))`
+  para respetar el notch del iPhone.
+- Desktop: tarjeta abajo-derecha con `min-width: 320px; max-width: 480px`,
+  `padding: 20px` interno, botón con `padding: 20px` idéntico al inline.
+- IntersectionObserver del botón inline activa `.is-active` cuando inline sale
+  del viewport.
+- IntersectionObserver del footer activa `.is-hidden` cuando footer entra.
 
-/* ── PRODUCTO — Sección de compra ──────────────────────────── */
-.purchase { display: flex; flex-direction: column; gap: 16px; }
-.purchase__price-row { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
-.purchase__price-label { font-size: 9px; letter-spacing: 3px; color: var(--color-muted); text-transform: uppercase; margin-bottom: 8px; }
-.purchase__price { font-family: var(--font-serif); font-size: 48px; font-weight: 400; line-height: 1; }
-.purchase__currency { font-size: 14px; color: var(--color-muted); letter-spacing: 2px; }
-.purchase__discount-tag { background: rgba(201,169,110,.15); border: 1px solid rgba(201,169,110,.3); color: var(--color-gold); font-size: 9px; letter-spacing: 2px; padding: 6px 12px; text-transform: uppercase; }
+#### 2. Lógica de stock bajo (preparada, no visible hoy)
+- Flag opcional `<color>_stock_bajo: true` en `extras.colores_estado` (admin).
+- Función `getColorEstado` extendida para devolver `stockBajo`.
+- Aviso dorado discreto "⏳ Pocas unidades disponibles" oculto por default.
+- Listo para activar desde admin sin cambios de código.
 
-/* Bloque del precio. El botón Compartir vive en su propia fila justo arriba
- * del CTA principal (Agregar al carrito). */
+#### 3. Texto de seguridad bajo el botón
+- "🔒 Compra protegida · Pago seguro" (originalmente tenía también "Garantía
+  60 días" pero se quitó tras detectar redundancia con el trust-badge).
 
-/* Fila combinada: info de envío a la izquierda + botón Compartir a la derecha.
- * Aprovecha el espacio horizontal que antes quedaba vacío arriba del CTA.
- * Mobile: se apila vertical (override en media query mobile). */
-.purchase__info-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.purchase__info-row .purchase__shipping { flex: 1; min-width: 0; }
+#### 4. Confirmación visual al agregar al carrito
+- `pulseAddButtons()` cambia el botón a verde + "✓ Agregado al carrito" 2s.
+- Funciona en inline + sticky simultáneamente.
+- Usa `dataset._orig` para guardar texto original (idempotente).
 
-/* Fila del botón Compartir — alineado a la derecha, justo arriba del CTA
- * principal. Mobile: ancho completo (override en media query mobile). */
-.purchase__share-row { display: flex; justify-content: flex-end; }
+#### 5. Política de envío en 2 líneas
+- "🚚 Envío $X UYU" / "Envío gratis"
+- "📅 Recibís en 1 a 3 días hábiles"
 
-/* Botón "Compartir" — outline gris, look discreto.
- * Hover sutil con borde y texto un tono más claro. */
-.purchase__share-btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  flex-shrink: 0;
-  background: transparent;
-  border: 1px solid var(--color-border-solid);
-  padding: 10px 16px;
-  font-family: inherit; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
-  color: var(--color-muted); cursor: pointer;
-  transition: all var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-.purchase__share-btn:hover  { color: var(--color-text); border-color: var(--color-text); }
-.purchase__share-btn:active { transform: scale(0.97); }
-.purchase__share-btn svg    { flex-shrink: 0; }
-.purchase__shipping { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: var(--color-muted); letter-spacing: .5px; }
-.purchase__shipping-row { display: flex; align-items: center; gap: 8px; }
-.purchase__shipping-row--sub { font-size: 9.5px; opacity: 0.85; }
-.purchase__shipping--free { color: var(--color-gold); font-weight: 500; }
-.purchase__add-btn { background: var(--color-text); color: var(--color-bg); border: none; padding: 20px; width: 100%; font-size: 11px; letter-spacing: 4px; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: all var(--transition-base); }
-.purchase__add-btn:hover:not(:disabled) { background: var(--color-gold); }
-.purchase__add-btn.is-added { background: var(--color-success); color: var(--color-text); pointer-events: none; }
-.purchase__add-btn:disabled { background: var(--color-surface2); color: var(--color-muted); cursor: not-allowed; }
-/* Aviso sin stock en compra */
-.purchase__sin-stock-aviso {
-  display: none; padding: 14px 18px;
-  background: rgba(255,59,48,0.08); border: 1px solid rgba(255,59,48,0.3);
-  border-radius: 3px; color: #ff3b30; font-size: 12px;
-  letter-spacing: 0.08em; text-align: center; font-weight: 500;
-}
-.purchase__sin-stock-aviso.visible { display: block; }
+#### 6. ~~FAQ~~ — saltado por decisión del usuario.
 
-/* Aviso de stock bajo — aparece cuando el flag <color>_stock_bajo está en
- * extras.colores_estado del admin. Look dorado/sutil, no alarmante. */
-.purchase__stock-bajo-aviso {
-  display: none; padding: 10px 14px;
-  background: rgba(201,169,110,0.08); border: 1px solid rgba(201,169,110,0.25);
-  border-radius: 3px; color: var(--color-gold); font-size: 11px;
-  letter-spacing: 0.08em; text-align: center; font-weight: 500;
-}
-.purchase__stock-bajo-aviso.visible { display: flex; align-items: center; justify-content: center; gap: 8px; }
+#### 7. Reseñas con uruguayos inventados + carrusel mobile
+- 4 cards: Martín Rodríguez (Mvd), Lucía Fernández (PdE), Diego Pereira (Salto),
+  Sofía Méndez (Maldonado).
+- Desktop: grilla de 4 columnas.
+- Mobile: carrusel autoplay 4s con flechas + dots dorados, pausa 12s al click
+  manual, mismo patrón que carrusel de fotos.
+- Funciones: `setActiveReview`, `goToPrevReview`, `goToNextReview`,
+  `bindReviewsCarousel`, `start/stop/advanceReviewsAutoplay`.
+- Constante `REVIEWS_AUTOPLAY` con mismos parámetros que fotos.
+- Listener resize con debounce 200ms — si pasa a desktop, parar autoplay; si
+  pasa a mobile, arrancar.
 
-/* Texto de seguridad bajo el botón Agregar al carrito — refuerza confianza
- * en el momento clave de la decisión. */
-.purchase__security-note {
-  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
-  gap: 6px; margin-top: -4px;
-  font-size: 10px; letter-spacing: 0.5px; color: var(--color-muted);
-}
-.purchase__security-sep { color: var(--color-border-solid); margin: 0 2px; }
-/* Botón flotante: aparece cuando el botón inline queda fuera de viewport. */
-.sticky-btn-wrap { display: none; }
-.sticky-btn-wrap.is-hidden { opacity: 0; pointer-events: none; transition: opacity .3s; }
+#### 8. Schema.org Product (JSON-LD)
+- Función `injectProductSchema(p)` inyecta `<script type="application/ld+json"
+  id="product-schema">` con name/description/brand/sku/image/offers
+  (priceCurrency: UYU, availability: InStock).
+- Idempotente: busca el script existente antes de crear nuevo.
 
-/* Desktop: aparece al scrollear, fixed en la parte inferior derecha.
- * El botón interno usa el MISMO tamaño que el botón inline (padding 20px,
- * font-size 11px) para que la transición sea armónica. */
-@media (min-width: 901px) {
-  .sticky-btn-wrap.is-active {
-    display: block; position: fixed; bottom: 24px; right: 24px;
-    z-index: 150;
-    min-width: 320px; max-width: 480px;
-    background: rgba(20,20,20,0.95); padding: 20px;
-    border: 1px solid var(--color-border); backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-    transition: opacity .3s ease;
-  }
-  .sticky-btn-wrap.is-active .purchase__add-btn { width: 100%; padding: 20px; font-size: 11px; cursor: pointer; }
-}
+#### 9. Open Graph + Twitter Card dinámicos
+- Función `injectOpenGraph(p)` setea `og:type/title/description/url/site_name/image`
+  + Twitter Card + canonical link + `document.title`.
+- Helper `setMeta()` interno: crea o actualiza meta tags por selector.
 
-/* Mobile: el botón inline se muestra normalmente. El sticky aparece SOLO
- * cuando el botón inline sale del viewport (vía IntersectionObserver),
- * misma lógica que desktop. Cuando aparece, ocupa todo el ancho abajo.
- * padding-bottom suma env(safe-area-inset-bottom) para respetar el notch
- * inferior de iPhones modernos (el botón no queda tapado por la barra). */
-@media (max-width: 900px) {
-  .sticky-btn-wrap.is-active {
-    display: block; position: fixed; bottom: 0; left: 0; right: 0;
-    z-index: 150;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to top, var(--color-bg) 70%, transparent);
-  }
-  .sticky-btn-wrap.is-active .purchase__add-btn { width: 100%; padding: 20px; font-size: 11px; cursor: pointer; }
-}
-.trust-badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.trust-badge { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px; border: 1px solid var(--color-border); text-align: center; }
-.trust-badge__icon { font-size: 18px; }
-.trust-badge__label { font-size: 8px; letter-spacing: 1px; color: var(--color-muted); text-transform: uppercase; line-height: 1.4; }
-/* Móvil: forzar fila horizontal compacta */
-@media (max-width: 900px) {
-  .trust-badges { grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .trust-badge { padding: 10px 4px; gap: 4px; }
-  .trust-badge__icon { font-size: 16px; }
-  .trust-badge__label { font-size: 7px; letter-spacing: 0.5px; }
-}
+#### 10. Botón "Compartir" cerca del precio
+- Mensaje pre-armado: "Mirá esta billetera Founder X 👇 [URL]".
+- `shareOnWhatsApp()` con `window.open(waUrl, '_blank', 'noopener')`.
+- Iteraciones de posición:
+  1. Inicialmente al lado del precio (con SVG WhatsApp + texto "Compartir por
+     WhatsApp"). Look discreto outline gris.
+  2. Movido a fila propia arriba del CTA, alineado a la derecha.
+  3. Combinado en flex horizontal con la info de envío para eliminar espacio
+     muerto vertical (versión final).
 
-/* ── PRODUCTO — Tabs de detalles ───────────────────────────── */
-.details-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); }
-.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--color-border); margin-bottom: 48px; }
-.tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--color-muted); padding: 16px 32px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; transition: all var(--transition-base); margin-bottom: -1px; white-space: nowrap; }
-.tab-btn.is-active { color: var(--color-text); border-bottom-color: var(--color-gold); }
-.tab-btn:hover { color: var(--color-text); }
-.tab-content { display: none; animation: fadeUp .4s ease; }
-.tab-content.is-active { display: block; }
+### 🔧 Bloque 7 — Coordinación burbuja WhatsApp + sticky CTA
 
-/* Tab — Specs grid */
-.specs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; background: var(--color-border); }
-.spec-cell { background: var(--color-surface); padding: 24px 28px; display: flex; flex-direction: column; gap: 6px; }
-.spec-cell__label { font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-gold); }
-.spec-cell__value { font-size: var(--text-body-lg); color: var(--color-text); line-height: var(--lh-body-sm); }
+**Problema:** la burbuja de WhatsApp (esquina inferior derecha) se superponía
+con el sticky CTA cuando ambos estaban visibles.
 
-/* Tab — RFID */
-.rfid-explain { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
-.rfid-explain__title { font-family: var(--font-serif); font-size: 32px; font-weight: 300; margin-bottom: 20px; line-height: 1.2; }
-.rfid-explain__text { font-size: var(--text-body-md); line-height: 2; color: var(--color-muted); letter-spacing: .3px; margin-bottom: 16px; }
-.rfid-explain__highlight { color: var(--color-gold); font-size: 11px; letter-spacing: 1px; }
-.rfid-visual { background: var(--color-surface); padding: 48px; display: flex; flex-direction: column; gap: 20px; align-items: center; text-align: center; }
-.rfid-visual__icon { font-size: 64px; }
-.rfid-visual__text { font-size: var(--text-body-sm); color: var(--color-muted); letter-spacing: 1px; line-height: var(--lh-body-sm); }
-.rfid-visual__badge { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-gold); }
+**Solución arquitectural:** 2 clases independientes en `<body>`:
+- `.has-sticky-cta` → eleva la burbuja
+- `.footer-visible` → oculta burbuja + sticky con fade
 
-/* ── PRODUCTO — Comparativa Founder vs tradicional ─────────── */
-.compare-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); text-align: center; }
-.compare-section__eyebrow { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--color-gold); margin-bottom: 12px; display: inline-flex; align-items: center; gap: 12px; }
-.compare-section__eyebrow::before,
-.compare-section__eyebrow::after { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
-.compare-section__title { font-family: var(--font-serif); font-size: 36px; font-weight: 300; margin-bottom: 16px; }
-.compare-section__lead { font-size: var(--text-body-lg); line-height: 1.7; color: var(--color-muted); max-width: 640px; margin: 0 auto 36px; }
-
-/* Tabla comparativa — grid de 3 columnas: característica | Founder | Tradicional */
-.compare-table { max-width: 720px; margin: 0 auto; border: 1px solid var(--color-border); background: var(--color-surface); }
-.compare-table__head { display: grid; grid-template-columns: 1.6fr 1fr 1fr; }
-.compare-table__row { display: grid; grid-template-columns: 1.6fr 1fr 1fr; border-top: 1px solid var(--color-border); }
-.compare-table__cell { padding: 12px 24px; display: flex; align-items: center; justify-content: center; font-size: var(--text-body-sm); line-height: 1.5; }
-.compare-table__cell--head { font-family: var(--font-serif); font-size: 14px; letter-spacing: 1px; padding: 16px 24px; color: var(--color-text); }
-.compare-table__cell--label { justify-content: flex-start; text-align: left; color: var(--color-text); }
-.compare-table__cell--featured { background: var(--color-bg); border-left: 1px solid var(--color-border); border-right: 1px solid var(--color-border); }
-.compare-table__head .compare-table__cell--featured { color: var(--color-gold); font-weight: 500; }
-
-/* Íconos de check / cruz */
-.compare-icon { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; font-size: 12px; font-weight: 700; line-height: 1; }
-.compare-icon--yes { background: rgba(76, 175, 130, 0.15); color: var(--color-success); }
-.compare-icon--no  { background: rgba(154, 154, 154, 0.10); color: var(--color-muted); }
-
-/* ── PRODUCTO — Reseñas de clientes ─────────────────────────── */
-.reviews-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); text-align: center; }
-.reviews-section__eyebrow { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--color-gold); margin-bottom: 12px; display: inline-flex; align-items: center; gap: 12px; }
-.reviews-section__eyebrow::before,
-.reviews-section__eyebrow::after { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
-.reviews-section__title { font-family: var(--font-serif); font-size: 32px; font-weight: 300; margin-bottom: 48px; }
-.reviews-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; max-width: 1200px; margin: 0 auto; }
-.review-card { background: var(--color-surface); border: 1px solid var(--color-border); padding: 24px 20px; text-align: left; display: flex; flex-direction: column; gap: 14px; }
-.review-card__stars { color: var(--color-gold); font-size: 14px; letter-spacing: 2px; }
-.review-card__text { font-size: 13px; line-height: 1.6; color: var(--color-text); flex: 1; margin: 0; font-style: italic; }
-.review-card__author { display: flex; flex-direction: column; gap: 2px; padding-top: 12px; border-top: 1px solid var(--color-border); }
-.review-card__name { font-size: 12px; color: var(--color-text); font-weight: 500; letter-spacing: 0.3px; }
-.review-card__location { font-size: 10px; color: var(--color-muted); letter-spacing: 1px; text-transform: uppercase; }
-
-/* Carrusel — wrapper, flechas, dots. En desktop (default) las flechas y dots
- * están ocultos: la grilla muestra las 4 cards a la vez. En mobile se activan
- * vía media query y se muestra 1 card por vez. */
-.reviews-carousel { position: relative; max-width: 1200px; margin: 0 auto; }
-.reviews-carousel__arrow {
-  display: none; /* solo visible en mobile */
-  position: absolute; top: 50%; transform: translateY(-50%);
-  width: 36px; height: 36px;
-  border: 1px solid var(--color-border-solid); border-radius: 50%;
-  background: rgba(20,20,20,0.85); color: #fff;
-  font-size: 22px; line-height: 1; padding: 0;
-  cursor: pointer; z-index: 2;
-  -webkit-tap-highlight-color: transparent;
-  align-items: center; justify-content: center;
-  transition: background var(--transition-fast);
-}
-.reviews-carousel__arrow:active { background: rgba(20,20,20,0.95); }
-.reviews-carousel__arrow--prev > span,
-.reviews-carousel__arrow--next > span { display: block; }
-.reviews-carousel__arrow--prev { left: -4px; }
-.reviews-carousel__arrow--next { right: -4px; }
-
-.reviews-carousel__dots { display: none; justify-content: center; gap: 8px; margin-top: 20px; }
-.reviews-carousel__dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--color-border-solid); border: none; padding: 0;
-  cursor: pointer; transition: all var(--transition-fast);
-  -webkit-tap-highlight-color: transparent;
-}
-.reviews-carousel__dot.is-active { background: var(--color-gold); transform: scale(1.2); }
-
-/* ── PRODUCTO — Productos relacionados ─────────────────────── */
-.related-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); }
-.related-section__eyebrow { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--color-gold); margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
-.related-section__eyebrow::before { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
-.related-section__title { font-family: var(--font-serif); font-size: 36px; font-weight: 300; margin-bottom: 48px; }
-.related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
-.related-card { background: var(--color-surface); cursor: pointer; color: var(--color-text); transition: background var(--transition-base); display: block; }
-.related-card:hover { background: var(--color-surface2); }
-.related-card__img { aspect-ratio: 4/3; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
-.related-card__img img { width: 100%; height: 100%; object-fit: cover; }
-.related-card__placeholder { width: 100%; height: 100%; background: linear-gradient(135deg,#111,#1a1a1a); display: flex; align-items: center; justify-content: center; position: relative; }
-.related-card__info { padding: 24px; display: flex; justify-content: space-between; align-items: center; }
-.related-card__name { font-family: var(--font-serif); font-size: 22px; font-weight: 400; }
-.related-card__desc { font-size: var(--text-body-sm); color: var(--color-muted); letter-spacing: 1px; }
-.related-card__price { font-family: var(--font-serif); font-size: 20px; }
-
-/* ── SHARED — Footer ────────────────────────────────────────── */
-.footer {
-  padding: var(--space-xl) var(--space-lg) var(--space-md);
-  border-top: 1px solid var(--color-border);
-}
-.footer__grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 60px;
-  margin-bottom: var(--space-xl);
-}
-.footer__brand p {
-  font-size: var(--text-body-sm); line-height: var(--lh-body-lg); color: var(--color-muted);
-  max-width: 280px; margin-top: 20px;
-}
-.footer__col h4 {
-  font-size: 9px; letter-spacing: 4px; text-transform: uppercase;
-  color: var(--color-gold); margin-bottom: 24px;
-}
-.footer__col ul { list-style: none; display: flex; flex-direction: column; gap: 12px; }
-.footer__col ul li a {
-  font-size: 11px; color: var(--color-muted); letter-spacing: 1px;
-  transition: color var(--transition-fast);
-}
-.footer__col ul li a:hover { color: var(--color-text); }
-.footer__bottom {
-  display: flex; justify-content: space-between; align-items: center;
-  padding-top: var(--space-md); border-top: 1px solid var(--color-border);
-  font-size: 10px; color: var(--color-muted); letter-spacing: 1px;
-}
-.footer__legal { display: flex; gap: 24px; }
-.footer__legal a { color: var(--color-muted); transition: color var(--transition-fast); }
-.footer__legal a:hover { color: var(--color-text); }
-
-/* ── SHARED — Carrito lateral ───────────────────────────────── */
-.cart-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: var(--z-cart); opacity: 0; pointer-events: none; transition: opacity .4s; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
-.cart-overlay.is-open { opacity: 1; pointer-events: all; }
-.cart-sidebar { position: fixed; top: 0; right: 0; width: 420px; height: 100vh; background: var(--color-surface); z-index: calc(var(--z-cart) + 1); transform: translateX(100%); transition: transform var(--transition-slow); display: flex; flex-direction: column; border-left: 1px solid var(--color-border); }
-.cart-sidebar.is-open { transform: translateX(0); }
-.cart__header { padding: 32px 36px; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
-.cart__title { font-family: var(--font-serif); font-size: 24px; font-weight: 400; letter-spacing: 3px; }
-.cart__close { background: none; border: none; color: var(--color-muted); font-size: 24px; cursor: pointer; transition: color var(--transition-fast); line-height: 1; }
-.cart__close:hover { color: var(--color-text); }
-.cart__items { flex: 1; overflow-y: auto; padding: 24px 36px; }
-.cart-item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--color-border); align-items: flex-start; }
-.cart-item__img { width: 56px; height: 56px; min-width: 56px; object-fit: cover; border: 1px solid var(--color-border); flex-shrink: 0; }
-.cart-item__img-placeholder { width: 56px; height: 56px; min-width: 56px; background: var(--color-surface2); border: 1px solid var(--color-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 22px; font-weight: 400; color: var(--color-gold); letter-spacing: 0; }
-.cart-item__info { flex: 1; min-width: 0; }
-.cart-item__name { font-family: var(--font-serif); font-size: 18px; margin-bottom: 4px; }
-.cart-item__variant { font-size: 10px; color: var(--color-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
-.cart-item__controls { display: flex; align-items: center; gap: 12px; }
-.qty-btn { background: var(--color-surface2); border: none; color: var(--color-text); width: 28px; height: 28px; font-size: 16px; cursor: pointer; transition: background var(--transition-fast); display: flex; align-items: center; justify-content: center; }
-.qty-btn:hover { background: var(--color-surface3); }
-.qty-val { font-size: 14px; min-width: 20px; text-align: center; }
-.cart-item__price { font-family: var(--font-serif); font-size: 20px; white-space: nowrap; align-self: center; }
-.cart-item__remove { background: none; border: none; color: var(--color-muted); cursor: pointer; font-size: 16px; align-self: center; transition: color var(--transition-fast); }
-.cart-item__remove:hover { color: var(--color-danger); }
-.cart__empty { text-align: center; padding: 80px 36px; color: var(--color-muted); }
-.cart__empty p { font-family: var(--font-serif); font-size: 22px; margin-bottom: 8px; }
-.cart__footer { padding: 24px 36px 36px; border-top: 1px solid var(--color-border); }
-.cart__subtotal { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.cart__subtotal span { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
-.cart__subtotal strong { font-family: var(--font-serif); font-size: 28px; font-weight: 400; }
-.cart__checkout-btn { width: 100%; background: var(--color-text); color: var(--color-bg); border: none; padding: 18px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: background var(--transition-base); }
-.cart__checkout-btn:hover { background: var(--color-gold); }
-.cart__ship-note { font-size: 10px; color: var(--color-gold); letter-spacing: 1px; margin-bottom: 12px; }
-.cart__discount-note { font-size: 10px; color: var(--color-muted); letter-spacing: .5px; line-height: 1.6; margin-bottom: 16px; }
-.cart__mp-info { text-align: center; margin-top: 12px; font-size: 9px; letter-spacing: 2px; color: var(--color-muted); }
-.cart__mp-info strong { color: var(--color-text); letter-spacing: 3px; }
-
-/* ── SHARED — Toast ────────────────────────────────────────── */
-.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--color-text); color: var(--color-bg); padding: 12px 24px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; opacity: 0; transition: all .4s; z-index: var(--z-toast); white-space: nowrap; pointer-events: none; }
-.toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-/* ── SHARED — Animaciones ───────────────────────────────────── */
-@keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-
-/* ── RESPONSIVE — Breakpoints ───────────────────────────────── */
-@media (max-width: 900px) {
-  /* Compensación de gamma para pantallas de teléfono */
-  /* brightness unificado en base CSS — sin override mobile */
-  .product-main { grid-template-columns: 1fr; padding: 24px; }
-  .gallery { position: static; height: auto; padding-right: 0; }
-  .gallery__main { min-height: 280px; }
-  .gallery__arrow { display: flex; }
-  /* En móvil: product-info es flex-column — color-section sube al primer lugar */
-  .product-info {
-    padding: 0 0 40px;
-    border-left: none;
-    border-top: none;
-    display: flex;
-    flex-direction: column;
-  }
-  .color-section        { order: 1; padding-top: 24px; border-top: 1px solid var(--color-border); }
-  .product-info__label  { order: 2; padding-top: 24px; }
-  .product-info > div:first-of-type { order: 3; }
-  .product-info__desc   { order: 4; }
-  .specs-list           { order: 5; }
-  .purchase             { order: 6; }
-  /* Mobile: info-row se apila (shipping arriba, botón compartir debajo). */
-  .purchase__info-row  { flex-direction: column; align-items: stretch; gap: 12px; }
-  .purchase__share-row { justify-content: stretch; }
-  .purchase__share-btn { justify-content: center; width: 100%; }
-  .details-section { padding: 32px 24px; }
-  /* Tabs mobile: los 3 botones se reparten el ancho equitativamente.
-   * Padding y font-size reducidos para que "Especificaciones" entre cómodo
-   * en pantallas chicas (375px). */
-  .tab-btn { flex: 1; padding: 14px 8px; font-size: 9px; letter-spacing: 2px; }
-  .specs-list { gap: 14px 12px; } /* en móvil specs en 2 col (3+3) con gap horizontal reducido */
-  .specs-list__item { gap: 10px; } /* gap interno ícono-texto más compacto en mobile */
-  .specs-grid { grid-template-columns: 1fr; }
-  .rfid-explain { grid-template-columns: 1fr; }
-  /* Comparativa mobile: padding reducido, título más compacto, tabla con
-   * columnas redistribuidas (label más ancho que las dos de check). */
-  .compare-section { padding: 60px 24px; }
-  .compare-section__title { font-size: 26px; }
-  .compare-section__lead { font-size: var(--text-body-sm); margin-bottom: 32px; }
-  .compare-table__head,
-  .compare-table__row { grid-template-columns: 1.4fr 0.8fr 0.8fr; }
-  .compare-table__cell { padding: 14px 10px; font-size: 12px; }
-  .compare-table__cell--head { font-size: 11px; padding: 14px 8px; letter-spacing: 0.5px; text-align: center; }
-  .compare-table__cell--label { padding-left: 14px; padding-right: 6px; line-height: 1.4; }
-  .compare-icon { width: 22px; height: 22px; font-size: 11px; }
-  /* Reviews mobile — carrusel: solo .is-active visible, flechas y dots
-   * activados. Padding lateral interno reducido para que las flechas no
-   * tapen el texto. */
-  .reviews-section { padding: 60px 24px; }
-  .reviews-section__title { font-size: 24px; margin-bottom: 32px; }
-  .reviews-carousel { padding: 0 8px; }
-  .reviews-grid { grid-template-columns: 1fr; gap: 0; min-height: 240px; }
-  .review-card { display: none; }
-  .review-card.is-active { display: flex; }
-  .reviews-carousel__arrow { display: flex; }
-  .reviews-carousel__dots  { display: flex; }
-  .related-section { padding: 60px 24px; }
-  .related-grid { grid-template-columns: 1fr; }
-  .cart-sidebar { width: 100%; max-height: 100dvh; }
-  .cart__footer { position: sticky; bottom: 0; background: var(--color-surface); z-index: 2; }
-  .header { padding: 0 24px; }
-  .breadcrumb { padding: 90px 24px 0; }
-  body { cursor: auto; }
-  .footer { padding: 32px 24px; }
-  .footer__grid { grid-template-columns: 1fr 1fr; gap: 32px; }
-}
-@media (max-width: 600px) {
-  .related-grid { grid-template-columns: 1fr; }
-  .footer__grid { grid-template-columns: 1fr; gap: 24px; }
-  .footer__bottom { flex-direction: column; text-align: center; gap: 12px; }
-  .footer__legal { flex-direction: column; align-items: center; gap: 12px; }
-}
-
-/* ── SHARED — Checkout ──────────────────────────────────────── */
-.checkout-page { position: fixed; inset: 0; background: var(--color-bg); z-index: calc(var(--z-modal) + 10); overflow-y: auto; opacity: 0; pointer-events: none; transition: opacity .4s; }
-.checkout-page.is-open { opacity: 1; pointer-events: all; }
-.co-topbar { height: 60px; padding: 0 var(--space-lg); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-border); position: sticky; top: 0; background: var(--color-bg); z-index: 10; }
-.co-back { background: none; border: none; color: var(--color-muted); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: color var(--transition-fast); }
-.co-back:hover { color: var(--color-text); }
-.co-layout { display: grid; grid-template-columns: 1fr 380px; gap: var(--space-xl); padding: var(--space-xl) var(--space-lg); max-width: 1100px; margin: 0 auto; align-items: start; }
-.co-title { font-family: var(--font-serif); font-size: 36px; font-weight: 300; margin-bottom: var(--space-md); }
-.co-step { border: 1px solid var(--color-border); margin-bottom: 16px; }
-.co-step__head { padding: 18px 22px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; gap: 14px; }
-.co-step__num { width: 28px; height: 28px; border: 1px solid var(--color-gold); color: var(--color-gold); display: flex; align-items: center; justify-content: center; font-size: 12px; letter-spacing: 1px; flex-shrink: 0; }
-.co-step__name { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; }
-.co-step__body { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
-.co-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.co-field { display: flex; flex-direction: column; gap: 6px; }
-.co-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); }
-.co-inp { background: var(--color-surface2); border: 1px solid var(--color-border); color: var(--color-text); padding: 12px 14px; font-family: var(--font-sans); font-size: 12px; outline: none; width: 100%; transition: border-color var(--transition-fast); }
-.co-inp:focus { border-color: var(--color-gold); }
-.co-inp option { background: var(--color-surface); }
-.co-textarea { resize: vertical; min-height: 70px; }
-.co-toggle { display: flex; gap: 2px; margin-bottom: 14px; }
-.co-toggle-btn { flex: 1; background: var(--color-surface2); border: 1px solid var(--color-border); color: var(--color-muted); padding: 12px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all var(--transition-fast); }
-.co-toggle-btn.is-active { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
-.co-note { background: rgba(201,169,110,.08); border: 1px solid rgba(201,169,110,.2); padding: 12px 16px; font-size: 10px; color: var(--color-muted); line-height: 1.8; }
-.co-consent { display: flex; align-items: flex-start; gap: 10px; font-size: 10px; color: var(--color-muted); line-height: 1.7; }
-.co-consent a { color: var(--color-gold); }
-.co-submit-btn { width: 100%; background: var(--color-text); color: var(--color-bg); border: none; padding: 18px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: background var(--transition-base); }
-.co-submit-btn:hover { background: var(--color-gold); }
-.co-summary { background: var(--color-surface); border: 1px solid var(--color-border); padding: 28px; position: sticky; top: 80px; }
-.co-summary__title { font-family: var(--font-serif); font-size: 22px; margin-bottom: 20px; }
-.co-summary__item { display: flex; justify-content: space-between; font-size: 11px; color: var(--color-muted); margin-bottom: 10px; }
-.co-summary__total { display: flex; justify-content: space-between; border-top: 1px solid var(--color-border); padding-top: 14px; margin-top: 14px; }
-.co-summary__total-label { font-family: var(--font-serif); font-size: 18px; }
-.co-summary__total-value { font-family: var(--font-serif); font-size: 22px; color: var(--color-gold); }
-/* ── PÁGINAS LEGALES ─────────────────────────────────────────── */
-.legal-page { position: fixed; inset: 0; background: var(--color-bg); z-index: 400; overflow-y: auto; display: none; padding: 100px var(--space-lg) 60px; }
-.legal-page.is-active { display: block; }
-.legal-close { position: fixed; top: 24px; right: var(--space-lg); background: var(--color-surface2); border: none; color: var(--color-text); padding: 10px 20px; font-family: var(--font-sans); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; z-index: 10; transition: background var(--transition-fast); }
-.legal-close:hover { background: var(--color-surface3); }
-.legal-content { max-width: 720px; margin: 0 auto; }
-.legal-content h1 { font-family: var(--font-serif); font-size: 48px; font-weight: 300; margin-bottom: 8px; }
-.legal-date { font-size: 10px; color: var(--color-muted); letter-spacing: 2px; margin-bottom: 48px; }
-.legal-content h2 { font-family: var(--font-serif); font-size: 22px; font-weight: 400; color: var(--color-gold); margin: 32px 0 12px; }
-.legal-content p, .legal-content li { font-size: var(--text-body-lg); line-height: var(--lh-body-lg); color: var(--color-muted); }
-.legal-content ul { padding-left: 20px; }
-
-/* ── BURBUJA WHATSAPP GLOBAL ─────────────────────────────────── */
-.wa-bubble { position: fixed; bottom: 28px; right: 28px; z-index: 9000; display: flex; align-items: center; gap: 10px; text-decoration: none; }
-.wa-bubble__tooltip { background: var(--color-surface); color: var(--color-text); font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.05em; padding: 8px 14px; border-radius: 4px; border: 1px solid var(--color-border); white-space: nowrap; opacity: 0; transform: translateX(8px); transition: opacity 0.25s ease, transform 0.25s ease; pointer-events: none; }
-.wa-bubble:hover .wa-bubble__tooltip { opacity: 1; transform: translateX(0); }
-.wa-bubble__btn { width: 56px; height: 56px; border-radius: 50%; background: #25D366; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(37,211,102,0.35); transition: transform 0.2s ease, box-shadow 0.2s ease; flex-shrink: 0; }
-.wa-bubble:hover .wa-bubble__btn { transform: scale(1.08); box-shadow: 0 6px 22px rgba(37,211,102,0.5); }
-.wa-bubble__btn svg { width: 28px; height: 28px; fill: #ffffff; }
-/* Burbuja en su posición normal cuando NO hay sticky activo (mobile y desktop). */
-@media (max-width: 900px) {
-  .wa-bubble { bottom: 28px; right: 16px; }
-  .wa-bubble__tooltip { display: none; }
-}
-@media (min-width: 901px) and (max-width: 1100px) { .wa-bubble { bottom: 28px; right: 20px; } }
-
-/* Cuando el sticky CTA está activo, la burbuja sube para no superponerse.
- * Usa env(safe-area-inset-bottom) para respetar el notch inferior de iPhones.
- * Mobile: sticky barra completa abajo (~80px) + safe-area + 8px aire = 88px.
- * Desktop: sticky tarjeta abajo-derecha (~95px alto) + aire = 130px. */
+```css
 body.has-sticky-cta .wa-bubble {
   bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 @media (min-width: 901px) {
   body.has-sticky-cta .wa-bubble { bottom: 130px; }
 }
+body.footer-visible .wa-bubble { opacity: 0; pointer-events: none; }
+```
+
+**Bug detectado y arreglado al cierre:** cuando el usuario volvía del footer
+hacia arriba, el sticky reaparecía con `.is-active` pero el body ya no tenía
+`.has-sticky-cta` (la había removido al entrar al footer). Resultado:
+superposición temporal hasta que el inline reentrara al viewport. Fix: en el
+footer observer, cuando `footerVisible=false` Y `wrap.classList.contains('is-active')`,
+agregar `.has-sticky-cta` al body de nuevo.
+
+### 🐛 Bloque 8 — Fix bug touch iOS Safari
+
+**Síntoma reportado:** al tocar la foto del producto y luego intentar
+scrollear, la página se trababa o se movía lateralmente. Bug solo en iOS.
+
+**Causa raíz:** los handlers de swipe usaban `passive: true` sin
+`touch-action` CSS. Safari iOS scrolleaba lateralmente la página entera al
+hacer swipe horizontal, y a veces el `touchend` no llegaba dejando el estado
+"trancado".
+
+**Solución multi-capa:**
+
+1. **CSS:** `touch-action: pan-y` en `.gallery__main`. Le dice al navegador
+   "este elemento solo permite scroll vertical nativo". El swipe horizontal
+   queda bloqueado a nivel sistema → no más rebote lateral.
+
+2. **JS:** reescritura de `bindSwipeEvents` con detección temprana de
+   dirección vía `touchmove`. Ahora hay 4 listeners coordinados:
+   - `touchstart`: registra inicio + activa timeout de seguridad (500ms).
+   - `touchmove`: clasifica dirección apenas el gesto supera 10px en
+     cualquier eje. La dirección se decide UNA vez y se queda fija.
+   - `touchend`: solo dispara cambio de foto si el gesto fue claramente
+     horizontal (>50px) y la dirección quedó como `'horizontal'`.
+   - `touchcancel`: resetea estado si iOS interrumpe (llamada,
+     notificación, etc).
+
+3. **Reset de seguridad por timeout:** si por algún motivo el `touchend` no
+   llega, a los 500ms se limpia el estado automáticamente. Previene que la
+   página se quede "trancada".
+
+4. **Estado interno con flag `active`:** coordinó los 4 handlers, así no
+   quedan estados zombies de touches anteriores.
+
+### 🧹 Bloque 9 — Revisión completa de código (cierre Sesión 20)
+
+Antes de cerrar, se hizo una auditoría exhaustiva de `producto.html`:
+
+#### Bugs encontrados y arreglados durante la auditoría
+1. **`</div>` huérfano al final del archivo**: cierre suelto entre `</script>`
+   y `</body>`. No causaba problema visible (navegador es indulgente) pero
+   violaba estructura HTML. **Arreglado.**
+2. **Variable JS muerta `priceRow`** en `selectColor`: declaraba
+   `const priceRow = $('productPriceRow')` pero el ID nunca existió ni se
+   usaba. **Arreglado.**
+3. **Selector CSS muerto `.sticky-add-btn:active`**: regla `:active` que
+   apuntaba a una clase inexistente. La clase real es `.purchase__add-btn`.
+   **Arreglado.**
+4. **Código duplicado en `injectOpenGraph`**: destructuring `const [, prop] = ...`
+   redundante con `const m = ...` siguiente. **Arreglado.**
+5. **Scrollbar fantasma en tabs desktop**: `.tabs { overflow-x: auto }`
+   provocaba que algunos navegadores Windows reservaran espacio para
+   scrollbar inexistente. **Arreglado** quitando `overflow-x: auto` (los 3
+   tabs entran perfectamente sin scroll).
+
+#### Validaciones que pasaron
+- ✅ Sintaxis JS (`node --check`): cero errores.
+- ✅ Balance de tags HTML: todos balanceados (body, section, div, button,
+  script, style, article).
+- ✅ IDs únicos: 44 declarados, 0 duplicados.
+- ✅ Referencias JS → DOM: todas las funciones `getElementById` apuntan a
+  IDs existentes (estáticos o creados dinámicamente).
+- ✅ Funciones JS sin uso: 58 funciones declaradas, todas con al menos una
+  invocación.
+- ✅ Carruseles (fotos + reviews): 16 funciones + 8 fields del state, todos
+  coherentes.
+- ✅ Sticky CTA + burbuja WA: lógica de `has-sticky-cta` y `footer-visible`
+  coordinada correctamente.
+- ✅ SEO: Schema.org Product + Open Graph + Twitter Card + canonical, todos
+  inyectados al cargar el producto.
+- ✅ Performance: 2 setInterval ↔ 2 clearInterval, 1 resize listener
+  debounceado, 2 IntersectionObservers limpios.
+- ✅ Garantía 60d vs Cambios 7d: separadas y consistentes.
+
+### Iteraciones de UI registradas durante la sesión
+
+Para evitar volver a discutir decisiones ya tomadas:
+
+- **Burbuja WhatsApp + sticky CTA:** el problema costó 4 iteraciones hasta
+  resolverse. Lección clave: las superposiciones en mobile requieren tener
+  en cuenta `env(safe-area-inset-bottom)` para iPhones modernos.
+- **Tamaño botón sticky desktop:** decisión final = idéntico al inline
+  (`padding: 20px`, font-size 11px, no más chico). Wrap con `min-width: 320px;
+  max-width: 480px`.
+- **Texto de seguridad bajo botón:** decisión final = "🔒 Compra protegida ·
+  Pago seguro" (sin "Garantía 60 días" para no repetir el trust-badge).
+- **Trust-badge garantía:** ícono ✅ verde (no 🔒 candado).
+- **Botón Compartir:** outline gris discreto (no verde sólido WhatsApp). Texto
+  solo "Compartir". Posición final: en la misma fila que el shipping note
+  (flex horizontal, shipping a izquierda + botón a derecha).
+- **Reseñas mobile:** carrusel con flechas + dots + autoplay 4s + pausa 12s
+  click manual (mismo patrón que fotos).
+- **Sticky mobile:** barra completa abajo (no tarjeta compacta).
 
-/* Cuando el footer es visible: ocultar la burbuja igual que el sticky CTA.
- * Así no quedan flotando elementos que no aportan en la zona de cierre. */
-body.footer-visible .wa-bubble {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ── Burbuja WA — se desplaza cuando el carrito está abierto, y se eleva
- *    cuando el sticky CTA está activo (transición suave en bottom). ── */
-.wa-bubble {
-  transition: transform 0.5s cubic-bezier(.4,0,.2,1), opacity 0.3s ease, bottom 0.3s ease;
-}
-body.cart-open .wa-bubble {
-  transform: translateX(-440px);
-}
-@media (max-width: 900px) {
-  body.cart-open .wa-bubble {
-    transform: none;
-    opacity: 0;
-    pointer-events: none;
-  }
-}
-
-/* ── MENÚ HAMBURGUESA (mobile) ─────────────────────────────── */
-.menu-btn { display: none; flex-direction: column; justify-content: center; gap: 5px; background: none; border: none; padding: 6px 4px; cursor: pointer; flex-shrink: 0; }
-.menu-btn span { display: block; width: 22px; height: 1.5px; background: var(--color-text); transition: all 0.3s ease; }
-.menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 299; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
-.menu-overlay.is-open { opacity: 1; pointer-events: all; }
-.menu-drawer { position: fixed; top: 0; left: 0; width: 50%; min-width: 240px; max-width: 320px; height: 100dvh; background: var(--color-surface); z-index: 300; transform: translateX(-100%); transition: transform 0.35s cubic-bezier(.4,0,.2,1); display: flex; flex-direction: column; border-right: 1px solid var(--color-border); }
-.menu-drawer.is-open { transform: translateX(0); }
-.menu-drawer__header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 70px; border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
-.menu-drawer__logo { font-family: var(--font-serif); font-size: 18px; font-weight: 500; letter-spacing: 5px; color: var(--color-text); }
-.menu-drawer__close { background: none; border: none; color: var(--color-muted); font-size: 20px; cursor: pointer; line-height: 1; padding: 4px; transition: color 0.2s ease; }
-.menu-drawer__close:hover { color: var(--color-text); }
-.menu-drawer__nav { flex: 1; display: flex; flex-direction: column; padding: 12px 0; overflow-y: auto; }
-.menu-drawer__link { padding: 16px 28px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-muted); text-decoration: none; border-bottom: 1px solid var(--color-border); transition: color 0.2s ease, background 0.2s ease; }
-.menu-drawer__link:first-child { border-top: 1px solid var(--color-border); }
-.menu-drawer__link:hover { color: var(--color-text); background: rgba(255,255,255,0.03); }
-.menu-drawer__link.is-active { color: var(--color-gold); }
-.menu-drawer__footer { padding: 20px 28px; border-top: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 14px; flex-shrink: 0; }
-.menu-drawer__wa { display: flex; align-items: center; gap: 10px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-muted); text-decoration: none; transition: color 0.2s ease; }
-.menu-drawer__wa:hover { color: var(--color-text); }
-@media (max-width: 900px) { .menu-btn { display: flex; } }
-</style>
-  <!-- ============ FAVICON ============ -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23141414'/><text y='72' x='50' text-anchor='middle' font-size='60' font-family='serif' fill='%23c9a96e'>F</text></svg>">
-</head>
-<body>
-
-<div class="toast" id="toast" role="alert" aria-live="polite"></div>
-
-<!-- ── HEADER + MENÚ MOBILE (componente compartido) ──────────── -->
-<div id="site-header"></div>
-<script src="components/header.js"></script>
-
-<!-- ── BREADCRUMB ─────────────────────────────────────────── -->
-<nav class="breadcrumb" aria-label="Navegación de migas de pan">
-  <a href="index.html">Inicio</a>
-  <span class="breadcrumb__sep">›</span>
-  <a href="index.html#productos">Productos</a>
-  <span class="breadcrumb__sep">›</span>
-  <span class="breadcrumb__current" id="breadcrumbProduct">Cargando...</span>
-</nav>
-
-<!-- ── CONTENIDO DINÁMICO ──────────────────────────────────── -->
-<div id="loadingScreen" class="loading-screen">
-  <div class="loading-screen__title">Cargando producto</div>
-  <div class="loading-screen__sub">Un momento...</div>
-</div>
-
-<div id="errorScreen" class="error-screen">
-  <div class="error-screen__title">Producto no encontrado</div>
-  <p class="error-screen__msg">El producto que buscás no existe o fue eliminado.<br>Volvé al catálogo para ver todos los modelos disponibles.</p>
-  <a href="index.html#productos" class="error-screen__btn">Ver catálogo</a>
-</div>
-
-<div id="productContent" style="display:none">
-
-  <!-- PRODUCT MAIN -->
-  <main class="product-main">
-
-    <!-- GALLERY -->
-    <div class="gallery" role="region" aria-label="Galería de imágenes">
-      <div class="gallery__main">
-        <div class="gallery__main-inner" id="galleryMain">
-          <div class="gallery__placeholder" id="galleryPlaceholder">
-            <span style="font-size:48px">👜</span>
-            <span>Cargando imágenes...</span>
-          </div>
-          <div class="gallery__rfid-badge" aria-label="Protección RFID">
-            <span aria-hidden="true">🛡️</span> Protección RFID
-          </div>
-          <div class="gallery__oferta-badge" id="ofertaBadge">Oferta</div>
-        </div>
-        <button class="gallery__arrow gallery__arrow--prev" id="galleryPrev"
-                type="button" aria-label="Foto anterior" onclick="goToPrevPhoto()"><span aria-hidden="true">‹</span></button>
-        <button class="gallery__arrow gallery__arrow--next" id="galleryNext"
-                type="button" aria-label="Foto siguiente" onclick="goToNextPhoto()"><span aria-hidden="true">›</span></button>
-      </div>
-      <div class="gallery__thumbs" id="galleryThumbs"></div>
-    </div>
-
-    <!-- INFO -->
-    <div class="product-info">
-      <div class="product-info__label">Founder.uy — Colección 2026</div>
-
-      <div>
-        <h1 class="product-info__name" id="productName">—</h1>
-        <div class="product-info__subtitle" id="productSubtitle">Protección RFID</div>
-      </div>
-
-      <p class="product-info__desc" id="productDesc">—</p>
-
-      <!-- COLORS -->
-      <div class="color-section">
-        <div class="color-section__label">
-          Color: <span class="color-section__name" id="selectedColorName">—</span>
-        </div>
-        <div class="colors-grid" id="colorsGrid"></div>
-      </div>
-
-      <!-- SPECS -->
-      <div class="specs-list" id="specsList"></div>
-
-      <!-- PURCHASE -->
-      <div class="purchase">
-        <div>
-          <div class="purchase__price-label">Precio</div>
-          <div class="purchase__price-row">
-            <div>
-              <span class="purchase__price" id="productPrice">—</span>
-              <span class="purchase__currency">UYU</span>
-            </div>
-            <div class="purchase__discount-tag">10% OFF<br>por transferencia</div>
-          </div>
-        </div>
-        <div class="purchase__info-row">
-          <div class="purchase__shipping" id="shippingNote">
-            <div class="purchase__shipping-row">
-              <span aria-hidden="true">🚚</span>
-              <span id="shippingText">Calculando envío...</span>
-            </div>
-            <div class="purchase__shipping-row purchase__shipping-row--sub">
-              <span aria-hidden="true">📅</span>
-              <span>Recibís en 1 a 3 días hábiles</span>
-            </div>
-          </div>
-          <div class="purchase__share-row">
-            <button type="button" class="purchase__share-btn" onclick="shareOnWhatsApp()" aria-label="Compartir este producto por WhatsApp">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-              </svg>
-              <span>Compartir</span>
-            </button>
-          </div>
-        </div>
-        <div class="purchase__sin-stock-aviso" id="sinStockAviso">Producto agotado</div>
-        <div class="purchase__stock-bajo-aviso" id="stockBajoAviso" role="status">
-          <span aria-hidden="true">⏳</span>
-          <span>Pocas unidades disponibles</span>
-        </div>
-        <button class="purchase__add-btn" id="addCartBtn" onclick="addToCart()" disabled aria-label="Agregar al carrito">
-          Seleccioná un color para continuar
-        </button>
-        <div class="purchase__security-note" aria-hidden="true">
-          <span>🔒</span>
-          <span>Compra protegida</span>
-          <span class="purchase__security-sep">·</span>
-          <span>Pago seguro</span>
-        </div>
-        <div class="trust-badges" role="list">
-          <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🛡️</span><span class="trust-badge__label">RFID protegido</span></div>
-          <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🚚</span><span class="trust-badge__label" id="trustShipping">Envío gratis</span></div>
-          <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">✅</span><span class="trust-badge__label">Garantía 60 días</span></div>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <!-- BOTÓN STICKY MÓVIL — sigue al usuario mientras scrollea -->
-  <div class="sticky-btn-wrap" id="stickyBtnWrap">
-    <button class="purchase__add-btn" id="stickyAddBtn" onclick="addToCart()" disabled aria-label="Agregar al carrito">
-      Seleccioná un color para continuar
-    </button>
-  </div>
-
-  <!-- DETAILS TABS -->
-  <section class="details-section" aria-label="Detalles del producto">
-    <div class="tabs" role="tablist">
-      <button class="tab-btn is-active" onclick="switchTab('specs', this)" role="tab" aria-selected="true">Especificaciones</button>
-      <button class="tab-btn" onclick="switchTab('rfid', this)" role="tab" aria-selected="false">¿Qué es RFID?</button>
-      <button class="tab-btn" onclick="switchTab('shipping', this)" role="tab" aria-selected="false">Envíos y cambios</button>
-    </div>
-
-    <div class="tab-content is-active" id="tab-specs" role="tabpanel">
-      <div class="specs-grid" id="specsGrid"></div>
-    </div>
-
-    <div class="tab-content" id="tab-rfid" role="tabpanel">
-      <div class="rfid-explain">
-        <div>
-          <h3 class="rfid-explain__title">¿Qué es la tecnología RFID?</h3>
-          <p class="rfid-explain__text">Las tarjetas modernas (crédito, débito, documentos) usan chips RFID para pagos sin contacto. Esto es conveniente, pero también significa que alguien con un lector RFID podría escanear tus datos sin que lo notes.</p>
-          <p class="rfid-explain__text">La tecnología de Founder crea un escudo electromagnético alrededor de tus tarjetas, bloqueando cualquier intento de lectura no autorizada. Tus datos están protegidos mientras la billetera esté cerrada.</p>
-          <p class="rfid-explain__text">Abrís la billetera para pagar normalmente. La protección actúa solo cuando está cerrada, sin interferir con el uso cotidiano.</p>
-          <p class="rfid-explain__highlight">Compatible con: tarjetas Visa, Mastercard, BROU, BBVA, Santander, Itaú, cédula de identidad uruguaya y más.</p>
-        </div>
-        <div class="rfid-visual" aria-label="Visualización RFID">
-          <div class="rfid-visual__icon" aria-hidden="true">🛡️</div>
-          <p class="rfid-visual__text">Blindaje electromagnético activo cuando la billetera está cerrada</p>
-          <div style="width:100%;height:1px;background:var(--color-border);margin:8px 0"></div>
-          <p class="rfid-visual__badge">100% segura · 100% founder</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="tab-content" id="tab-shipping" role="tabpanel">
-      <div class="specs-grid">
-        <div class="spec-cell"><div class="spec-cell__label">Envíos</div><div class="spec-cell__value">A todo el territorio uruguayo · Vía agencia UES</div></div>
-        <div class="spec-cell"><div class="spec-cell__label">Envío gratis</div><div class="spec-cell__value" id="tabShippingFree">En compras desde $2.000 UYU</div></div>
-        <div class="spec-cell"><div class="spec-cell__label">Plazo de entrega</div><div class="spec-cell__value">1 a 3 días hábiles según departamento</div></div>
-        <div class="spec-cell"><div class="spec-cell__label">Costo de envío</div><div class="spec-cell__value">$250 UYU a todo el país</div></div>
-        <div class="spec-cell"><div class="spec-cell__label">Cambios</div><div class="spec-cell__value">Hasta 7 días corridos, producto sin uso y en su estado original</div></div>
-        <div class="spec-cell"><div class="spec-cell__label">Garantía</div><div class="spec-cell__value">60 días por defectos de fábrica (no cubre mal uso)</div></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- COMPARATIVA — Founder vs billetera tradicional -->
-  <section class="compare-section" aria-labelledby="compareTitle">
-    <div class="compare-section__eyebrow">Por qué elegir Founder</div>
-    <h2 class="compare-section__title" id="compareTitle">Una billetera que va con vos</h2>
-    <p class="compare-section__lead">Diseñada para acompañarte todos los días. No es solo una billetera, es un accesorio que combina protección, orden y estilo en un solo lugar.</p>
-
-    <div class="compare-table" role="table" aria-label="Comparativa Founder vs billetera tradicional">
-      <div class="compare-table__head" role="row">
-        <div class="compare-table__cell compare-table__cell--head" role="columnheader" aria-label="Característica"></div>
-        <div class="compare-table__cell compare-table__cell--head compare-table__cell--featured" role="columnheader">Founder</div>
-        <div class="compare-table__cell compare-table__cell--head" role="columnheader">Billetera tradicional</div>
-      </div>
-
-      <div class="compare-table__row" role="row">
-        <div class="compare-table__cell compare-table__cell--label" role="cell">Protección RFID anti-clonación</div>
-        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
-        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
-      </div>
-
-      <div class="compare-table__row" role="row">
-        <div class="compare-table__cell compare-table__cell--label" role="cell">Acceso rápido con un solo botón</div>
-        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
-        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
-      </div>
-
-      <div class="compare-table__row" role="row">
-        <div class="compare-table__cell compare-table__cell--label" role="cell">Diseño slim — entra en cualquier bolsillo</div>
-        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
-        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
-      </div>
-
-      <div class="compare-table__row" role="row">
-        <div class="compare-table__cell compare-table__cell--label" role="cell">Materiales premium (cuero + aluminio)</div>
-        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
-        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
-      </div>
-
-      <div class="compare-table__row" role="row">
-        <div class="compare-table__cell compare-table__cell--label" role="cell">Organización: tarjetas y billetes</div>
-        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
-        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
-      </div>
-
-      <div class="compare-table__row" role="row">
-        <div class="compare-table__cell compare-table__cell--label" role="cell">Resistente a golpes y caídas</div>
-        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
-        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
-      </div>
-
-      <div class="compare-table__row" role="row">
-        <div class="compare-table__cell compare-table__cell--label" role="cell">Estilo unisex y minimalista</div>
-        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
-        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
-      </div>
-
-      <div class="compare-table__row" role="row">
-        <div class="compare-table__cell compare-table__cell--label" role="cell">Garantía 60 días por defectos de fábrica</div>
-        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
-        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- REVIEWS — Lo que dicen nuestros clientes -->
-  <section class="reviews-section" aria-labelledby="reviewsTitle">
-    <div class="reviews-section__eyebrow">Lo que dicen nuestros clientes</div>
-    <h2 class="reviews-section__title" id="reviewsTitle">Confianza ganada con cada compra</h2>
-
-    <div class="reviews-carousel">
-      <button class="reviews-carousel__arrow reviews-carousel__arrow--prev" type="button" aria-label="Reseña anterior" id="reviewsPrev">‹</button>
-      <button class="reviews-carousel__arrow reviews-carousel__arrow--next" type="button" aria-label="Reseña siguiente" id="reviewsNext">›</button>
-
-      <div class="reviews-grid" id="reviewsGrid">
-        <article class="review-card is-active">
-          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-          <p class="review-card__text">"Llevo 3 meses usándola todos los días. Increíble lo cómoda que es, no te das cuenta que la tenés. La protección RFID me da tranquilidad cuando uso el bondi."</p>
-          <div class="review-card__author">
-            <span class="review-card__name">Martín Rodríguez</span>
-            <span class="review-card__location">Montevideo</span>
-          </div>
-        </article>
-
-        <article class="review-card">
-          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-          <p class="review-card__text">"La compré para mi marido y la terminé usando yo. El cuero es de excelente calidad y el diseño es elegante. Muy recomendable."</p>
-          <div class="review-card__author">
-            <span class="review-card__name">Lucía Fernández</span>
-            <span class="review-card__location">Punta del Este</span>
-          </div>
-        </article>
-
-        <article class="review-card">
-          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-          <p class="review-card__text">"Buscaba algo que entrara en el bolsillo del jean sin hacer bulto y la encontré. El botón para sacar las tarjetas es genial, súper práctico."</p>
-          <div class="review-card__author">
-            <span class="review-card__name">Diego Pereira</span>
-            <span class="review-card__location">Salto</span>
-          </div>
-        </article>
-
-        <article class="review-card">
-          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-          <p class="review-card__text">"La atención por WhatsApp fue impecable, me ayudaron a elegir el color y llegó al día siguiente a Maldonado. La calidad superó mis expectativas."</p>
-          <div class="review-card__author">
-            <span class="review-card__name">Sofía Méndez</span>
-            <span class="review-card__location">Maldonado</span>
-          </div>
-        </article>
-      </div>
-
-      <div class="reviews-carousel__dots" id="reviewsDots" role="tablist" aria-label="Reseñas">
-        <button class="reviews-carousel__dot is-active" type="button" aria-label="Reseña 1" data-idx="0"></button>
-        <button class="reviews-carousel__dot" type="button" aria-label="Reseña 2" data-idx="1"></button>
-        <button class="reviews-carousel__dot" type="button" aria-label="Reseña 3" data-idx="2"></button>
-        <button class="reviews-carousel__dot" type="button" aria-label="Reseña 4" data-idx="3"></button>
-      </div>
-    </div>
-  </section>
-
-  <!-- RELATED PRODUCTS -->
-  <section class="related-section" aria-label="Productos relacionados">
-    <div class="related-section__eyebrow">También te puede gustar</div>
-    <div class="related-section__title">Otros modelos</div>
-    <div class="related-grid" id="relatedGrid"></div>
-  </section>
-
-</div><!-- /productContent -->
-
-<!-- ── FOOTER + MODALES LEGALES + BURBUJA WA (componente compartido) ── -->
-<div id="site-footer"></div>
-<script src="components/footer.js"></script>
-
-<!-- ── CARRITO LATERAL (componente compartido) ─────────────── -->
-<div id="site-cart"></div>
-<!-- supabase-client.js debe ir ANTES que cart.js (cart.js depende de window.founderDB) -->
-<script src="components/supabase-client.js"></script>
-<script src="components/cart.js"></script>
-<script src="components/meta-pixel.js"></script>
-
-
-
-<script>
-'use strict';
-
-/* =============================================================
-   FOUNDER producto.html
-   Lee el producto desde la URL (?p=NombreDelProducto)
-   y carga todos los datos desde Supabase en tiempo real.
-   ============================================================= */
-
-// ── SHARED CONFIG — actualizar también en index.html si cambia ──
-// El catálogo se lee desde Supabase (window.founderDB en supabase-client.js).
-// El checkout persiste en Supabase vía /api/checkout (Vercel Serverless).
-const CONFIG = Object.freeze({
-  WA_NUMBER:     '598098550096',
-  FREE_SHIPPING: 2000,
-  SHIPPING_COST: 250,
-});
-
-const COLOR_MAP = Object.freeze({
-  'Negro':       { hex: '#3a3f4a', css: 'var(--swatch-negro)' },
-  'Camel':       { hex: '#d4a96e', css: 'var(--swatch-camel)' },
-  'Marrón':      { hex: '#6b3820', css: 'var(--swatch-marron)' },
-  'Gris Oscuro': { hex: '#6a6a7a', css: 'var(--swatch-gris-oscuro)' },
-  'Azul':        { hex: '#2a5a8c', css: 'var(--swatch-azul)' },
-  'Rosa':        { hex: '#e8b8b8', css: 'var(--swatch-rosa)' },
-  'Rojo':        { hex: '#b52a2a', css: 'var(--swatch-rojo)' },
-  'Crema':       { hex: '#e4d8b8', css: 'var(--swatch-crema)' },
-  'Carbon':      { hex: '#3a3a3a', css: 'var(--swatch-carbon)', pattern: true },
-  'Verde Oliva': { hex: '#6a7a3a', css: 'var(--swatch-verde-oliva)' },
-});
-
-/** Genera el valor CSS de background para un color de producto.
- *  Centraliza la lógica del patrón de Carbon (mismo helper que index.html). */
-function swatchBackground(color) {
-  if (color.pattern) {
-    return 'repeating-linear-gradient(45deg,var(--swatch-carbon) 0,var(--swatch-carbon) 4px,#4a4a4a 4px,#4a4a4a 8px)';
-  }
-  return color.css || color.hex;
-}
-
-// ── SHARED STATE + PAGE STATE ────────────────────────────────────
-const CART_KEY = 'founder_cart'; // clave compartida con index.html
-
-/** Configuración del autoplay de la galería de fotos.
- *  Comportamientos: pausa al hover desktop + pausa al click manual + reset al cambiar
- *  de color + respeto a prefers-reduced-motion + Page Visibility API + límite de ciclos. */
-const AUTOPLAY = Object.freeze({
-  INTERVAL_MS:        4000,  // intervalo entre fotos (4s — ritmo showcase)
-  PAUSE_AFTER_CLICK:  12000, // pausa tras click manual en thumb (12s)
-  MAX_CYCLES:         3,     // ciclos completos antes de detenerse (anti-fatiga)
-});
-
-// Estas funciones deben estar ANTES de state para que loadCartFromStorage() funcione
-function loadCartFromStorage() {
-  try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
-}
-function saveCartToStorage() {
-  try { localStorage.setItem(CART_KEY, JSON.stringify(state.cart)); } catch {}
-}
-
-const state = {
-  product:      null,   // producto actual
-  allProducts:  [],     // todos los productos (para relacionados)
-  photoMap:     {},     // { modelo: { color: [urls] } }
-  selectedColor: null,  // color seleccionado
-  precioEfectivo: null, // precio activo (puede ser precio de oferta)
-  activePhoto:   0,     // índice de foto activa
-  autoplayTimer:       null, // setInterval del autoplay de la galería (null si está parado)
-  autoplayCycles:      0,    // ciclos completos ya recorridos (se para al llegar a AUTOPLAY_MAX_CYCLES)
-  autoplayPausedUntil: 0,    // timestamp en ms hasta el cual el autoplay queda pausado tras click manual
-  autoplayEventsBound: false, // listeners globales (hover/visibility) ya enganchados
-  zoomEventsBound:     false, // listeners del zoom hover ya enganchados
-  swipeEventsBound:    false, // listeners de swipe touch ya enganchados
-  colorPreloadDone:    false, // primera foto de cada color ya pre-cargada al cache
-  reviewIndex:                0, // reseña activa en el carrusel (mobile)
-  reviewsAutoplayTimer:       null, // setInterval del carrusel de reseñas
-  reviewsAutoplayCycles:      0,    // ciclos completos ya recorridos
-  reviewsAutoplayPausedUntil: 0,    // timestamp hasta el cual está pausado
-  reviewsEventsBound:         false, // listeners del carrusel de reseñas ya enganchados
-  cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
-};
-
-// ── SHARED DOM HELPERS ────────────────────────────────────────────
-const $        = id => document.getElementById(id);
-const setHTML  = (id, html)  => { const el = $(id); if (el) el.innerHTML = html; };
-const setText  = (id, text)  => { const el = $(id); if (el) el.textContent = text; };
-const show     = id => { const el = $(id); if (el) el.style.display = ''; };
-const hide     = id => { const el = $(id); if (el) el.style.display = 'none'; };
-const toggle   = (el, cls, force) => el?.classList.toggle(cls, force);
-
-// ── PRODUCTO — Parámetros de URL ────────────────────────────────
-function getProductNameFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  return (params.get('p') || '').trim();
-}
-
-// ── SHARED API — Supabase (Fase 2B) ─────────────────────────────
-// window.founderDB viene de supabase-client.js (cargado antes de este script).
-// Devuelve los productos ya con la forma que este archivo consume —
-// solo falta agregarles los datos visuales del COLOR_MAP.
-
-/** Mixin: inyecta hex/css/pattern a cada color usando COLOR_MAP.
- *  El cliente Supabase devuelve [{name:"Camel"},...] y esta función
- *  lo completa a [{name:"Camel", hex:"#d4a96e", css:"var(...)"},...]. */
-function enrichColors(products) {
-  return (products || []).map(p => ({
-    ...p,
-    colors: (p.colors || []).map(c => ({
-      ...c,
-      ...(COLOR_MAP[c.name] || { hex: '#555' }),
-    })),
-  }));
-}
-
-/** Retorna el estado y precio de oferta de un color dado.
- *  estado: 'activo' | 'sin_stock' | 'oferta'
- *  precioOferta: número o null */
-function getColorEstado(product, colorName) {
-  const ce = product.extras?.colores_estado || {};
-  const estado = ce[colorName] || 'activo';
-  const precioOferta = estado === 'oferta' ? (ce[`${colorName}_precio_oferta`] || null) : null;
-  // Stock bajo es un flag opcional que puede activarse desde admin agregando
-  // la clave "<color>_stock_bajo": true en extras.colores_estado. Si no está
-  // presente, no se muestra ningún aviso. Permite urgencia honesta cuando
-  // queda poco stock real.
-  const stockBajo = ce[`${colorName}_stock_bajo`] === true && estado !== 'sin_stock';
-  return { estado, precioOferta, stockBajo };
-}
-
-function getPhotos(model, color) {
-  return state.photoMap[model]?.[color] || [];
-}
-
-/** Placeholder elegante: cuadrado oscuro con la inicial del modelo en dorado */
-function cartPhotoPlaceholder(name) {
-  const inicial = (name || '?')[0].toUpperCase();
-  const el = document.createElement('div');
-  el.className = 'cart-item__img-placeholder';
-  el.setAttribute('aria-hidden', 'true');
-  el.textContent = inicial;
-  return el;
-}
-
-/** Si una imagen del carrito falla, intenta reconstruir la URL desde Supabase.
- *  Si eso también falla, muestra el placeholder elegante. */
-async function recoverCartPhoto(imgEl, name, color) {
-  try {
-    const photoMap = await window.founderDB.fetchPhotoMap();
-    const foto = photoMap[name]?.[color]?.[0];
-    if (foto) {
-      imgEl.src = foto;
-      imgEl.onerror = () => imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
-      return;
-    }
-  } catch (_) {}
-  imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
-}
-
-// ── PRODUCTO — Inicialización ───────────────────────────────────
-async function init() {
-  const productName = getProductNameFromURL();
-
-  if (!productName) {
-    showError();
-    return;
-  }
-
-  try {
-    // Cargamos productos y fotos en paralelo desde Supabase.
-    const [rawProducts, photoMap] = await Promise.all([
-      window.founderDB.fetchProducts(),
-      window.founderDB.fetchPhotoMap(),
-    ]);
-
-    state.photoMap    = photoMap;
-    state.allProducts = enrichColors(rawProducts);
-    state.product     = state.allProducts.find(
-      p => p.name.toLowerCase() === productName.toLowerCase()
-    );
-
-    if (!state.product) {
-      showError();
-      return;
-    }
-
-    // Guardar snapshot de combos agotados — usado por TODAS las páginas.
-    window.founderCart.saveStockSnapshot(state.allProducts);
-    // Purgar carrito local: items agotados se eliminan y se encola
-    // la notificación para mostrar en el próximo abrir del carrito.
-    state.cart = window.founderCart.pruneAndQueue(state.cart);
-
-    renderProduct();
-    hide('loadingScreen');
-    show('productContent');
-    // Refrescar el contador del carrito y la vista del drawer.
-    updateCart();
-    // Enganchar listeners del autoplay de la galería (hover + visibility).
-    bindAutoplayEvents();
-    // Enganchar listeners del zoom hover (solo activa en desktop ≥901px).
-    bindZoomEvents();
-    // Enganchar listeners de swipe touch (solo activa en dispositivos touch).
-    bindSwipeEvents();
-    // Pre-cargar primera foto de cada color en background (cambio de color
-    // instantáneo). Se hace una sola vez por carga de página.
-    preloadFirstPhotoOfEachColor();
-    // Inyectar SEO: Schema.org Product (JSON-LD) + Open Graph dinámico.
-    // Esto mejora Google rich results y vista previa al compartir el link.
-    injectSEOMetadata(state.product);
-    // Carrusel de reseñas (autoplay 4s en mobile, oculto en desktop).
-    bindReviewsCarousel();
-
-  } catch (err) {
-    console.error('[Founder] Error cargando producto:', err);
-    showError();
-  }
-}
-
-function showError() {
-  hide('loadingScreen');
-  $('errorScreen').style.display = 'flex';
-}
-
-// ── PRODUCTO — SEO dinámico (Schema.org + Open Graph) ──────────
-/** Inyecta metadata SEO específica del producto activo:
- *  - JSON-LD con schema.org/Product → Google rich results (foto, precio, etc).
- *  - <meta og:*> y <meta twitter:*> → vista previa al compartir en WhatsApp,
- *    Facebook, Twitter, etc. Sin esto, el link compartido sale con el OG
- *    genérico del sitio (logo + descripción home), no con la foto del producto. */
-function injectSEOMetadata(p) {
-  if (!p) return;
-  injectProductSchema(p);
-  injectOpenGraph(p);
-}
-
-/** Schema.org Product en JSON-LD. */
-function injectProductSchema(p) {
-  // Tomar primera foto de cualquier color disponible
-  const firstPhoto = Object.values(state.photoMap[p.name] || {}).flat()[0] || null;
-
-  const schema = {
-    '@context': 'https://schema.org/',
-    '@type':    'Product',
-    name:        `Founder ${p.name}`,
-    description: p.description || `Billetera ${p.name} con protección RFID. ${p.specs?.[0] || ''}`.trim(),
-    brand:       { '@type': 'Brand', name: 'Founder' },
-    sku:         p.name,
-    offers: {
-      '@type':         'Offer',
-      url:             window.location.href,
-      priceCurrency:   'UYU',
-      price:           String(p.price ?? 0),
-      availability:    'https://schema.org/InStock',
-      itemCondition:   'https://schema.org/NewCondition',
-      seller:          { '@type': 'Organization', name: 'Founder.uy' }
-    }
-  };
-  if (firstPhoto) schema.image = firstPhoto;
-
-  // Reemplazar si ya existe (evita duplicados en navegaciones SPA-like)
-  let el = document.getElementById('product-schema');
-  if (!el) {
-    el = document.createElement('script');
-    el.type = 'application/ld+json';
-    el.id   = 'product-schema';
-    document.head.appendChild(el);
-  }
-  el.textContent = JSON.stringify(schema);
-}
-
-/** Open Graph + Twitter Card dinámicos según producto activo. */
-function injectOpenGraph(p) {
-  const firstPhoto = Object.values(state.photoMap[p.name] || {}).flat()[0] || null;
-  const title    = `Founder ${p.name} — Billetera con protección RFID`;
-  const desc     = (p.description || `Billetera ${p.name} con protección RFID anti-clonación. Diseño slim y materiales premium.`).slice(0, 160);
-  const url      = window.location.href;
-
-  /** Crea o actualiza un meta tag por su atributo selector. */
-  const setMeta = (selector, attr, value) => {
-    let el = document.head.querySelector(selector);
-    if (!el) {
-      el = document.createElement('meta');
-      // Recuperar el nombre de la propiedad (property u name) y su valor
-      // del selector: ej. 'meta[property="og:title"]' → property="og:title"
-      const m = selector.match(/\[(\w+)="([^"]+)"\]/);
-      if (m) el.setAttribute(m[1], m[2]);
-      document.head.appendChild(el);
-    }
-    el.setAttribute(attr, value);
-  };
-
-  setMeta('meta[property="og:type"]',        'content', 'product');
-  setMeta('meta[property="og:title"]',       'content', title);
-  setMeta('meta[property="og:description"]', 'content', desc);
-  setMeta('meta[property="og:url"]',         'content', url);
-  setMeta('meta[property="og:site_name"]',   'content', 'Founder.uy');
-  if (firstPhoto) setMeta('meta[property="og:image"]', 'content', firstPhoto);
-
-  // Twitter Card
-  setMeta('meta[name="twitter:card"]',        'content', 'summary_large_image');
-  setMeta('meta[name="twitter:title"]',       'content', title);
-  setMeta('meta[name="twitter:description"]', 'content', desc);
-  if (firstPhoto) setMeta('meta[name="twitter:image"]', 'content', firstPhoto);
-
-  // Canonical URL
-  let canonical = document.head.querySelector('link[rel="canonical"]');
-  if (!canonical) {
-    canonical = document.createElement('link');
-    canonical.rel = 'canonical';
-    document.head.appendChild(canonical);
-  }
-  canonical.href = url;
-
-  // Document title también
-  document.title = title;
-}
-
-// ── PRODUCTO — Renderizado ───────────────────────────────────────
-/** Genera dinámicamente la grilla de specs desde los datos del Sheet (col E + col G extras). */
-function renderSpecsGrid(p) {
-  const extras = p.extras || {};
-  const specs  = [];
-
-  // Material — usar el del extras si existe, sino el default
-  const material = extras.material?.trim()
-    ? extras.material
-    : 'Eco cuero + aluminio de alta calidad';
-  specs.push({ label: 'Material', value: material });
-
-  // Tecnología y mecanismo — siempre fijos
-  specs.push({ label: 'Tecnología', value: 'Blindaje RFID — protección electromagnética activa' });
-  specs.push({ label: 'Mecanismo', value: 'Botón deslizante lateral para acceso rápido' });
-
-  // Capacidad — del extras si existe, sino primera spec del pipe
-  const capacidad = extras.capacidad?.trim() || p.specs[0] || '';
-  if (capacidad) specs.push({ label: 'Capacidad', value: capacidad });
-
-  // Dimensiones — del extras, solo si existe
-  if (extras.dimensiones?.trim()) {
-    specs.push({ label: 'Dimensiones', value: extras.dimensiones });
-  }
-
-  // Billetes — del extras, solo si existe
-  if (extras.billetes?.trim()) {
-    specs.push({ label: 'Lugar para billetes', value: extras.billetes });
-  }
-
-  // Monedas — del extras, solo si existe
-  if (extras.monedas?.trim()) {
-    specs.push({ label: 'Lugar para monedas', value: extras.monedas });
-  }
-
-  // Garantía — siempre fija
-  specs.push({ label: 'Garantía', value: '60 días por defectos de fábrica' });
-
-  // Nota especial — al final en dorado si existe
-  const notaHTML = extras.nota?.trim()
-    ? `<div class="spec-cell spec-cell--nota" style="grid-column:1/-1">
-         <div class="spec-cell__label">Nota</div>
-         <div class="spec-cell__value" style="color:var(--color-gold)">${extras.nota}</div>
-       </div>`
-    : '';
-
-  const gridHTML = specs.map(s =>
-    `<div class="spec-cell">
-      <div class="spec-cell__label">${s.label}</div>
-      <div class="spec-cell__value">${s.value}</div>
-    </div>`
-  ).join('') + notaHTML;
-
-  const el = $('specsGrid');
-  if (el) el.innerHTML = gridHTML;
-}
-
-function renderProduct() {
-  const p = state.product;
-
-  // SEO dinámico
-  document.title = `FOUNDER ${p.name} — Billetera RFID Premium Uruguay`;
-  // Meta description: usar setAttribute para actualizar el atributo content correctamente
-  const metaDesc = document.getElementById('pageDesc');
-  if (metaDesc) metaDesc.setAttribute('content', `Founder ${p.name} — Billetera premium con tecnología RFID. $${p.price.toLocaleString('es-UY')} UYU. Envíos a todo Uruguay.`);
-  // Canonical: actualizar href
-  const metaCan = document.getElementById('pageCanonical');
-  if (metaCan) metaCan.setAttribute('href', `https://www.founder.uy/producto.html?p=${encodeURIComponent(p.name)}`);
-  setText('breadcrumbProduct', `Founder ${p.name}`);
-
-  // Meta Pixel — ViewContent (el usuario llegó a la página del producto)
-  if (window.founderPixel) window.founderPixel.trackViewContent(p);
-
-  // Info básica
-  setText('productName',     `Founder ${p.name}`);
-  setText('productSubtitle', p.specs[0] || 'Protección RFID');
-  setText('productDesc',     p.desc);
-  setText('productPrice',    `$${p.price.toLocaleString('es-UY')}`);
-
-  // Envío
-  const freeShip = p.price >= CONFIG.FREE_SHIPPING;
-  const shippingEl = $('shippingNote');
-  if (shippingEl) {
-    $('shippingText').textContent = freeShip
-      ? 'Envío gratis — este producto califica ✓'
-      : `Envío $${CONFIG.SHIPPING_COST.toLocaleString('es-UY')} UYU`;
-    $('shippingText').style.color = freeShip ? 'var(--color-gold)' : 'var(--color-muted)';
-  }
-  setText('trustShipping', freeShip ? 'Envío gratis' : `Envío $${CONFIG.SHIPPING_COST}`);
-  if ($('tabShippingFree')) {
-    $('tabShippingFree').textContent = `En compras desde $2.000 UYU${freeShip ? ' — este producto califica ✓' : ''}`;
-  }
-
-  // Specs inline
-  setHTML('specsList', p.specs.map(s => `
-    <div class="specs-list__item">
-      <span class="specs-list__icon" aria-hidden="true">✦</span>
-      <span>${s}</span>
-    </div>`).join(''));
-
-  // Specs grid — generada dinámicamente desde los datos del Sheet
-  renderSpecsGrid(p);
-
-  // Colores — seleccionar el primer color disponible (no sin_stock)
-  renderColors();
-  if (p.colors.length > 0) {
-    const primerDisponible = p.colors.findIndex(c => {
-      const { estado } = getColorEstado(p, c.name);
-      return estado !== 'sin_stock';
-    });
-    selectColor(primerDisponible >= 0 ? primerDisponible : 0);
-  }
-
-  // Relacionados
-  renderRelated();
-}
-
-// ── PRODUCTO — Selector de colores ──────────────────────────────
-function renderColors() {
-  const p = state.product;
-  setHTML('colorsGrid', p.colors.map((c, i) => {
-    const { estado } = getColorEstado(p, c.name);
-    const isActive   = state.selectedColor?.name === c.name;
-    const sinStock   = estado === 'sin_stock';
-    const enOferta   = estado === 'oferta';
-    const classes    = [
-      'color-item',
-      isActive  ? 'is-active'          : '',
-      sinStock  ? 'color-item--sin-stock' : '',
-      enOferta  ? 'color-item--oferta'    : '',
-    ].filter(Boolean).join(' ');
-    return `
-    <div class="${classes}" onclick="selectColor(${i})"
-      role="button" aria-label="Color ${c.name}${sinStock ? ' — Agotado' : ''}" tabindex="0">
-      <div class="color-item__swatch" style="background:${swatchBackground(c)}">
-        ${enOferta ? '<span class="color-item__badge color-item__badge--oferta">OFERTA</span>' : ''}
-        ${sinStock ? '<span class="color-item__badge color-item__badge--agotado">AGOTADO</span>' : ''}
-      </div>
-      <div class="color-item__name">${c.name}</div>
-    </div>`;
-  }).join(''));
-}
-
-function selectColor(i) {
-  const p     = state.product;
-  const color = p.colors[i];
-  const { estado, precioOferta, stockBajo } = getColorEstado(p, color.name);
-
-  state.selectedColor = color;
-  state.activePhoto   = 0;
-
-  setText('selectedColorName', state.selectedColor.name);
-  renderColors();
-  renderGallery();
-
-  // Cambio de color → reset completo del autoplay (vuelve a foto 0, contador
-  // de ciclos a 0, y arranca con timer fresco).
-  stopPhotoAutoplay();
-  state.autoplayCycles      = 0;
-  state.autoplayPausedUntil = 0;
-  startPhotoAutoplay();
-
-  const addBtn        = $('addCartBtn');
-  const stickyBtn     = $('stickyAddBtn');
-  const sinStockAviso = $('sinStockAviso');
-  const stockBajoAviso = $('stockBajoAviso');
-
-  if (estado === 'sin_stock') {
-    // Sin stock: mostrar galería pero bloquear compra
-    if (addBtn)        addBtn.style.display    = 'none';
-    if (stickyBtn)     stickyBtn.style.display = 'none';
-    if (sinStockAviso) sinStockAviso.classList.add('visible');
-    if (stockBajoAviso) stockBajoAviso.classList.remove('visible');
-
-    // Limpiar precio y badge oferta
-    const priceEl = $('productPrice');
-    const origEl  = document.getElementById('precioOriginalTachado');
-    const labelEl = document.getElementById('precioOfertaLabel');
-    const badgeEl = $('ofertaBadge');
-    if (priceEl)  priceEl.textContent    = '';
-    if (origEl)   origEl.style.display   = 'none';
-    if (labelEl)  labelEl.style.display  = 'none';
-    if (badgeEl)  badgeEl.style.display  = 'none';
-
-    state.precioEfectivo = null;
-    return;
-  }
-
-  // Color disponible: mostrar botones, ocultar aviso de sin stock,
-  // mostrar aviso de stock bajo solo si el flag está activo.
-  if (addBtn)        addBtn.style.display    = '';
-  if (stickyBtn)     stickyBtn.style.display = '';
-  if (sinStockAviso) sinStockAviso.classList.remove('visible');
-  if (stockBajoAviso) stockBajoAviso.classList.toggle('visible', stockBajo);
-
-  // Calcular precio efectivo
-  const precioEfectivo = (estado === 'oferta' && precioOferta) ? precioOferta : p.price;
-
-  // Actualizar display de precio
-  const priceEl    = $('productPrice');
-  if (priceEl) {
-    if (estado === 'oferta' && precioOferta) {
-      // Precio tachado + precio de oferta
-      const priceRowEl = priceEl.closest('.purchase__price-row') || priceEl.parentNode;
-      priceEl.textContent = `$${precioOferta.toLocaleString('es-UY')}`;
-      // Agregar/actualizar precio original tachado
-      let origEl = document.getElementById('precioOriginalTachado');
-      if (!origEl) {
-        origEl = document.createElement('span');
-        origEl.id = 'precioOriginalTachado';
-        origEl.className = 'purchase__price-original';
-        priceEl.insertAdjacentElement('afterend', origEl);
-        // Label "OFERTA"
-        let labelEl = document.createElement('span');
-        labelEl.id = 'precioOfertaLabel';
-        labelEl.className = 'purchase__price-oferta-label';
-        labelEl.textContent = 'OFERTA';
-        origEl.insertAdjacentElement('afterend', labelEl);
-      }
-      origEl.textContent = `$${p.price.toLocaleString('es-UY')}`;
-      origEl.style.display = '';
-      const labelExist = document.getElementById('precioOfertaLabel');
-      if (labelExist) labelExist.style.display = '';
-    } else {
-      priceEl.textContent = `$${p.price.toLocaleString('es-UY')}`;
-      // Ocultar precio original tachado si existía
-      const origEl  = document.getElementById('precioOriginalTachado');
-      const labelEl = document.getElementById('precioOfertaLabel');
-      if (origEl)  origEl.style.display  = 'none';
-      if (labelEl) labelEl.style.display = 'none';
-    }
-  }
-
-  // Botón carrito con precio efectivo
-  const label = `Agregar al carrito — $${precioEfectivo.toLocaleString('es-UY')} UYU`;
-  if (addBtn)    { addBtn.disabled    = false; addBtn.textContent    = label; }
-  if (stickyBtn) { stickyBtn.disabled = false; stickyBtn.textContent = label; }
-
-  // Guardar precio efectivo en el estado para que addToCart lo use
-  state.precioEfectivo = precioEfectivo;
-
-  // Badge oferta sobre galería
-  const badgeEl = $('ofertaBadge');
-  if (badgeEl) badgeEl.style.display = (estado === 'oferta') ? 'block' : 'none';
-}
-
-// ── PRODUCTO — Galería de fotos ─────────────────────────────────
-function renderGallery() {
-  const photos  = getPhotos(state.product.name, state.selectedColor.name);
-  const main    = $('galleryMain');
-  const thumbs  = $('galleryThumbs');
-  const placeholder = $('galleryPlaceholder');
-
-  if (!photos.length) {
-    // Sin fotos — mostrar placeholder con color de fondo
-    if (placeholder) placeholder.style.display = 'flex';
-    main.style.background = state.selectedColor.hex || '#1a1a1a';
-
-    // Limpiar imágenes previas
-    main.querySelectorAll('.gallery__img').forEach(el => el.remove());
-    thumbs.innerHTML = '';
-    updateArrowsVisibility();
-    return;
-  }
-
-  if (placeholder) placeholder.style.display = 'none';
-  main.style.background = '';
-
-  // Render imágenes principales.
-  // - La foto activa carga eager + fetchpriority high (queremos verla YA).
-  // - Las demás del mismo color cargan lazy + fetchpriority low (no compiten
-  //   por ancho de banda con la activa, pero quedan listas para el swap).
-  main.querySelectorAll('.gallery__img').forEach(el => el.remove());
-  photos.forEach((url, i) => {
-    const isActive = (i === state.activePhoto);
-    const img = document.createElement('img');
-    img.src     = url;
-    img.alt     = `Founder ${state.product.name} — foto ${i + 1}`;
-    img.className = `gallery__img${isActive ? ' is-active' : ''}`;
-    img.loading        = isActive ? 'eager' : 'lazy';
-    img.fetchPriority  = isActive ? 'high'  : 'low';
-    main.insertBefore(img, main.querySelector('.gallery__rfid-badge'));
-  });
-
-  // Render thumbnails
-  thumbs.innerHTML = photos.map((url, i) => `
-    <div class="gallery__thumb ${i === state.activePhoto ? 'is-active' : ''}"
-      onclick="setActivePhoto(${i}, true)" role="button" aria-label="Foto ${i + 1}" tabindex="0">
-      <img src="${url}" alt="Foto ${i + 1}" loading="lazy">
-    </div>`).join('');
-
-  updateArrowsVisibility();
-}
-
-/** Muestra u oculta las flechas prev/next según haya o no ≥2 fotos.
- *  CSS controla cuándo se ven (solo mobile). Esta función decide SI están
- *  habilitadas. Con 1 foto o ninguna se ocultan completamente. */
-function updateArrowsVisibility() {
-  const prev = $('galleryPrev');
-  const next = $('galleryNext');
-  if (!prev || !next) return;
-  const hasMultiple = currentPhotoCount() >= 2;
-  toggle(prev, 'is-hidden', !hasMultiple);
-  toggle(next, 'is-hidden', !hasMultiple);
-}
-
-/** Pre-carga en background la PRIMERA foto de cada color del producto activo.
- *  Pone los archivos en cache HTTP del navegador → cambio de color instantáneo.
- *  - Solo primera foto por color (no todas → no satura ancho de banda).
- *  - Salta el color ya cargado (la activa ya está descargando con priority high).
- *  - Idempotente: se marca state.colorPreloadDone para que corra una sola vez.
- *  - Usa requestIdleCallback si está disponible para no competir con primer paint. */
-function preloadFirstPhotoOfEachColor() {
-  if (state.colorPreloadDone) return;
-  state.colorPreloadDone = true;
-
-  if (!state.product) return;
-  const colors = state.photoMap[state.product.name] || {};
-  const activeColorName = state.selectedColor?.name;
-
-  const run = () => {
-    Object.entries(colors).forEach(([colorName, urls]) => {
-      if (colorName === activeColorName) return; // ya está cargando con priority high
-      const firstUrl = urls && urls[0];
-      if (!firstUrl) return;
-      const img = new Image();
-      // fetchPriority low: el navegador la baja cuando hay ancho libre.
-      // No se inserta al DOM → solo va al cache HTTP y luego es garbage-collected.
-      if ('fetchPriority' in img) img.fetchPriority = 'low';
-      img.src = firstUrl;
-    });
-  };
-
-  if ('requestIdleCallback' in window) {
-    requestIdleCallback(run, { timeout: 2000 });
-  } else {
-    setTimeout(run, 800); // fallback Safari/iOS antes de iOS 16.4
-  }
-}
-
-function setActivePhoto(i, byUser = false) {
-  state.activePhoto = i;
-
-  // Actualizar imagen principal
-  document.querySelectorAll('.gallery__img').forEach((img, idx) => {
-    toggle(img, 'is-active', idx === i);
-  });
-
-  // Actualizar thumbnail activo
-  document.querySelectorAll('.gallery__thumb').forEach((t, idx) => {
-    toggle(t, 'is-active', idx === i);
-  });
-
-  // Click manual del usuario → pausar autoplay temporalmente
-  if (byUser) pausePhotoAutoplay(AUTOPLAY.PAUSE_AFTER_CLICK);
-}
-
-/** Cantidad de fotos del color activo. Devuelve 0 si no hay producto cargado. */
-function currentPhotoCount() {
-  if (!state.product || !state.selectedColor) return 0;
-  return getPhotos(state.product.name, state.selectedColor.name).length;
-}
-
-/** Navega a la foto anterior con loop circular. Marca como interacción del usuario. */
-function goToPrevPhoto() {
-  const total = currentPhotoCount();
-  if (total < 2) return;
-  const next = (state.activePhoto - 1 + total) % total;
-  setActivePhoto(next, true);
-}
-
-/** Navega a la foto siguiente con loop circular. Marca como interacción del usuario. */
-function goToNextPhoto() {
-  const total = currentPhotoCount();
-  if (total < 2) return;
-  const next = (state.activePhoto + 1) % total;
-  setActivePhoto(next, true);
-}
-
-// ── PRODUCTO — Autoplay de la galería ───────────────────────────
-// Diseño: 5 funciones puras + 3 listeners enganchados 1 sola vez en bootstrap.
-// Reglas: pausa al hover desktop, pausa 12s al click manual, reset al cambiar
-// de color, respeta prefers-reduced-motion, pausa con Page Visibility, para
-// tras MAX_CYCLES para evitar fatiga visual.
-
-/** ¿El usuario pidió reducir movimiento? Se evalúa en cada start
- *  porque la preferencia puede cambiar en caliente. */
-function prefersReducedMotion() {
-  return window.matchMedia &&
-         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-/** Avanza el autoplay un paso. Detiene al completar MAX_CYCLES. */
-function advancePhotoAutoplay() {
-  // Si está pausado por click manual, no avanza pero sigue vivo el timer
-  if (Date.now() < state.autoplayPausedUntil) return;
-
-  const photos = getPhotos(state.product.name, state.selectedColor.name);
-  if (photos.length < 2) { stopPhotoAutoplay(); return; }
-
-  const nextIdx = (state.activePhoto + 1) % photos.length;
-  setActivePhoto(nextIdx);
-
-  // Cuando volvemos a la foto 0 cerramos un ciclo completo
-  if (nextIdx === 0) {
-    state.autoplayCycles += 1;
-    if (state.autoplayCycles >= AUTOPLAY.MAX_CYCLES) stopPhotoAutoplay();
-  }
-}
-
-/** Arranca el autoplay si las condiciones lo permiten.
- *  Idempotente — si ya hay un timer corriendo, no abre otro. */
-function startPhotoAutoplay() {
-  if (state.autoplayTimer) return;                            // ya corriendo
-  if (prefersReducedMotion()) return;                         // accesibilidad
-  if (document.hidden) return;                                // tab oculta
-  if (!state.product || !state.selectedColor) return;         // no listo
-
-  const photos = getPhotos(state.product.name, state.selectedColor.name);
-  if (photos.length < 2) return;                              // 1 sola foto
-
-  state.autoplayTimer = setInterval(advancePhotoAutoplay, AUTOPLAY.INTERVAL_MS);
-}
-
-/** Detiene el autoplay sin tocar el contador de ciclos.
- *  Usado por hover, Page Visibility, límite de ciclos y casos sin fotos.
- *  Idempotente — seguro llamarla múltiples veces. */
-function stopPhotoAutoplay() {
-  if (state.autoplayTimer) {
-    clearInterval(state.autoplayTimer);
-    state.autoplayTimer = null;
-  }
-}
-
-/** Pausa el autoplay durante `ms` milisegundos sin matarlo.
- *  Lo usa el click manual en thumbnails para dar tiempo de mirar. */
-function pausePhotoAutoplay(ms) {
-  state.autoplayPausedUntil = Date.now() + ms;
-}
-
-/** Engancha los listeners globales del autoplay UNA sola vez por carga.
- *  - Hover sobre la imagen principal (desktop) → pausa/reanuda.
- *  - Page Visibility (tab oculta) → pausa/reanuda.
- *  En mobile el hover no se dispara → no afecta. */
-function bindAutoplayEvents() {
-  if (state.autoplayEventsBound) return;
-  state.autoplayEventsBound = true;
-
-  const main = document.querySelector('.gallery__main');
-  if (main) {
-    main.addEventListener('mouseenter', stopPhotoAutoplay);
-    main.addEventListener('mouseleave', startPhotoAutoplay);
-  }
-
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) stopPhotoAutoplay();
-    else                 startPhotoAutoplay();
-  });
-}
-
-// ── PRODUCTO — Zoom hover en imagen principal (solo desktop) ─────
-// Estrategia: transform: scale(1.5) + transform-origin dinámico siguiendo el
-// cursor. Usa requestAnimationFrame para batchear mousemove a 1 paint por
-// frame. El rect del contenedor se cachea en mouseenter (no cambia mientras
-// el cursor está adentro). En mobile el media query desactiva la regla CSS
-// y los listeners no se enganchan (matchMedia comprueba al inicio).
-
-/** Engancha los listeners del zoom al hover UNA sola vez por carga.
- *  Solo en desktop (>=901px) y respetando prefers-reduced-motion.
- *  En mobile y con reduced-motion no se enganchan listeners (zoom desactivado). */
-function bindZoomEvents() {
-  if (state.zoomEventsBound) return;
-  state.zoomEventsBound = true;
-
-  // Media query para desktop — misma definición que en CSS
-  const desktopMQ = window.matchMedia('(min-width: 901px)');
-  const main = document.querySelector('.gallery__main');
-  if (!main) return;
-
-  let rect = null;        // bounding del contenedor, cacheado en mouseenter
-  let pendingFrame = null; // id del rAF pendiente (para no apilar paints)
-  let lastX = 0, lastY = 0;
-
-  function paintZoom() {
-    pendingFrame = null;
-    if (!rect) return;
-    const xPct = ((lastX - rect.left) / rect.width)  * 100;
-    const yPct = ((lastY - rect.top)  / rect.height) * 100;
-    const activeImg = main.querySelector('.gallery__img.is-active');
-    if (activeImg) activeImg.style.transformOrigin = `${xPct}% ${yPct}%`;
-  }
-
-  function onEnter() {
-    if (!desktopMQ.matches) return;
-    if (prefersReducedMotion()) return;
-    rect = main.getBoundingClientRect();
-    main.classList.add('is-zooming');
-  }
-
-  function onMove(e) {
-    if (!main.classList.contains('is-zooming')) return;
-    lastX = e.clientX;
-    lastY = e.clientY;
-    if (pendingFrame === null) {
-      pendingFrame = requestAnimationFrame(paintZoom);
-    }
-  }
-
-  function onLeave() {
-    main.classList.remove('is-zooming');
-    rect = null;
-    if (pendingFrame !== null) {
-      cancelAnimationFrame(pendingFrame);
-      pendingFrame = null;
-    }
-    // Resetear transform-origin de TODAS las imágenes para evitar que la
-    // próxima imagen activa herede una posición vieja.
-    main.querySelectorAll('.gallery__img').forEach(img => {
-      img.style.transformOrigin = '';
-    });
-  }
-
-  main.addEventListener('mouseenter', onEnter);
-  main.addEventListener('mousemove',  onMove);
-  main.addEventListener('mouseleave', onLeave);
-}
-
-// ── PRODUCTO — Swipe touch en imagen principal (mobile) ─────────
-// Estrategia: detección temprana de dirección en touchmove para diferenciar
-// scroll vertical de swipe horizontal. CSS touch-action:pan-y le dice al
-// navegador que solo permita scroll vertical nativo en este elemento, así
-// el swipe horizontal lo maneja JS sin que iOS intente scrollear lateral.
-// Reset de seguridad por timeout en caso de touchend perdido (bug iOS).
-
-const SWIPE_THRESHOLD_PX  = 50;
-const SWIPE_DIRECTION_MIN = 10; // px mínimos para clasificar dirección
-const SWIPE_TIMEOUT_MS    = 500; // reset si no llega touchend
-
-/** Engancha los listeners de swipe touch UNA sola vez por carga.
- *  En desktop sin touch los eventos no se disparan → no afecta. */
-function bindSwipeEvents() {
-  if (state.swipeEventsBound) return;
-  state.swipeEventsBound = true;
-
-  const main = document.querySelector('.gallery__main');
-  if (!main) return;
-
-  let startX = 0, startY = 0;
-  let active = false;          // touch en curso
-  let direction = null;        // 'horizontal' | 'vertical' | null
-  let resetTimer = null;       // timeout de seguridad
-
-  function resetState() {
-    active = false;
-    direction = null;
-    if (resetTimer) {
-      clearTimeout(resetTimer);
-      resetTimer = null;
-    }
-  }
-
-  main.addEventListener('touchstart', (e) => {
-    if (!e.touches || e.touches.length !== 1) {
-      resetState(); // pinch o multi-touch → ignorar
-      return;
-    }
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    active = true;
-    direction = null;
-    // Seguro: si touchend no llega (puede pasar en iOS si el dedo sale del
-    // elemento mientras scrollea), resetear estado pasado 500ms.
-    if (resetTimer) clearTimeout(resetTimer);
-    resetTimer = setTimeout(resetState, SWIPE_TIMEOUT_MS);
-  }, { passive: true });
-
-  main.addEventListener('touchmove', (e) => {
-    if (!active || !e.touches || e.touches.length !== 1) return;
-    if (direction !== null) return; // dirección ya decidida
-
-    const dx = e.touches[0].clientX - startX;
-    const dy = e.touches[0].clientY - startY;
-    const absDx = Math.abs(dx);
-    const absDy = Math.abs(dy);
-
-    // Esperar a que el gesto sea claramente direccional antes de clasificar.
-    if (absDx < SWIPE_DIRECTION_MIN && absDy < SWIPE_DIRECTION_MIN) return;
-
-    direction = absDx > absDy ? 'horizontal' : 'vertical';
-  }, { passive: true });
-
-  main.addEventListener('touchend', (e) => {
-    if (!active) return;
-    if (!e.changedTouches || e.changedTouches.length !== 1) {
-      resetState();
-      return;
-    }
-
-    // Solo procesar swipe si fue claramente horizontal y supera el umbral.
-    if (direction === 'horizontal') {
-      const dx = e.changedTouches[0].clientX - startX;
-      if (Math.abs(dx) >= SWIPE_THRESHOLD_PX) {
-        if (dx < 0) goToNextPhoto();
-        else        goToPrevPhoto();
-      }
-    }
-
-    resetState();
-  }, { passive: true });
-
-  // Si el touch se cancela (interrupción del sistema, llamada, etc.), resetear.
-  main.addEventListener('touchcancel', resetState, { passive: true });
-}
-
-// ── PRODUCTO — Carrusel de reseñas (solo mobile) ────────────────
-// Mismo patrón que el carrusel de fotos: autoplay 4s, pausa 12s al click
-// manual, reset por Page Visibility, respeta prefers-reduced-motion, para
-// tras MAX_CYCLES para evitar fatiga visual.
-const REVIEWS_AUTOPLAY = Object.freeze({
-  INTERVAL_MS:        4000,
-  PAUSE_AFTER_CLICK:  12000,
-  MAX_CYCLES:         3,
-});
-
-/** Activa la reseña con índice i. byUser=true marca interacción manual y
- *  pausa el autoplay 12s. */
-function setActiveReview(i, byUser = false) {
-  const cards = document.querySelectorAll('.reviews-grid .review-card');
-  const dots  = document.querySelectorAll('.reviews-carousel__dot');
-  if (!cards.length) return;
-
-  // Normalizar índice (loop circular)
-  const total = cards.length;
-  const idx = ((i % total) + total) % total;
-  state.reviewIndex = idx;
-
-  cards.forEach((c, k) => toggle(c, 'is-active', k === idx));
-  dots.forEach((d, k)  => toggle(d, 'is-active', k === idx));
-
-  if (byUser) state.reviewsAutoplayPausedUntil = Date.now() + REVIEWS_AUTOPLAY.PAUSE_AFTER_CLICK;
-}
-
-function goToPrevReview() { setActiveReview(state.reviewIndex - 1, true); }
-function goToNextReview() { setActiveReview(state.reviewIndex + 1, true); }
-
-function advanceReviewsAutoplay() {
-  if (Date.now() < state.reviewsAutoplayPausedUntil) return;
-
-  const total = document.querySelectorAll('.reviews-grid .review-card').length;
-  if (total < 2) { stopReviewsAutoplay(); return; }
-
-  const nextIdx = (state.reviewIndex + 1) % total;
-  setActiveReview(nextIdx);
-
-  if (nextIdx === 0) {
-    state.reviewsAutoplayCycles += 1;
-    if (state.reviewsAutoplayCycles >= REVIEWS_AUTOPLAY.MAX_CYCLES) stopReviewsAutoplay();
-  }
-}
-
-function startReviewsAutoplay() {
-  if (state.reviewsAutoplayTimer) return;
-  if (prefersReducedMotion()) return;
-  if (document.hidden) return;
-
-  // Solo en mobile (donde el carrusel realmente se usa)
-  if (!window.matchMedia('(max-width: 900px)').matches) return;
-
-  const total = document.querySelectorAll('.reviews-grid .review-card').length;
-  if (total < 2) return;
-
-  state.reviewsAutoplayTimer = setInterval(advanceReviewsAutoplay, REVIEWS_AUTOPLAY.INTERVAL_MS);
-}
-
-function stopReviewsAutoplay() {
-  if (state.reviewsAutoplayTimer) {
-    clearInterval(state.reviewsAutoplayTimer);
-    state.reviewsAutoplayTimer = null;
-  }
-}
-
-/** Engancha listeners del carrusel de reseñas UNA sola vez por carga.
- *  - Click en flechas / dots → cambio manual con pausa de 12s.
- *  - Visibility change → pausa cuando la tab está oculta.
- *  - Resize → si pasa a desktop, parar autoplay; si pasa a mobile, arrancar. */
-function bindReviewsCarousel() {
-  if (state.reviewsEventsBound) return;
-  state.reviewsEventsBound = true;
-
-  const prev = document.getElementById('reviewsPrev');
-  const next = document.getElementById('reviewsNext');
-  const dots = document.querySelectorAll('.reviews-carousel__dot');
-
-  if (prev) prev.addEventListener('click', goToPrevReview);
-  if (next) next.addEventListener('click', goToNextReview);
-  dots.forEach(d => {
-    d.addEventListener('click', () => {
-      const idx = parseInt(d.dataset.idx, 10);
-      if (Number.isFinite(idx)) setActiveReview(idx, true);
-    });
-  });
-
-  // Page Visibility: pausar/reanudar
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) stopReviewsAutoplay();
-    else                 startReviewsAutoplay();
-  });
-
-  // Resize: si el viewport cruza el breakpoint, ajustar autoplay
-  let resizeTimer = null;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-      const isMobile = window.matchMedia('(max-width: 900px)').matches;
-      if (!isMobile) stopReviewsAutoplay();
-      else           startReviewsAutoplay();
-    }, 200);
-  });
-
-  // Arrancar si estamos en mobile
-  startReviewsAutoplay();
-}
-
-// ── PRODUCTO — Tabs de detalles ─────────────────────────────────
-function switchTab(name, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    b.classList.remove('is-active');
-    b.setAttribute('aria-selected', 'false');
-  });
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('is-active'));
-
-  if (btn) { btn.classList.add('is-active'); btn.setAttribute('aria-selected', 'true'); }
-  const tab = $('tab-' + name);
-  if (tab) tab.classList.add('is-active');
-}
-
-// ── PRODUCTO — Productos relacionados ───────────────────────────
-function renderRelated() {
-  const related = state.allProducts
-    .filter(p => p.name !== state.product.name)
-    .slice(0, 3);
-
-  if (!related.length) {
-    hide('relatedSection');
-    return;
-  }
-
-  setHTML('relatedGrid', related.map(p => {
-    const firstPhoto = Object.values(state.photoMap[p.name] || {}).flat()[0] || null;
-    const swatches   = p.colors.slice(0, 3).map(c => `
-      <div style="width:24px;height:36px;border-radius:3px;box-shadow:0 4px 12px rgba(0,0,0,.5);background:${
-        swatchBackground(c)
-      }"></div>`).join('');
-
-    return `
-      <a href="producto.html?p=${encodeURIComponent(p.name)}" class="related-card" aria-label="Ver Founder ${p.name}">
-        <div class="related-card__img">
-          ${firstPhoto
-            ? `<img src="${firstPhoto}" alt="Founder ${p.name}" loading="lazy" style="width:100%;height:100%;object-fit:cover">`
-            : `<div class="related-card__placeholder">
-                 <div style="font-family:var(--font-serif);font-size:60px;font-weight:300;color:rgba(255,255,255,.04);position:absolute">${p.name.toUpperCase()}</div>
-                 <div style="display:flex;gap:6px;position:relative;z-index:1">${swatches}</div>
-               </div>`}
-        </div>
-        <div class="related-card__info">
-          <div>
-            <div class="related-card__name">${p.name}</div>
-            <div class="related-card__desc">${p.specs[0] || 'RFID'}</div>
-          </div>
-          <div class="related-card__price">$${p.price.toLocaleString('es-UY')}</div>
-        </div>
-      </a>`;
-  }).join(''));
-}
-
-// ── CARRITO → CHECKOUT ───────────────────────────────────────
-/** Redirige al checkout dedicado. El carrito persiste en localStorage. */
-function openCheckout() {
-  if (!state.cart.length) return;
-  window.location.href = 'checkout.html';
-}
-
-// ── SHARED CART ─────────────────────────────────────────────────
-function addToCart() {
-  if (!state.selectedColor) return;
-  const p     = state.product;
-  const color = state.selectedColor.name;
-
-  // Usar precio efectivo (oferta o normal) — calculado en selectColor()
-  const precio = state.precioEfectivo ?? p.price;
-
-  const ex = state.cart.find(i => i.name === p.name && i.color === color);
-  if (ex) {
-    ex.qty++;
-    ex.price = precio; // actualizar precio por si cambió
-  } else {
-    state.cart.push({ id: p.name, name: p.name, color, price: precio, qty: 1 });
-  }
-
-  updateCart();
-  showToast(`Founder ${p.name} — ${color} agregado`);
-  pulseAddButtons(); // feedback visual en los botones (2s)
-
-  // Meta Pixel — AddToCart
-  if (window.founderPixel) window.founderPixel.trackAddToCart(p.name, color, precio);
-
-  // Abrir carrito
-  setTimeout(() => {
-    $('cartSidebar').classList.add('is-open');
-    $('cartOverlay').classList.add('is-open');
-    document.body.classList.add('cart-open');
-    document.body.style.overflow = 'hidden';
-  }, 300);
-}
-
-/** Cambia los botones inline+sticky a estado "agregado" por 2s para reforzar
- *  visualmente que el agregado fue exitoso. Después vuelve al texto original. */
-function pulseAddButtons() {
-  const btns = [$('addCartBtn'), $('stickyAddBtn')].filter(Boolean);
-  btns.forEach(btn => {
-    const orig = btn.dataset._orig ?? btn.textContent;
-    btn.dataset._orig = orig;
-    btn.textContent = '✓ Agregado al carrito';
-    btn.classList.add('is-added');
-  });
-  setTimeout(() => {
-    btns.forEach(btn => {
-      btn.textContent = btn.dataset._orig || btn.textContent;
-      btn.classList.remove('is-added');
-    });
-  }, 2000);
-}
-
-/** Comparte el producto actual por WhatsApp.
- *  Construye un mensaje con nombre del producto + URL y abre WhatsApp.
- *  En mobile abre la app nativa, en desktop abre wa.me en el navegador. */
-function shareOnWhatsApp() {
-  const p = state.product;
-  if (!p) return;
-
-  const productName = `Founder ${p.name}`;
-  const url         = window.location.href;
-  const message     = `Mirá esta billetera ${productName} 👇\n${url}`;
-  const waUrl       = `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-  // Mostrar feedback visual leve (toast)
-  showToast(`Abriendo WhatsApp...`);
-
-  // Abrir en pestaña nueva (en mobile esto dispara la app)
-  window.open(waUrl, '_blank', 'noopener');
-}
-
-function updateCart() {
-  // Persistir en localStorage para sincronizar con index.html
-  saveCartToStorage();
-  const total  = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const count  = state.cart.reduce((s, i) => s + i.qty, 0);
-  const badge  = $('cartCount');
-  const footer = $('cartFooter');
-
-  if (badge) { badge.textContent = count; toggle(badge, 'is-visible', count > 0); }
-
-  if (!state.cart.length) {
-    setHTML('cartItems', '<div class="cart__empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>');
-    if (footer) footer.style.display = 'none';
-    return;
-  }
-
-  if (footer) footer.style.display = 'block';
-
-  setHTML('cartItems', state.cart.map((item, idx) => {
-    const photo = getPhotos(item.name, item.color)[0] || null;
-    const inicial = (item.name || '?')[0].toUpperCase();
-    return `
-      <div class="cart-item">
-        ${photo
-          ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
-               onerror="recoverCartPhoto(this,'${item.name.replace(/'/g,"\\'")}','${item.color.replace(/'/g,"\\'")}');">`
-          : `<div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>`}
-        <div class="cart-item__info">
-          <div class="cart-item__name">Founder ${item.name}</div>
-          <div class="cart-item__variant">${item.color}</div>
-          <div class="cart-item__controls">
-            <button class="qty-btn" onclick="changeQty(${idx},-1)" aria-label="Reducir">−</button>
-            <span class="qty-val">${item.qty}</span>
-            <button class="qty-btn" onclick="changeQty(${idx},1)" aria-label="Aumentar">+</button>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="cart-item__price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
-          <button class="cart-item__remove" onclick="removeItem(${idx})" aria-label="Eliminar">✕</button>
-        </div>
-      </div>`;
-  }).join(''));
-
-  setText('cartTotal', `$${total.toLocaleString('es-UY')} UYU`);
-
-  const note = $('cartShipNote');
-  if (note) {
-    note.textContent = total >= CONFIG.FREE_SHIPPING
-      ? '🎁 ¡Tenés envío gratis!'
-      : `Agregá $${(CONFIG.FREE_SHIPPING - total).toLocaleString('es-UY')} más para envío gratis`;
-    note.style.color = total >= CONFIG.FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
-  }
-}
-
-function changeQty(idx, delta) {
-  state.cart[idx].qty += delta;
-  if (state.cart[idx].qty <= 0) state.cart.splice(idx, 1);
-  updateCart();
-}
-
-function removeItem(idx) { state.cart.splice(idx, 1); updateCart(); }
-
-function toggleCart() {
-  const sidebar = $('cartSidebar');
-  const overlay = $('cartOverlay');
-  const isOpen  = sidebar.classList.toggle('is-open');
-  overlay.classList.toggle('is-open', isOpen);
-  document.body.classList.toggle('cart-open', isOpen);
-  document.body.style.overflow = isOpen ? 'hidden' : '';
-  // Al abrir el carrito, mostrar la notificación de productos eliminados
-  // por agotarse (si hay pendientes en la cola de sesión).
-  if (isOpen) window.founderCart.flushRemovedNotice();
-}
-
-function toggleMenu() {
-  const drawer  = document.getElementById('menuDrawer');
-  const overlay = document.getElementById('menuOverlay');
-  const isOpen  = drawer.classList.toggle('is-open');
-  overlay.classList.toggle('is-open', isOpen);
-  document.body.style.overflow = isOpen ? 'hidden' : '';
-}
-
-// ── SHARED UI — Toast ───────────────────────────────────────────
-let toastTimer;
-function showToast(msg) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.classList.add('is-visible');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('is-visible'), 3000);
-}
-
-// ── PRODUCTO — Botón sticky (mobile + desktop) ─────────────────
-// El sticky aparece (clase .is-active) SOLO cuando el botón inline sale del
-// viewport. Mismo comportamiento en mobile y desktop — el CSS define cómo
-// se ve cada uno (barra completa en mobile, tarjeta abajo-derecha en desktop).
-(function initStickyBtn() {
-  const wrap      = document.getElementById('stickyBtnWrap');
-  const footer    = document.querySelector('footer.footer');
-  const inlineBtn = document.getElementById('addCartBtn');
-  if (!wrap) return;
-
-  // Observer 1: cuando el footer es visible, ocultar tanto el sticky como la
-  // burbuja WhatsApp (vía body.footer-visible). Cuando el footer se va, ambos
-  // vuelven a aparecer si corresponde (el sticky depende del observer 2).
-  if (footer) {
-    const footerObs = new IntersectionObserver(entries => {
-      const footerVisible = entries[0].isIntersecting;
-      wrap.classList.toggle('is-hidden', footerVisible);
-      document.body.classList.toggle('footer-visible', footerVisible);
-      if (footerVisible) {
-        // Footer entra → quitar la elevación de la burbuja (queda oculta igual).
-        document.body.classList.remove('has-sticky-cta');
-      } else {
-        // Footer se va → si el sticky sigue activo (clase .is-active en wrap),
-        // restaurar la elevación de la burbuja para que no se superponga.
-        // Esto repara el caso "vuelvo del footer hacia arriba".
-        if (wrap.classList.contains('is-active')) {
-          document.body.classList.add('has-sticky-cta');
-        }
-      }
-    }, { threshold: 0.1 });
-    footerObs.observe(footer);
-  }
-
-  // Observer 2: mostrar sticky cuando el botón inline está fuera del viewport.
-  // Aplica en ambos viewports — mismo comportamiento UX.
-  // También marca <body> con .has-sticky-cta para que la burbuja WA se
-  // reposicione más arriba SOLO cuando el sticky está activo.
-  if (inlineBtn) {
-    const inlineObs = new IntersectionObserver(entries => {
-      const stickyActive = !entries[0].isIntersecting;
-      wrap.classList.toggle('is-active', stickyActive);
-      document.body.classList.toggle('has-sticky-cta', stickyActive);
-    }, { threshold: 0 });
-    inlineObs.observe(inlineBtn);
-  }
-})();
-
-// ── SHARED UI — Páginas legales ──────────────────────────────────
-// showLegal() / hideLegal() ahora viven en components/footer.js
-// (única fuente de verdad para el sistema de modales legales).
-
-// ── BOOT ────────────────────────────────────────────────────────
-updateCart(); // reflejar carrito persistido (puede venir de index.html)
-init();
-</script>
-
-
-</body>
-</html>
+### Validaciones automatizadas durante la sesión
+
+A lo largo de las ~30 iteraciones de cambios:
+- `node --check` extrayendo el JS inline con awk → ejecutado >25 veces.
+- Conteos de funciones (def vs invocaciones) con grep → >15 veces.
+- Verificación de IDs únicos → al cierre.
+- Balance de tags HTML → al cierre (encontró el `</div>` huérfano).
+- Análisis de clases CSS huérfanas → al cierre (encontró `.sticky-add-btn`).
+
+### Deploys a producción
+
+Múltiples commits durante la sesión, todos validados manualmente por el
+usuario en producción tras cada deploy (~1-2 min en Vercel). El usuario
+confirmó cada feature antes de pasar a la siguiente.
+
+---
+
+## ✅ Lo que quedó funcionando en Sesión 19
+
+Sesión corta, enfocada en dos bugs reportados por el usuario tras el uso real
+del sitio: **WhatsApp no abría automáticamente en iOS tras finalizar compra
+por transferencia** y **el header de `producto.html` estaba visualmente roto**
+(menú central sin estilos). Ambos resueltos con cambios limpios y modulares,
+sin parches.
+
+### 🐛 Fix 1 — WhatsApp automático en iOS post-checkout
+
+**Causa raíz:** Safari iOS bloquea `window.open('url', '_blank')` si se llama
+después de un `await` (pierde el "gesto de usuario" que autoriza popups).
+En Chrome/Android no pasa. El flujo actual hacía `await apiCheckout(...)` y
+luego `window.open(wa.me/...)` — el await tarda 1-3s → iOS bloqueaba.
+
+**Solución:** patrón **pre-open + fallback** en `components/founder-checkout.js`:
+
+- Nuevo helper modular con 3 funciones:
+  - `preOpenWhatsAppTab()` → abre `about:blank` como placeholder ANTES del await.
+  - `openWhatsApp(tab, url)` → asigna la URL a la pestaña pre-abierta. Fallback
+    a `window.open` directo y finalmente a `window.location.href` si todo falla.
+  - `closeWhatsAppTab(tab)` → cierra el placeholder si el pedido falla.
+- `processOrder()`:
+  - Llama a `preOpenWhatsAppTab()` al arrancar (dentro del tap del usuario).
+  - 8 puntos de limpieza con `closeWhatsAppTab(waTab)` en los 7 returns de
+    validación + 2 returns post-fetch (error de red, error de API).
+  - En el happy path: `openWhatsApp(waTab, waUrl)` reemplaza al `window.open`.
+- `reenviarPedido()` **no tocada** (no tiene `await` antes del `window.open`,
+  funciona bien tal cual — principio: no refactorizar sin motivo).
+
+### 🐛 Fix 2 — CSS del header roto en `producto.html`
+
+**Causa raíz:** desfasaje de nomenclatura. `components/header.js` inyecta HTML
+con clases BEM nuevas (`.nav`, `.nav__link`), pero el CSS de `producto.html`
+se quedó con las viejas (`.header__nav`, `.header__nav-link`, `.header__back`,
+`.header__right`). Las otras 8 páginas ya habían sido migradas en sesiones
+anteriores — solo `producto.html` quedó desfasada. Resultado visible: el menú
+central se renderizaba como texto plano sin espaciado ni tipografía correcta.
+
+**Solución:** alineación con `index.html` como fuente de verdad.
+
+- Reemplazado el bloque `/* SHARED — Header */` de `producto.html` con el
+  mismo CSS que usa `index.html` (verificado con diff).
+- Eliminadas selectores legacy inutilizados: `.header__back:active` del bloque
+  de `:active` unificado.
+- Eliminada `.header__nav-link`, `.header__right`, `.header__back` (ninguna
+  usada en HTML — solo CSS muerto).
+- Actualizada la regla responsive: `@media (max-width: 900px) { .nav { display: none; } }`
+  reemplaza a `.header__nav { display: none; }`.
+
+---
+
+## ✅ Lo que quedó funcionando en Sesión 18
+
+La Sesión 18 se ejecutó en 3 frentes: **desbloqueo de la verificación de dominio** (crítico, estaba marcado como indefinido), **cierre de pendientes técnicos de código**, y **feature nueva de gestión de pedidos** (archivar/eliminar desde admin).
+
+### 🏆 Logro principal — Verificación de dominio en Meta
+
+**El "bloqueo" de Sesión 17 era un bug del navegador, no de Meta.**
+
+- El validador "Add domain" de Meta rechazaba `founder.uy` / `www.founder.uy` con
+  error *"Confirm your domain is correctly formatted"* cuando se usaba **Opera**.
+- En **Google Chrome**, el mismo formulario acepta el dominio sin problemas.
+- Se agregó `www.founder.uy` en Meta Business Settings → Dominios.
+- Meta generó una metaetiqueta única:
+  ```
+  <meta name="facebook-domain-verification" content="6qpwim4axainj6z7q5d06778d8qsxd">
+  ```
+- La metaetiqueta se insertó en el `<head>` de **los 9 HTML del sitio**.
+- Resultado: Meta confirmó **"Verified"** tras clic en "Verify domain".
+
+**Impacto:** desbloquea AEM (Aggregated Event Measurement) para optimización de
+eventos en iOS 14.5+ cuando se arranquen campañas pagas.
+
+### 🆕 Feature — Sistema archivar/eliminar pedidos (Fase 5)
+
+**Arquitectura:** soft delete reversible + hard delete con doble confirmación.
+
+#### Cambios en Supabase
+- Nueva columna `archivado boolean not null default false` en `orders`.
+- Índice parcial `orders_archivado_idx on orders (archivado) where archivado = false`.
+
+#### `api/admin.js` — 3 actions nuevas
+- `archive_order` — soft delete (update `archivado=true`), reversible.
+- `unarchive_order` — restaurar.
+- `delete_order` — DELETE definitivo. Requiere `body.confirm === true`.
+- `list_orders` extendido con `body.include_archived` (`'only'`/`'all'`/default).
+
+#### `components/founder-admin.js` — vista archivados + 3 funciones
+- `state.currentView = 'active' | 'archived'`.
+- Botones condicionales por vista (Archivar/Eliminar en activos vs Desarchivar/Eliminar en archivados).
+- `deleteOrder` con doble confirmación: confirm + prompt pidiendo el número exacto.
+
+### Tareas técnicas adicionales
+- `"type": "module"` en `package.json` (elimina warning ESM→CommonJS).
+- Eliminado `api/supabase.js` duplicado (era idéntico a `api/_lib/supabase.js`).
+
+---
+
+## ✅ Lo que quedó funcionando en Sesión 17 (Fase 4)
+
+### Dominio custom
+- `founder.uy` comprado y conectado a Vercel con SSL automático.
+- **Dominio principal**: `www.founder.uy` (con www).
+- `founder.uy` (sin www) → redirect 308 → `www.founder.uy`.
+- `founder-web-gules.vercel.app` → redirect 301 → `www.founder.uy`.
+
+### Meta Business Portfolio
+- Business: `founder.uy`.
+- Facebook Page: `founder.uy.oficial` (ID `1058647090653828`).
+- Instagram Business: `@founder.uy` (ID `17841474091434639`).
+- Ad Account: `Publicidad FOUNDER` (ID `1653222205862527`).
+- Pixel: `Founder Pixel` (ID `2898267450518541`).
+
+### Meta Pixel + CAPI
+- `META_PIXEL_ID` y `META_CAPI_TOKEN` en Vercel env vars (sin flag Sensitive).
+- `components/meta-pixel.js` (~230 líneas): wrapper oficial del Pixel.
+- `api/_lib/meta-capi.js` (~230 líneas): módulo CAPI con hasheado SHA-256.
+- `api/checkout.js` invoca `sendPurchaseEvent` con `await Promise.race` timeout 3s.
+- `event_id = order.numero` → Meta deduplica.
+- Test E2E F378204: 218ms desde invocación a confirmación de Meta.
+
+---
+
+## ✅ Lo que quedó funcionando en Sesión 16 (Fase 3C)
+
+- Incidente inicial: `/api/admin` 500 `"permission denied"` resuelto con
+  `grant all on public.<tabla> to service_role` sobre las 7 tablas.
+- Limpieza: eliminadas `SHEET_ID`, `APPS_SCRIPT_URL`, página "Conversor de
+  imágenes" del admin, 6 funciones del conversor en `founder-admin.js`,
+  `api/ping.js`.
+- Apps Script archivado, Google Sheet movido a archivo con backup `.xlsx`,
+  proyecto Google Cloud marcado para eliminación (~22/05/2026).
+
+---
+
+## ✅ Lo que quedó funcionando en Sesión 15 (Fase 3B)
+
+- `components/founder-admin.js` — IIFE, expone 37 funciones a `window`.
+- `admin.html` — 686 líneas tras Sesión 18.
+- Login valida contra `/api/admin` action `login`. Password en sessionStorage.
+- Pedidos, productos (con upload directo a Storage), cupones y banner todos
+  sobre `/api/admin`.
+
+---
+
+## ✅ Lo que quedó funcionando en Sesión 14 (Fase 3A)
+
+### Infraestructura
+- Vercel Serverless Functions en `/api/*`:
+  - `/api/checkout` — validar cupón + crear pedido (atómico via RPC)
+  - `/api/seguimiento` — buscar pedido por número+email
+  - `/api/admin` — 17 acciones
+- Variables de entorno en Vercel:
+  - `SUPABASE_URL` ✅
+  - `SUPABASE_SERVICE_ROLE_KEY` (Sensitive) ✅
+  - `ADMIN_PASSWORD` = `nerito20` (Sensitive) ✅
+  - `META_PIXEL_ID` ✅ (agregada Sesión 17)
+  - `META_CAPI_TOKEN` ✅ (agregada Sesión 17)
+- Storage bucket `product-photos` público.
+- RPC `apply_coupon_and_create_order(jsonb, jsonb, text)` — transacción atómica.
+
+---
+
+## 🗄️ Schema Supabase — estado actual
+
+### Proyecto
+| Dato | Valor |
+|---|---|
+| URL | `https://qedwqbxuyhieznrqryhb.supabase.co` |
+| Región | São Paulo (sa-east-1) |
+| Plan | Free |
+| Anon key | En `components/supabase-client.js` (pública por diseño) |
+| Service role key | En Vercel env `SUPABASE_SERVICE_ROLE_KEY` — NUNCA al frontend |
+
+### Tablas (7)
+
+1. **`products`** — id, slug, nombre, precio, descripcion, especificaciones,
+   capacidad, dimensiones, material, nota, lleva_billetes, lleva_monedas,
+   banner_url, orden, activo, created_at, updated_at.
+2. **`product_colors`** — id, product_id, nombre, estado
+   (check: `activo`/`sin_stock`/`oferta`), precio_oferta, orden, created_at.
+   `extras` JSONB con `colores_estado` que puede contener `<color>_stock_bajo: true`
+   (Sesión 20: lógica preparada en frontend, esperando uso desde admin).
+3. **`product_photos`** — id, color_id, url, orden, es_principal, created_at.
+4. **`orders`** — 23 columnas: id (uuid), numero (unique), fecha, nombre,
+   apellido, celular, email, entrega, direccion, productos, subtotal, descuento,
+   envio, total, pago, estado, notas, nro_seguimiento, url_seguimiento,
+   cupon_codigo, **archivado** (bool, default false), created_at, updated_at.
+5. **`order_items`** — id, order_id (FK cascade), product_name, color,
+   cantidad, precio_unitario.
+6. **`coupons`** — id, codigo (unique), tipo, valor, uso, min_compra, activo,
+   usos_count, emails_usados (text[]), desde, hasta, created_at.
+7. **`site_settings`** — key (PK), value, updated_at.
+
+### Constraints CHECK en `orders`
+- `orders_entrega_check` → `entrega IN ('Envío','Retiro')`
+- `orders_pago_check` → `pago IN ('Mercado Pago','Transferencia')`
+- `orders_estado_check` → `estado IN ('Pendiente pago','Pendiente confirmación','Confirmado','En preparación','En camino','Listo para retirar','Entregado','Cancelado')`
+
+### Permisos
+
+| Tabla | anon | authenticated | service_role |
+|---|---|---|---|
+| `products` | SELECT (RLS) | SELECT (RLS) | **ALL** ✅ |
+| `product_colors` | SELECT (RLS) | SELECT (RLS) | **ALL** ✅ |
+| `product_photos` | SELECT (RLS) | SELECT (RLS) | **ALL** ✅ |
+| `site_settings` | SELECT | SELECT | ALL |
+| `orders` | ❌ | ❌ | ALL |
+| `order_items` | ❌ | ❌ | ALL |
+| `coupons` | ❌ | ❌ | ALL |
+
+⚠️ En las 3 primeras tablas del catálogo `service_role` NECESITA `ALL` explícito,
+aunque solo usemos RLS para `anon`/`authenticated`. PostgreSQL requiere GRANT +
+policy — `service_role` bypassea RLS pero NO bypassea GRANTs de tabla.
+
+---
+
+## 📂 Archivos del proyecto (estructura actual en GitHub)
+
+```
+founder-web/
+├── index.html                     ✅
+├── producto.html                  ✅ (2422 líneas — Sesión 20: bloque masivo de UX)
+├── checkout.html                  ✅ (Sesión 20: política garantía/cambios separada)
+├── seguimiento.html               ✅
+├── admin.html                     ✅ (686 líneas)
+├── contacto.html                  ✅ (Sesión 20: fotos del carrito)
+├── sobre-nosotros.html            ✅ (Sesión 20: política + fotos del carrito)
+├── envios.html                    ✅ (Sesión 20: 2 info-cards garantía + cambios)
+├── tecnologia-rfid.html           ✅ (Sesión 20: fotos del carrito)
+├── components/
+│   ├── header.js                  ✅
+│   ├── footer.js                  ✅ (Sesión 20: modal legal con 3 secciones)
+│   ├── cart.js                    ✅ (Sesión 20: photoMap centralizado + evento)
+│   ├── supabase-client.js         ✅
+│   ├── meta-pixel.js              ✅
+│   ├── founder-checkout.js        ✅
+│   ├── founder-seguimiento.js     ✅
+│   └── founder-admin.js           ✅ (~1810 líneas)
+├── api/
+│   ├── _lib/
+│   │   ├── supabase.js            ✅
+│   │   └── meta-capi.js           ✅
+│   ├── checkout.js                ✅
+│   ├── seguimiento.js             ✅
+│   └── admin.js                   ✅
+├── package.json                   ✅
+├── vercel.json                    ✅
+├── README.md                      ✅
+└── ESTADO.md                      ← este archivo
+```
+
+---
+
+## 🔧 API /api/admin — Acciones (17 totales)
+
+| Categoría | Action | Qué hace |
+|---|---|---|
+| **Auth** | `login` | Valida password, devuelve 200 si es correcto |
+| **Pedidos** | `list_orders` | Lista con filtro `include_archived` |
+| | `update_order_status` | Cambia `orders.estado` |
+| | `update_order_tracking` | Guarda nro_seguimiento + url_seguimiento |
+| | `archive_order` | Soft delete (archivado=true). Reversible |
+| | `unarchive_order` | Restaurar (archivado=false) |
+| | `delete_order` | DELETE definitivo. Requiere `body.confirm=true` |
+| **Cupones** | `list_coupons` | Lista todos |
+| | `create_coupon` | Alta |
+| | `update_coupon` | Toggle activo + editar |
+| | `delete_coupon` | Elimina |
+| **Productos** | `list_products` | Lista con colores y fotos |
+| | `save_product` | Upsert (producto + colores + fotos) |
+| | `delete_product` | Elimina con cascada |
+| **Settings** | `get_setting` | Lee `site_settings[key]` |
+| | `set_setting` | Escribe `site_settings[key]` |
+| **Storage** | `get_upload_url` | Genera signed URL para upload directo al bucket |
+
+---
+
+## ⚠️ Reglas críticas NO NEGOCIABLES
+
+### Reglas de código
+- La clave interna `'sin_stock'` NO se modifica jamás.
+- Sistema de componentes (`header.js`, `footer.js`, `cart.js`,
+  `supabase-client.js`, `meta-pixel.js`, `founder-checkout.js`,
+  `founder-seguimiento.js`, `founder-admin.js`) es la **única fuente de
+  verdad**. No replicar markup/lógica en HTMLs.
+- `supabase-client.js` SIEMPRE antes que `cart.js`.
+- `checkout.html` y `admin.html` quedan excluidos del sistema de header/footer.
+- `service_role` NUNCA va al frontend.
+- **El `delete_order` del admin requiere DOBLE confirmación del usuario** +
+  backend valida `body.confirm === true`. Nunca eliminar esa defensa.
+- **Nunca refactorizar producto.html sin antes correr los chequeos del Bloque 9
+  de Sesión 20** (sintaxis JS, balance de divs, IDs únicos, CSS huérfano).
+  Ese archivo tiene >2400 líneas y muchas funciones interconectadas.
+
+### Reglas de base de datos
+- Cuando se cree una tabla o se active RLS, SIEMPRE emitir explícitamente
+  `GRANT SELECT/ALL ... TO anon|authenticated|service_role`.
+- Los constraints CHECK de `orders` deben coincidir EXACTO con los strings
+  que manda el frontend.
+- `service_role` NO bypassea GRANTs de tabla — solo bypassea RLS.
+- Las 4 tablas privadas (`orders`, `order_items`, `coupons`, + parcialmente
+  `site_settings`) **SOLO se tocan vía `/api/*`**.
+
+### Reglas de navegador
+- **Para probar cambios en paneles de Meta Business, usar Google Chrome**.
+  Opera tiene bugs de validación intermitentes.
+- **Para probar deploys en Vercel, hacer hard refresh (`Ctrl+F5`) o usar
+  ventana incógnito**.
+
+### Reglas de UX (Sesión 20)
+- **Mobile fixes deben respetar `env(safe-area-inset-bottom)`** para iPhones
+  modernos. Cualquier elemento `position: fixed` cerca del borde inferior
+  necesita compensación del notch.
+- **Touch handlers deben usar `touch-action: pan-y` en CSS** + clasificación
+  temprana de dirección en `touchmove`. Sin esto, iOS Safari rompe el scroll.
+- **Burbuja WhatsApp y sticky CTA se coordinan vía 2 clases en `<body>`**:
+  `.has-sticky-cta` (eleva burbuja) y `.footer-visible` (oculta ambos).
+  Sus observers son independientes y NO deben fusionarse.
+
+---
+
+## 🧪 Cómo probar todo lo que está hecho
+
+### Prueba end-to-end de compra
+1. Abrir https://www.founder.uy
+2. Agregar producto al carrito → checkout.
+3. Completar, confirmar pedido.
+4. Ver "🎉 ¡Pedido enviado!" con número `F######`.
+5. Verificar en Supabase Dashboard → Table Editor → `orders` + `order_items`.
+
+### Prueba de seguimiento
+Ir a `/seguimiento.html?pedido=F910752&email=test@prueba.com`.
+
+### Prueba de admin
+Entrar a `/admin.html` con password `nerito20`.
+
+### Prueba de mejoras UX producto.html (Sesión 20)
+**Desktop:**
+1. Abrir un producto. Ver galería con autoplay cada 4s.
+2. Pasar el mouse sobre la foto principal → debe pausarse el autoplay y
+   activarse el zoom 1.5x siguiendo el cursor.
+3. Click en un thumbnail → autoplay se pausa 12s y reanuda.
+4. Cambiar de color → el autoplay se reinicia desde la foto 0.
+5. Scrollear hacia abajo. Cuando el botón "Agregar al carrito" sale de
+   pantalla, debe aparecer la **tarjeta sticky abajo a la derecha**.
+6. Cuando aparece el sticky, **la burbuja de WhatsApp sube automáticamente**.
+7. Llegás al footer → **se ocultan ambos** (sticky + burbuja).
+8. Subís de nuevo → **reaparecen ambos sin superposición**.
+9. Click en "Compartir" → abre WhatsApp Web con mensaje pre-armado.
+10. Bajar a la sección de reseñas → grilla de 4 columnas con testimonios.
+
+**Mobile:**
+1. Galería: swipe izquierda/derecha cambia de foto. Flechas circulares ‹ ›
+   superpuestas. Toca el thumbnail también.
+2. Specs en 2 columnas (3+3), no 1 columna larga.
+3. Scrollear hacia abajo → **botón sticky aparece como barra completa abajo**.
+4. La burbuja WhatsApp queda visiblemente arriba del sticky con aire.
+5. Sección de reseñas: **carrusel autoplay 4s con flechas + dots dorados**.
+   Tocar una flecha pausa 12s.
+
+**iOS Safari específico:**
+1. Tocar la foto y arrastrar hacia abajo → debe scrollear normal, sin
+   trabarse.
+2. Tocar la foto y arrastrar horizontal → debe cambiar de foto, **sin que
+   la página se mueva lateralmente**.
+3. El sticky no queda tapado por el home indicator (barra negra inferior).
+
+---
+
+## 🔐 Datos clave (guardar en lugar seguro)
+
+| Recurso | Valor |
+|---|---|
+| URL sitio producción | https://www.founder.uy |
+| URL sin www (redirect 308 → www) | https://founder.uy |
+| URL Vercel legacy (redirect 301 → www) | https://founder-web-gules.vercel.app |
+| Repo GitHub | github.com/evandrosegovia-1171s-projects/founder-web |
+| Usuario Vercel | evandrosegovia-1171s-projects |
+| Password admin | `nerito20` |
+| Supabase URL | `https://qedwqbxuyhieznrqryhb.supabase.co` |
+| Supabase región | São Paulo (sa-east-1) |
+| Meta Business | founder.uy (Business portfolio) |
+| Meta Pixel ID | `2898267450518541` (Founder Pixel) |
+| Meta domain-verification token | `6qpwim4axainj6z7q5d06778d8qsxd` (en los 9 HTML) |
+| WhatsApp del negocio | `598098550096` |
+| FREE_SHIPPING threshold | `2000` UYU |
+| SHIPPING_COST | `250` UYU |
+| Pedido de prueba histórico | `F910752` / `test@prueba.com` / Confort Negro / $2.490 |
+| ⚠️ NO BORRAR | Pedido `F203641` / Florencia Risso / `florenciar.1196@gmail.com` (cliente real) |
+
+---
+
+## 📋 Historial de sesiones
+
+- **Sesión 9-11:** Setup inicial, componentes, catálogo en Google Sheets.
+- **Sesión 12:** Supabase configurado, schema inicial, catálogo migrado.
+- **Sesión 13 (Fase 2):** Frontend público migrado a `window.founderDB`.
+- **Sesión 14 (Fase 3A):** Checkout y seguimiento migrados a Supabase vía
+  Vercel Serverless. 6 incidentes resueltos en cascada.
+- **Sesión 15 (Fase 3B):** Admin migrado a `/api/admin` + Supabase Storage.
+- **Sesión 16 (Fase 3C):** Limpieza final. Apps Script apagado, Sheet
+  archivado, Google Cloud marcado para eliminación.
+- **Sesión 17 (Fase 4):** Dominio custom `founder.uy`. Meta Business Portfolio
+  creado. Meta Pixel + CAPI operativos. Test E2E F378204.
+- **Sesión 18 (Fase 4 cierre + Fase 5 inicio):** Verificación de dominio
+  desbloqueada (era bug de Opera). Nueva feature archivar/eliminar pedidos.
+  `"type": "module"` + eliminado supabase.js duplicado.
+- **Sesión 19 (Bugfixes UX):** Fix WhatsApp en iOS post-checkout (patrón
+  pre-open) + fix CSS legacy del header en producto.html.
+- **Sesión 20 (Polish UX producto.html):** Sesión muy larga. Galería
+  interactiva (autoplay 4s + zoom 1.5x + swipe + flechas + lazy-loading),
+  política Garantía 60d vs Cambios 7d separada en 5 archivos, tabla
+  comparativa Founder vs tradicional, fotos del carrito centralizadas en
+  cart.js, sección de reseñas con carrusel mobile, Schema.org Product +
+  Open Graph dinámico, sticky CTA mobile+desktop coordinado con burbuja
+  WhatsApp via 2 clases independientes en body, fix bug touch iOS Safari
+  con `touch-action: pan-y` + 4 listeners coordinados + reset por timeout,
+  botón Compartir WhatsApp, revisión completa con 5 bugs encontrados y
+  arreglados (div huérfano, código muerto, scrollbar fantasma).
+  ← **Acá terminamos.**
+- **Sesión 21:** A definir según prioridades del usuario. ← **Próxima.**
+
+---
+
+## 📋 Pendientes para Sesión 21
+
+### Prioridad alta (no bloqueante) — solo cuando arranquen ads
+1. **Evaluar primera campaña paga de Meta Ads** con optimización de Purchase.
+   Con el dominio verificado, AEM debería funcionar correctamente en iOS 14.5+.
+   Definir: presupuesto diario, producto destacado, público objetivo
+   (remarketing a visitantes de `producto.html` vs frío).
+
+### Prioridad media — feature admin nueva
+2. **Agregar campo `stock_bajo` en admin** para activar el aviso "⏳ Pocas
+   unidades disponibles" preparado en Sesión 20. La lógica de frontend ya
+   está lista — solo falta:
+   - Agregar checkbox por color en `founder-admin.js` (sección de edición
+     de producto).
+   - Setear `extras.colores_estado.<NombreColor>_stock_bajo: true` cuando
+     el admin lo marca.
+   - Verificar que se guarda en `product_colors.extras` JSONB.
+
+### Prioridad media — 3 clics en Chrome (Meta)
+3. **Renombrar dataset "NO"** (ID `1472474751248750`) con prefijo `ZZ-` para
+   que quede al final alfabéticamente.
+4. **Renombrar o ignorar Ad Account `26140748312219895`** (auto-creada).
+5. **Agregar email de contacto al Instagram** en Meta Business Portfolio.
+
+### Prioridad media — limpieza de pedidos
+6. **Borrar pedidos de prueba acumulados** con el sistema de Sesión 18:
+   - `F237553`, `F839362`, `F029945` — Evandro Segovia con CIs random.
+   - `F264440`, `F515156` — pedidos de prueba.
+   - `F378204` — test CAPI.
+   - ⚠️ **NO BORRAR**: `F203641` — Florencia Risso (cliente real).
+
+### Prioridad baja — pulido
+7. **Reintentar username `founder.uy` para la Page de Facebook** cuando Meta
+   lo libere (actualmente `founder.uy.oficial`).
+
+### Posibles direcciones nuevas (a discutir con usuario)
+- **Mejoras UX en otras páginas** (index.html, contacto, sobre-nosotros).
+- **Integración Mercado Pago** completa (hoy es manual).
+- **Email transaccional** post-compra (Resend / SendGrid).
+- **Sistema de reseñas reales** (cuando haya clientes con compras
+  validadas — reemplazar las 4 reseñas mock de Sesión 20).
+
+---
+
+## 📜 Historial de incidentes resueltos
+
+### Sesión 20 (5 incidentes resueltos en revisión final + 1 bug iOS crítico)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | iOS Safari: tocar la foto trababa el scroll vertical y movía la página lateralmente | Touch handlers con `passive: true` sin `touch-action` CSS — Safari permitía scroll lateral nativo y a veces el touchend se perdía | `touch-action: pan-y` en CSS + 4 listeners (start/move/end/cancel) con clasificación de dirección temprana + reset por timeout 500ms |
+| 2 | Burbuja WhatsApp tapaba el sticky CTA al volver del footer | El observer del footer removía `.has-sticky-cta` al entrar al footer pero nadie lo restauraba al salir si el sticky seguía activo | En el footer observer, cuando footer se va: si `wrap.classList.contains('is-active')`, restaurar `.has-sticky-cta` |
+| 3 | `</div>` huérfano al cierre del archivo | Pre-existente de sesiones anteriores | Eliminado |
+| 4 | Variable JS `priceRow` declarada pero nunca usada | Código muerto en `selectColor` | Eliminada |
+| 5 | Selector CSS `.sticky-add-btn:active` apuntando a clase inexistente | Refactor previo dejó el selector huérfano | Eliminado |
+| 6 | Scrollbar fantasma en tabs desktop | `overflow-x: auto` reservaba espacio para scroll que no existía | Quitado `overflow-x` (los 3 tabs entran perfectamente) |
+
+### Sesión 19 (2 incidentes)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | iOS Safari: WhatsApp no abría automáticamente tras finalizar compra | `window.open` post-`await` pierde "user gesture" en iOS | Patrón pre-open: abrir `about:blank` ANTES del await, asignar URL después |
+| 2 | Header `producto.html` sin estilos | CSS legacy (`.header__nav*`) no coincidía con HTML BEM (`.nav*`) | Reemplazado bloque CSS por el de `index.html` |
+
+### Sesión 18 (3 incidentes)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | Meta rechazaba `www.founder.uy` | Bug del validador en Opera | Usar Chrome |
+| 2 | Filtro "Archivados" no aparecía tras deploy | Cache de Opera | `Ctrl+F5` |
+| 3 | Meta no permite eliminar dataset/Ad Account auto-creados | Limitación UI | Renombrar con `ZZ-` o ignorar |
+
+### Sesión 17 (5 incidentes)
+- Meta rechazó dominio → era Opera, resuelto en Sesión 18.
+- Upload parcial a GitHub web → tandas de 2-3 archivos.
+- Archivo en carpeta equivocada → verificar breadcrumb.
+- Variables Sensitive en Vercel Hobby → crear sin el flag.
+- Fire-and-forget cortado por Vercel → `await Promise.race`.
+
+### Sesión 16 (1 incidente)
+- Admin 500 `permission denied` → `grant all to service_role` sobre 7 tablas.
+
+### Sesión 14 (6 incidentes en cascada)
+- Permisos RLS, GRANT, columnas faltantes en orders, constraints CHECK
+  desalineados, GRANT a service_role en tablas privadas.
+
+---
+
+**FIN** — Cerramos Sesión 20. Sesión muy larga centrada exclusivamente en
+`producto.html` (de 1394 a 2422 líneas, +1028). Todo el polish UX
+sustantivo del catálogo está listo: galería interactiva con autoplay/zoom/swipe,
+sección comparativa, reseñas con carrusel mobile, SEO dinámico para Google y
+redes sociales, sticky CTA mobile+desktop coordinado armónicamente con la
+burbuja WhatsApp, fix crítico de touch en iOS, política garantía/cambios
+separada y consistente en 5 archivos, fotos del carrito centralizadas. Auditoría
+final detectó 5 bugs menores que se arreglaron antes de cerrar. El sitio está
+en estado de polish UX listo para campañas pagas — la próxima sesión decide si
+arrancar ads, agregar la feature `stock_bajo` desde admin, atacar otras
+páginas, o evaluar nuevos caminos. 🎯
