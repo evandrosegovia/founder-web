@@ -2324,9 +2324,17 @@ function showToast(msg) {
       const footerVisible = entries[0].isIntersecting;
       wrap.classList.toggle('is-hidden', footerVisible);
       document.body.classList.toggle('footer-visible', footerVisible);
-      // Si el sticky se oculta por footer, la burbuja también vuelve a su
-      // posición normal (sin elevación) para no quedar flotando alto.
-      if (footerVisible) document.body.classList.remove('has-sticky-cta');
+      if (footerVisible) {
+        // Footer entra → quitar la elevación de la burbuja (queda oculta igual).
+        document.body.classList.remove('has-sticky-cta');
+      } else {
+        // Footer se va → si el sticky sigue activo (clase .is-active en wrap),
+        // restaurar la elevación de la burbuja para que no se superponga.
+        // Esto repara el caso "vuelvo del footer hacia arriba".
+        if (wrap.classList.contains('is-active')) {
+          document.body.classList.add('has-sticky-cta');
+        }
+      }
     }, { threshold: 0.1 });
     footerObs.observe(footer);
   }
