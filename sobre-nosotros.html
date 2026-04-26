@@ -263,6 +263,7 @@
     .cart__empty span { font-size: 11px; letter-spacing: 2px; }
     .cart__footer { padding: 24px 36px 36px; border-top: 1px solid var(--color-border); }
     .cart-item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--color-border); align-items: flex-start; }
+    .cart-item__img { width: 56px; height: 56px; object-fit: cover; border: 1px solid var(--color-border); flex-shrink: 0; background: var(--color-surface2); }
     .cart-item__img-placeholder { width: 56px; height: 56px; background: var(--color-surface2); border: 1px solid var(--color-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 22px; font-weight: 400; color: var(--color-gold); }
     .cart-item__info { flex: 1; min-width: 0; }
     .cart-item__name { font-family: var(--font-serif); font-size: 18px; margin-bottom: 4px; }
@@ -461,9 +462,14 @@ function updateCartUI() {
 
   itemsEl.innerHTML = cart.map((item, i) => {
     const inicial = (item.name || '?')[0].toUpperCase();
+    const photo = window.founderCart?.getPhotoUrl?.(item.name, item.color);
+    const imgHTML = photo
+      ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
+             onerror="this.outerHTML='<div class=&quot;cart-item__img-placeholder&quot; aria-hidden=&quot;true&quot;>${inicial}</div>'">`
+      : `<div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>`;
     return `
       <div class="cart-item">
-        <div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>
+        ${imgHTML}
         <div class="cart-item__info">
           <div class="cart-item__name">Founder ${item.name}</div>
           <div class="cart-item__variant">${item.color || ''}</div>
@@ -525,6 +531,8 @@ function openCheckout() { window.location.href = 'checkout.html'; }
 // Boot centralizado: espera al DOM listo, purga items agotados
 // del carrito y llama a updateCartUI para renderizar.
 window.founderCart.bootPage(updateCartUI);
+// Re-renderiza el carrito cuando lleguen las fotos desde Supabase (auto-update)
+window.addEventListener('founder-cart-photos-ready', updateCartUI);
 </script>
 </body>
 </html>

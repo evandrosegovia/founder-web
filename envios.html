@@ -715,9 +715,15 @@ function updateCartUI() {
     return;
   }
 
-  itemsEl.innerHTML = cart.map((item, i) => `
+  itemsEl.innerHTML = cart.map((item, i) => {
+    const photo = window.founderCart?.getPhotoUrl?.(item.name, item.color);
+    const imgHTML = photo
+      ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
+             onerror="this.outerHTML='<div class=&quot;cart-item__img-placeholder&quot;>🛍️</div>'">`
+      : `<div class="cart-item__img-placeholder">🛍️</div>`;
+    return `
     <div class="cart-item">
-      <div class="cart-item__img-placeholder">🛍️</div>
+      ${imgHTML}
       <div class="cart-item__info">
         <div class="cart-item__name">${item.name}</div>
         <div class="cart-item__variant">${item.color || ''}</div>
@@ -730,7 +736,8 @@ function updateCartUI() {
       </div>
       <div class="cart-item__price">${formatPrice(item.price * item.qty)}</div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   if (footer) {
     footer.style.display = 'block';
@@ -787,6 +794,8 @@ function openCheckout() {
 // Boot centralizado: espera al DOM listo, purga items agotados
 // del carrito y llama a updateCartUI para renderizar.
 window.founderCart.bootPage(updateCartUI);
+// Re-renderiza el carrito cuando lleguen las fotos desde Supabase (auto-update)
+window.addEventListener('founder-cart-photos-ready', updateCartUI);
 </script>
 </body>
 </html>
