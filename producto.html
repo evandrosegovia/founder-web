@@ -294,7 +294,7 @@ select:active,
 /* Bloque precio + botón Compartir.
  * Desktop: flex horizontal — precio a la izquierda, botón a la derecha.
  * Mobile: flex column — precio arriba, botón debajo. */
-.purchase__price-block { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.purchase__price-block { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .purchase__price-info  { flex: 1; min-width: 0; }
 
 /* Botón "Compartir" — outline gris, look discreto.
@@ -368,11 +368,14 @@ select:active,
 
 /* Mobile: el botón inline se muestra normalmente. El sticky aparece SOLO
  * cuando el botón inline sale del viewport (vía IntersectionObserver),
- * misma lógica que desktop. Cuando aparece, ocupa todo el ancho abajo. */
+ * misma lógica que desktop. Cuando aparece, ocupa todo el ancho abajo.
+ * padding-bottom suma env(safe-area-inset-bottom) para respetar el notch
+ * inferior de iPhones modernos (el botón no queda tapado por la barra). */
 @media (max-width: 900px) {
   .sticky-btn-wrap.is-active {
     display: block; position: fixed; bottom: 0; left: 0; right: 0;
-    z-index: 150; padding: 12px 16px;
+    z-index: 150;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
     background: linear-gradient(to top, var(--color-bg) 70%, transparent);
   }
   .sticky-btn-wrap.is-active .purchase__add-btn { width: 100%; padding: 18px; font-size: 11px; cursor: pointer; }
@@ -702,8 +705,13 @@ select:active,
 .wa-bubble__btn { width: 56px; height: 56px; border-radius: 50%; background: #25D366; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(37,211,102,0.35); transition: transform 0.2s ease, box-shadow 0.2s ease; flex-shrink: 0; }
 .wa-bubble:hover .wa-bubble__btn { transform: scale(1.08); box-shadow: 0 6px 22px rgba(37,211,102,0.5); }
 .wa-bubble__btn svg { width: 28px; height: 28px; fill: #ffffff; }
-/* En móvil sube por encima del botón sticky "Agregar al carrito" (altura ~80px) con margen extra */
-@media (max-width: 900px) { .wa-bubble { bottom: 110px; right: 16px; } .wa-bubble__tooltip { display: none; } }
+/* En móvil sube por encima del botón sticky. Usa env(safe-area-inset-bottom)
+ * para respetar el notch inferior de iPhones modernos. El cálculo: 12px padding
+ * sticky + 56px botón + 12px padding sticky + 12px aire = 92px + safe-area. */
+@media (max-width: 900px) {
+  .wa-bubble { bottom: calc(92px + env(safe-area-inset-bottom, 0px) + 12px); right: 16px; }
+  .wa-bubble__tooltip { display: none; }
+}
 @media (min-width: 901px) and (max-width: 1100px) { .wa-bubble { bottom: 28px; right: 20px; } }
 
 /* ── Burbuja WA — se desplaza cuando el carrito está abierto ── */
