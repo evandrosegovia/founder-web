@@ -105,8 +105,7 @@ select:active,
 .cart-btn:active,
 .nav__link:active,
 .breadcrumb a:active,
-.tab-btn:active,
-.sticky-add-btn:active {
+.tab-btn:active {
   opacity: 0.72;
   transition: opacity 0.08s ease;
 }
@@ -1383,8 +1382,8 @@ function injectOpenGraph(p) {
     let el = document.head.querySelector(selector);
     if (!el) {
       el = document.createElement('meta');
-      const [, prop] = selector.match(/\[(.*?)="(.*?)"\]/) || [];
       // Recuperar el nombre de la propiedad (property u name) y su valor
+      // del selector: ej. 'meta[property="og:title"]' → property="og:title"
       const m = selector.match(/\[(\w+)="([^"]+)"\]/);
       if (m) el.setAttribute(m[1], m[2]);
       document.head.appendChild(el);
@@ -1618,7 +1617,6 @@ function selectColor(i) {
 
   // Actualizar display de precio
   const priceEl    = $('productPrice');
-  const priceRow   = $('productPriceRow'); // contenedor flex de precios
   if (priceEl) {
     if (estado === 'oferta' && precioOferta) {
       // Precio tachado + precio de oferta
@@ -2418,9 +2416,6 @@ function showToast(msg) {
 updateCart(); // reflejar carrito persistido (puede venir de index.html)
 init();
 </script>
-
-
-</div>
 
 
 </body>
