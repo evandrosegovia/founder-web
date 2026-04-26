@@ -352,18 +352,21 @@ select:active,
 .sticky-btn-wrap { display: none; }
 .sticky-btn-wrap.is-hidden { opacity: 0; pointer-events: none; transition: opacity .3s; }
 
-/* Desktop: aparece al scrollear, fixed en la parte inferior derecha — discreto. */
+/* Desktop: aparece al scrollear, fixed en la parte inferior derecha.
+ * El botón interno usa el MISMO tamaño que el botón inline (padding 20px,
+ * font-size 11px) para que la transición sea armónica. */
 @media (min-width: 901px) {
   .sticky-btn-wrap.is-active {
     display: block; position: fixed; bottom: 24px; right: 24px;
-    z-index: 150; max-width: 360px;
-    background: rgba(20,20,20,0.95); padding: 14px;
+    z-index: 150;
+    min-width: 320px; max-width: 480px;
+    background: rgba(20,20,20,0.95); padding: 20px;
     border: 1px solid var(--color-border); backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     transition: opacity .3s ease;
   }
-  .sticky-btn-wrap.is-active .purchase__add-btn { width: 100%; padding: 16px; font-size: 11px; cursor: pointer; }
+  .sticky-btn-wrap.is-active .purchase__add-btn { width: 100%; padding: 20px; font-size: 11px; cursor: pointer; }
 }
 
 /* Mobile: el botón inline se muestra normalmente. El sticky aparece SOLO
@@ -378,7 +381,7 @@ select:active,
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
     background: linear-gradient(to top, var(--color-bg) 70%, transparent);
   }
-  .sticky-btn-wrap.is-active .purchase__add-btn { width: 100%; padding: 18px; font-size: 11px; cursor: pointer; }
+  .sticky-btn-wrap.is-active .purchase__add-btn { width: 100%; padding: 20px; font-size: 11px; cursor: pointer; }
 }
 .trust-badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .trust-badge { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px; border: 1px solid var(--color-border); text-align: center; }
@@ -705,18 +708,28 @@ select:active,
 .wa-bubble__btn { width: 56px; height: 56px; border-radius: 50%; background: #25D366; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(37,211,102,0.35); transition: transform 0.2s ease, box-shadow 0.2s ease; flex-shrink: 0; }
 .wa-bubble:hover .wa-bubble__btn { transform: scale(1.08); box-shadow: 0 6px 22px rgba(37,211,102,0.5); }
 .wa-bubble__btn svg { width: 28px; height: 28px; fill: #ffffff; }
-/* En móvil sube por encima del botón sticky. Usa env(safe-area-inset-bottom)
- * para respetar el notch inferior de iPhones modernos. El cálculo: 12px padding
- * sticky + 56px botón + 12px padding sticky + 12px aire = 92px + safe-area. */
+/* Burbuja en su posición normal cuando NO hay sticky activo (mobile y desktop). */
 @media (max-width: 900px) {
-  .wa-bubble { bottom: calc(92px + env(safe-area-inset-bottom, 0px) + 12px); right: 16px; }
+  .wa-bubble { bottom: 28px; right: 16px; }
   .wa-bubble__tooltip { display: none; }
 }
 @media (min-width: 901px) and (max-width: 1100px) { .wa-bubble { bottom: 28px; right: 20px; } }
 
-/* ── Burbuja WA — se desplaza cuando el carrito está abierto ── */
+/* Cuando el sticky CTA está activo, la burbuja sube para no superponerse.
+ * Usa env(safe-area-inset-bottom) para respetar el notch inferior de iPhones.
+ * Mobile: sticky barra completa abajo (~80px) + safe-area + aire = 110px.
+ * Desktop: sticky tarjeta abajo-derecha (~95px alto) + aire = 130px. */
+body.has-sticky-cta .wa-bubble {
+  bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 901px) {
+  body.has-sticky-cta .wa-bubble { bottom: 130px; }
+}
+
+/* ── Burbuja WA — se desplaza cuando el carrito está abierto, y se eleva
+ *    cuando el sticky CTA está activo (transición suave en bottom). ── */
 .wa-bubble {
-  transition: transform 0.5s cubic-bezier(.4,0,.2,1), opacity 0.3s ease;
+  transition: transform 0.5s cubic-bezier(.4,0,.2,1), opacity 0.3s ease, bottom 0.3s ease;
 }
 body.cart-open .wa-bubble {
   transform: translateX(-440px);
@@ -2297,18 +2310,27 @@ function showToast(msg) {
   if (!wrap) return;
 
   // Observer 1: ocultar sticky cuando el footer es visible (mobile + desktop).
+  // Cuando se oculta el sticky por el footer, también quitamos la clase del
+  // body para que la burbuja WA vuelva a su posición normal.
   if (footer) {
     const footerObs = new IntersectionObserver(entries => {
-      wrap.classList.toggle('is-hidden', entries[0].isIntersecting);
+      const footerVisible = entries[0].isIntersecting;
+      wrap.classList.toggle('is-hidden', footerVisible);
+      // Si el sticky se oculta por footer, la burbuja vuelve a su sitio
+      if (footerVisible) document.body.classList.remove('has-sticky-cta');
     }, { threshold: 0.1 });
     footerObs.observe(footer);
   }
 
   // Observer 2: mostrar sticky cuando el botón inline está fuera del viewport.
   // Aplica en ambos viewports — mismo comportamiento UX.
+  // También marca <body> con .has-sticky-cta para que la burbuja WA se
+  // reposicione más arriba SOLO cuando el sticky está activo.
   if (inlineBtn) {
     const inlineObs = new IntersectionObserver(entries => {
-      wrap.classList.toggle('is-active', !entries[0].isIntersecting);
+      const stickyActive = !entries[0].isIntersecting;
+      wrap.classList.toggle('is-active', stickyActive);
+      document.body.classList.toggle('has-sticky-cta', stickyActive);
     }, { threshold: 0 });
     inlineObs.observe(inlineBtn);
   }
