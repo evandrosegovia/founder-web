@@ -456,7 +456,7 @@ select:active,
   .gallery__arrow { display: flex; }
   /* En móvil: product-info es flex-column — color-section sube al primer lugar */
   .product-info {
-    padding: 0 0 80px;
+    padding: 0 0 40px;
     border-left: none;
     border-top: none;
     display: flex;
@@ -468,7 +468,7 @@ select:active,
   .product-info__desc   { order: 4; }
   .specs-list           { order: 5; }
   .purchase             { order: 6; }
-  .details-section { padding: 60px 24px; }
+  .details-section { padding: 32px 24px; }
   /* Tabs mobile: los 3 botones se reparten el ancho equitativamente, sin scroll
    * horizontal. Padding y font-size reducidos para que "Especificaciones" entre
    * cómodo en pantallas chicas (375px). */
@@ -691,7 +691,7 @@ body.cart-open .wa-bubble {
         <div class="trust-badges" role="list">
           <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🛡️</span><span class="trust-badge__label">RFID protegido</span></div>
           <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🚚</span><span class="trust-badge__label" id="trustShipping">Envío gratis</span></div>
-          <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">↩️</span><span class="trust-badge__label">Cambios 7 días</span></div>
+          <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🔒</span><span class="trust-badge__label">Garantía 60 días</span></div>
         </div>
       </div>
     </div>
@@ -740,8 +740,8 @@ body.cart-open .wa-bubble {
         <div class="spec-cell"><div class="spec-cell__label">Envío gratis</div><div class="spec-cell__value" id="tabShippingFree">En compras desde $2.000 UYU</div></div>
         <div class="spec-cell"><div class="spec-cell__label">Plazo de entrega</div><div class="spec-cell__value">1 a 3 días hábiles según departamento</div></div>
         <div class="spec-cell"><div class="spec-cell__label">Costo de envío</div><div class="spec-cell__value">$250 UYU a todo el país</div></div>
-        <div class="spec-cell"><div class="spec-cell__label">Cambios</div><div class="spec-cell__value">Hasta 7 días corridos de recibido el producto, sin uso</div></div>
-        <div class="spec-cell"><div class="spec-cell__label">Defectos de fábrica</div><div class="spec-cell__value">Cambio o reintegro sin costo. Plazo: 30 días</div></div>
+        <div class="spec-cell"><div class="spec-cell__label">Cambios</div><div class="spec-cell__value">Hasta 7 días corridos, producto sin uso y en su estado original</div></div>
+        <div class="spec-cell"><div class="spec-cell__label">Garantía</div><div class="spec-cell__value">60 días por defectos de fábrica (no cubre mal uso)</div></div>
       </div>
     </div>
   </section>
@@ -1011,7 +1011,7 @@ function renderSpecsGrid(p) {
   }
 
   // Garantía — siempre fija
-  specs.push({ label: 'Garantía defecto', value: '30 días desde recepción' });
+  specs.push({ label: 'Garantía', value: '60 días por defectos de fábrica' });
 
   // Nota especial — al final en dorado si existe
   const notaHTML = extras.nota?.trim()
