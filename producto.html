@@ -469,6 +469,11 @@ select:active,
   .specs-list           { order: 5; }
   .purchase             { order: 6; }
   .details-section { padding: 60px 24px; }
+  /* Tabs mobile: los 3 botones se reparten el ancho equitativamente, sin scroll
+   * horizontal. Padding y font-size reducidos para que "Especificaciones" entre
+   * cómodo en pantallas chicas (375px). */
+  .tabs    { overflow-x: visible; }
+  .tab-btn { flex: 1; padding: 14px 8px; font-size: 9px; letter-spacing: 2px; }
   .specs-list { gap: 14px 12px; } /* en móvil specs en 2 col (3+3) con gap horizontal reducido */
   .specs-list__item { gap: 10px; } /* gap interno ícono-texto más compacto en mobile */
   .specs-grid { grid-template-columns: 1fr; }
