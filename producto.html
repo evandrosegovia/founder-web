@@ -294,6 +294,12 @@ select:active,
 /* Bloque del precio. El botón Compartir vive en su propia fila justo arriba
  * del CTA principal (Agregar al carrito). */
 
+/* Fila combinada: info de envío a la izquierda + botón Compartir a la derecha.
+ * Aprovecha el espacio horizontal que antes quedaba vacío arriba del CTA.
+ * Mobile: se apila vertical (override en media query mobile). */
+.purchase__info-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.purchase__info-row .purchase__shipping { flex: 1; min-width: 0; }
+
 /* Fila del botón Compartir — alineado a la derecha, justo arriba del CTA
  * principal. Mobile: ancho completo (override en media query mobile). */
 .purchase__share-row { display: flex; justify-content: flex-end; }
@@ -604,7 +610,8 @@ select:active,
   .product-info__desc   { order: 4; }
   .specs-list           { order: 5; }
   .purchase             { order: 6; }
-  /* Mobile: el botón Compartir ocupa ancho completo (justify a stretch). */
+  /* Mobile: info-row se apila (shipping arriba, botón compartir debajo). */
+  .purchase__info-row  { flex-direction: column; align-items: stretch; gap: 12px; }
   .purchase__share-row { justify-content: stretch; }
   .purchase__share-btn { justify-content: center; width: 100%; }
   .details-section { padding: 32px 24px; }
@@ -863,28 +870,30 @@ body.cart-open .wa-bubble {
             <div class="purchase__discount-tag">10% OFF<br>por transferencia</div>
           </div>
         </div>
-        <div class="purchase__shipping" id="shippingNote">
-          <div class="purchase__shipping-row">
-            <span aria-hidden="true">🚚</span>
-            <span id="shippingText">Calculando envío...</span>
+        <div class="purchase__info-row">
+          <div class="purchase__shipping" id="shippingNote">
+            <div class="purchase__shipping-row">
+              <span aria-hidden="true">🚚</span>
+              <span id="shippingText">Calculando envío...</span>
+            </div>
+            <div class="purchase__shipping-row purchase__shipping-row--sub">
+              <span aria-hidden="true">📅</span>
+              <span>Recibís en 1 a 3 días hábiles</span>
+            </div>
           </div>
-          <div class="purchase__shipping-row purchase__shipping-row--sub">
-            <span aria-hidden="true">📅</span>
-            <span>Recibís en 1 a 3 días hábiles</span>
+          <div class="purchase__share-row">
+            <button type="button" class="purchase__share-btn" onclick="shareOnWhatsApp()" aria-label="Compartir este producto por WhatsApp">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+              </svg>
+              <span>Compartir</span>
+            </button>
           </div>
         </div>
         <div class="purchase__sin-stock-aviso" id="sinStockAviso">Producto agotado</div>
         <div class="purchase__stock-bajo-aviso" id="stockBajoAviso" role="status">
           <span aria-hidden="true">⏳</span>
           <span>Pocas unidades disponibles</span>
-        </div>
-        <div class="purchase__share-row">
-          <button type="button" class="purchase__share-btn" onclick="shareOnWhatsApp()" aria-label="Compartir este producto por WhatsApp">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-            </svg>
-            <span>Compartir</span>
-          </button>
         </div>
         <button class="purchase__add-btn" id="addCartBtn" onclick="addToCart()" disabled aria-label="Agregar al carrito">
           Seleccioná un color para continuar
