@@ -291,20 +291,28 @@ select:active,
 .purchase__currency { font-size: 14px; color: var(--color-muted); letter-spacing: 2px; }
 .purchase__discount-tag { background: rgba(201,169,110,.15); border: 1px solid rgba(201,169,110,.3); color: var(--color-gold); font-size: 9px; letter-spacing: 2px; padding: 6px 12px; text-transform: uppercase; }
 
-/* Botón "Compartir por WhatsApp" — look discreto, link con ícono.
- * Va alineado a la izquierda, sin destacar. Color verde solo en hover. */
-.purchase__share-wa {
+/* Bloque precio + botón Compartir.
+ * Desktop: flex horizontal — precio a la izquierda, botón a la derecha.
+ * Mobile: flex column — precio arriba, botón debajo. */
+.purchase__price-block { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.purchase__price-info  { flex: 1; min-width: 0; }
+
+/* Botón "Compartir" — outline gris, look discreto.
+ * Hover sutil con borde y texto un tono más claro. */
+.purchase__share-btn {
   display: inline-flex; align-items: center; gap: 8px;
-  align-self: flex-start;
-  background: none; border: none; padding: 0;
-  font-family: inherit; font-size: 11px; letter-spacing: 1px;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--color-border-solid);
+  padding: 10px 16px;
+  font-family: inherit; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
   color: var(--color-muted); cursor: pointer;
-  transition: color var(--transition-fast);
+  transition: all var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
 }
-.purchase__share-wa:hover  { color: #25d366; }
-.purchase__share-wa:active { color: #1da851; }
-.purchase__share-wa svg    { flex-shrink: 0; }
+.purchase__share-btn:hover  { color: var(--color-text); border-color: var(--color-text); }
+.purchase__share-btn:active { transform: scale(0.97); }
+.purchase__share-btn svg    { flex-shrink: 0; }
 .purchase__shipping { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: var(--color-muted); letter-spacing: .5px; }
 .purchase__shipping-row { display: flex; align-items: center; gap: 8px; }
 .purchase__shipping-row--sub { font-size: 9.5px; opacity: 0.85; }
@@ -443,6 +451,37 @@ select:active,
 .review-card__name { font-size: 12px; color: var(--color-text); font-weight: 500; letter-spacing: 0.3px; }
 .review-card__location { font-size: 10px; color: var(--color-muted); letter-spacing: 1px; text-transform: uppercase; }
 
+/* Carrusel — wrapper, flechas, dots. En desktop (default) las flechas y dots
+ * están ocultos: la grilla muestra las 4 cards a la vez. En mobile se activan
+ * vía media query y se muestra 1 card por vez. */
+.reviews-carousel { position: relative; max-width: 1200px; margin: 0 auto; }
+.reviews-carousel__arrow {
+  display: none; /* solo visible en mobile */
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 36px; height: 36px;
+  border: 1px solid var(--color-border-solid); border-radius: 50%;
+  background: rgba(20,20,20,0.85); color: #fff;
+  font-size: 22px; line-height: 1; padding: 0;
+  cursor: pointer; z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+  align-items: center; justify-content: center;
+  transition: background var(--transition-fast);
+}
+.reviews-carousel__arrow:active { background: rgba(20,20,20,0.95); }
+.reviews-carousel__arrow--prev > span,
+.reviews-carousel__arrow--next > span { display: block; }
+.reviews-carousel__arrow--prev { left: -4px; }
+.reviews-carousel__arrow--next { right: -4px; }
+
+.reviews-carousel__dots { display: none; justify-content: center; gap: 8px; margin-top: 20px; }
+.reviews-carousel__dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--color-border-solid); border: none; padding: 0;
+  cursor: pointer; transition: all var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.reviews-carousel__dot.is-active { background: var(--color-gold); transform: scale(1.2); }
+
 /* ── PRODUCTO — Productos relacionados ─────────────────────── */
 .related-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); }
 .related-section__eyebrow { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--color-gold); margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
@@ -558,6 +597,9 @@ select:active,
   .product-info__desc   { order: 4; }
   .specs-list           { order: 5; }
   .purchase             { order: 6; }
+  /* Mobile: precio + share apilados vertical, botón ocupa todo el ancho. */
+  .purchase__price-block { flex-direction: column; align-items: stretch; gap: 12px; }
+  .purchase__share-btn { justify-content: center; width: 100%; }
   .details-section { padding: 32px 24px; }
   /* Tabs mobile: los 3 botones se reparten el ancho equitativamente, sin scroll
    * horizontal. Padding y font-size reducidos para que "Especificaciones" entre
@@ -579,10 +621,17 @@ select:active,
   .compare-table__cell--head { font-size: 11px; padding: 14px 8px; letter-spacing: 0.5px; text-align: center; }
   .compare-table__cell--label { padding-left: 14px; padding-right: 6px; line-height: 1.4; }
   .compare-icon { width: 22px; height: 22px; font-size: 11px; }
-  /* Reviews mobile: 1 columna en pantallas chicas. */
+  /* Reviews mobile — carrusel: solo .is-active visible, flechas y dots
+   * activados. Padding lateral interno reducido para que las flechas no
+   * tapen el texto. */
   .reviews-section { padding: 60px 24px; }
   .reviews-section__title { font-size: 24px; margin-bottom: 32px; }
-  .reviews-grid { grid-template-columns: 1fr; gap: 14px; }
+  .reviews-carousel { padding: 0 8px; }
+  .reviews-grid { grid-template-columns: 1fr; gap: 0; min-height: 240px; }
+  .review-card { display: none; }
+  .review-card.is-active { display: flex; }
+  .reviews-carousel__arrow { display: flex; }
+  .reviews-carousel__dots  { display: flex; }
   .related-section { padding: 60px 24px; }
   .related-grid { grid-template-columns: 1fr; }
   .cart-sidebar { width: 100%; max-height: 100dvh; }
@@ -775,22 +824,24 @@ body.cart-open .wa-bubble {
 
       <!-- PURCHASE -->
       <div class="purchase">
-        <div>
-          <div class="purchase__price-label">Precio</div>
-          <div class="purchase__price-row">
-            <div>
-              <span class="purchase__price" id="productPrice">—</span>
-              <span class="purchase__currency">UYU</span>
+        <div class="purchase__price-block">
+          <div class="purchase__price-info">
+            <div class="purchase__price-label">Precio</div>
+            <div class="purchase__price-row">
+              <div>
+                <span class="purchase__price" id="productPrice">—</span>
+                <span class="purchase__currency">UYU</span>
+              </div>
+              <div class="purchase__discount-tag">10% OFF<br>por transferencia</div>
             </div>
-            <div class="purchase__discount-tag">10% OFF<br>por transferencia</div>
           </div>
+          <button type="button" class="purchase__share-btn" onclick="shareOnWhatsApp()" aria-label="Compartir este producto por WhatsApp">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+            </svg>
+            <span>Compartir</span>
+          </button>
         </div>
-        <button type="button" class="purchase__share-wa" onclick="shareOnWhatsApp()" aria-label="Compartir este producto por WhatsApp">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-          </svg>
-          <span>Compartir por WhatsApp</span>
-        </button>
         <div class="purchase__shipping" id="shippingNote">
           <div class="purchase__shipping-row">
             <span aria-hidden="true">🚚</span>
@@ -814,13 +865,11 @@ body.cart-open .wa-bubble {
           <span>Compra protegida</span>
           <span class="purchase__security-sep">·</span>
           <span>Pago seguro</span>
-          <span class="purchase__security-sep">·</span>
-          <span>Garantía 60 días</span>
         </div>
         <div class="trust-badges" role="list">
           <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🛡️</span><span class="trust-badge__label">RFID protegido</span></div>
           <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🚚</span><span class="trust-badge__label" id="trustShipping">Envío gratis</span></div>
-          <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🔒</span><span class="trust-badge__label">Garantía 60 días</span></div>
+          <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">✅</span><span class="trust-badge__label">Garantía 60 días</span></div>
         </div>
       </div>
     </div>
@@ -943,42 +992,54 @@ body.cart-open .wa-bubble {
     <div class="reviews-section__eyebrow">Lo que dicen nuestros clientes</div>
     <h2 class="reviews-section__title" id="reviewsTitle">Confianza ganada con cada compra</h2>
 
-    <div class="reviews-grid">
-      <article class="review-card">
-        <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-        <p class="review-card__text">"Llevo 3 meses usándola todos los días. Increíble lo cómoda que es, no te das cuenta que la tenés. La protección RFID me da tranquilidad cuando uso el bondi."</p>
-        <div class="review-card__author">
-          <span class="review-card__name">Martín Rodríguez</span>
-          <span class="review-card__location">Montevideo</span>
-        </div>
-      </article>
+    <div class="reviews-carousel">
+      <button class="reviews-carousel__arrow reviews-carousel__arrow--prev" type="button" aria-label="Reseña anterior" id="reviewsPrev">‹</button>
+      <button class="reviews-carousel__arrow reviews-carousel__arrow--next" type="button" aria-label="Reseña siguiente" id="reviewsNext">›</button>
 
-      <article class="review-card">
-        <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-        <p class="review-card__text">"La compré para mi marido y la terminé usando yo. El cuero es de excelente calidad y el diseño es elegante. Muy recomendable."</p>
-        <div class="review-card__author">
-          <span class="review-card__name">Lucía Fernández</span>
-          <span class="review-card__location">Punta del Este</span>
-        </div>
-      </article>
+      <div class="reviews-grid" id="reviewsGrid">
+        <article class="review-card is-active">
+          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
+          <p class="review-card__text">"Llevo 3 meses usándola todos los días. Increíble lo cómoda que es, no te das cuenta que la tenés. La protección RFID me da tranquilidad cuando uso el bondi."</p>
+          <div class="review-card__author">
+            <span class="review-card__name">Martín Rodríguez</span>
+            <span class="review-card__location">Montevideo</span>
+          </div>
+        </article>
 
-      <article class="review-card">
-        <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-        <p class="review-card__text">"Buscaba algo que entrara en el bolsillo del jean sin hacer bulto y la encontré. El botón para sacar las tarjetas es genial, súper práctico."</p>
-        <div class="review-card__author">
-          <span class="review-card__name">Diego Pereira</span>
-          <span class="review-card__location">Salto</span>
-        </div>
-      </article>
+        <article class="review-card">
+          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
+          <p class="review-card__text">"La compré para mi marido y la terminé usando yo. El cuero es de excelente calidad y el diseño es elegante. Muy recomendable."</p>
+          <div class="review-card__author">
+            <span class="review-card__name">Lucía Fernández</span>
+            <span class="review-card__location">Punta del Este</span>
+          </div>
+        </article>
 
-      <article class="review-card">
-        <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-        <p class="review-card__text">"La atención por WhatsApp fue impecable, me ayudaron a elegir el color y llegó al día siguiente a Maldonado. La calidad superó mis expectativas."</p>
-        <div class="review-card__author">
-          <span class="review-card__name">Sofía Méndez</span>
-          <span class="review-card__location">Maldonado</span>
-        </div>
-      </article>
+        <article class="review-card">
+          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
+          <p class="review-card__text">"Buscaba algo que entrara en el bolsillo del jean sin hacer bulto y la encontré. El botón para sacar las tarjetas es genial, súper práctico."</p>
+          <div class="review-card__author">
+            <span class="review-card__name">Diego Pereira</span>
+            <span class="review-card__location">Salto</span>
+          </div>
+        </article>
+
+        <article class="review-card">
+          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
+          <p class="review-card__text">"La atención por WhatsApp fue impecable, me ayudaron a elegir el color y llegó al día siguiente a Maldonado. La calidad superó mis expectativas."</p>
+          <div class="review-card__author">
+            <span class="review-card__name">Sofía Méndez</span>
+            <span class="review-card__location">Maldonado</span>
+          </div>
+        </article>
+      </div>
+
+      <div class="reviews-carousel__dots" id="reviewsDots" role="tablist" aria-label="Reseñas">
+        <button class="reviews-carousel__dot is-active" type="button" aria-label="Reseña 1" data-idx="0"></button>
+        <button class="reviews-carousel__dot" type="button" aria-label="Reseña 2" data-idx="1"></button>
+        <button class="reviews-carousel__dot" type="button" aria-label="Reseña 3" data-idx="2"></button>
+        <button class="reviews-carousel__dot" type="button" aria-label="Reseña 4" data-idx="3"></button>
+      </div>
     </div>
   </section>
 
@@ -1078,6 +1139,11 @@ const state = {
   zoomEventsBound:     false, // listeners del zoom hover ya enganchados
   swipeEventsBound:    false, // listeners de swipe touch ya enganchados
   colorPreloadDone:    false, // primera foto de cada color ya pre-cargada al cache
+  reviewIndex:                0, // reseña activa en el carrusel (mobile)
+  reviewsAutoplayTimer:       null, // setInterval del carrusel de reseñas
+  reviewsAutoplayCycles:      0,    // ciclos completos ya recorridos
+  reviewsAutoplayPausedUntil: 0,    // timestamp hasta el cual está pausado
+  reviewsEventsBound:         false, // listeners del carrusel de reseñas ya enganchados
   cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
 };
 
@@ -1207,6 +1273,8 @@ async function init() {
     // Inyectar SEO: Schema.org Product (JSON-LD) + Open Graph dinámico.
     // Esto mejora Google rich results y vista previa al compartir el link.
     injectSEOMetadata(state.product);
+    // Carrusel de reseñas (autoplay 4s en mobile, oculto en desktop).
+    bindReviewsCarousel();
 
   } catch (err) {
     console.error('[Founder] Error cargando producto:', err);
@@ -1878,6 +1946,115 @@ function bindSwipeEvents() {
     if (dx < 0) goToNextPhoto(); // swipe izquierda → siguiente
     else        goToPrevPhoto(); // swipe derecha  → anterior
   }, { passive: true });
+}
+
+// ── PRODUCTO — Carrusel de reseñas (solo mobile) ────────────────
+// Mismo patrón que el carrusel de fotos: autoplay 4s, pausa 12s al click
+// manual, reset por Page Visibility, respeta prefers-reduced-motion, para
+// tras MAX_CYCLES para evitar fatiga visual.
+const REVIEWS_AUTOPLAY = Object.freeze({
+  INTERVAL_MS:        4000,
+  PAUSE_AFTER_CLICK:  12000,
+  MAX_CYCLES:         3,
+});
+
+/** Activa la reseña con índice i. byUser=true marca interacción manual y
+ *  pausa el autoplay 12s. */
+function setActiveReview(i, byUser = false) {
+  const cards = document.querySelectorAll('.reviews-grid .review-card');
+  const dots  = document.querySelectorAll('.reviews-carousel__dot');
+  if (!cards.length) return;
+
+  // Normalizar índice (loop circular)
+  const total = cards.length;
+  const idx = ((i % total) + total) % total;
+  state.reviewIndex = idx;
+
+  cards.forEach((c, k) => toggle(c, 'is-active', k === idx));
+  dots.forEach((d, k)  => toggle(d, 'is-active', k === idx));
+
+  if (byUser) state.reviewsAutoplayPausedUntil = Date.now() + REVIEWS_AUTOPLAY.PAUSE_AFTER_CLICK;
+}
+
+function goToPrevReview() { setActiveReview(state.reviewIndex - 1, true); }
+function goToNextReview() { setActiveReview(state.reviewIndex + 1, true); }
+
+function advanceReviewsAutoplay() {
+  if (Date.now() < state.reviewsAutoplayPausedUntil) return;
+
+  const total = document.querySelectorAll('.reviews-grid .review-card').length;
+  if (total < 2) { stopReviewsAutoplay(); return; }
+
+  const nextIdx = (state.reviewIndex + 1) % total;
+  setActiveReview(nextIdx);
+
+  if (nextIdx === 0) {
+    state.reviewsAutoplayCycles += 1;
+    if (state.reviewsAutoplayCycles >= REVIEWS_AUTOPLAY.MAX_CYCLES) stopReviewsAutoplay();
+  }
+}
+
+function startReviewsAutoplay() {
+  if (state.reviewsAutoplayTimer) return;
+  if (prefersReducedMotion()) return;
+  if (document.hidden) return;
+
+  // Solo en mobile (donde el carrusel realmente se usa)
+  if (!window.matchMedia('(max-width: 900px)').matches) return;
+
+  const total = document.querySelectorAll('.reviews-grid .review-card').length;
+  if (total < 2) return;
+
+  state.reviewsAutoplayTimer = setInterval(advanceReviewsAutoplay, REVIEWS_AUTOPLAY.INTERVAL_MS);
+}
+
+function stopReviewsAutoplay() {
+  if (state.reviewsAutoplayTimer) {
+    clearInterval(state.reviewsAutoplayTimer);
+    state.reviewsAutoplayTimer = null;
+  }
+}
+
+/** Engancha listeners del carrusel de reseñas UNA sola vez por carga.
+ *  - Click en flechas / dots → cambio manual con pausa de 12s.
+ *  - Visibility change → pausa cuando la tab está oculta.
+ *  - Resize → si pasa a desktop, parar autoplay; si pasa a mobile, arrancar. */
+function bindReviewsCarousel() {
+  if (state.reviewsEventsBound) return;
+  state.reviewsEventsBound = true;
+
+  const prev = document.getElementById('reviewsPrev');
+  const next = document.getElementById('reviewsNext');
+  const dots = document.querySelectorAll('.reviews-carousel__dot');
+
+  if (prev) prev.addEventListener('click', goToPrevReview);
+  if (next) next.addEventListener('click', goToNextReview);
+  dots.forEach(d => {
+    d.addEventListener('click', () => {
+      const idx = parseInt(d.dataset.idx, 10);
+      if (Number.isFinite(idx)) setActiveReview(idx, true);
+    });
+  });
+
+  // Page Visibility: pausar/reanudar
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopReviewsAutoplay();
+    else                 startReviewsAutoplay();
+  });
+
+  // Resize: si el viewport cruza el breakpoint, ajustar autoplay
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      const isMobile = window.matchMedia('(max-width: 900px)').matches;
+      if (!isMobile) stopReviewsAutoplay();
+      else           startReviewsAutoplay();
+    }, 200);
+  });
+
+  // Arrancar si estamos en mobile
+  startReviewsAutoplay();
 }
 
 // ── PRODUCTO — Tabs de detalles ─────────────────────────────────
