@@ -155,7 +155,7 @@ select:active,
 
 /* ── PRODUCTO — Galería de fotos ───────────────────────────── */
 .gallery { position: sticky; top: 76px; height: calc(100vh - 70px); display: flex; flex-direction: column; gap: 2px; padding-right: 40px; }
-.gallery__main { flex: 1; background: var(--color-surface); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.gallery__main { flex: 1; background: var(--color-surface); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: pan-y; }
 .gallery__main-inner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; transition: background 0.6s ease; }
 .gallery__img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; opacity: 0; transition: opacity .4s ease, transform .4s ease; transform-origin: center center; }
 .gallery__img.is-active { opacity: 1; }
@@ -404,7 +404,7 @@ select:active,
 
 /* ── PRODUCTO — Tabs de detalles ───────────────────────────── */
 .details-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); }
-.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--color-border); margin-bottom: 48px; overflow-x: auto; }
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--color-border); margin-bottom: 48px; }
 .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--color-muted); padding: 16px 32px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; transition: all var(--transition-base); margin-bottom: -1px; white-space: nowrap; }
 .tab-btn.is-active { color: var(--color-text); border-bottom-color: var(--color-gold); }
 .tab-btn:hover { color: var(--color-text); }
@@ -615,10 +615,9 @@ select:active,
   .purchase__share-row { justify-content: stretch; }
   .purchase__share-btn { justify-content: center; width: 100%; }
   .details-section { padding: 32px 24px; }
-  /* Tabs mobile: los 3 botones se reparten el ancho equitativamente, sin scroll
-   * horizontal. Padding y font-size reducidos para que "Especificaciones" entre
-   * cómodo en pantallas chicas (375px). */
-  .tabs    { overflow-x: visible; }
+  /* Tabs mobile: los 3 botones se reparten el ancho equitativamente.
+   * Padding y font-size reducidos para que "Especificaciones" entre cómodo
+   * en pantallas chicas (375px). */
   .tab-btn { flex: 1; padding: 14px 8px; font-size: 9px; letter-spacing: 2px; }
   .specs-list { gap: 14px 12px; } /* en móvil specs en 2 col (3+3) con gap horizontal reducido */
   .specs-list__item { gap: 10px; } /* gap interno ícono-texto más compacto en mobile */
@@ -1948,12 +1947,15 @@ function bindZoomEvents() {
 }
 
 // ── PRODUCTO — Swipe touch en imagen principal (mobile) ─────────
-// Detección con touchstart + touchend (no touchmove → menos eventos).
-// Umbral 50px para deltaX. Si |deltaY| > |deltaX| el gesto se ignora
-// (es scroll vertical, no swipe horizontal). passive:true para no
-// bloquear el scroll nativo del navegador.
+// Estrategia: detección temprana de dirección en touchmove para diferenciar
+// scroll vertical de swipe horizontal. CSS touch-action:pan-y le dice al
+// navegador que solo permita scroll vertical nativo en este elemento, así
+// el swipe horizontal lo maneja JS sin que iOS intente scrollear lateral.
+// Reset de seguridad por timeout en caso de touchend perdido (bug iOS).
 
-const SWIPE_THRESHOLD_PX = 50;
+const SWIPE_THRESHOLD_PX  = 50;
+const SWIPE_DIRECTION_MIN = 10; // px mínimos para clasificar dirección
+const SWIPE_TIMEOUT_MS    = 500; // reset si no llega touchend
 
 /** Engancha los listeners de swipe touch UNA sola vez por carga.
  *  En desktop sin touch los eventos no se disparan → no afecta. */
@@ -1965,25 +1967,70 @@ function bindSwipeEvents() {
   if (!main) return;
 
   let startX = 0, startY = 0;
+  let active = false;          // touch en curso
+  let direction = null;        // 'horizontal' | 'vertical' | null
+  let resetTimer = null;       // timeout de seguridad
+
+  function resetState() {
+    active = false;
+    direction = null;
+    if (resetTimer) {
+      clearTimeout(resetTimer);
+      resetTimer = null;
+    }
+  }
 
   main.addEventListener('touchstart', (e) => {
-    if (!e.touches || e.touches.length !== 1) return; // ignorar pinch
+    if (!e.touches || e.touches.length !== 1) {
+      resetState(); // pinch o multi-touch → ignorar
+      return;
+    }
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    active = true;
+    direction = null;
+    // Seguro: si touchend no llega (puede pasar en iOS si el dedo sale del
+    // elemento mientras scrollea), resetear estado pasado 500ms.
+    if (resetTimer) clearTimeout(resetTimer);
+    resetTimer = setTimeout(resetState, SWIPE_TIMEOUT_MS);
+  }, { passive: true });
+
+  main.addEventListener('touchmove', (e) => {
+    if (!active || !e.touches || e.touches.length !== 1) return;
+    if (direction !== null) return; // dirección ya decidida
+
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    // Esperar a que el gesto sea claramente direccional antes de clasificar.
+    if (absDx < SWIPE_DIRECTION_MIN && absDy < SWIPE_DIRECTION_MIN) return;
+
+    direction = absDx > absDy ? 'horizontal' : 'vertical';
   }, { passive: true });
 
   main.addEventListener('touchend', (e) => {
-    if (!e.changedTouches || e.changedTouches.length !== 1) return;
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
+    if (!active) return;
+    if (!e.changedTouches || e.changedTouches.length !== 1) {
+      resetState();
+      return;
+    }
 
-    // Si el gesto fue más vertical que horizontal, lo ignoramos (scroll)
-    if (Math.abs(dy) > Math.abs(dx)) return;
-    if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
+    // Solo procesar swipe si fue claramente horizontal y supera el umbral.
+    if (direction === 'horizontal') {
+      const dx = e.changedTouches[0].clientX - startX;
+      if (Math.abs(dx) >= SWIPE_THRESHOLD_PX) {
+        if (dx < 0) goToNextPhoto();
+        else        goToPrevPhoto();
+      }
+    }
 
-    if (dx < 0) goToNextPhoto(); // swipe izquierda → siguiente
-    else        goToPrevPhoto(); // swipe derecha  → anterior
+    resetState();
   }, { passive: true });
+
+  // Si el touch se cancela (interrupción del sistema, llamada, etc.), resetear.
+  main.addEventListener('touchcancel', resetState, { passive: true });
 }
 
 // ── PRODUCTO — Carrusel de reseñas (solo mobile) ────────────────
