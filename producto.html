@@ -353,6 +353,29 @@ select:active,
 .rfid-visual__text { font-size: var(--text-body-sm); color: var(--color-muted); letter-spacing: 1px; line-height: var(--lh-body-sm); }
 .rfid-visual__badge { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-gold); }
 
+/* ── PRODUCTO — Comparativa Founder vs tradicional ─────────── */
+.compare-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); text-align: center; }
+.compare-section__eyebrow { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--color-gold); margin-bottom: 12px; display: inline-flex; align-items: center; gap: 12px; }
+.compare-section__eyebrow::before,
+.compare-section__eyebrow::after { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
+.compare-section__title { font-family: var(--font-serif); font-size: 36px; font-weight: 300; margin-bottom: 16px; }
+.compare-section__lead { font-size: var(--text-body-lg); line-height: 1.7; color: var(--color-muted); max-width: 640px; margin: 0 auto 48px; }
+
+/* Tabla comparativa — grid de 3 columnas: característica | Founder | Tradicional */
+.compare-table { max-width: 880px; margin: 0 auto; border: 1px solid var(--color-border); background: var(--color-surface); }
+.compare-table__head { display: grid; grid-template-columns: 1.6fr 1fr 1fr; }
+.compare-table__row { display: grid; grid-template-columns: 1.6fr 1fr 1fr; border-top: 1px solid var(--color-border); }
+.compare-table__cell { padding: 20px 24px; display: flex; align-items: center; justify-content: center; font-size: var(--text-body-sm); line-height: 1.5; }
+.compare-table__cell--head { font-family: var(--font-serif); font-size: 14px; letter-spacing: 1px; padding: 22px 24px; color: var(--color-text); }
+.compare-table__cell--label { justify-content: flex-start; text-align: left; color: var(--color-text); }
+.compare-table__cell--featured { background: var(--color-bg); border-left: 1px solid var(--color-border); border-right: 1px solid var(--color-border); }
+.compare-table__head .compare-table__cell--featured { color: var(--color-gold); font-weight: 500; }
+
+/* Íconos de check / cruz */
+.compare-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-size: 14px; font-weight: 700; line-height: 1; }
+.compare-icon--yes { background: rgba(76, 175, 130, 0.15); color: var(--color-success); }
+.compare-icon--no  { background: rgba(154, 154, 154, 0.10); color: var(--color-muted); }
+
 /* ── PRODUCTO — Productos relacionados ─────────────────────── */
 .related-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); }
 .related-section__eyebrow { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--color-gold); margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
@@ -478,6 +501,17 @@ select:active,
   .specs-list__item { gap: 10px; } /* gap interno ícono-texto más compacto en mobile */
   .specs-grid { grid-template-columns: 1fr; }
   .rfid-explain { grid-template-columns: 1fr; }
+  /* Comparativa mobile: padding reducido, título más compacto, tabla con
+   * columnas redistribuidas (label más ancho que las dos de check). */
+  .compare-section { padding: 60px 24px; }
+  .compare-section__title { font-size: 26px; }
+  .compare-section__lead { font-size: var(--text-body-sm); margin-bottom: 32px; }
+  .compare-table__head,
+  .compare-table__row { grid-template-columns: 1.4fr 0.8fr 0.8fr; }
+  .compare-table__cell { padding: 14px 10px; font-size: 12px; }
+  .compare-table__cell--head { font-size: 11px; padding: 14px 8px; letter-spacing: 0.5px; text-align: center; }
+  .compare-table__cell--label { padding-left: 14px; padding-right: 6px; line-height: 1.4; }
+  .compare-icon { width: 22px; height: 22px; font-size: 11px; }
   .related-section { padding: 60px 24px; }
   .related-grid { grid-template-columns: 1fr; }
   .cart-sidebar { width: 100%; max-height: 100dvh; }
@@ -742,6 +776,69 @@ body.cart-open .wa-bubble {
         <div class="spec-cell"><div class="spec-cell__label">Costo de envío</div><div class="spec-cell__value">$250 UYU a todo el país</div></div>
         <div class="spec-cell"><div class="spec-cell__label">Cambios</div><div class="spec-cell__value">Hasta 7 días corridos, producto sin uso y en su estado original</div></div>
         <div class="spec-cell"><div class="spec-cell__label">Garantía</div><div class="spec-cell__value">60 días por defectos de fábrica (no cubre mal uso)</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPARATIVA — Founder vs billetera tradicional -->
+  <section class="compare-section" aria-labelledby="compareTitle">
+    <div class="compare-section__eyebrow">Por qué elegir Founder</div>
+    <h2 class="compare-section__title" id="compareTitle">Una billetera que va con vos</h2>
+    <p class="compare-section__lead">Diseñada para acompañarte todos los días. No es solo una billetera, es un accesorio que combina protección, orden y estilo en un solo lugar.</p>
+
+    <div class="compare-table" role="table" aria-label="Comparativa Founder vs billetera tradicional">
+      <div class="compare-table__head" role="row">
+        <div class="compare-table__cell compare-table__cell--head" role="columnheader" aria-label="Característica"></div>
+        <div class="compare-table__cell compare-table__cell--head compare-table__cell--featured" role="columnheader">Founder</div>
+        <div class="compare-table__cell compare-table__cell--head" role="columnheader">Billetera tradicional</div>
+      </div>
+
+      <div class="compare-table__row" role="row">
+        <div class="compare-table__cell compare-table__cell--label" role="cell">Protección RFID anti-clonación</div>
+        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
+        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
+      </div>
+
+      <div class="compare-table__row" role="row">
+        <div class="compare-table__cell compare-table__cell--label" role="cell">Acceso rápido con un solo botón</div>
+        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
+        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
+      </div>
+
+      <div class="compare-table__row" role="row">
+        <div class="compare-table__cell compare-table__cell--label" role="cell">Diseño slim — entra en cualquier bolsillo</div>
+        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
+        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
+      </div>
+
+      <div class="compare-table__row" role="row">
+        <div class="compare-table__cell compare-table__cell--label" role="cell">Materiales premium (cuero + aluminio)</div>
+        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
+        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
+      </div>
+
+      <div class="compare-table__row" role="row">
+        <div class="compare-table__cell compare-table__cell--label" role="cell">Organización: tarjetas y billetes</div>
+        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
+        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
+      </div>
+
+      <div class="compare-table__row" role="row">
+        <div class="compare-table__cell compare-table__cell--label" role="cell">Resistente a golpes y caídas</div>
+        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
+        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
+      </div>
+
+      <div class="compare-table__row" role="row">
+        <div class="compare-table__cell compare-table__cell--label" role="cell">Estilo unisex y minimalista</div>
+        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
+        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
+      </div>
+
+      <div class="compare-table__row" role="row">
+        <div class="compare-table__cell compare-table__cell--label" role="cell">Garantía 60 días por defectos de fábrica</div>
+        <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
+        <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
       </div>
     </div>
   </section>
