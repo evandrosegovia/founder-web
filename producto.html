@@ -717,13 +717,20 @@ select:active,
 
 /* Cuando el sticky CTA está activo, la burbuja sube para no superponerse.
  * Usa env(safe-area-inset-bottom) para respetar el notch inferior de iPhones.
- * Mobile: sticky barra completa abajo (~80px) + safe-area + aire = 110px.
+ * Mobile: sticky barra completa abajo (~80px) + safe-area + 8px aire = 88px.
  * Desktop: sticky tarjeta abajo-derecha (~95px alto) + aire = 130px. */
 body.has-sticky-cta .wa-bubble {
-  bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 @media (min-width: 901px) {
   body.has-sticky-cta .wa-bubble { bottom: 130px; }
+}
+
+/* Cuando el footer es visible: ocultar la burbuja igual que el sticky CTA.
+ * Así no quedan flotando elementos que no aportan en la zona de cierre. */
+body.footer-visible .wa-bubble {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ── Burbuja WA — se desplaza cuando el carrito está abierto, y se eleva
@@ -2309,14 +2316,16 @@ function showToast(msg) {
   const inlineBtn = document.getElementById('addCartBtn');
   if (!wrap) return;
 
-  // Observer 1: ocultar sticky cuando el footer es visible (mobile + desktop).
-  // Cuando se oculta el sticky por el footer, también quitamos la clase del
-  // body para que la burbuja WA vuelva a su posición normal.
+  // Observer 1: cuando el footer es visible, ocultar tanto el sticky como la
+  // burbuja WhatsApp (vía body.footer-visible). Cuando el footer se va, ambos
+  // vuelven a aparecer si corresponde (el sticky depende del observer 2).
   if (footer) {
     const footerObs = new IntersectionObserver(entries => {
       const footerVisible = entries[0].isIntersecting;
       wrap.classList.toggle('is-hidden', footerVisible);
-      // Si el sticky se oculta por footer, la burbuja vuelve a su sitio
+      document.body.classList.toggle('footer-visible', footerVisible);
+      // Si el sticky se oculta por footer, la burbuja también vuelve a su
+      // posición normal (sin elevación) para no quedar flotando alto.
       if (footerVisible) document.body.classList.remove('has-sticky-cta');
     }, { threshold: 0.1 });
     footerObs.observe(footer);
