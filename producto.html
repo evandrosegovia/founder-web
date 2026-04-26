@@ -469,7 +469,8 @@ select:active,
   .specs-list           { order: 5; }
   .purchase             { order: 6; }
   .details-section { padding: 60px 24px; }
-  .specs-list { grid-template-columns: 1fr; } /* en móvil specs en 1 col */
+  .specs-list { gap: 14px 12px; } /* en móvil specs en 2 col (3+3) con gap horizontal reducido */
+  .specs-list__item { gap: 10px; } /* gap interno ícono-texto más compacto en mobile */
   .specs-grid { grid-template-columns: 1fr; }
   .rfid-explain { grid-template-columns: 1fr; }
   .related-section { padding: 60px 24px; }
