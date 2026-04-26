@@ -61,8 +61,8 @@
 
   const LEGAL_RETURNS = `
     <h1>Cambios y Devoluciones</h1><p class="legal-date">Vigente desde: Enero 2026</p>
-    <h2>Política de cambios</h2><p>Aceptamos cambios dentro de los 7 días corridos de recibido el producto, sin uso, en su estado original y con comprobante de compra.</p>
-    <h2>Defecto de fábrica</h2><p>Si el producto tiene un defecto de fábrica, lo cambiamos o reintegramos el importe sin costo. Plazo: 30 días desde la recepción.</p>
+    <h2>Política de cambios</h2><p>Aceptamos cambios y devoluciones dentro de los 7 días corridos de recibido el producto, siempre que se encuentre sin uso, en su estado original y con comprobante de compra.</p>
+    <h2>Garantía de fábrica</h2><p>Todos nuestros productos cuentan con garantía de 60 días corridos desde la recepción, contra defectos de fabricación. La garantía no cubre daños por mal uso, desgaste por uso normal o accidentes. En caso de defecto de fábrica, gestionamos el cambio o reintegro sin costo.</p>
     <h2>Cómo solicitar un cambio</h2><p>Contactanos por WhatsApp o Instagram @founder.uy indicando tu número de pedido y el motivo. Respondemos en 48 horas hábiles.</p>
   `;
 
