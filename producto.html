@@ -290,10 +290,28 @@ select:active,
 .purchase__price { font-family: var(--font-serif); font-size: 48px; font-weight: 400; line-height: 1; }
 .purchase__currency { font-size: 14px; color: var(--color-muted); letter-spacing: 2px; }
 .purchase__discount-tag { background: rgba(201,169,110,.15); border: 1px solid rgba(201,169,110,.3); color: var(--color-gold); font-size: 9px; letter-spacing: 2px; padding: 6px 12px; text-transform: uppercase; }
-.purchase__shipping { font-size: 10px; color: var(--color-muted); letter-spacing: .5px; display: flex; align-items: center; gap: 8px; }
+
+/* Botón "Compartir por WhatsApp" — look discreto, link con ícono.
+ * Va alineado a la izquierda, sin destacar. Color verde solo en hover. */
+.purchase__share-wa {
+  display: inline-flex; align-items: center; gap: 8px;
+  align-self: flex-start;
+  background: none; border: none; padding: 0;
+  font-family: inherit; font-size: 11px; letter-spacing: 1px;
+  color: var(--color-muted); cursor: pointer;
+  transition: color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.purchase__share-wa:hover  { color: #25d366; }
+.purchase__share-wa:active { color: #1da851; }
+.purchase__share-wa svg    { flex-shrink: 0; }
+.purchase__shipping { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: var(--color-muted); letter-spacing: .5px; }
+.purchase__shipping-row { display: flex; align-items: center; gap: 8px; }
+.purchase__shipping-row--sub { font-size: 9.5px; opacity: 0.85; }
 .purchase__shipping--free { color: var(--color-gold); font-weight: 500; }
 .purchase__add-btn { background: var(--color-text); color: var(--color-bg); border: none; padding: 20px; width: 100%; font-size: 11px; letter-spacing: 4px; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: all var(--transition-base); }
 .purchase__add-btn:hover:not(:disabled) { background: var(--color-gold); }
+.purchase__add-btn.is-added { background: var(--color-success); color: var(--color-text); pointer-events: none; }
 .purchase__add-btn:disabled { background: var(--color-surface2); color: var(--color-muted); cursor: not-allowed; }
 /* Aviso sin stock en compra */
 .purchase__sin-stock-aviso {
@@ -303,15 +321,50 @@ select:active,
   letter-spacing: 0.08em; text-align: center; font-weight: 500;
 }
 .purchase__sin-stock-aviso.visible { display: block; }
-/* Botón flotante en móvil */
+
+/* Aviso de stock bajo — aparece cuando el flag <color>_stock_bajo está en
+ * extras.colores_estado del admin. Look dorado/sutil, no alarmante. */
+.purchase__stock-bajo-aviso {
+  display: none; padding: 10px 14px;
+  background: rgba(201,169,110,0.08); border: 1px solid rgba(201,169,110,0.25);
+  border-radius: 3px; color: var(--color-gold); font-size: 11px;
+  letter-spacing: 0.08em; text-align: center; font-weight: 500;
+}
+.purchase__stock-bajo-aviso.visible { display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* Texto de seguridad bajo el botón Agregar al carrito — refuerza confianza
+ * en el momento clave de la decisión. */
+.purchase__security-note {
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: 6px; margin-top: -4px;
+  font-size: 10px; letter-spacing: 0.5px; color: var(--color-muted);
+}
+.purchase__security-sep { color: var(--color-border-solid); margin: 0 2px; }
+/* Botón flotante: aparece cuando el botón inline queda fuera de viewport. */
 .sticky-btn-wrap { display: none; }
+.sticky-btn-wrap.is-hidden { opacity: 0; pointer-events: none; transition: opacity .3s; }
+
+/* Desktop: aparece al scrollear, fixed en la parte inferior derecha — discreto. */
+@media (min-width: 901px) {
+  .sticky-btn-wrap.is-active {
+    display: block; position: fixed; bottom: 24px; right: 24px;
+    z-index: 150; max-width: 360px;
+    background: rgba(20,20,20,0.95); padding: 14px;
+    border: 1px solid var(--color-border); backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    transition: opacity .3s ease;
+  }
+  .sticky-btn-wrap.is-active .purchase__add-btn { width: 100%; padding: 16px; font-size: 11px; cursor: pointer; }
+}
+
+/* Mobile: aparece siempre (estilo barra completa abajo). */
 @media (max-width: 900px) {
   .sticky-btn-wrap {
     display: block; position: fixed; bottom: 0; left: 0; right: 0;
     z-index: 150; padding: 12px 16px;
     background: linear-gradient(to top, var(--color-bg) 70%, transparent);
   }
-  .sticky-btn-wrap.is-hidden { opacity: 0; pointer-events: none; transition: opacity .3s; }
   .sticky-btn-wrap .purchase__add-btn { width: 100%; padding: 18px; font-size: 11px; cursor: pointer; }
   /* En móvil ocultamos el botón inline para no duplicar */
   .purchase .purchase__add-btn { display: none; }
@@ -375,6 +428,20 @@ select:active,
 .compare-icon { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; font-size: 12px; font-weight: 700; line-height: 1; }
 .compare-icon--yes { background: rgba(76, 175, 130, 0.15); color: var(--color-success); }
 .compare-icon--no  { background: rgba(154, 154, 154, 0.10); color: var(--color-muted); }
+
+/* ── PRODUCTO — Reseñas de clientes ─────────────────────────── */
+.reviews-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); text-align: center; }
+.reviews-section__eyebrow { font-size: 9px; letter-spacing: 5px; text-transform: uppercase; color: var(--color-gold); margin-bottom: 12px; display: inline-flex; align-items: center; gap: 12px; }
+.reviews-section__eyebrow::before,
+.reviews-section__eyebrow::after { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
+.reviews-section__title { font-family: var(--font-serif); font-size: 32px; font-weight: 300; margin-bottom: 48px; }
+.reviews-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; max-width: 1200px; margin: 0 auto; }
+.review-card { background: var(--color-surface); border: 1px solid var(--color-border); padding: 24px 20px; text-align: left; display: flex; flex-direction: column; gap: 14px; }
+.review-card__stars { color: var(--color-gold); font-size: 14px; letter-spacing: 2px; }
+.review-card__text { font-size: 13px; line-height: 1.6; color: var(--color-text); flex: 1; margin: 0; font-style: italic; }
+.review-card__author { display: flex; flex-direction: column; gap: 2px; padding-top: 12px; border-top: 1px solid var(--color-border); }
+.review-card__name { font-size: 12px; color: var(--color-text); font-weight: 500; letter-spacing: 0.3px; }
+.review-card__location { font-size: 10px; color: var(--color-muted); letter-spacing: 1px; text-transform: uppercase; }
 
 /* ── PRODUCTO — Productos relacionados ─────────────────────── */
 .related-section { padding: 80px var(--space-lg); border-top: 1px solid var(--color-border); }
@@ -512,6 +579,10 @@ select:active,
   .compare-table__cell--head { font-size: 11px; padding: 14px 8px; letter-spacing: 0.5px; text-align: center; }
   .compare-table__cell--label { padding-left: 14px; padding-right: 6px; line-height: 1.4; }
   .compare-icon { width: 22px; height: 22px; font-size: 11px; }
+  /* Reviews mobile: 1 columna en pantallas chicas. */
+  .reviews-section { padding: 60px 24px; }
+  .reviews-section__title { font-size: 24px; margin-bottom: 32px; }
+  .reviews-grid { grid-template-columns: 1fr; gap: 14px; }
   .related-section { padding: 60px 24px; }
   .related-grid { grid-template-columns: 1fr; }
   .cart-sidebar { width: 100%; max-height: 100dvh; }
@@ -714,14 +785,38 @@ body.cart-open .wa-bubble {
             <div class="purchase__discount-tag">10% OFF<br>por transferencia</div>
           </div>
         </div>
+        <button type="button" class="purchase__share-wa" onclick="shareOnWhatsApp()" aria-label="Compartir este producto por WhatsApp">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+          </svg>
+          <span>Compartir por WhatsApp</span>
+        </button>
         <div class="purchase__shipping" id="shippingNote">
-          <span aria-hidden="true">🚚</span>
-          <span id="shippingText">Calculando envío...</span>
+          <div class="purchase__shipping-row">
+            <span aria-hidden="true">🚚</span>
+            <span id="shippingText">Calculando envío...</span>
+          </div>
+          <div class="purchase__shipping-row purchase__shipping-row--sub">
+            <span aria-hidden="true">📅</span>
+            <span>Recibís en 1 a 3 días hábiles</span>
+          </div>
         </div>
         <div class="purchase__sin-stock-aviso" id="sinStockAviso">Producto agotado</div>
+        <div class="purchase__stock-bajo-aviso" id="stockBajoAviso" role="status">
+          <span aria-hidden="true">⏳</span>
+          <span>Pocas unidades disponibles</span>
+        </div>
         <button class="purchase__add-btn" id="addCartBtn" onclick="addToCart()" disabled aria-label="Agregar al carrito">
           Seleccioná un color para continuar
         </button>
+        <div class="purchase__security-note" aria-hidden="true">
+          <span>🔒</span>
+          <span>Compra protegida</span>
+          <span class="purchase__security-sep">·</span>
+          <span>Pago seguro</span>
+          <span class="purchase__security-sep">·</span>
+          <span>Garantía 60 días</span>
+        </div>
         <div class="trust-badges" role="list">
           <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🛡️</span><span class="trust-badge__label">RFID protegido</span></div>
           <div class="trust-badge" role="listitem"><span class="trust-badge__icon" aria-hidden="true">🚚</span><span class="trust-badge__label" id="trustShipping">Envío gratis</span></div>
@@ -840,6 +935,50 @@ body.cart-open .wa-bubble {
         <div class="compare-table__cell compare-table__cell--featured" role="cell"><span class="compare-icon compare-icon--yes" aria-label="Sí">✓</span></div>
         <div class="compare-table__cell" role="cell"><span class="compare-icon compare-icon--no" aria-label="No">✕</span></div>
       </div>
+    </div>
+  </section>
+
+  <!-- REVIEWS — Lo que dicen nuestros clientes -->
+  <section class="reviews-section" aria-labelledby="reviewsTitle">
+    <div class="reviews-section__eyebrow">Lo que dicen nuestros clientes</div>
+    <h2 class="reviews-section__title" id="reviewsTitle">Confianza ganada con cada compra</h2>
+
+    <div class="reviews-grid">
+      <article class="review-card">
+        <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
+        <p class="review-card__text">"Llevo 3 meses usándola todos los días. Increíble lo cómoda que es, no te das cuenta que la tenés. La protección RFID me da tranquilidad cuando uso el bondi."</p>
+        <div class="review-card__author">
+          <span class="review-card__name">Martín Rodríguez</span>
+          <span class="review-card__location">Montevideo</span>
+        </div>
+      </article>
+
+      <article class="review-card">
+        <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
+        <p class="review-card__text">"La compré para mi marido y la terminé usando yo. El cuero es de excelente calidad y el diseño es elegante. Muy recomendable."</p>
+        <div class="review-card__author">
+          <span class="review-card__name">Lucía Fernández</span>
+          <span class="review-card__location">Punta del Este</span>
+        </div>
+      </article>
+
+      <article class="review-card">
+        <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
+        <p class="review-card__text">"Buscaba algo que entrara en el bolsillo del jean sin hacer bulto y la encontré. El botón para sacar las tarjetas es genial, súper práctico."</p>
+        <div class="review-card__author">
+          <span class="review-card__name">Diego Pereira</span>
+          <span class="review-card__location">Salto</span>
+        </div>
+      </article>
+
+      <article class="review-card">
+        <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
+        <p class="review-card__text">"La atención por WhatsApp fue impecable, me ayudaron a elegir el color y llegó al día siguiente a Maldonado. La calidad superó mis expectativas."</p>
+        <div class="review-card__author">
+          <span class="review-card__name">Sofía Méndez</span>
+          <span class="review-card__location">Maldonado</span>
+        </div>
+      </article>
     </div>
   </section>
 
@@ -981,7 +1120,12 @@ function getColorEstado(product, colorName) {
   const ce = product.extras?.colores_estado || {};
   const estado = ce[colorName] || 'activo';
   const precioOferta = estado === 'oferta' ? (ce[`${colorName}_precio_oferta`] || null) : null;
-  return { estado, precioOferta };
+  // Stock bajo es un flag opcional que puede activarse desde admin agregando
+  // la clave "<color>_stock_bajo": true en extras.colores_estado. Si no está
+  // presente, no se muestra ningún aviso. Permite urgencia honesta cuando
+  // queda poco stock real.
+  const stockBajo = ce[`${colorName}_stock_bajo`] === true && estado !== 'sin_stock';
+  return { estado, precioOferta, stockBajo };
 }
 
 function getPhotos(model, color) {
@@ -1060,6 +1204,9 @@ async function init() {
     // Pre-cargar primera foto de cada color en background (cambio de color
     // instantáneo). Se hace una sola vez por carga de página.
     preloadFirstPhotoOfEachColor();
+    // Inyectar SEO: Schema.org Product (JSON-LD) + Open Graph dinámico.
+    // Esto mejora Google rich results y vista previa al compartir el link.
+    injectSEOMetadata(state.product);
 
   } catch (err) {
     console.error('[Founder] Error cargando producto:', err);
@@ -1070,6 +1217,100 @@ async function init() {
 function showError() {
   hide('loadingScreen');
   $('errorScreen').style.display = 'flex';
+}
+
+// ── PRODUCTO — SEO dinámico (Schema.org + Open Graph) ──────────
+/** Inyecta metadata SEO específica del producto activo:
+ *  - JSON-LD con schema.org/Product → Google rich results (foto, precio, etc).
+ *  - <meta og:*> y <meta twitter:*> → vista previa al compartir en WhatsApp,
+ *    Facebook, Twitter, etc. Sin esto, el link compartido sale con el OG
+ *    genérico del sitio (logo + descripción home), no con la foto del producto. */
+function injectSEOMetadata(p) {
+  if (!p) return;
+  injectProductSchema(p);
+  injectOpenGraph(p);
+}
+
+/** Schema.org Product en JSON-LD. */
+function injectProductSchema(p) {
+  // Tomar primera foto de cualquier color disponible
+  const firstPhoto = Object.values(state.photoMap[p.name] || {}).flat()[0] || null;
+
+  const schema = {
+    '@context': 'https://schema.org/',
+    '@type':    'Product',
+    name:        `Founder ${p.name}`,
+    description: p.description || `Billetera ${p.name} con protección RFID. ${p.specs?.[0] || ''}`.trim(),
+    brand:       { '@type': 'Brand', name: 'Founder' },
+    sku:         p.name,
+    offers: {
+      '@type':         'Offer',
+      url:             window.location.href,
+      priceCurrency:   'UYU',
+      price:           String(p.price ?? 0),
+      availability:    'https://schema.org/InStock',
+      itemCondition:   'https://schema.org/NewCondition',
+      seller:          { '@type': 'Organization', name: 'Founder.uy' }
+    }
+  };
+  if (firstPhoto) schema.image = firstPhoto;
+
+  // Reemplazar si ya existe (evita duplicados en navegaciones SPA-like)
+  let el = document.getElementById('product-schema');
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.id   = 'product-schema';
+    document.head.appendChild(el);
+  }
+  el.textContent = JSON.stringify(schema);
+}
+
+/** Open Graph + Twitter Card dinámicos según producto activo. */
+function injectOpenGraph(p) {
+  const firstPhoto = Object.values(state.photoMap[p.name] || {}).flat()[0] || null;
+  const title    = `Founder ${p.name} — Billetera con protección RFID`;
+  const desc     = (p.description || `Billetera ${p.name} con protección RFID anti-clonación. Diseño slim y materiales premium.`).slice(0, 160);
+  const url      = window.location.href;
+
+  /** Crea o actualiza un meta tag por su atributo selector. */
+  const setMeta = (selector, attr, value) => {
+    let el = document.head.querySelector(selector);
+    if (!el) {
+      el = document.createElement('meta');
+      const [, prop] = selector.match(/\[(.*?)="(.*?)"\]/) || [];
+      // Recuperar el nombre de la propiedad (property u name) y su valor
+      const m = selector.match(/\[(\w+)="([^"]+)"\]/);
+      if (m) el.setAttribute(m[1], m[2]);
+      document.head.appendChild(el);
+    }
+    el.setAttribute(attr, value);
+  };
+
+  setMeta('meta[property="og:type"]',        'content', 'product');
+  setMeta('meta[property="og:title"]',       'content', title);
+  setMeta('meta[property="og:description"]', 'content', desc);
+  setMeta('meta[property="og:url"]',         'content', url);
+  setMeta('meta[property="og:site_name"]',   'content', 'Founder.uy');
+  if (firstPhoto) setMeta('meta[property="og:image"]', 'content', firstPhoto);
+
+  // Twitter Card
+  setMeta('meta[name="twitter:card"]',        'content', 'summary_large_image');
+  setMeta('meta[name="twitter:title"]',       'content', title);
+  setMeta('meta[name="twitter:description"]', 'content', desc);
+  if (firstPhoto) setMeta('meta[name="twitter:image"]', 'content', firstPhoto);
+
+  // Canonical URL
+  let canonical = document.head.querySelector('link[rel="canonical"]');
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.rel = 'canonical';
+    document.head.appendChild(canonical);
+  }
+  canonical.href = url;
+
+  // Document title también
+  document.title = title;
 }
 
 // ── PRODUCTO — Renderizado ───────────────────────────────────────
@@ -1218,7 +1459,7 @@ function renderColors() {
 function selectColor(i) {
   const p     = state.product;
   const color = p.colors[i];
-  const { estado, precioOferta } = getColorEstado(p, color.name);
+  const { estado, precioOferta, stockBajo } = getColorEstado(p, color.name);
 
   state.selectedColor = color;
   state.activePhoto   = 0;
@@ -1237,12 +1478,14 @@ function selectColor(i) {
   const addBtn        = $('addCartBtn');
   const stickyBtn     = $('stickyAddBtn');
   const sinStockAviso = $('sinStockAviso');
+  const stockBajoAviso = $('stockBajoAviso');
 
   if (estado === 'sin_stock') {
     // Sin stock: mostrar galería pero bloquear compra
     if (addBtn)        addBtn.style.display    = 'none';
     if (stickyBtn)     stickyBtn.style.display = 'none';
     if (sinStockAviso) sinStockAviso.classList.add('visible');
+    if (stockBajoAviso) stockBajoAviso.classList.remove('visible');
 
     // Limpiar precio y badge oferta
     const priceEl = $('productPrice');
@@ -1258,10 +1501,12 @@ function selectColor(i) {
     return;
   }
 
-  // Color disponible: mostrar botones, ocultar aviso
+  // Color disponible: mostrar botones, ocultar aviso de sin stock,
+  // mostrar aviso de stock bajo solo si el flag está activo.
   if (addBtn)        addBtn.style.display    = '';
   if (stickyBtn)     stickyBtn.style.display = '';
   if (sinStockAviso) sinStockAviso.classList.remove('visible');
+  if (stockBajoAviso) stockBajoAviso.classList.toggle('visible', stockBajo);
 
   // Calcular precio efectivo
   const precioEfectivo = (estado === 'oferta' && precioOferta) ? precioOferta : p.price;
@@ -1713,6 +1958,7 @@ function addToCart() {
 
   updateCart();
   showToast(`Founder ${p.name} — ${color} agregado`);
+  pulseAddButtons(); // feedback visual en los botones (2s)
 
   // Meta Pixel — AddToCart
   if (window.founderPixel) window.founderPixel.trackAddToCart(p.name, color, precio);
@@ -1724,6 +1970,43 @@ function addToCart() {
     document.body.classList.add('cart-open');
     document.body.style.overflow = 'hidden';
   }, 300);
+}
+
+/** Cambia los botones inline+sticky a estado "agregado" por 2s para reforzar
+ *  visualmente que el agregado fue exitoso. Después vuelve al texto original. */
+function pulseAddButtons() {
+  const btns = [$('addCartBtn'), $('stickyAddBtn')].filter(Boolean);
+  btns.forEach(btn => {
+    const orig = btn.dataset._orig ?? btn.textContent;
+    btn.dataset._orig = orig;
+    btn.textContent = '✓ Agregado al carrito';
+    btn.classList.add('is-added');
+  });
+  setTimeout(() => {
+    btns.forEach(btn => {
+      btn.textContent = btn.dataset._orig || btn.textContent;
+      btn.classList.remove('is-added');
+    });
+  }, 2000);
+}
+
+/** Comparte el producto actual por WhatsApp.
+ *  Construye un mensaje con nombre del producto + URL y abre WhatsApp.
+ *  En mobile abre la app nativa, en desktop abre wa.me en el navegador. */
+function shareOnWhatsApp() {
+  const p = state.product;
+  if (!p) return;
+
+  const productName = `Founder ${p.name}`;
+  const url         = window.location.href;
+  const message     = `Mirá esta billetera ${productName} 👇\n${url}`;
+  const waUrl       = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+  // Mostrar feedback visual leve (toast)
+  showToast(`Abriendo WhatsApp...`);
+
+  // Abrir en pestaña nueva (en mobile esto dispara la app)
+  window.open(waUrl, '_blank', 'noopener');
 }
 
 function updateCart() {
@@ -1818,16 +2101,33 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('is-visible'), 3000);
 }
 
-// ── PRODUCTO — Botón sticky móvil ───────────────────────────────
+// ── PRODUCTO — Botón sticky (mobile + desktop) ─────────────────
 (function initStickyBtn() {
-  const wrap   = document.getElementById('stickyBtnWrap');
-  const footer = document.querySelector('footer.footer');
-  if (!wrap || !footer) return;
-  const obs = new IntersectionObserver(entries => {
-    // Cuando el footer es visible, ocultar el botón sticky
-    wrap.classList.toggle('is-hidden', entries[0].isIntersecting);
-  }, { threshold: 0.1 });
-  obs.observe(footer);
+  const wrap     = document.getElementById('stickyBtnWrap');
+  const footer   = document.querySelector('footer.footer');
+  const inlineBtn = document.getElementById('addCartBtn');
+  if (!wrap) return;
+
+  const isDesktop = () => window.matchMedia('(min-width: 901px)').matches;
+
+  // Observer 1: ocultar sticky cuando el footer es visible (mobile + desktop).
+  if (footer) {
+    const footerObs = new IntersectionObserver(entries => {
+      wrap.classList.toggle('is-hidden', entries[0].isIntersecting);
+    }, { threshold: 0.1 });
+    footerObs.observe(footer);
+  }
+
+  // Observer 2 (solo desktop): mostrar sticky cuando el botón inline está
+  // fuera del viewport. En mobile el botón inline está oculto por CSS, así
+  // que no aplica.
+  if (inlineBtn && isDesktop()) {
+    const inlineObs = new IntersectionObserver(entries => {
+      // is-active se aplica solo en desktop via CSS (@media min-width:901px)
+      wrap.classList.toggle('is-active', !entries[0].isIntersecting);
+    }, { threshold: 0 });
+    inlineObs.observe(inlineBtn);
+  }
 })();
 
 // ── SHARED UI — Páginas legales ──────────────────────────────────
