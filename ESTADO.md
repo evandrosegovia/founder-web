@@ -1,7 +1,7 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 21 — cierre (27/04/2026)
-**Próxima sesión:** 22 — Sitio en estado óptimo de UX y performance (PageSpeed 94/100). Prioridades para Sesión 22: arrancar primera campaña paga de Meta Ads, limpieza de pedidos de prueba, pendientes menores de Meta (renombrar dataset/Ad Account, Instagram email), o nuevas direcciones de producto (Mercado Pago integrado, email transaccional, mejoras UX en otras páginas).
+**Última actualización:** Sesión 22 — cierre (27/04/2026)
+**Próxima sesión:** 23 — Cerrar testing real de Mercado Pago (necesita acceso a la cuenta de MP de la esposa). Después: definir datos bancarios reales para email de transferencia, primera campaña paga de Meta Ads, o explorar si conviene rediseñar el modal del index.html con dos CTAs equivalentes (decisión postergada de Sesión 22 con la idea de revisarla "en un tiempo").
 
 ---
 
@@ -9,18 +9,27 @@
 
 Pegale a Claude este mensaje al arrancar:
 
-> Leé `ESTADO.md` y retomamos después de Sesión 21. La Sesión 21 cerró 3
-> bloques: (1) feature `stock_bajo` en admin con checkbox por color
-> independiente del estado, (2) optimizaciones de carga inicial en
-> `index.html` — banner migrado de `products.banner_url` a
-> `site_settings.hero_banner_url`, skeletons con shimmer dorado,
-> `fetchpriority` + preconnect a Supabase, (3) fixes de accesibilidad
-> WCAG (contraste del botón "Ver detalle" + jerarquía de headings).
-> Resultado: PageSpeed 94/100 verde. Para Sesión 22, decime opciones según
-> los pendientes que quedan abiertos: primera campaña paga de Meta Ads
-> (todo listo para arrancar), limpieza de pedidos de prueba, pendientes
-> menores de Meta, mejoras UX en otras páginas (index/contacto/etc), o
-> features nuevas (Mercado Pago integrado, email transaccional).
+> Leé `ESTADO.md` y retomamos después de Sesión 22. La Sesión 22 cerró 3
+> bloques grandes y 1 ajuste UX: (1) **Mercado Pago Checkout Pro integrado
+> end-to-end** — backend `api/_lib/mercadopago.js` + endpoint
+> `api/mp-webhook.js` con validación HMAC-SHA256, frontend con redirect a
+> MP y manejo de retorno success/pending/failure, 3 columnas nuevas en
+> `orders` + estado nuevo `'Pago rechazado'`. **Smoke test parcial OK**
+> (creación de preference + redirect + pedido en admin con `mp_preference_id`).
+> Falta cerrar tests reales con tarjetas de prueba (bloqueado: requiere
+> acceso a la cuenta de MP de la esposa). (2) **Email transaccional con
+> Resend** — dominio `founder.uy` verificado vía integración Vercel
+> (DNS automáticos), módulo `email.js` + 3 templates HTML (`email-templates.js`)
+> con paleta del sitio, disparo desde `checkout.js` (transferencia) y
+> `mp-webhook.js` (MP aprobado/pending). Botón "Ver estado del pedido"
+> en los 3 emails con auto-tracking por URL. Textos contextuales según
+> envío/retiro. **Validado en producción** (transferencia: email llega
+> OK con todos los detalles). (3) **Sistema de variantes en toasts** —
+> verde para acciones positivas (agregar al carrito), rojo para
+> destructivas (eliminar del carrito) y errores de validación (checkout).
+> 18 llamadas a `showToast` clasificadas. (4) **Notas pendientes**:
+> datos bancarios reales (usuario los define), tests reales MP (esposa),
+> revisar UX del modal de index (postergado).
 
 ---
 
@@ -38,6 +47,340 @@ Pegale a Claude este mensaje al arrancar:
 | **5** — Hardening admin | ✅ Completa | Archivar + Eliminar pedidos desde UI con protecciones (ver Sesión 18) |
 | **6** — Polish UX producto.html | ✅ Completa | Galería, comparativa, reseñas, SEO, sticky CTA, share, mobile fixes (Sesión 20) |
 | **7** — Stock bajo + perf inicial | ✅ Completa | Checkbox stock bajo en admin, banner a `site_settings`, skeletons, fetchpriority, fixes WCAG (Sesión 21). PageSpeed 94/100 |
+| **8** — Mercado Pago integrado | 🟡 Casi completa | Código + DB + smoke test parcial OK. Faltan tests reales con tarjetas de prueba (bloqueado por acceso de la esposa). Sesión 22 |
+| **9** — Email transaccional | ✅ Completa | Resend integrado, 3 templates HTML profesionales, dominio `founder.uy` verificado, validado en producción (transferencia). Sesión 22 |
+| **10** — Sistema de variantes en toasts | ✅ Completa | Verde/rojo/blanco con CSS variants, 18 llamadas clasificadas. Sesión 22 |
+
+---
+
+## ✅ Lo que quedó funcionando en Sesión 22
+
+Sesión muy productiva — se cerraron 2 features grandes (MP + email
+transaccional) más 1 mejora UX (toasts con variantes de color). El
+catalizador del MP fue contar finalmente con tiempo dedicado para
+investigar la API REST de Mercado Pago Uruguay y validar que se podía
+hacer sin agregar dependencias nuevas (mismo patrón que `meta-capi.js`).
+
+### 🆕 Bloque 1 — Mercado Pago Checkout Pro (integración completa)
+
+**Decisión arquitectural clave:** se descartó el SDK oficial de MP
+(`mercadopago` npm) y se usó la API REST directa con `fetch`. Razones:
+(1) cero dependencias nuevas en `package.json`, (2) cold-start más
+rápido en Vercel Serverless, (3) consistencia con el patrón de
+`api/_lib/meta-capi.js` que ya hacía lo mismo con la Graph API.
+
+#### Cambios en Supabase (corridos PRIMERO antes del código)
+```sql
+-- 3 columnas nuevas en orders
+ALTER TABLE orders
+  ADD COLUMN IF NOT EXISTS mp_preference_id  TEXT,
+  ADD COLUMN IF NOT EXISTS mp_payment_id     TEXT,
+  ADD COLUMN IF NOT EXISTS mp_payment_status TEXT;
+
+-- 2 índices parciales para que el webhook busque rápido
+CREATE INDEX IF NOT EXISTS orders_mp_payment_id_idx
+  ON orders (mp_payment_id) WHERE mp_payment_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS orders_mp_preference_id_idx
+  ON orders (mp_preference_id) WHERE mp_preference_id IS NOT NULL;
+
+-- Constraint actualizado: agregado 'Pago rechazado' como 9° estado
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_estado_check;
+ALTER TABLE orders ADD CONSTRAINT orders_estado_check
+  CHECK (estado IN (
+    'Pendiente pago', 'Pendiente confirmación', 'Confirmado',
+    'En preparación', 'En camino', 'Listo para retirar',
+    'Entregado', 'Cancelado', 'Pago rechazado'
+  ));
+```
+
+#### Backend nuevo: `api/_lib/mercadopago.js` (~400 líneas)
+- `createPreference({order, items, shipping, discountAmount})` — crea
+  preference vía POST a `https://api.mercadopago.com/checkout/preferences`.
+  Soporta items con descuento aplicado al primer item, payer con email
+  + nombre + teléfono UY (area_code 598), `back_urls` apuntando a
+  `checkout.html?mp=<estado>&numero=<F######>`, `notification_url`
+  apuntando a `/api/mp-webhook?numero=...`, `auto_return=approved`,
+  `payment_methods.installments=12`, integración con Meta Pixel vía
+  `tracks: [{type: 'facebook_ad', values: {pixel_id: META_PIXEL_ID}}]`.
+- `getPayment(paymentId)` — GET a `/v1/payments/{id}` para conocer
+  status real (no viene en el body del webhook).
+- `verifyWebhookSignature(headers, dataId)` — valida firma HMAC-SHA256
+  según especificación MP: extrae `ts` y `v1` del header `x-signature`,
+  recalcula `HMAC-SHA256(MP_WEBHOOK_SECRET, "id:DATA_ID;request-id:REQ_ID;ts:TS;")`,
+  compara hex strings. Si falla retorna `false` (rechazo defensivo).
+- Helper privado `mpFetch()` con timeout de 8s + idempotencyKey
+  (`pref-{numero}`) para evitar duplicados en reintentos.
+
+#### Backend nuevo: `api/mp-webhook.js` (~310 líneas)
+- Endpoint POST que MP llama cuando hay cambios de estado de pago.
+- Flujo completo:
+  1. CORS preflight + GET handshake (200 OK con `{service: 'mp-webhook'}`).
+  2. Filtra `body.type === 'payment'` (otros tipos → 200 OK ignorados).
+  3. Extrae `payment_id` de `body.data.id` (con fallback a query params
+     para compatibilidad con IPN legacy).
+  4. **Valida firma HMAC** → si falla, 401 (MP reintenta).
+  5. `getPayment(paymentId)` para conocer status real.
+  6. Busca pedido en Supabase por `external_reference === order.numero`
+     (con fallback a `?numero=` query param defensivo).
+  7. Mapea `mp.status` → estado interno vía `STATUS_MAP`:
+     - `approved`/`authorized` → `'Pendiente confirmación'`
+     - `pending`/`in_process` → `'Pendiente pago'`
+     - `rejected` → `'Pago rechazado'`
+     - `cancelled`/`refunded`/`charged_back` → `'Cancelado'`
+  8. **Idempotencia**: si `order.mp_payment_id === paymentId && order.mp_payment_status === mpStatus`,
+     skip (mismo webhook reintentado).
+  9. **Defensa contra sobrescritura manual**: si el admin ya movió el
+     pedido a `'En preparación'`, `'En camino'`, etc., NO bajamos el
+     estado por un webhook tardío — solo actualizamos columnas mp_*.
+  10. UPDATE en `orders`.
+  11. **Eventos secundarios** (CAPI + emails) solo en transición nueva:
+      - Si `approved`/`authorized`: dispara CAPI Purchase (con dedup
+        vía `event_id = numero`) + email "Recibimos tu pago".
+      - Si `pending`/`in_process`: dispara email "Esperando tu pago".
+      - Todos con `Promise.race + timeout 3500ms` (fire-and-forget pattern).
+
+#### Backend modificado: `api/checkout.js`
+- Bifurcación según `cleanOrder.pago === 'Mercado Pago'`:
+  - **Si MP**: después de crear pedido, llama `createPreference()`,
+    guarda `mp_preference_id` en la orden y devuelve `init_point` al
+    frontend. Si MP falla devolvemos `502 mp_error`.
+  - **Si transferencia**: dispara CAPI + email Transfer en
+    `Promise.all([...])` con timeout 3500ms cada uno (paralelo, no
+    secuencial — más rápido que la versión anterior con CAPI solo).
+
+#### Frontend modificado: `components/founder-checkout.js` (+186 líneas)
+- Nuevo `parseMpReturn()` — detecta `?mp=success/pending/failure&numero=`
+  en URL al cargar la página.
+- Nuevo `handleMpReturn(mpReturn)` — dispatcher que maneja los 3 casos:
+  - `success`: muestra confirmación normal, limpia carrito, abre WhatsApp
+    (best-effort post-redirect).
+  - `pending`: pantalla específica con mensaje sobre Abitab/Redpagos,
+    NO limpia carrito, botón "Volver a la tienda".
+  - `failure`: pantalla de error con 2 botones (volver al checkout,
+    contactar WhatsApp), NO limpia carrito.
+- Nuevo `showMpStatusScreen()` — reescribe `#confirmScreen` con ícono,
+  título, msg y botones específicos por caso (no requiere HTML nuevo).
+- Modificado `processOrder()` — si la respuesta trae `init_point`,
+  guarda snapshot en sessionStorage, cierra waTab y redirige a MP.
+  Si no, mantiene flujo de transferencia idéntico al original.
+- **Estado inicial unificado**: ahora ambos métodos arrancan como
+  `'Pendiente pago'`. Antes MP iniciaba como `'Pendiente confirmación'`
+  asumiendo confirmación inmediata por WhatsApp; ahora el webhook
+  sube a `'Pendiente confirmación'` solo cuando MP aprueba.
+
+#### Frontend admin: `components/founder-admin.js` (+3 líneas) y `admin.html` (+1 línea)
+- 3 lugares actualizados con `'Pago rechazado'`:
+  - `estadoConfig` del gráfico de estados (con ícono ⚠️ rojo).
+  - `statusMap` del listado de pedidos (clase `status-cancelado`).
+  - `statusMap` interno de `viewOrder` (mismo).
+- Filtro nuevo en `admin.html` (botón "Pago rechazado" entre
+  "Entregados" y "Cancelados").
+- **Decisión consciente**: NO se agregó `'Pago rechazado'` al array
+  de botones de cambio manual (`'Pendiente pago','Pendiente confirmación','Confirmado','Entregado','Cancelado'`).
+  El estado lo asigna el webhook automáticamente, el admin solo lo VE
+  pero no lo asigna manualmente.
+
+#### Variables de entorno nuevas en Vercel
+- `MP_ACCESS_TOKEN` (NO Sensitive — patrón de Sesión 17 con CAPI)
+- `MP_WEBHOOK_SECRET` (NO Sensitive)
+- `MP_PUBLIC_KEY` (NO Sensitive — cargada pero no usada por backend
+  todavía; queda lista para Bricks si en el futuro queremos checkout
+  embebido)
+
+#### Setup en MP (panel)
+- App "Founder web" creada en https://www.mercadopago.com.uy/developers/panel
+- Tipo: Pagos online → CheckoutPro → Productos físicos
+- Webhook configurado en modo Prueba con URL `https://www.founder.uy/api/mp-webhook`
+- Eventos: solo "Pagos" (`payment`)
+- Modo Productivo también configurado con la misma URL
+
+#### Testing realizado
+- ✅ **Smoke test parcial**: pedido creado en Supabase con estado
+  `'Pendiente pago'`, `mp_preference_id` lleno, redirect a `init_point`
+  funciona, vuelve a `?mp=success/...` correctamente.
+- 🔒 **Tests reales pendientes** (necesitan acceso a cuenta MP de la
+  esposa): pago aprobado real con tarjeta de prueba, pago rechazado,
+  pago pendiente Abitab, validación end-to-end del webhook actualizando
+  el estado a `'Pendiente confirmación'` y disparando email + CAPI.
+
+### 🆕 Bloque 2 — Email transaccional con Resend
+
+**Decisión arquitectural clave:** se eligió Resend (vs SendGrid /
+Mailgun / Gmail SMTP) por (1) plan free generoso (3.000 mails/mes,
+100/día), (2) API REST simple (cero SDK), (3) integración nativa con
+Vercel para auto-configurar DNS, (4) dashboard claro para debugging.
+
+#### Setup
+- Cuenta Resend creada (free, sin tarjeta).
+- Dominio `founder.uy` agregado en Resend → región `sa-east-1` (São
+  Paulo, mejor latencia para Uruguay).
+- DNS auto-configurados vía integración Vercel (popup "Connect Resend"
+  → "Allow"): MX + SPF + DKIM. **Sin entrar a Net.uy** porque el
+  dominio está gestionado por Vercel. DMARC pendiente (recomendado
+  pero no obligatorio para arrancar).
+- API Key creada (`Sending access` permission, no `Full access` por
+  buena práctica de mínimo privilegio).
+- `RESEND_API_KEY` cargada en Vercel (NO Sensitive, mismo criterio).
+
+#### Backend nuevo: `api/_lib/email.js` (~180 líneas)
+- Wrapper liviano para Resend API. Patrón calcado de `meta-capi.js` y
+  `mercadopago.js`: `fetch` directo, timeout 5s, sin SDK.
+- 3 funciones públicas:
+  - `sendOrderConfirmationTransfer(order, items)`
+  - `sendOrderConfirmationMpApproved(order, items)`
+  - `sendOrderConfirmationMpPending(order, items)`
+- Helper privado `sendEmail({to, subject, html, type})` centraliza
+  logging + manejo de errores. Las 3 funciones públicas son simétricas.
+- Constantes: `FROM_EMAIL = 'Founder <info@founder.uy>'`, `REPLY_TO_EMAIL = 'info@founder.uy'`.
+- Si falta `RESEND_API_KEY`, retorna early con error claro pero NO
+  tira excepción — el caller decide qué hacer (ningún pedido falla
+  por culpa de un email no enviado).
+
+#### Backend nuevo: `api/_lib/email-templates.js` (~445 líneas)
+- 3 templates HTML para los 3 emails. Convenciones de email HTML:
+  - Layout con `<table>` (NO div+flex/grid — Outlook 2007-2019 no lo
+    soporta bien).
+  - CSS inline en cada elemento (Gmail filtra `<style>` en algunos
+    casos).
+  - Sin imágenes externas en V1 — logo en texto serif "FOUNDER".
+  - Width fijo 600px (estándar de email).
+  - Fuentes con fallback system: `Georgia` para serif, `Arial` para
+    sans-serif (Cormorant/Montserrat no cargan confiable en email
+    clients).
+- Paleta consistente con el sitio: `#141414` bg, `#222` surface,
+  `#f8f8f4` text, `#9a9a9a` muted, `#c9a96e` gold, `#2e2e2e` border.
+- Bloques reutilizables:
+  - `blockHeader()` — logo "FOUNDER" centrado.
+  - `blockItems(items, total, envio, descuento)` — tabla con productos
+    + líneas de descuento/envío + total.
+  - `blockTrackingButton(numero, email)` — CTA outline dorado "Ver
+    estado del pedido" linkeado a
+    `seguimiento.html?pedido=...&email=...` (auto-llena formulario
+    vía `founder-seguimiento.js initFromUrlParams`).
+  - `blockFooter()` — WhatsApp CTA + redes + mensaje legal mínimo.
+  - `wrapEmail(inner, previewText)` — table externa de 600px.
+- Templates específicos por escenario:
+  - **Transferencia**: hero "Gracias por tu pedido", bloque "Cómo
+    transferir" con CTA "Pedir datos por WhatsApp" pre-armado, detalle
+    del pedido, bloque "Bonificación 10%" con sub-mensaje contextual
+    según envío/retiro ("Una vez confirmemos tu transferencia, te
+    avisamos cuando esté en camino" / "...listo para retirar").
+  - **MP Aprobado**: hero "Recibimos tu pago" con check verde, mensaje
+    contextual envío/retiro ("código de seguimiento del envío" /
+    "esté listo para retirar en zona Prado, Montevideo"), bloque
+    "Próximos pasos" con ícono dinámico (📦 envío / 📍 retiro).
+  - **MP Pendiente**: hero "Tu pedido está reservado", bloque
+    "Importante" con timeline (3 días hábiles para pagar Abitab/Redpagos),
+    bloque "¿Perdiste el cupón de pago?" con CTA WhatsApp.
+
+#### Disparo de emails (modificaciones)
+- `api/checkout.js` — disparo en paralelo con CAPI cuando es
+  transferencia (`Promise.all` con timeout 3500ms cada uno).
+- `api/mp-webhook.js` — disparo según el `mpStatus`:
+  - `approved`/`authorized` → email Aprobado + CAPI Purchase
+  - `pending`/`in_process` → email Pendiente (sin CAPI)
+  - Otros → no dispara emails (rechazado, cancelado).
+  - Solo en **transición nueva** (no en reintentos del webhook).
+
+#### Validación en producción
+- ✅ **Email de transferencia validado**: usuario hizo pedido real,
+  email llegó a su inbox (no spam) sin retraso, se renderiza
+  perfecto en Gmail desktop, todos los campos correctos (nombre,
+  número de pedido, items, total, datos de entrega/retiro).
+
+### 🆕 Bloque 3 — Sistema de variantes en toasts (verde/rojo/blanco)
+
+**Decisión UX clave:** consistencia visual cross-página. El usuario
+percibe el sitio entero comunicando con un solo lenguaje:
+- ⚪ Blanco (default) → info neutral o validación suave
+- 🟢 Verde (`success`) → acciones positivas (agregar al carrito)
+- 🔴 Rojo (`error`) → destructivas o errores (eliminar, validación de
+  formulario, error de red)
+
+#### CSS en 3 archivos (HTML)
+```css
+.toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast--success { background: var(--color-success); color: #fff; }
+.toast--error   { background: var(--color-danger);  color: #fff; }
+```
+- `--color-success: #4caf82` y `--color-danger: #ff3b30` ya existían
+  en las 3 páginas (`index.html`, `producto.html`, `checkout.html`).
+- 3 archivos modificados con CSS idéntico (consistencia visual).
+
+#### Función `showToast` con 2° parámetro opcional (3 archivos JS)
+```js
+function showToast(msg, variant) {
+  // ... limpia clases anteriores
+  if (variant === 'success') t.classList.add('toast--success');
+  else if (variant === 'error') t.classList.add('toast--error');
+  // ...
+}
+```
+- **Retrocompatible**: las llamadas viejas (`showToast('msg')` sin
+  segundo parámetro) siguen funcionando como blanco neutro.
+- Implementada en `index.html`, `producto.html`, `components/founder-checkout.js`.
+
+#### Aplicación de variantes en 18 llamadas
+- 🟢 **4 success**: agregados al carrito en index.html (1) y
+  producto.html (1) + 2 en producto.html.
+- 🔴 **13 error**: 4 al eliminar productos (`removeItem` y `changeQty`
+  cuando llega a 0 en index/producto, mostrando "✕ Founder X removido
+  del carrito") + 11 errores de validación/red en checkout (validaciones
+  de formulario, error de red, errores de cupón, error reenvío).
+- ⚪ **3 default**: validaciones suaves ("Seleccioná un color", "Este
+  color está agotado") + info ("Abriendo WhatsApp...").
+
+#### Feature nueva: toast al eliminar
+Antes el `removeItem(idx)` y el `changeQty(idx, -1)` cuando llegaba a
+0 NO mostraban feedback visual. Ahora ambos disparan toast rojo con
+el nombre del producto eliminado: "✕ Founder Confort removido del
+carrito".
+
+### 📝 Otros ajustes UX en Sesión 22
+
+- **Botón "Ver estado del pedido" en los 3 emails** — outline dorado,
+  link a `seguimiento.html?pedido=...&email=...` que auto-rellena y
+  dispara la búsqueda. Aprovecha la utilidad `initFromUrlParams` que
+  ya existía en `founder-seguimiento.js` desde Sesión 14.
+- **Textos contextuales por entrega/retiro en los 3 templates** — se
+  detectó que decir "te avisamos cuando esté en camino" generaba
+  confusión cuando el cliente había elegido retiro. Ahora cada template
+  bifurca con `entrega.includes('env')` para mostrar mensaje correcto.
+- **Iteración sobre el modal de index.html** — usuario detectó que el
+  CTA "Ver página completa →" en el modal del index podría ser
+  invisible para muchos visitantes, perdiendo oportunidad de conversión.
+  Se evaluaron 3 opciones (eliminar modal, 2 botones equivalentes,
+  invertir jerarquía). **Decisión: postergar** — dejar como está y
+  revisar "en un tiempo". Cuando arranquen campañas pagas y haya datos
+  reales de comportamiento, decidir.
+
+### 📊 Validaciones automatizadas durante la sesión
+
+A lo largo de los cambios:
+- `node --check` sobre cada archivo JS → ejecutado >40 veces.
+- Validación de JS embebido en HTMLs (extraído con regex) → 4 archivos.
+- Conteo de imports vs exports → cada vez que se agregaba módulo nuevo.
+- Conteo de `showToast` por variante → al cierre.
+- Balance de tags HTML comparado contra original → al cierre (cero
+  regresiones).
+- Cross-check `onclick=` en checkout.html vs `window.X = X` exports
+  en founder-checkout.js → 10 onclicks ↔ 10 exports.
+- Validación end-to-end del flujo lógico (lectura del código) para
+  los 4 casos: transferencia, MP aprobado, MP pending, MP failure.
+
+### 🐛 Incidentes resueltos durante la sesión
+
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | Usuario reportó que el email mostraba envío $250 cuando el subtotal era >$2000 (debería ser gratis) | **Falso bug**: los previews de Claude tenían datos hardcodeados (`envio: 250` en el script de testing). El sistema productivo aplica bien la lógica `subtotalConDesc >= 2000 ? 0 : 250` en `calculateOrderTotals()`. El template solo renderiza, no calcula | Confirmado mirando un pedido real en admin. Re-generados los previews con datos coherentes (subtotal $2.490, envío 0, total $2.490) |
+| 2 | Confusión sobre dónde estaba el dominio `founder.uy` registrado | El usuario lo había comprado vía Vercel mismo (no Net.uy directo). Esto era una BUENA NOTICIA: integración Vercel↔Resend ahorró el paso de configurar DNS manualmente | Click en "Allow" en el popup "Connect Resend" de Vercel — DNS auto-configurados |
+| 3 | Decisión sobre flag "Sensitive" en variables de Vercel | Sesión 17 documentó bug en plan Hobby con Sensitive. No se sabía si seguía vigente | Decisión: **NO tildar** Sensitive — consistencia con `META_CAPI_TOKEN` y `ADMIN_PASSWORD` que funcionan así. Si en el futuro el plan Pro de Vercel resuelve esto y querés activarlo, se puede hacer en sesión dedicada |
+
+### Tareas técnicas adicionales en Sesión 22
+- Webhook MP configurado en modo Prueba **y también** modo Productivo
+  (misma URL, mismos eventos) — listo para cuando se cambien
+  credenciales.
+- Pendientes para Sesión 23 marcados explícitamente al cierre.
 
 ---
 
@@ -92,120 +435,45 @@ simplicidad, y no requerir parsing de JSONB.
 con productos+fotos, (3) no había hints de prioridad para el navegador.
 
 #### Bloque 2a — Banner migrado a `site_settings`
-- **SQL de migración:**
-  ```sql
-  INSERT INTO site_settings (key, value)
-  VALUES ('hero_banner_url', COALESCE(
-    (SELECT banner_url FROM products
-       WHERE activo = true AND banner_url IS NOT NULL AND banner_url <> ''
-       ORDER BY orden ASC LIMIT 1), ''))
-  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
-  ```
 - `supabase-client.js → fetchBannerUrl` ahora consulta
   `/site_settings?select=value&key=eq.hero_banner_url&limit=1` (mucho más
   liviana que traer `products` entero).
 - `founder-admin.js`: refactor completo del bloque banner. Eliminadas
   `getBannerProduct()` y la `persistBannerUrl()` legacy de 50+ líneas.
   La nueva `loadBanner()`/`persistBannerUrl()` usan `apiAdmin('get_setting')`
-  y `apiAdmin('set_setting')` (acciones que ya existían pero no se usaban).
-- `api/admin.js`: eliminado el campo legacy `banner_url` de `handleSaveProduct`
-  (ya no se persiste desde ahí).
-- **Columna `products.banner_url` se mantiene** como respaldo silencioso
-  (no estorba, no se lee, podría dropearse en sesión futura sin urgencia).
+  y `apiAdmin('set_setting')`.
+- `api/admin.js`: eliminado el campo legacy `banner_url` de `handleSaveProduct`.
 
 #### Bloque 2b — Eager loading + fetchpriority
 - **Banner del hero**: `fetchpriority="high"` + `decoding="async"` + fade-in
-  suave al cargar (`opacity 0 → CSS .5` con transition 350ms).
-- **Primeras 3 cards de productos**: `loading="eager"` + `fetchpriority="high"`
-  (above the fold en mobile/tablet/desktop).
+  suave (`opacity 0 → CSS .5` con transition 350ms).
+- **Primeras 3 cards de productos**: `loading="eager"` + `fetchpriority="high"`.
 - **Cards 4 en adelante**: siguen `loading="lazy"` + `fetchpriority="low"`.
 - **`<link rel="preconnect" href="https://qedwqbxuyhieznrqryhb.supabase.co" crossorigin>`**
   en el `<head>` para adelantar el handshake TLS (~100-200ms ganados).
-- En `init()`, el banner se separó del `Promise.all` — ahora se aplica
-  apenas resuelve, sin esperar a que terminen las queries de productos+fotos.
 
 #### Bloque 2c — Skeleton cards de carga
-- **3 skeleton cards** con shimmer dorado animado en lugar del texto
-  "Cargando productos…" plano.
-- CSS: `.product-skeleton`, `.product-skeleton__img`, `.product-skeleton__line`
-  con `@keyframes skeletonShimmer` (1.6s linear infinite).
-- Respeta `prefers-reduced-motion` → animación se desactiva para usuarios
-  sensibles al movimiento.
-- Atributos ARIA: `aria-busy="true"` + `aria-live="polite"` en el grid,
-  `aria-hidden="true"` en cada skeleton, `<span class="visually-hidden">Cargando productos…</span>`
-  para lectores de pantalla.
-- `renderProducts()` quita el `aria-busy` cuando llegan los datos.
+- **3 skeleton cards** con shimmer dorado animado en lugar del texto plano.
+- Respeta `prefers-reduced-motion`.
+- Atributos ARIA correctos.
 
-### 🛡️ Bloque 3 — Fixes de accesibilidad WCAG (detectados por PageSpeed)
+### 🛡️ Bloque 3 — Fixes de accesibilidad WCAG
 
 #### Fix 3a — Contraste del botón "Ver detalle de producto"
 - **Problema:** botón con `background: #c9a96e` (dorado) + `color: #ffffff`
-  (blanco) → ratio 2.2:1 (falla WCAG AA mínimo de 4.5:1 para texto chico).
+  (blanco) → ratio 2.2:1 (falla WCAG AA).
 - **Solución:** cambiado a `color: var(--color-bg)` (negro `#141414`)
-  → ratio ~8.5:1 (pasa AAA holgado, mantiene branding dorado).
-- 1 sola línea CSS modificada en `index.html`.
+  → ratio ~8.5:1 (pasa AAA).
 
 #### Fix 3b — Jerarquía de headings semánticos
-- **Problema:** `<h1>` (hero) → `<h3>` (4× cards RFID) → `<h2>` (Nuestros
-  modelos) — saltaba de h1 a h3 y luego retrocedía a h2. PageSpeed lo
-  marcaba como error de navegación accesible.
 - **Solución:** agregado `<h2 class="visually-hidden">Características RFID</h2>`
-  al inicio de la sección RFID, justo antes de los 4 `<h3>`. La utility
-  `.visually-hidden` ya existía en CSS desde Bloque 2c.
-- Resultado: `h1 → h2 → h3 → h3 → h3 → h3 → h2 → ...` jerarquía limpia,
-  sin afectar el diseño visual.
+  al inicio de la sección RFID.
 
 ### 📊 Validación de resultados
 
 #### PageSpeed Insights — score final
 - **Performance: 94/100 (verde)** — top ~10% de sitios web.
 - Speed Index: 1.9s (verde, <3.4s).
-- Score más que aceptable para e-commerce con imágenes pesadas.
-
-#### Cosas que PageSpeed sugirió y NO atacamos (decisión consciente)
-- **"Mejora la entrega de imágenes" — Ahorro 5-6 MB en mobile**:
-  requiere Supabase Pro ($25/mes para Image Transformations) o CDN externo
-  (Cloudinary). Con score 94 y plan Free no se justifica hoy. Si arranca
-  campañas pagas y CR sufre, evaluar entonces.
-- **"Solicitudes de bloqueo de renderización — 1.930ms" (Google Fonts)**:
-  el `<link rel="stylesheet">` de fuentes es render-blocking. Solucionable
-  con patrón `media="print"` + `onload`, pero implicaría tocar 9 HTMLs.
-  Score actual ya es 94 — ganancia marginal no justifica el riesgo.
-- **"Cache headers en Supabase Storage"**: requiere config en bucket Supabase.
-  Ayudaría en visitas repetidas. Apuntado para sesión futura.
-- **"34 KB de JavaScript sin usar"**: probablemente parte de meta-pixel.js
-  / cart.js que no se ejecuta en index. Ganancia marginal — no se atacó.
-
-### 📝 Iteraciones de UI registradas durante la sesión
-
-- **Stock bajo — opción de mutua exclusión:** se evaluó si el checkbox
-  debía ser excluyente con "Agotado" o independiente. Decisión final:
-  **independiente**, porque el frontend (`getColorEstado` en `producto.html`,
-  línea 1229) ya tenía la lógica `stockBajo === true && estado !== 'sin_stock'`
-  desde Sesión 20 — si el admin marca "Agotado" + "Stock bajo", gana
-  "Agotado" automáticamente. Robusto a errores del admin sin lógica extra.
-- **Banner — preload estático vs dinámico:** se descartó `<link rel="preload">`
-  estático en el `<head>` porque la URL del banner es dinámica (la setea
-  el admin) y no hay render server-side. En su lugar, `preconnect` estático
-  + `fetchPriority='high'` + separación del `Promise.all` en `init()`.
-- **Skeleton — número de cards:** se eligieron 3 (no 4 ni 6) porque cubren
-  el primer paint en los 3 viewports (1 col mobile, 2 col tablet, 3 col
-  desktop) sin saturar el grid.
-
-### 🐛 Incidente resuelto durante la sesión
-
-| # | Síntoma | Causa raíz | Fix |
-|---|---|---|---|
-| 1 | Productos y banner dejaron de cargar tras subir los archivos de stock_bajo | El usuario subió los 4 archivos antes de correr el SQL `ALTER TABLE product_colors ADD COLUMN stock_bajo`. La query del frontend pedía una columna que aún no existía en Postgres → 400/500 error → todo fallaba | Correr el SQL pendiente en Supabase. Recuperación instantánea. **Lección registrada en Reglas Críticas: en cambios que tocan Supabase + código, SIEMPRE el SQL primero, después el código** |
-
-### Tareas técnicas adicionales
-- Eliminadas funciones huérfanas en `founder-admin.js`: `getBannerProduct()`,
-  `persistBannerUrl()` versión legacy. Verificado con `grep` que no hay
-  referencias rotas.
-- Sintaxis JS validada con `node --check` después de cada cambio (5 veces).
-- Balance de funciones color (defs vs window-exports vs onclicks) verificado
-  para los 6 callbacks: `setColorEstado`, `removeColorRow`, `onColorNameInput`,
-  `onPrecioOfertaInput`, `addColorRow`, `toggleStockBajo` — todos balanceados.
 
 ---
 
@@ -217,283 +485,20 @@ de ~1394 líneas a 2422 líneas (+1028) sumando galería interactiva, sección
 comparativa, sección de reseñas con carrusel mobile, SEO dinámico, sticky CTA
 inteligente, integración con burbuja WhatsApp, y un fix crítico de iOS.
 
-### 🎨 Bloque 1 — Galería de fotos producto.html (5 mejoras)
+[Detalle completo en versiones anteriores de ESTADO.md — resumido para legibilidad]
 
-#### 1. Ajuste de imagen principal desktop (Opción A aplicada)
-- `.product-main`: `padding-top` de `40px` a `20px`.
-- `.gallery`: `top` sticky de `70px` a `76px`.
-- Resultado: thumbnails respiran mejor en laptops 13-14". Usuario validó OK.
-
-#### 2. Autoplay del carrusel de fotos
-- Constante `AUTOPLAY` con `INTERVAL_MS: 4000`, `PAUSE_AFTER_CLICK: 12000`,
-  `MAX_CYCLES: 3`.
-- Funciones nuevas: `startPhotoAutoplay`, `stopPhotoAutoplay`,
-  `pausePhotoAutoplay`, `advancePhotoAutoplay`, `bindAutoplayEvents`,
-  `prefersReducedMotion`.
-- Pausa hover desktop, pausa 12s click manual, reset al cambiar color, respeta
-  `prefers-reduced-motion`, Page Visibility API, para tras 3 ciclos.
-
-#### 3. Zoom hover desktop
-- `transform: scale(1.5)` (originalmente 2x, bajado a pedido del usuario).
-- `transform-origin` dinámico siguiendo cursor con `requestAnimationFrame`
-  para batchear paints a 1 por frame.
-- Solo aplica en `@media (min-width: 901px)` — mobile usa pinch nativo.
-- Función `bindZoomEvents()` engancha listeners una sola vez.
-
-#### 4. Swipe touch mobile + flechas laterales
-- Touch listeners passive sobre `.gallery__main`.
-- Flechas circulares 32x32px (achicadas de 44px) con corrección óptica
-  del span interno (translateY -1px, translateX ±1px).
-- Funciones: `goToPrevPhoto`, `goToNextPhoto`, `currentPhotoCount`,
-  `updateArrowsVisibility`.
-
-#### 5. Lazy-loading inteligente
-- Foto activa: `loading="eager"` + `fetchpriority="high"`.
-- Fotos no activas: `loading="lazy"` + `fetchpriority="low"`.
-- `preloadFirstPhotoOfEachColor()` con `requestIdleCallback` (fallback
-  `setTimeout 800ms` para Safari iOS antiguo).
-
-### 📱 Bloque 2 — Mobile UX (3 ajustes)
-- Specs en 2 columnas (3+3) en mobile, gap 14px 12px.
-- Tabs sin scroll horizontal: `flex: 1`, padding 14px 8px, font-size 9px.
-- Espacio vacío reducido: `.product-info` padding-bottom 80→40px,
-  `.details-section` 60→32px.
-
-### 🛡️ Bloque 3 — Política Garantía 60d vs Cambios 7d (5 archivos)
-**Decisión clave:** separadas en 2 políticas distintas (corrigió error de
-unificación previa).
-- **Cambios 7 días, sin uso** (devolución por arrepentimiento).
-- **Garantía 60 días por defectos de fábrica** (NO cubre mal uso, desgaste,
-  accidentes).
-
-Archivos modificados con consistencia exacta:
-- `producto.html`: trust-badge "Garantía 60 días" con ✅ verde (cambiado de
-  🔒 al final de la sesión); 2 spec-cells separadas en tab Envíos.
-- `components/footer.js` + `checkout.html`: modal legal con 3 secciones.
-- `envios.html`: 2 info-cards separadas (Cambios + Garantía de fábrica).
-- `sobre-nosotros.html`: ítem combinado "Cambios y garantía".
-
-### 📊 Bloque 4 — Tabla comparativa Founder vs billetera tradicional
-- 8 puntos comparativos.
-- Item "Organización" con ✓ en ambas columnas (credibilidad — no decimos que
-  somos mejores en todo).
-- Variables CSS `--color-success` y `--color-muted`.
-- Tras feedback: max-width 880→720px, padding celdas 20→12px, íconos 28→24px
-  para hacer la sección más compacta.
-
-### 🛒 Bloque 5 — Fotos del carrito en todas las páginas
-**Decisión clave:** centralizado en `cart.js` (no duplicado en cada página).
-
-Cambios en `cart.js`:
-- `photoMap` privado, carga idempotente con `ensurePhotoMap()`.
-- Helper `window.founderCart.getPhotoUrl(name, color)`.
-- Evento custom `founder-cart-photos-ready` para auto-update cuando llegan fotos.
-- Integrado en `bootPage()`.
-
-5 páginas modificadas con render condicional + onerror fallback al placeholder
-+ listener del evento. Casos especiales:
-- `contacto.html`: agregado `ensurePhotoMap()` manual (no usaba bootPage).
-- `sobre-nosotros.html`: agregada regla CSS `.cart-item__img` que faltaba.
-
-### 🎯 Bloque 6 — 9 mejoras finales en producto.html
-
-#### 1. Sticky CTA mobile + desktop coordinado
-- Mismo `<div id="stickyBtnWrap">` para ambos viewports.
-- Mobile: barra completa abajo con `padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px))`
-  para respetar el notch del iPhone.
-- Desktop: tarjeta abajo-derecha con `min-width: 320px; max-width: 480px`,
-  `padding: 20px` interno, botón con `padding: 20px` idéntico al inline.
-- IntersectionObserver del botón inline activa `.is-active` cuando inline sale
-  del viewport.
-- IntersectionObserver del footer activa `.is-hidden` cuando footer entra.
-
-#### 2. Lógica de stock bajo (preparada, no visible hoy)
-- Flag opcional `<color>_stock_bajo: true` en `extras.colores_estado` (admin).
-- Función `getColorEstado` extendida para devolver `stockBajo`.
-- Aviso dorado discreto "⏳ Pocas unidades disponibles" oculto por default.
-- Listo para activar desde admin sin cambios de código.
-
-#### 3. Texto de seguridad bajo el botón
-- "🔒 Compra protegida · Pago seguro" (originalmente tenía también "Garantía
-  60 días" pero se quitó tras detectar redundancia con el trust-badge).
-
-#### 4. Confirmación visual al agregar al carrito
-- `pulseAddButtons()` cambia el botón a verde + "✓ Agregado al carrito" 2s.
-- Funciona en inline + sticky simultáneamente.
-- Usa `dataset._orig` para guardar texto original (idempotente).
-
-#### 5. Política de envío en 2 líneas
-- "🚚 Envío $X UYU" / "Envío gratis"
-- "📅 Recibís en 1 a 3 días hábiles"
-
-#### 6. ~~FAQ~~ — saltado por decisión del usuario.
-
-#### 7. Reseñas con uruguayos inventados + carrusel mobile
-- 4 cards: Martín Rodríguez (Mvd), Lucía Fernández (PdE), Diego Pereira (Salto),
-  Sofía Méndez (Maldonado).
-- Desktop: grilla de 4 columnas.
-- Mobile: carrusel autoplay 4s con flechas + dots dorados, pausa 12s al click
-  manual, mismo patrón que carrusel de fotos.
-- Funciones: `setActiveReview`, `goToPrevReview`, `goToNextReview`,
-  `bindReviewsCarousel`, `start/stop/advanceReviewsAutoplay`.
-- Constante `REVIEWS_AUTOPLAY` con mismos parámetros que fotos.
-- Listener resize con debounce 200ms — si pasa a desktop, parar autoplay; si
-  pasa a mobile, arrancar.
-
-#### 8. Schema.org Product (JSON-LD)
-- Función `injectProductSchema(p)` inyecta `<script type="application/ld+json"
-  id="product-schema">` con name/description/brand/sku/image/offers
-  (priceCurrency: UYU, availability: InStock).
-- Idempotente: busca el script existente antes de crear nuevo.
-
-#### 9. Open Graph + Twitter Card dinámicos
-- Función `injectOpenGraph(p)` setea `og:type/title/description/url/site_name/image`
-  + Twitter Card + canonical link + `document.title`.
-- Helper `setMeta()` interno: crea o actualiza meta tags por selector.
-
-#### 10. Botón "Compartir" cerca del precio
-- Mensaje pre-armado: "Mirá esta billetera Founder X 👇 [URL]".
-- `shareOnWhatsApp()` con `window.open(waUrl, '_blank', 'noopener')`.
-- Iteraciones de posición:
-  1. Inicialmente al lado del precio (con SVG WhatsApp + texto "Compartir por
-     WhatsApp"). Look discreto outline gris.
-  2. Movido a fila propia arriba del CTA, alineado a la derecha.
-  3. Combinado en flex horizontal con la info de envío para eliminar espacio
-     muerto vertical (versión final).
-
-### 🔧 Bloque 7 — Coordinación burbuja WhatsApp + sticky CTA
-
-**Problema:** la burbuja de WhatsApp (esquina inferior derecha) se superponía
-con el sticky CTA cuando ambos estaban visibles.
-
-**Solución arquitectural:** 2 clases independientes en `<body>`:
-- `.has-sticky-cta` → eleva la burbuja
-- `.footer-visible` → oculta burbuja + sticky con fade
-
-```css
-body.has-sticky-cta .wa-bubble {
-  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-}
-@media (min-width: 901px) {
-  body.has-sticky-cta .wa-bubble { bottom: 130px; }
-}
-body.footer-visible .wa-bubble { opacity: 0; pointer-events: none; }
-```
-
-**Bug detectado y arreglado al cierre:** cuando el usuario volvía del footer
-hacia arriba, el sticky reaparecía con `.is-active` pero el body ya no tenía
-`.has-sticky-cta` (la había removido al entrar al footer). Resultado:
-superposición temporal hasta que el inline reentrara al viewport. Fix: en el
-footer observer, cuando `footerVisible=false` Y `wrap.classList.contains('is-active')`,
-agregar `.has-sticky-cta` al body de nuevo.
-
-### 🐛 Bloque 8 — Fix bug touch iOS Safari
-
-**Síntoma reportado:** al tocar la foto del producto y luego intentar
-scrollear, la página se trababa o se movía lateralmente. Bug solo en iOS.
-
-**Causa raíz:** los handlers de swipe usaban `passive: true` sin
-`touch-action` CSS. Safari iOS scrolleaba lateralmente la página entera al
-hacer swipe horizontal, y a veces el `touchend` no llegaba dejando el estado
-"trancado".
-
-**Solución multi-capa:**
-
-1. **CSS:** `touch-action: pan-y` en `.gallery__main`. Le dice al navegador
-   "este elemento solo permite scroll vertical nativo". El swipe horizontal
-   queda bloqueado a nivel sistema → no más rebote lateral.
-
-2. **JS:** reescritura de `bindSwipeEvents` con detección temprana de
-   dirección vía `touchmove`. Ahora hay 4 listeners coordinados:
-   - `touchstart`: registra inicio + activa timeout de seguridad (500ms).
-   - `touchmove`: clasifica dirección apenas el gesto supera 10px en
-     cualquier eje. La dirección se decide UNA vez y se queda fija.
-   - `touchend`: solo dispara cambio de foto si el gesto fue claramente
-     horizontal (>50px) y la dirección quedó como `'horizontal'`.
-   - `touchcancel`: resetea estado si iOS interrumpe (llamada,
-     notificación, etc).
-
-3. **Reset de seguridad por timeout:** si por algún motivo el `touchend` no
-   llega, a los 500ms se limpia el estado automáticamente. Previene que la
-   página se quede "trancada".
-
-4. **Estado interno con flag `active`:** coordinó los 4 handlers, así no
-   quedan estados zombies de touches anteriores.
-
-### 🧹 Bloque 9 — Revisión completa de código (cierre Sesión 20)
-
-Antes de cerrar, se hizo una auditoría exhaustiva de `producto.html`:
-
-#### Bugs encontrados y arreglados durante la auditoría
-1. **`</div>` huérfano al final del archivo**: cierre suelto entre `</script>`
-   y `</body>`. No causaba problema visible (navegador es indulgente) pero
-   violaba estructura HTML. **Arreglado.**
-2. **Variable JS muerta `priceRow`** en `selectColor`: declaraba
-   `const priceRow = $('productPriceRow')` pero el ID nunca existió ni se
-   usaba. **Arreglado.**
-3. **Selector CSS muerto `.sticky-add-btn:active`**: regla `:active` que
-   apuntaba a una clase inexistente. La clase real es `.purchase__add-btn`.
-   **Arreglado.**
-4. **Código duplicado en `injectOpenGraph`**: destructuring `const [, prop] = ...`
-   redundante con `const m = ...` siguiente. **Arreglado.**
-5. **Scrollbar fantasma en tabs desktop**: `.tabs { overflow-x: auto }`
-   provocaba que algunos navegadores Windows reservaran espacio para
-   scrollbar inexistente. **Arreglado** quitando `overflow-x: auto` (los 3
-   tabs entran perfectamente sin scroll).
-
-#### Validaciones que pasaron
-- ✅ Sintaxis JS (`node --check`): cero errores.
-- ✅ Balance de tags HTML: todos balanceados (body, section, div, button,
-  script, style, article).
-- ✅ IDs únicos: 44 declarados, 0 duplicados.
-- ✅ Referencias JS → DOM: todas las funciones `getElementById` apuntan a
-  IDs existentes (estáticos o creados dinámicamente).
-- ✅ Funciones JS sin uso: 58 funciones declaradas, todas con al menos una
-  invocación.
-- ✅ Carruseles (fotos + reviews): 16 funciones + 8 fields del state, todos
-  coherentes.
-- ✅ Sticky CTA + burbuja WA: lógica de `has-sticky-cta` y `footer-visible`
-  coordinada correctamente.
-- ✅ SEO: Schema.org Product + Open Graph + Twitter Card + canonical, todos
-  inyectados al cargar el producto.
-- ✅ Performance: 2 setInterval ↔ 2 clearInterval, 1 resize listener
-  debounceado, 2 IntersectionObservers limpios.
-- ✅ Garantía 60d vs Cambios 7d: separadas y consistentes.
-
-### Iteraciones de UI registradas durante la sesión
-
-Para evitar volver a discutir decisiones ya tomadas:
-
-- **Burbuja WhatsApp + sticky CTA:** el problema costó 4 iteraciones hasta
-  resolverse. Lección clave: las superposiciones en mobile requieren tener
-  en cuenta `env(safe-area-inset-bottom)` para iPhones modernos.
-- **Tamaño botón sticky desktop:** decisión final = idéntico al inline
-  (`padding: 20px`, font-size 11px, no más chico). Wrap con `min-width: 320px;
-  max-width: 480px`.
-- **Texto de seguridad bajo botón:** decisión final = "🔒 Compra protegida ·
-  Pago seguro" (sin "Garantía 60 días" para no repetir el trust-badge).
-- **Trust-badge garantía:** ícono ✅ verde (no 🔒 candado).
-- **Botón Compartir:** outline gris discreto (no verde sólido WhatsApp). Texto
-  solo "Compartir". Posición final: en la misma fila que el shipping note
-  (flex horizontal, shipping a izquierda + botón a derecha).
-- **Reseñas mobile:** carrusel con flechas + dots + autoplay 4s + pausa 12s
-  click manual (mismo patrón que fotos).
-- **Sticky mobile:** barra completa abajo (no tarjeta compacta).
-
-### Validaciones automatizadas durante la sesión
-
-A lo largo de las ~30 iteraciones de cambios:
-- `node --check` extrayendo el JS inline con awk → ejecutado >25 veces.
-- Conteos de funciones (def vs invocaciones) con grep → >15 veces.
-- Verificación de IDs únicos → al cierre.
-- Balance de tags HTML → al cierre (encontró el `</div>` huérfano).
-- Análisis de clases CSS huérfanas → al cierre (encontró `.sticky-add-btn`).
-
-### Deploys a producción
-
-Múltiples commits durante la sesión, todos validados manualmente por el
-usuario en producción tras cada deploy (~1-2 min en Vercel). El usuario
-confirmó cada feature antes de pasar a la siguiente.
+- 🎨 **Bloque 1**: Galería de fotos producto.html — autoplay 4s, zoom hover desktop,
+  swipe mobile + flechas laterales, lazy-loading inteligente.
+- 📱 **Bloque 2**: Mobile UX — specs en 2 columnas, tabs sin scroll, espacio reducido.
+- 🛡️ **Bloque 3**: Política Garantía 60d vs Cambios 7d separadas en 5 archivos.
+- 📊 **Bloque 4**: Tabla comparativa Founder vs billetera tradicional.
+- 🛒 **Bloque 5**: Fotos del carrito centralizadas en cart.js (5 páginas).
+- 🎯 **Bloque 6**: 9 mejoras finales — sticky CTA mobile+desktop, lógica de stock
+  bajo (preparada), texto seguridad, confirmación visual, política de envío 2 líneas,
+  reseñas con carrusel, Schema.org, OG/Twitter dinámicos, botón Compartir WhatsApp.
+- 🔧 **Bloque 7**: Coordinación burbuja WhatsApp + sticky CTA via 2 clases body.
+- 🐛 **Bloque 8**: Fix bug touch iOS Safari (`touch-action: pan-y` + 4 listeners).
+- 🧹 **Bloque 9**: Revisión completa con 5 bugs encontrados y arreglados.
 
 ---
 
@@ -501,98 +506,25 @@ confirmó cada feature antes de pasar a la siguiente.
 
 Sesión corta, enfocada en dos bugs reportados por el usuario tras el uso real
 del sitio: **WhatsApp no abría automáticamente en iOS tras finalizar compra
-por transferencia** y **el header de `producto.html` estaba visualmente roto**
-(menú central sin estilos). Ambos resueltos con cambios limpios y modulares,
-sin parches.
+por transferencia** y **el header de `producto.html` estaba visualmente roto**.
 
 ### 🐛 Fix 1 — WhatsApp automático en iOS post-checkout
-
 **Causa raíz:** Safari iOS bloquea `window.open('url', '_blank')` si se llama
-después de un `await` (pierde el "gesto de usuario" que autoriza popups).
-En Chrome/Android no pasa. El flujo actual hacía `await apiCheckout(...)` y
-luego `window.open(wa.me/...)` — el await tarda 1-3s → iOS bloqueaba.
-
-**Solución:** patrón **pre-open + fallback** en `components/founder-checkout.js`:
-
-- Nuevo helper modular con 3 funciones:
-  - `preOpenWhatsAppTab()` → abre `about:blank` como placeholder ANTES del await.
-  - `openWhatsApp(tab, url)` → asigna la URL a la pestaña pre-abierta. Fallback
-    a `window.open` directo y finalmente a `window.location.href` si todo falla.
-  - `closeWhatsAppTab(tab)` → cierra el placeholder si el pedido falla.
-- `processOrder()`:
-  - Llama a `preOpenWhatsAppTab()` al arrancar (dentro del tap del usuario).
-  - 8 puntos de limpieza con `closeWhatsAppTab(waTab)` en los 7 returns de
-    validación + 2 returns post-fetch (error de red, error de API).
-  - En el happy path: `openWhatsApp(waTab, waUrl)` reemplaza al `window.open`.
-- `reenviarPedido()` **no tocada** (no tiene `await` antes del `window.open`,
-  funciona bien tal cual — principio: no refactorizar sin motivo).
+después de un `await`. Solución: patrón **pre-open + fallback** en
+`components/founder-checkout.js`.
 
 ### 🐛 Fix 2 — CSS del header roto en `producto.html`
-
-**Causa raíz:** desfasaje de nomenclatura. `components/header.js` inyecta HTML
-con clases BEM nuevas (`.nav`, `.nav__link`), pero el CSS de `producto.html`
-se quedó con las viejas (`.header__nav`, `.header__nav-link`, `.header__back`,
-`.header__right`). Las otras 8 páginas ya habían sido migradas en sesiones
-anteriores — solo `producto.html` quedó desfasada. Resultado visible: el menú
-central se renderizaba como texto plano sin espaciado ni tipografía correcta.
-
-**Solución:** alineación con `index.html` como fuente de verdad.
-
-- Reemplazado el bloque `/* SHARED — Header */` de `producto.html` con el
-  mismo CSS que usa `index.html` (verificado con diff).
-- Eliminadas selectores legacy inutilizados: `.header__back:active` del bloque
-  de `:active` unificado.
-- Eliminada `.header__nav-link`, `.header__right`, `.header__back` (ninguna
-  usada en HTML — solo CSS muerto).
-- Actualizada la regla responsive: `@media (max-width: 900px) { .nav { display: none; } }`
-  reemplaza a `.header__nav { display: none; }`.
+**Causa raíz:** desfasaje de nomenclatura (clases viejas `.header__nav*` vs
+nuevas `.nav*`). Reemplazado con CSS de `index.html` (fuente de verdad).
 
 ---
 
 ## ✅ Lo que quedó funcionando en Sesión 18
 
-La Sesión 18 se ejecutó en 3 frentes: **desbloqueo de la verificación de dominio** (crítico, estaba marcado como indefinido), **cierre de pendientes técnicos de código**, y **feature nueva de gestión de pedidos** (archivar/eliminar desde admin).
-
-### 🏆 Logro principal — Verificación de dominio en Meta
-
-**El "bloqueo" de Sesión 17 era un bug del navegador, no de Meta.**
-
-- El validador "Add domain" de Meta rechazaba `founder.uy` / `www.founder.uy` con
-  error *"Confirm your domain is correctly formatted"* cuando se usaba **Opera**.
-- En **Google Chrome**, el mismo formulario acepta el dominio sin problemas.
-- Se agregó `www.founder.uy` en Meta Business Settings → Dominios.
-- Meta generó una metaetiqueta única:
-  ```
-  <meta name="facebook-domain-verification" content="6qpwim4axainj6z7q5d06778d8qsxd">
-  ```
-- La metaetiqueta se insertó en el `<head>` de **los 9 HTML del sitio**.
-- Resultado: Meta confirmó **"Verified"** tras clic en "Verify domain".
-
-**Impacto:** desbloquea AEM (Aggregated Event Measurement) para optimización de
-eventos en iOS 14.5+ cuando se arranquen campañas pagas.
-
-### 🆕 Feature — Sistema archivar/eliminar pedidos (Fase 5)
-
-**Arquitectura:** soft delete reversible + hard delete con doble confirmación.
-
-#### Cambios en Supabase
-- Nueva columna `archivado boolean not null default false` en `orders`.
-- Índice parcial `orders_archivado_idx on orders (archivado) where archivado = false`.
-
-#### `api/admin.js` — 3 actions nuevas
-- `archive_order` — soft delete (update `archivado=true`), reversible.
-- `unarchive_order` — restaurar.
-- `delete_order` — DELETE definitivo. Requiere `body.confirm === true`.
-- `list_orders` extendido con `body.include_archived` (`'only'`/`'all'`/default).
-
-#### `components/founder-admin.js` — vista archivados + 3 funciones
-- `state.currentView = 'active' | 'archived'`.
-- Botones condicionales por vista (Archivar/Eliminar en activos vs Desarchivar/Eliminar en archivados).
-- `deleteOrder` con doble confirmación: confirm + prompt pidiendo el número exacto.
-
-### Tareas técnicas adicionales
-- `"type": "module"` en `package.json` (elimina warning ESM→CommonJS).
-- Eliminado `api/supabase.js` duplicado (era idéntico a `api/_lib/supabase.js`).
+3 frentes: **desbloqueo de la verificación de dominio en Meta** (era bug de
+Opera, no de Meta — usar Chrome), **cierre de pendientes técnicos**, y
+**feature nueva de gestión de pedidos** (archivar/eliminar desde admin con
+soft delete reversible + hard delete con doble confirmación).
 
 ---
 
@@ -600,62 +532,39 @@ eventos en iOS 14.5+ cuando se arranquen campañas pagas.
 
 ### Dominio custom
 - `founder.uy` comprado y conectado a Vercel con SSL automático.
-- **Dominio principal**: `www.founder.uy` (con www).
-- `founder.uy` (sin www) → redirect 308 → `www.founder.uy`.
-- `founder-web-gules.vercel.app` → redirect 301 → `www.founder.uy`.
+- Redirects 308/301 desde `founder.uy` y `founder-web-gules.vercel.app`.
 
 ### Meta Business Portfolio
-- Business: `founder.uy`.
-- Facebook Page: `founder.uy.oficial` (ID `1058647090653828`).
-- Instagram Business: `@founder.uy` (ID `17841474091434639`).
-- Ad Account: `Publicidad FOUNDER` (ID `1653222205862527`).
+- Business: `founder.uy`. Page: `founder.uy.oficial`. Instagram: `@founder.uy`.
 - Pixel: `Founder Pixel` (ID `2898267450518541`).
 
 ### Meta Pixel + CAPI
-- `META_PIXEL_ID` y `META_CAPI_TOKEN` en Vercel env vars (sin flag Sensitive).
+- `META_PIXEL_ID` y `META_CAPI_TOKEN` en Vercel env vars.
 - `components/meta-pixel.js` (~230 líneas): wrapper oficial del Pixel.
 - `api/_lib/meta-capi.js` (~230 líneas): módulo CAPI con hasheado SHA-256.
-- `api/checkout.js` invoca `sendPurchaseEvent` con `await Promise.race` timeout 3s.
 - `event_id = order.numero` → Meta deduplica.
-- Test E2E F378204: 218ms desde invocación a confirmación de Meta.
 
 ---
 
 ## ✅ Lo que quedó funcionando en Sesión 16 (Fase 3C)
 
-- Incidente inicial: `/api/admin` 500 `"permission denied"` resuelto con
-  `grant all on public.<tabla> to service_role` sobre las 7 tablas.
 - Limpieza: eliminadas `SHEET_ID`, `APPS_SCRIPT_URL`, página "Conversor de
-  imágenes" del admin, 6 funciones del conversor en `founder-admin.js`,
-  `api/ping.js`.
-- Apps Script archivado, Google Sheet movido a archivo con backup `.xlsx`,
-  proyecto Google Cloud marcado para eliminación (~22/05/2026).
+  imágenes" del admin, `api/ping.js`. Apps Script archivado, Google Sheet
+  movido a archivo con backup `.xlsx`.
 
 ---
 
 ## ✅ Lo que quedó funcionando en Sesión 15 (Fase 3B)
 
 - `components/founder-admin.js` — IIFE, expone 37 funciones a `window`.
-- `admin.html` — 686 líneas tras Sesión 18.
 - Login valida contra `/api/admin` action `login`. Password en sessionStorage.
-- Pedidos, productos (con upload directo a Storage), cupones y banner todos
-  sobre `/api/admin`.
 
 ---
 
 ## ✅ Lo que quedó funcionando en Sesión 14 (Fase 3A)
 
 ### Infraestructura
-- Vercel Serverless Functions en `/api/*`:
-  - `/api/checkout` — validar cupón + crear pedido (atómico via RPC)
-  - `/api/seguimiento` — buscar pedido por número+email
-  - `/api/admin` — 17 acciones
-- Variables de entorno en Vercel:
-  - `SUPABASE_URL` ✅
-  - `SUPABASE_SERVICE_ROLE_KEY` (Sensitive) ✅
-  - `ADMIN_PASSWORD` = `nerito20` (Sensitive) ✅
-  - `META_PIXEL_ID` ✅ (agregada Sesión 17)
-  - `META_CAPI_TOKEN` ✅ (agregada Sesión 17)
+- Vercel Serverless Functions en `/api/*` (`/api/checkout`, `/api/seguimiento`, `/api/admin`).
 - Storage bucket `product-photos` público.
 - RPC `apply_coupon_and_create_order(jsonb, jsonb, text)` — transacción atómica.
 
@@ -677,31 +586,34 @@ eventos en iOS 14.5+ cuando se arranquen campañas pagas.
 1. **`products`** — id, slug, nombre, precio, descripcion, especificaciones,
    capacidad, dimensiones, material, nota, lleva_billetes, lleva_monedas,
    banner_url, orden, activo, created_at, updated_at.
-   ⚠️ El campo `banner_url` quedó como **legacy silencioso** desde Sesión 21
-   — el banner ahora vive en `site_settings.hero_banner_url`. La columna se
-   mantiene como respaldo, no se lee desde frontend ni admin.
+   ⚠️ El campo `banner_url` quedó como **legacy silencioso** desde Sesión 21.
 2. **`product_colors`** — id, product_id, nombre, estado
    (check: `activo`/`sin_stock`/`oferta`), precio_oferta, **stock_bajo**
    (bool, default false — Sesión 21), orden, created_at.
 3. **`product_photos`** — id, color_id, url, orden, es_principal, created_at.
-4. **`orders`** — 23 columnas: id (uuid), numero (unique), fecha, nombre,
+4. **`orders`** — 26 columnas: id (uuid), numero (unique), fecha, nombre,
    apellido, celular, email, entrega, direccion, productos, subtotal, descuento,
    envio, total, pago, estado, notas, nro_seguimiento, url_seguimiento,
-   cupon_codigo, **archivado** (bool, default false), created_at, updated_at.
+   cupon_codigo, archivado (bool, default false), **mp_preference_id** (Sesión 22),
+   **mp_payment_id** (Sesión 22), **mp_payment_status** (Sesión 22), created_at,
+   updated_at.
 5. **`order_items`** — id, order_id (FK cascade), product_name, color,
    cantidad, precio_unitario.
 6. **`coupons`** — id, codigo (unique), tipo, valor, uso, min_compra, activo,
    usos_count, emails_usados (text[]), desde, hasta, created_at.
 7. **`site_settings`** — key (PK), value, updated_at.
-   Keys actuales: `hero_banner_url` (Sesión 21) — URL del banner del hero.
+   Keys actuales: `hero_banner_url` (Sesión 21).
 
 ### Constraints CHECK en `orders`
 - `orders_entrega_check` → `entrega IN ('Envío','Retiro')`
 - `orders_pago_check` → `pago IN ('Mercado Pago','Transferencia')`
-- `orders_estado_check` → `estado IN ('Pendiente pago','Pendiente confirmación','Confirmado','En preparación','En camino','Listo para retirar','Entregado','Cancelado')`
+- `orders_estado_check` → `estado IN ('Pendiente pago','Pendiente confirmación','Confirmado','En preparación','En camino','Listo para retirar','Entregado','Cancelado','Pago rechazado')` ← actualizado en Sesión 22
+
+### Índices nuevos en Sesión 22
+- `orders_mp_payment_id_idx` (parcial: `WHERE mp_payment_id IS NOT NULL`)
+- `orders_mp_preference_id_idx` (parcial: `WHERE mp_preference_id IS NOT NULL`)
 
 ### Permisos
-
 | Tabla | anon | authenticated | service_role |
 |---|---|---|---|
 | `products` | SELECT (RLS) | SELECT (RLS) | **ALL** ✅ |
@@ -712,41 +624,41 @@ eventos en iOS 14.5+ cuando se arranquen campañas pagas.
 | `order_items` | ❌ | ❌ | ALL |
 | `coupons` | ❌ | ❌ | ALL |
 
-⚠️ En las 3 primeras tablas del catálogo `service_role` NECESITA `ALL` explícito,
-aunque solo usemos RLS para `anon`/`authenticated`. PostgreSQL requiere GRANT +
-policy — `service_role` bypassea RLS pero NO bypassea GRANTs de tabla.
-
 ---
 
 ## 📂 Archivos del proyecto (estructura actual en GitHub)
 
 ```
 founder-web/
-├── index.html                     ✅ (Sesión 21: skeletons + fetchpriority + WCAG fixes)
-├── producto.html                  ✅ (2422 líneas — Sesión 20: bloque masivo de UX)
-├── checkout.html                  ✅ (Sesión 20: política garantía/cambios separada)
+├── index.html                     ✅ (Sesión 22: toasts con variantes verde/rojo)
+├── producto.html                  ✅ (2446 líneas — Sesión 22: toasts variantes + toast eliminar)
+├── checkout.html                  ✅ (Sesión 22: CSS variantes toast)
 ├── seguimiento.html               ✅
-├── admin.html                     ✅ (686 líneas — Sesión 21: CSS botón stock bajo)
-├── contacto.html                  ✅ (Sesión 20: fotos del carrito)
-├── sobre-nosotros.html            ✅ (Sesión 20: política + fotos del carrito)
-├── envios.html                    ✅ (Sesión 20: 2 info-cards garantía + cambios)
-├── tecnologia-rfid.html           ✅ (Sesión 20: fotos del carrito)
+├── admin.html                     ✅ (Sesión 22: filtro Pago rechazado)
+├── contacto.html                  ✅
+├── sobre-nosotros.html            ✅
+├── envios.html                    ✅
+├── tecnologia-rfid.html           ✅
 ├── components/
 │   ├── header.js                  ✅
-│   ├── footer.js                  ✅ (Sesión 20: modal legal con 3 secciones)
-│   ├── cart.js                    ✅ (Sesión 20: photoMap centralizado + evento)
-│   ├── supabase-client.js         ✅ (Sesión 21: stock_bajo + banner desde site_settings)
+│   ├── footer.js                  ✅
+│   ├── cart.js                    ✅
+│   ├── supabase-client.js         ✅
 │   ├── meta-pixel.js              ✅
-│   ├── founder-checkout.js        ✅
+│   ├── founder-checkout.js        ✅ (~910 líneas — Sesión 22: MP redirect/return + toasts variantes)
 │   ├── founder-seguimiento.js     ✅
-│   └── founder-admin.js           ✅ (~1765 líneas — Sesión 21: stock_bajo + banner refactor)
+│   └── founder-admin.js           ✅ (~1769 líneas — Sesión 22: estado Pago rechazado)
 ├── api/
 │   ├── _lib/
 │   │   ├── supabase.js            ✅
-│   │   └── meta-capi.js           ✅
-│   ├── checkout.js                ✅
+│   │   ├── meta-capi.js           ✅
+│   │   ├── mercadopago.js         ✅ (Sesión 22: NUEVO — wrapper REST API MP)
+│   │   ├── email.js               ✅ (Sesión 22: NUEVO — wrapper Resend)
+│   │   └── email-templates.js     ✅ (Sesión 22: NUEVO — 3 templates HTML)
+│   ├── checkout.js                ✅ (Sesión 22: bifurcación MP + email transfer paralelo)
 │   ├── seguimiento.js             ✅
-│   └── admin.js                   ✅ (Sesión 21: stock_bajo en list/save_product)
+│   ├── admin.js                   ✅
+│   └── mp-webhook.js              ✅ (Sesión 22: NUEVO — webhook MP con HMAC + email + CAPI)
 ├── package.json                   ✅
 ├── vercel.json                    ✅
 ├── README.md                      ✅
@@ -757,25 +669,34 @@ founder-web/
 
 ## 🔧 API /api/admin — Acciones (17 totales)
 
+[Sin cambios desde Sesión 21 — ver versiones anteriores para detalle]
+
 | Categoría | Action | Qué hace |
 |---|---|---|
-| **Auth** | `login` | Valida password, devuelve 200 si es correcto |
-| **Pedidos** | `list_orders` | Lista con filtro `include_archived` |
-| | `update_order_status` | Cambia `orders.estado` |
-| | `update_order_tracking` | Guarda nro_seguimiento + url_seguimiento |
-| | `archive_order` | Soft delete (archivado=true). Reversible |
-| | `unarchive_order` | Restaurar (archivado=false) |
-| | `delete_order` | DELETE definitivo. Requiere `body.confirm=true` |
-| **Cupones** | `list_coupons` | Lista todos |
-| | `create_coupon` | Alta |
-| | `update_coupon` | Toggle activo + editar |
-| | `delete_coupon` | Elimina |
-| **Productos** | `list_products` | Lista con colores y fotos |
-| | `save_product` | Upsert (producto + colores + fotos) |
-| | `delete_product` | Elimina con cascada |
-| **Settings** | `get_setting` | Lee `site_settings[key]` |
-| | `set_setting` | Escribe `site_settings[key]` |
-| **Storage** | `get_upload_url` | Genera signed URL para upload directo al bucket |
+| **Auth** | `login` | Valida password |
+| **Pedidos** | `list_orders`, `update_order_status`, `update_order_tracking`, `archive_order`, `unarchive_order`, `delete_order` (con `body.confirm=true`) |
+| **Cupones** | `list_coupons`, `create_coupon`, `update_coupon`, `delete_coupon` |
+| **Productos** | `list_products`, `save_product`, `delete_product` |
+| **Settings** | `get_setting`, `set_setting` |
+| **Storage** | `get_upload_url` |
+
+---
+
+## 🔧 API /api/checkout — Acciones (2 totales)
+
+| Action | Qué hace |
+|---|---|
+| `validate_coupon` | Valida cupón sin registrarlo (read-only) |
+| `create_order` | Crea pedido + items + (si hay) registra uso de cupón en RPC atómica. Si `pago === 'Mercado Pago'` → adicionalmente crea preference de MP y devuelve `init_point`. Si transferencia → dispara CAPI + email Transfer en paralelo |
+
+---
+
+## 🔧 API /api/mp-webhook — endpoint de Mercado Pago (Sesión 22)
+
+| Acción | Detalle |
+|---|---|
+| **POST `/api/mp-webhook`** | Recibe avisos de cambios de estado de pago de MP. Valida firma HMAC-SHA256, busca pago en API MP, actualiza pedido en Supabase. En transición nueva: dispara CAPI Purchase (si aprobado) + email correspondiente (aprobado/pending) |
+| **GET `/api/mp-webhook`** | Health check. Devuelve `{ok: true, service: 'mp-webhook', method: 'POST'}` |
 
 ---
 
@@ -791,90 +712,113 @@ founder-web/
 - `checkout.html` y `admin.html` quedan excluidos del sistema de header/footer.
 - `service_role` NUNCA va al frontend.
 - **El `delete_order` del admin requiere DOBLE confirmación del usuario** +
-  backend valida `body.confirm === true`. Nunca eliminar esa defensa.
+  backend valida `body.confirm === true`.
 - **Nunca refactorizar producto.html sin antes correr los chequeos del Bloque 9
   de Sesión 20** (sintaxis JS, balance de divs, IDs únicos, CSS huérfano).
-  Ese archivo tiene >2400 líneas y muchas funciones interconectadas.
+
+### Reglas nuevas Sesión 22
+- **El estado `'Pago rechazado'` NO tiene botón manual en el admin** — lo
+  asigna SIEMPRE el webhook automáticamente al recibir `mpStatus === 'rejected'`.
+  Si querés agregarlo manualmente desde el admin, antes considerá si no
+  conviene `'Cancelado'` (que sí tiene botón).
+- **El webhook NUNCA sobrescribe estados manuales del admin**. Si el admin
+  movió un pedido a `'En preparación'`/`'En camino'`/etc., un webhook tardío
+  de MP NO baja el estado — solo actualiza columnas mp_*.
+- **Disparos secundarios (CAPI + emails) solo en transición nueva**. Detección
+  vía comparación de `mp_payment_id + mp_payment_status` previo. Esto
+  evita disparar 2 veces emails si MP reintenta el webhook.
+- **Patrón `Promise.race + timeout 3500ms`** para todos los fire-and-forget
+  desde funciones serverless de Vercel (CAPI, emails). Sin timeout, Vercel
+  mata el proceso al retornar y se pierde el evento.
 
 ### Reglas de base de datos
 - Cuando se cree una tabla o se active RLS, SIEMPRE emitir explícitamente
   `GRANT SELECT/ALL ... TO anon|authenticated|service_role`.
 - Los constraints CHECK de `orders` deben coincidir EXACTO con los strings
-  que manda el frontend.
-- `service_role` NO bypassea GRANTs de tabla — solo bypassea RLS.
-- Las 4 tablas privadas (`orders`, `order_items`, `coupons`, + parcialmente
-  `site_settings`) **SOLO se tocan vía `/api/*`**.
-- ⚠️ **Sesión 21 — orden crítico de despliegue**: cuando un cambio toca
-  Supabase (ALTER TABLE, INSERT en site_settings, etc.) Y código frontend
-  al mismo tiempo, SIEMPRE correr el SQL en Supabase **PRIMERO**, después
-  desplegar el código. Si se invierte el orden, el frontend pide columnas/
-  filas que aún no existen y falla en cascada (productos, banner, todo).
-  Recuperación es instantánea cuando se corre el SQL — pero el sitio queda
-  caído en el intermedio.
+  que manda el frontend (incluyendo `'Pago rechazado'` desde Sesión 22).
+- ⚠️ **Orden crítico de despliegue** (regla de Sesión 21): cuando un cambio
+  toca Supabase + código frontend al mismo tiempo, SIEMPRE correr el SQL
+  en Supabase **PRIMERO**. Si se invierte el orden, el frontend pide
+  columnas/filas que aún no existen y falla en cascada.
 
 ### Reglas de navegador
-- **Para probar cambios en paneles de Meta Business, usar Google Chrome**.
-  Opera tiene bugs de validación intermitentes.
+- **Para probar cambios en paneles de Meta Business, usar Google Chrome**
+  (Opera tiene bugs intermitentes).
 - **Para probar deploys en Vercel, hacer hard refresh (`Ctrl+F5`) o usar
   ventana incógnito**.
 
-### Reglas de UX (Sesión 20)
+### Reglas de UX (Sesión 20-22)
 - **Mobile fixes deben respetar `env(safe-area-inset-bottom)`** para iPhones
-  modernos. Cualquier elemento `position: fixed` cerca del borde inferior
-  necesita compensación del notch.
+  modernos.
 - **Touch handlers deben usar `touch-action: pan-y` en CSS** + clasificación
-  temprana de dirección en `touchmove`. Sin esto, iOS Safari rompe el scroll.
-- **Burbuja WhatsApp y sticky CTA se coordinan vía 2 clases en `<body>`**:
-  `.has-sticky-cta` (eleva burbuja) y `.footer-visible` (oculta ambos).
-  Sus observers son independientes y NO deben fusionarse.
+  temprana en `touchmove`.
+- **Burbuja WhatsApp y sticky CTA se coordinan vía 2 clases en `<body>`**
+  (`.has-sticky-cta`, `.footer-visible`) — observers independientes, NO
+  fusionar.
+- **Toasts respetan el sistema de variantes**: `success` (verde) para
+  positivas, `error` (rojo) para destructivas/errores, default (blanco)
+  para info neutral. Nuevas llamadas a `showToast` deben clasificar
+  explícitamente con la variante correcta.
 
 ---
 
 ## 🧪 Cómo probar todo lo que está hecho
 
-### Prueba end-to-end de compra
+### Prueba end-to-end de compra por transferencia
 1. Abrir https://www.founder.uy
 2. Agregar producto al carrito → checkout.
-3. Completar, confirmar pedido.
-4. Ver "🎉 ¡Pedido enviado!" con número `F######`.
-5. Verificar en Supabase Dashboard → Table Editor → `orders` + `order_items`.
+3. Completar formulario, elegir **Transferencia**, confirmar pedido.
+4. Verificar:
+   - ✅ Toast verde "Founder X — Color agregado" al agregar (Sesión 22)
+   - ✅ WhatsApp se abre con resumen
+   - ✅ Pantalla "🎉 ¡Pedido enviado!" con número `F######`
+   - ✅ Email llega a `info@founder.uy` con todos los detalles + botón
+     "Ver estado del pedido" (Sesión 22)
+   - ✅ Pedido en Supabase `orders` + `order_items` con estado `'Pendiente pago'`
 
-### Prueba de seguimiento
-Ir a `/seguimiento.html?pedido=F910752&email=test@prueba.com`.
+### Prueba end-to-end de compra por Mercado Pago (modo PRUEBA)
+> ⚠️ **Bloqueado actualmente**: requiere acceso a la cuenta de MP de la
+> esposa para usar tarjetas de prueba.
+
+1-3. Igual que transferencia pero elegir **Mercado Pago**.
+4. Sitio redirige a `https://www.mercadopago.com.uy/checkout/v1/...`.
+5. Pagar con tarjeta de prueba `5031 7557 3453 0604`, CVV `123`, vto `11/30`,
+   titular **APRO** (aprobado), **OTHE** (rechazado), **CONT** (pendiente).
+6. Verificar según el caso:
+   - 🟢 **Aprobado**: vuelve a `?mp=success`, ve confirmación, recibe
+     email "Recibimos tu pago", admin muestra estado `'Pendiente confirmación'`.
+   - 🟡 **Pendiente**: vuelve a `?mp=pending`, ve mensaje sobre Abitab,
+     recibe email "Tu pedido está esperando el pago", admin muestra
+     `'Pendiente pago'`.
+   - 🔴 **Rechazado**: vuelve a `?mp=failure`, ve error con botones,
+     admin muestra `'Pago rechazado'` (después del webhook).
+
+### Prueba de seguimiento (autocompletado por email)
+1. Click en el botón "Ver estado del pedido" en cualquier email recibido.
+2. Verificar:
+   - ✅ Abre `seguimiento.html` con `?pedido=F######&email=...` en URL.
+   - ✅ Formulario auto-rellenado con esos datos.
+   - ✅ Búsqueda dispara automáticamente.
+   - ✅ Se ve detalle del pedido + barra de progreso.
 
 ### Prueba de admin
-Entrar a `/admin.html` con password `nerito20`.
+- `/admin.html` con password `nerito20`.
+- Verificar nuevo filtro **"Pago rechazado"** en la fila de filtros (Sesión 22).
+- Verificar que en gráfico de "Estado de pedidos" aparece "⚠️ Pago rechazado"
+  con color rojo.
 
-### Prueba de mejoras UX producto.html (Sesión 20)
-**Desktop:**
-1. Abrir un producto. Ver galería con autoplay cada 4s.
-2. Pasar el mouse sobre la foto principal → debe pausarse el autoplay y
-   activarse el zoom 1.5x siguiendo el cursor.
-3. Click en un thumbnail → autoplay se pausa 12s y reanuda.
-4. Cambiar de color → el autoplay se reinicia desde la foto 0.
-5. Scrollear hacia abajo. Cuando el botón "Agregar al carrito" sale de
-   pantalla, debe aparecer la **tarjeta sticky abajo a la derecha**.
-6. Cuando aparece el sticky, **la burbuja de WhatsApp sube automáticamente**.
-7. Llegás al footer → **se ocultan ambos** (sticky + burbuja).
-8. Subís de nuevo → **reaparecen ambos sin superposición**.
-9. Click en "Compartir" → abre WhatsApp Web con mensaje pre-armado.
-10. Bajar a la sección de reseñas → grilla de 4 columnas con testimonios.
+### Prueba de toasts (Sesión 22)
+- **🟢 Verde**: agregar producto al carrito desde index o producto.
+- **🔴 Rojo (eliminación)**: abrir carrito → click ✕ en algún item.
+  Toast: "✕ Founder X removido del carrito".
+- **🔴 Rojo (validación)**: ir a checkout vacío y click "Continuar al pago".
+  Toast: "Completá todos los datos personales".
+- **⚪ Blanco (default)**: en producto, sin elegir color, click "Agregar al
+  carrito". Toast: "Seleccioná un color".
 
-**Mobile:**
-1. Galería: swipe izquierda/derecha cambia de foto. Flechas circulares ‹ ›
-   superpuestas. Toca el thumbnail también.
-2. Specs en 2 columnas (3+3), no 1 columna larga.
-3. Scrollear hacia abajo → **botón sticky aparece como barra completa abajo**.
-4. La burbuja WhatsApp queda visiblemente arriba del sticky con aire.
-5. Sección de reseñas: **carrusel autoplay 4s con flechas + dots dorados**.
-   Tocar una flecha pausa 12s.
-
-**iOS Safari específico:**
-1. Tocar la foto y arrastrar hacia abajo → debe scrollear normal, sin
-   trabarse.
-2. Tocar la foto y arrastrar horizontal → debe cambiar de foto, **sin que
-   la página se mueva lateralmente**.
-3. El sticky no queda tapado por el home indicator (barra negra inferior).
+### Prueba del webhook MP (smoke test)
+- Abrir `https://www.founder.uy/api/mp-webhook` en navegador.
+- Verificar respuesta JSON: `{"ok":true,"service":"mp-webhook","method":"POST"}`.
 
 ---
 
@@ -892,12 +836,122 @@ Entrar a `/admin.html` con password `nerito20`.
 | Supabase región | São Paulo (sa-east-1) |
 | Meta Business | founder.uy (Business portfolio) |
 | Meta Pixel ID | `2898267450518541` (Founder Pixel) |
-| Meta domain-verification token | `6qpwim4axainj6z7q5d06778d8qsxd` (en los 9 HTML) |
+| Meta domain-verification token | `6qpwim4axainj6z7q5d06778d8qsxd` |
 | WhatsApp del negocio | `598098550096` |
 | FREE_SHIPPING threshold | `2000` UYU |
 | SHIPPING_COST | `250` UYU |
+| **MP App** | "Founder web" (Sesión 22) |
+| **MP Webhook URL** | `https://www.founder.uy/api/mp-webhook` (configurada en modo Prueba **y** Productivo) |
+| **Resend dominio** | `founder.uy` verificado en Resend, región `sa-east-1` (Sesión 22) |
+| **Email remitente** | `info@founder.uy` (Sesión 22) |
 | Pedido de prueba histórico | `F910752` / `test@prueba.com` / Confort Negro / $2.490 |
 | ⚠️ NO BORRAR | Pedido `F203641` / Florencia Risso / `florenciar.1196@gmail.com` (cliente real) |
+
+---
+
+## 📋 Pendientes para Sesión 23
+
+### 🔥 Prioridad alta — bloqueado por acceso a MP de la esposa
+1. **Tests reales con tarjetas de prueba de MP** (Test 1: aprobado, Test 2:
+   rechazado, Test 3: pendiente). Validar:
+   - Webhook actualiza correctamente el estado en Supabase.
+   - Email "Recibimos tu pago" llega cuando aprueba.
+   - Email "Tu pedido está esperando el pago" llega cuando es pending.
+   - CAPI Purchase se dispara solo cuando aprueba (Meta deduplica con
+     event_id = numero).
+   - Estado `'Pago rechazado'` aparece en admin cuando MP rechaza.
+2. **Cambiar a credenciales de PRODUCCIÓN de MP** (`APP_USR-...` en lugar
+   de `TEST-...`). Requiere:
+   - Activar credenciales productivas en panel MP.
+   - Reemplazar `MP_ACCESS_TOKEN` y `MP_WEBHOOK_SECRET` en Vercel con
+     los valores prod.
+   - Redeploy en Vercel.
+   - Validación: pago real chico (ej $100) con tarjeta propia para
+     confirmar que todo funciona en modo productivo.
+
+### 🟡 Prioridad media — definición pendiente del usuario
+3. **Datos bancarios reales en email de transferencia**. El template
+   actual dice "Te enviamos los datos por WhatsApp". Cuando se definan
+   (banco, tipo de cuenta, CBU, titular), agregar bloque con datos
+   directos en el email para que el cliente no tenga que pedirlos.
+4. **Decisión sobre el modal de index.html**. Postergada de Sesión 22.
+   Usuario quería evaluar si conviene eliminarlo y redirigir directo a
+   `producto.html`, o rediseñar con 2 CTAs equivalentes. Decisión: dejar
+   como está, revisar "en un tiempo" — idealmente cuando arranquen
+   campañas pagas y haya datos de comportamiento real.
+
+### 🟢 Prioridad baja — pulido
+5. **DMARC en DNS** (Resend lo recomienda pero no es obligatorio).
+   Mejorar entregabilidad de emails. Agregar registro `_dmarc` con
+   política `p=none` inicialmente.
+6. **Primera campaña paga de Meta Ads** con optimización de Purchase.
+   Todo listo desde Sesión 17-18. Definir presupuesto, producto,
+   audiencia.
+7. **Limpieza de pedidos de prueba acumulados** (5 min desde admin):
+   - `F237553`, `F839362`, `F029945` — Evandro Segovia con CIs random.
+   - `F264440`, `F515156` — pedidos de prueba.
+   - `F378204` — test CAPI.
+   - **+ pedidos nuevos generados durante Sesión 22 testing**.
+   - ⚠️ **NO BORRAR**: `F203641` — Florencia Risso (cliente real).
+8. **Pendientes Meta Business** (3 clics en Chrome):
+   - Renombrar dataset "NO" (ID `1472474751248750`) con prefijo `ZZ-`.
+   - Renombrar/ignorar Ad Account `26140748312219895`.
+   - Agregar email de contacto al Instagram.
+9. **Drop columna `products.banner_url`** (legacy desde Sesión 21).
+   `ALTER TABLE products DROP COLUMN banner_url;`
+
+### 🔵 Direcciones nuevas (a discutir)
+- **Email de cambios de estado del admin**: cuando el admin cambia un
+  pedido a "En preparación", "En camino", "Entregado", mandar email
+  automático al cliente. Requiere modificar `api/admin.js` action
+  `update_order_status` para disparar email según el estado destino.
+- **Mejoras UX en otras páginas**: `index.html`, `contacto.html`,
+  `sobre-nosotros.html`. Consistencia con el polish de `producto.html`.
+- **Sistema de reseñas reales**: cuando haya clientes con compras
+  validadas — reemplazar las 4 reseñas mock de Sesión 20.
+
+### Optimizaciones de performance restantes (NO urgentes — score actual 94)
+- **Imágenes en formatos modernos (WebP/AVIF)**: ahorro 5-6 MB en mobile.
+  Requiere Supabase Pro ($25/mes) o CDN externo. Solo evaluar si campañas
+  pagas muestran CR bajo en mobile.
+- **Fuentes Google no bloqueantes**: ahorro 1.930 ms. Tocar 9 HTMLs.
+  Score actual ya es 94 → ganancia marginal.
+- **Cache headers en Supabase Storage**.
+- **Reducir 34 KB de JS sin usar**.
+
+---
+
+## 📜 Historial de incidentes resueltos
+
+### Sesión 22 (3 incidentes)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | Email mostraba envío $250 cuando subtotal >$2000 | **Falso bug**: previews de Claude tenían datos hardcodeados (`envio: 250`). Sistema productivo aplica bien la lógica | Confirmado mirando pedido real. Re-generados previews con datos coherentes |
+| 2 | Confusión sobre registrador de `founder.uy` (¿Net.uy o Vercel?) | Dominio gestionado por Vercel directamente — integración Vercel↔Resend ahorró setup DNS manual | Click en "Allow" en popup "Connect Resend" — DNS auto-configurados |
+| 3 | Decisión sobre flag "Sensitive" en variables Vercel para MP/Resend | Sesión 17 reportó bug en Hobby. No se sabía si seguía vigente | NO tildar Sensitive — consistencia con META_CAPI_TOKEN/ADMIN_PASSWORD que funcionan así |
+
+### Sesión 21 (1 incidente — orden de despliegue)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | Productos y banner dejaron de cargar tras subir archivos de stock_bajo | Usuario subió 4 archivos a GitHub antes de correr el SQL `ALTER TABLE product_colors ADD COLUMN stock_bajo`. Frontend pidió columna inexistente → 400/500 → cascada de fallas | Correr el SQL pendiente. Recuperación instantánea. **Lección: SIEMPRE el SQL primero, después el código** (regla agregada a sección crítica) |
+
+### Sesión 20 (5 incidentes resueltos en revisión final + 1 bug iOS crítico)
+[Detalle completo en versiones anteriores — touch handlers iOS, sticky CTA + footer, `</div>` huérfano, código JS muerto, CSS huérfano, scrollbar fantasma]
+
+### Sesión 19 (2 incidentes)
+[iOS Safari WhatsApp + CSS legacy header producto.html]
+
+### Sesión 18 (3 incidentes)
+[Meta validador Opera, cache Opera, dataset auto-creados Meta]
+
+### Sesión 17 (5 incidentes)
+[Meta dominio Opera, GitHub upload parcial, archivo carpeta equivocada, Sensitive Hobby, fire-and-forget Vercel]
+
+### Sesión 16 (1 incidente)
+[Admin 500 permission denied → grant all to service_role]
+
+### Sesión 14 (6 incidentes en cascada)
+[Permisos RLS, GRANT, columnas faltantes orders, constraints CHECK, GRANT service_role en tablas privadas]
 
 ---
 
@@ -918,143 +972,48 @@ Entrar a `/admin.html` con password `nerito20`.
   `"type": "module"` + eliminado supabase.js duplicado.
 - **Sesión 19 (Bugfixes UX):** Fix WhatsApp en iOS post-checkout (patrón
   pre-open) + fix CSS legacy del header en producto.html.
-- **Sesión 20 (Polish UX producto.html):** Sesión muy larga. Galería
-  interactiva (autoplay 4s + zoom 1.5x + swipe + flechas + lazy-loading),
-  política Garantía 60d vs Cambios 7d separada en 5 archivos, tabla
+- **Sesión 20 (UX masiva producto.html):** Galería con autoplay, zoom,
+  swipe, lazy-loading inteligente, política Garantía 60d/Cambios 7d separadas,
   comparativa Founder vs tradicional, fotos del carrito centralizadas en
   cart.js, sección de reseñas con carrusel mobile, Schema.org Product +
   Open Graph dinámico, sticky CTA mobile+desktop coordinado con burbuja
-  WhatsApp via 2 clases independientes en body, fix bug touch iOS Safari
-  con `touch-action: pan-y` + 4 listeners coordinados + reset por timeout,
-  botón Compartir WhatsApp, revisión completa con 5 bugs encontrados y
-  arreglados (div huérfano, código muerto, scrollbar fantasma).
+  WhatsApp via 2 clases independientes en body, fix bug touch iOS Safari,
+  botón Compartir WhatsApp, revisión completa con 5 bugs encontrados.
 - **Sesión 21 (Stock bajo + perf inicial + WCAG):** Tres bloques cerrados.
-  (1) Feature `stock_bajo` en admin con columna nueva `product_colors.stock_bajo`
-  (boolean default false) + checkbox dorado independiente en cada fila de
-  color (no excluyente con los 3 estados — frontend ya tenía la lógica
-  defensiva desde Sesión 20). (2) Optimizaciones de carga inicial en
-  `index.html`: banner migrado de `products.banner_url` a
-  `site_settings.hero_banner_url` (query 70% más liviana), 3 skeleton cards
-  con shimmer dorado animado mientras carga el catálogo, `fetchpriority="high"`
-  en banner + primeras 3 cards, preconnect a Supabase (~150ms ahorrados en
-  handshake), banner separado del Promise.all en init() para aplicar apenas
-  resuelve. Refactor del bloque banner en founder-admin.js (eliminadas
-  funciones legacy `getBannerProduct` y `persistBannerUrl` viejas; ahora usa
-  `apiAdmin('get_setting')` / `set_setting` que ya existían). (3) Fixes de
-  accesibilidad WCAG: contraste botón "Ver detalle" (2.2:1 → 8.5:1) y
-  jerarquía de headings (h2 invisible para sección RFID). PageSpeed
-  Insights validó: **Performance 94/100 verde** en mobile. 1 incidente
-  resuelto (orden de despliegue Supabase-first). ← **Acá terminamos.**
-- **Sesión 22:** A definir según prioridades del usuario. ← **Próxima.**
+  Feature `stock_bajo` con columna nueva. Optimizaciones de carga inicial
+  (skeletons, fetchpriority, preconnect). Fixes WCAG. PageSpeed 94/100.
+- **Sesión 22 (Mercado Pago + Email + Toasts UX):** Tres bloques grandes.
+  (1) **Mercado Pago Checkout Pro integrado end-to-end** vía API REST
+  directa (sin SDK), módulo `api/_lib/mercadopago.js` + endpoint
+  `api/mp-webhook.js` con HMAC-SHA256, frontend con redirect + manejo
+  de retorno (success/pending/failure), 3 columnas nuevas en `orders`
+  + estado nuevo `'Pago rechazado'`. **Smoke test parcial OK**, tests
+  reales bloqueados por acceso a cuenta MP de la esposa. (2) **Email
+  transaccional con Resend**: dominio `founder.uy` verificado vía
+  integración Vercel (DNS automáticos), módulo `email.js` + 3 templates
+  HTML profesionales (`email-templates.js`) con paleta del sitio,
+  disparo desde `checkout.js` (transfer) y `mp-webhook.js` (MP
+  approved/pending). Botón "Ver estado del pedido" en los 3 emails con
+  auto-tracking por URL. Textos contextuales según envío/retiro.
+  Validado en producción (transferencia: email llega OK). (3) **Sistema
+  de variantes en toasts**: verde para acciones positivas (agregar al
+  carrito), rojo para destructivas (eliminar) y errores de validación
+  (checkout). 18 llamadas a `showToast` clasificadas. Toast nuevo "✕
+  Founder X removido del carrito" en eliminación (antes era silenciosa).
+  ← **Acá terminamos.**
+- **Sesión 23:** Cerrar tests reales de Mercado Pago con tarjetas de prueba
+  (necesita acceso a cuenta MP de la esposa). Después: definir datos
+  bancarios reales, primera campaña paga Meta, decisión sobre modal de
+  index.html. ← **Próxima.**
 
 ---
 
-## 📋 Pendientes para Sesión 22
-
-### Prioridad alta — listo para arrancar cuando vos quieras
-1. **Primera campaña paga de Meta Ads** con optimización de Purchase.
-   Todo el setup técnico está listo desde Sesión 17-18 (Pixel + CAPI +
-   dominio verificado). Con PageSpeed 94/100 (Sesión 21), el sitio está en
-   estado óptimo para ads. Definir con el usuario: presupuesto diario,
-   producto destacado, público objetivo (remarketing a visitantes de
-   `producto.html` vs frío).
-
-### Prioridad media — limpieza de pedidos (5 min)
-2. **Borrar pedidos de prueba acumulados** con el sistema de Sesión 18:
-   - `F237553`, `F839362`, `F029945` — Evandro Segovia con CIs random.
-   - `F264440`, `F515156` — pedidos de prueba.
-   - `F378204` — test CAPI.
-   - ⚠️ **NO BORRAR**: `F203641` — Florencia Risso (cliente real).
-
-### Prioridad media — 3 clics en Chrome (Meta)
-3. **Renombrar dataset "NO"** (ID `1472474751248750`) con prefijo `ZZ-` para
-   que quede al final alfabéticamente.
-4. **Renombrar o ignorar Ad Account `26140748312219895`** (auto-creada).
-5. **Agregar email de contacto al Instagram** en Meta Business Portfolio.
-
-### Prioridad baja — pulido
-6. **Reintentar username `founder.uy` para la Page de Facebook** cuando Meta
-   lo libere (actualmente `founder.uy.oficial`).
-7. **Drop columna `products.banner_url`** (legacy desde Sesión 21).
-   No es urgente — ya no se lee desde ningún lado y no estorba.
-   `ALTER TABLE products DROP COLUMN banner_url;`
-
-### Optimizaciones de performance restantes (NO urgentes — score actual 94)
-- **Imágenes en formatos modernos (WebP/AVIF)**: ahorro estimado 5-6 MB en
-  mobile según PageSpeed. Requiere Supabase Pro ($25/mes Image Transformations)
-  o CDN externo (Cloudinary). **Solo evaluar si las campañas pagas muestran
-  CR bajo en mobile**.
-- **Fuentes Google no bloqueantes**: ahorro estimado 1.930 ms en mobile
-  (patrón `media="print"` + `onload`). Tocar 9 HTMLs. Score actual ya es 94
-  → ganancia marginal.
-- **Cache headers en Supabase Storage**: configurar `Cache-Control` agresivo
-  en el bucket `product-photos`. Ayuda en visitas repetidas y navegación
-  entre páginas internas.
-- **Reducir 34 KB de JS sin usar**: probablemente parte de meta-pixel.js
-  o cart.js. Ganancia marginal — auditar solo si hay tiempo libre.
-
-### Posibles direcciones nuevas (a discutir con usuario)
-- **Mejoras UX en otras páginas** (`index.html`, `contacto.html`,
-  `sobre-nosotros.html`).
-- **Integración Mercado Pago** completa (hoy es manual).
-- **Email transaccional** post-compra (Resend / SendGrid).
-- **Sistema de reseñas reales** (cuando haya clientes con compras
-  validadas — reemplazar las 4 reseñas mock de Sesión 20).
-
----
-
-## 📜 Historial de incidentes resueltos
-
-### Sesión 21 (1 incidente — orden de despliegue)
-| # | Síntoma | Causa raíz | Fix |
-|---|---|---|---|
-| 1 | Productos y banner dejaron de cargar tras subir los archivos de stock_bajo | El usuario subió los 4 archivos a GitHub antes de correr el SQL `ALTER TABLE product_colors ADD COLUMN stock_bajo`. La query del frontend pedía una columna que aún no existía → 400/500 → toda la cascada de carga falló | Correr el SQL pendiente. Recuperación instantánea. **Lección: SIEMPRE el SQL primero, después el código** (regla agregada a sección crítica) |
-
-### Sesión 20 (5 incidentes resueltos en revisión final + 1 bug iOS crítico)
-| # | Síntoma | Causa raíz | Fix |
-|---|---|---|---|
-| 1 | iOS Safari: tocar la foto trababa el scroll vertical y movía la página lateralmente | Touch handlers con `passive: true` sin `touch-action` CSS — Safari permitía scroll lateral nativo y a veces el touchend se perdía | `touch-action: pan-y` en CSS + 4 listeners (start/move/end/cancel) con clasificación de dirección temprana + reset por timeout 500ms |
-| 2 | Burbuja WhatsApp tapaba el sticky CTA al volver del footer | El observer del footer removía `.has-sticky-cta` al entrar al footer pero nadie lo restauraba al salir si el sticky seguía activo | En el footer observer, cuando footer se va: si `wrap.classList.contains('is-active')`, restaurar `.has-sticky-cta` |
-| 3 | `</div>` huérfano al cierre del archivo | Pre-existente de sesiones anteriores | Eliminado |
-| 4 | Variable JS `priceRow` declarada pero nunca usada | Código muerto en `selectColor` | Eliminada |
-| 5 | Selector CSS `.sticky-add-btn:active` apuntando a clase inexistente | Refactor previo dejó el selector huérfano | Eliminado |
-| 6 | Scrollbar fantasma en tabs desktop | `overflow-x: auto` reservaba espacio para scroll que no existía | Quitado `overflow-x` (los 3 tabs entran perfectamente) |
-
-### Sesión 19 (2 incidentes)
-| # | Síntoma | Causa raíz | Fix |
-|---|---|---|---|
-| 1 | iOS Safari: WhatsApp no abría automáticamente tras finalizar compra | `window.open` post-`await` pierde "user gesture" en iOS | Patrón pre-open: abrir `about:blank` ANTES del await, asignar URL después |
-| 2 | Header `producto.html` sin estilos | CSS legacy (`.header__nav*`) no coincidía con HTML BEM (`.nav*`) | Reemplazado bloque CSS por el de `index.html` |
-
-### Sesión 18 (3 incidentes)
-| # | Síntoma | Causa raíz | Fix |
-|---|---|---|---|
-| 1 | Meta rechazaba `www.founder.uy` | Bug del validador en Opera | Usar Chrome |
-| 2 | Filtro "Archivados" no aparecía tras deploy | Cache de Opera | `Ctrl+F5` |
-| 3 | Meta no permite eliminar dataset/Ad Account auto-creados | Limitación UI | Renombrar con `ZZ-` o ignorar |
-
-### Sesión 17 (5 incidentes)
-- Meta rechazó dominio → era Opera, resuelto en Sesión 18.
-- Upload parcial a GitHub web → tandas de 2-3 archivos.
-- Archivo en carpeta equivocada → verificar breadcrumb.
-- Variables Sensitive en Vercel Hobby → crear sin el flag.
-- Fire-and-forget cortado por Vercel → `await Promise.race`.
-
-### Sesión 16 (1 incidente)
-- Admin 500 `permission denied` → `grant all to service_role` sobre 7 tablas.
-
-### Sesión 14 (6 incidentes en cascada)
-- Permisos RLS, GRANT, columnas faltantes en orders, constraints CHECK
-  desalineados, GRANT a service_role en tablas privadas.
-
----
-
-**FIN** — Cerramos Sesión 21. Sitio en estado óptimo: feature `stock_bajo`
-operativa desde admin, banner migrado a `site_settings.hero_banner_url`
-(query liviana + arquitectura coherente), `index.html` con skeletons +
-fetchpriority + preconnect, fixes WCAG aplicados. **PageSpeed Insights
-mobile: Performance 94/100 verde** — top 10% de sitios web, score más
-que aceptable para arrancar campañas pagas. El sitio está técnicamente
-listo para escalar tráfico — la próxima sesión decide si arrancar Meta
-Ads, atacar pendientes de limpieza, o explorar nuevas direcciones (MP
-integrado, email transaccional, mejoras UX en otras páginas). 🎯
+**FIN** — Cerramos Sesión 22. Sitio en estado óptimo: integraciones de
+pago y email transaccional operativas, sistema de feedback visual UX
+mejorado, todas las pruebas controladas pasaron OK. **El último paso
+crítico para salir 100% a producción con MP integrado es el testing
+real con tarjetas de prueba — bloqueado solo por logística personal
+(acceso a cuenta MP de la esposa)**. Una vez ese bloque se libere, el
+cambio a credenciales productivas es ~5 minutos y el sitio queda en
+estado de **e-commerce profesional completo**: pago online integrado,
+email transaccional, tracking Meta, admin robusto, UX pulida. 🎯
