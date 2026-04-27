@@ -132,12 +132,15 @@
     return map;
   }
 
-  /** Devuelve la URL del banner del hero (campo `banner_url` del primer
-   *  producto activo ordenado por `orden`). null si no hay. */
+  /** Devuelve la URL del banner del hero desde `site_settings.hero_banner_url`.
+   *  Antes leía `products.banner_url` del primer producto activo, lo cual
+   *  obligaba a traer la tabla `products` solo para una URL. Ahora pega a una
+   *  fila de `site_settings` (key, value) — query mucho más liviana y rápida.
+   *  Devuelve string | null si no hay banner configurado. */
   async function fetchBannerUrl() {
-    const path = '/products?select=banner_url&activo=eq.true&order=orden.asc&limit=1';
+    const path = '/site_settings?select=value&key=eq.hero_banner_url&limit=1';
     const rows = await supaGet(path);
-    return rows[0]?.banner_url || null;
+    return rows[0]?.value || null;
   }
 
   // ── Exponer globalmente ──────────────────────────────────────

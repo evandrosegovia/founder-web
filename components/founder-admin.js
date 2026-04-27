@@ -1580,31 +1580,23 @@
   // ═══════════════════════════════════════════════════════════════
   // BANNER DEL HERO
   // ───────────────────────────────────────────────────────────────
-  // Nota técnica: el sitio público lee el banner desde el campo
-  // `banner_url` del PRIMER producto activo ordenado por `orden`
-  // (ver supabase-client.js → fetchBannerUrl). Por eso acá, en el
-  // admin, guardamos/leemos el banner sobre ese mismo producto.
+  // El banner se guarda en la tabla `site_settings` con la key
+  // `hero_banner_url`. El sitio público (supabase-client.js →
+  // fetchBannerUrl) lee de ahí directamente con la anon key.
+  // Antes vivía en `products.banner_url` del primer producto activo,
+  // pero eso obligaba a traer la tabla products entera solo para una URL.
   // ═══════════════════════════════════════════════════════════════
 
-  /** Devuelve el primer producto activo (ordenado por `orden`). */
-  function getBannerProduct() {
-    const actives = state.products
-      .filter(p => p.activo !== false)
-      .sort((a, b) => (a.orden || 0) - (b.orden || 0));
-    return actives[0] || state.products[0] || null;
-  }
+  const BANNER_KEY = 'hero_banner_url';
 
-  /** Carga la URL del banner en el input y el preview. */
+  /** Carga la URL del banner desde site_settings y la pinta en el editor.
+   *  No depende de `state.products` — es totalmente independiente del catálogo. */
   async function loadBanner(opts = {}) {
     const silent = !!opts.silent;
+    const { ok, data } = await apiAdmin('get_setting', { key: BANNER_KEY });
 
-    // Necesitamos products cargados para saber dónde está el banner
-    if (!state.products.length) {
-      if (!silent) await loadProducts();
-    }
-
-    const prod = getBannerProduct();
-    const url  = prod?.banner_url || '';
+    const url = ok ? (data?.value || '') : '';
+    if (!ok && !silent) toast('Error cargando el banner', true);
 
     const input = $('bannerInput');
     if (input) input.value = url;
@@ -1639,11 +1631,7 @@
     toast('Vista previa cargada');
   }
 
-  /**
-   * Guarda el banner_url en el primer producto activo.
-   * Usa save_product con el producto completo — así el backend
-   * mantiene la consistencia con los colores/fotos existentes.
-   */
+  /** Guarda la URL del banner en site_settings.hero_banner_url. */
   async function saveBanner() {
     const url = ($('bannerInput')?.value || '').trim();
     if (!url) { toast('Ingresá un link de imagen', true); return; }
@@ -1655,62 +1643,21 @@
     await persistBannerUrl('', '✅ Banner eliminado');
   }
 
-  /**
-   * Persistencia del banner: guardamos el URL en products.banner_url
-   * del producto-ancla. Enviamos payload con `{ product:{ slug, banner_url }, colors:[] }`
-   * pero preservamos todos los otros campos del producto para que el
-   * upsert no pise otros datos.
-   */
+  /** Persistencia del banner: upsert en site_settings vía /api/admin → set_setting.
+   *  Mucho más simple que antes — no tocamos ningún producto. */
   async function persistBannerUrl(url, okMsg) {
-    if (!state.products.length) await loadProducts();
-    const prod = getBannerProduct();
-    if (!prod) {
-      toast('No hay productos donde guardar el banner. Creá un producto primero.', true);
-      return;
-    }
-
-    const product = {
-      slug:             prod.slug,
-      nombre:           prod.nombre,
-      precio:           prod.precio,
-      descripcion:      prod.descripcion,
-      especificaciones: prod.especificaciones,
-      capacidad:        prod.capacidad,
-      dimensiones:      prod.dimensiones,
-      material:         prod.material,
-      nota:             prod.nota,
-      lleva_billetes:   prod.lleva_billetes,
-      lleva_monedas:    prod.lleva_monedas,
-      orden:            prod.orden,
-      activo:           prod.activo,
-      banner_url:       url,
-    };
-
-    // Mapear colores actuales al formato que espera save_product.
-    // IMPORTANTE: incluir stock_bajo para no pisar el flag al guardar el banner
-    // (save_product hace delete + insert de colores → si no lo enviamos, se pierde).
-    const colors = prod.colors.map(c => ({
-      nombre:        c.nombre,
-      estado:        c.estado,
-      precio_oferta: c.precio_oferta,
-      stock_bajo:    c.stock_bajo === true,
-      fotos:         c.photos.filter(Boolean),
-    }));
-
-    const { ok, data } = await apiAdmin('save_product', { product, colors });
+    const { ok, data } = await apiAdmin('set_setting', { key: BANNER_KEY, value: url });
     if (!ok) {
       toast('Error guardando el banner' + (data?.message ? ': ' + data.message : ''), true);
       return;
     }
-
-    // Actualizar local + UI
-    prod.banner_url = url;
     const input = $('bannerInput');
     if (input) input.value = url;
     renderBannerPreview(url);
     toast(okMsg);
   }
 
+  
   /** Subir imagen del banner desde el equipo. */
   function pickBannerFile() {
     const f = document.createElement('input');
