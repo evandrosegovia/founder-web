@@ -295,9 +295,10 @@ select:active,
 }
 .btn--primary { background: var(--color-text); color: var(--color-bg); }
 .btn--primary:hover { background: var(--color-gold); }
-/* Botón "Ver detalle de producto" en tarjeta — fondo dorado, texto blanco */
+/* Botón "Ver detalle de producto" en tarjeta — fondo dorado, texto oscuro
+   para asegurar contraste WCAG AA (~8.5:1 con #141414 sobre #c9a96e). */
 .quick-view-btn.btn--primary {
-  background: var(--color-gold); color: #ffffff; font-weight: 600;
+  background: var(--color-gold); color: var(--color-bg); font-weight: 600;
 }
 .quick-view-btn.btn--primary:hover { background: var(--color-text); color: var(--color-bg); }
 .btn--secondary {
@@ -1000,6 +1001,9 @@ body.cart-open .wa-bubble {
 
 <!-- ── RFID ─────────────────────────────────────────────────── -->
 <section class="rfid-grid" id="rfid" aria-label="Características RFID">
+  <!-- h2 invisible para mantener la jerarquía semántica h1 → h2 → h3.
+       Solo lo leen lectores de pantalla y motores de búsqueda. -->
+  <h2 class="visually-hidden">Características RFID</h2>
   <article class="rfid-item">
     <span class="rfid-item__icon" aria-hidden="true">🛡️</span>
     <h3 class="rfid-item__title">Protección RFID</h3>

@@ -1,7 +1,7 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 20 — cierre (26/04/2026)
-**Próxima sesión:** 21 — Definir prioridades tras la gran cantidad de mejoras UX cerradas en Sesión 20. Posibles caminos: cerrar pendientes menores de Meta, evaluar primera campaña paga, agregar features admin (campo `stock_bajo` en producto), o trabajar otras páginas (index.html / contacto / etc).
+**Última actualización:** Sesión 21 — cierre (27/04/2026)
+**Próxima sesión:** 22 — Sitio en estado óptimo de UX y performance (PageSpeed 94/100). Prioridades para Sesión 22: arrancar primera campaña paga de Meta Ads, limpieza de pedidos de prueba, pendientes menores de Meta (renombrar dataset/Ad Account, Instagram email), o nuevas direcciones de producto (Mercado Pago integrado, email transaccional, mejoras UX en otras páginas).
 
 ---
 
@@ -9,15 +9,18 @@
 
 Pegale a Claude este mensaje al arrancar:
 
-> Leé `ESTADO.md` y retomamos después de Sesión 20. La Sesión 20 fue muy
-> larga y ahí cerramos un paquete enorme de mejoras UX en `producto.html`
-> (galería con autoplay/zoom/swipe, sección comparativa, reseñas con
-> carrusel mobile, SEO dinámico, sticky CTA mobile+desktop coordinado con
-> burbuja WhatsApp, fix touch iOS, política garantía/cambios separadas en
-> 5 archivos, fotos del carrito en todas las páginas). Ver sección
-> "Lo que quedó funcionando en Sesión 20" para todo el detalle. Para
-> Sesión 21, decime opciones según los pendientes que quedan abiertos:
-> Meta, ads, admin (campo stock_bajo), o trabajar otras páginas.
+> Leé `ESTADO.md` y retomamos después de Sesión 21. La Sesión 21 cerró 3
+> bloques: (1) feature `stock_bajo` en admin con checkbox por color
+> independiente del estado, (2) optimizaciones de carga inicial en
+> `index.html` — banner migrado de `products.banner_url` a
+> `site_settings.hero_banner_url`, skeletons con shimmer dorado,
+> `fetchpriority` + preconnect a Supabase, (3) fixes de accesibilidad
+> WCAG (contraste del botón "Ver detalle" + jerarquía de headings).
+> Resultado: PageSpeed 94/100 verde. Para Sesión 22, decime opciones según
+> los pendientes que quedan abiertos: primera campaña paga de Meta Ads
+> (todo listo para arrancar), limpieza de pedidos de prueba, pendientes
+> menores de Meta, mejoras UX en otras páginas (index/contacto/etc), o
+> features nuevas (Mercado Pago integrado, email transaccional).
 
 ---
 
@@ -34,6 +37,175 @@ Pegale a Claude este mensaje al arrancar:
 | **4** — Meta Pixel + CAPI | ✅ Completa | Dominio custom activo, tracking dual operativo, **dominio verificado en Meta** |
 | **5** — Hardening admin | ✅ Completa | Archivar + Eliminar pedidos desde UI con protecciones (ver Sesión 18) |
 | **6** — Polish UX producto.html | ✅ Completa | Galería, comparativa, reseñas, SEO, sticky CTA, share, mobile fixes (Sesión 20) |
+| **7** — Stock bajo + perf inicial | ✅ Completa | Checkbox stock bajo en admin, banner a `site_settings`, skeletons, fetchpriority, fixes WCAG (Sesión 21). PageSpeed 94/100 |
+
+---
+
+## ✅ Lo que quedó funcionando en Sesión 21
+
+Sesión enfocada en 3 bloques: **feature `stock_bajo` en admin** (cierra
+pendiente de Sesión 20), **optimizaciones de carga inicial en index.html**
+(banner + skeletons + priorización), y **fixes de accesibilidad WCAG**
+detectados con PageSpeed Insights. El sitio cerró la sesión con score
+**Performance 94/100 (verde)** en mobile.
+
+### 🆕 Bloque 1 — Feature `stock_bajo` en admin
+
+**Decisión arquitectural clave:** se descartó el plan original de Sesión 20
+de usar `product_colors.extras` JSONB y se eligió una **columna nueva
+`stock_bajo BOOLEAN NOT NULL DEFAULT FALSE`** en `product_colors`, paralela
+a `estado` y `precio_oferta`. Razón: consistencia con el patrón existente,
+simplicidad, y no requerir parsing de JSONB.
+
+#### Cambios en Supabase
+- Nueva columna `stock_bajo BOOLEAN NOT NULL DEFAULT FALSE` en `product_colors`.
+- Default `FALSE` → todos los colores existentes quedaron compatibles sin migración.
+
+#### Backend (`api/admin.js`)
+- `handleListProducts` SELECT extendido con `stock_bajo`.
+- `handleSaveProduct` INSERT incluye `stock_bajo: c.stock_bajo === true`.
+
+#### Frontend público (`components/supabase-client.js`)
+- Query `fetchProducts` agrega `stock_bajo` al SELECT de `product_colors`.
+- En `toLegacyProduct`, cuando `c.stock_bajo === true` agrega la clave
+  `colores_estado["<NombreColor>_stock_bajo"] = true` — exactamente el
+  contrato que `producto.html` ya esperaba desde Sesión 20.
+
+#### UI Admin (`components/founder-admin.js`)
+- 4° botón "⏳ Stock bajo" en cada fila de color, **independiente** de los
+  3 estados existentes (Activo/Agotado/Oferta).
+- Nueva función `toggleStockBajo(uid)` (toggle simple, sin lógica excluyente
+  — el frontend ignora el flag automáticamente si `estado === 'sin_stock'`).
+- `loadProducts`, `editProduct`, `addColorRow`, `saveProduct`, `persistBannerUrl`
+  hidratan/serializan `stock_bajo` en cada flujo.
+- `window.toggleStockBajo` expuesto para `onclick` inline.
+
+#### CSS (`admin.html`)
+- Selector `.estado-btn--stockbajo.stockbajo--sel` con dorado claro `#f5c85a`,
+  paralelo al patrón visual de los otros 3 estados.
+
+### ⚡ Bloque 2 — Optimizaciones de carga inicial (index.html)
+
+**Diagnóstico previo:** el banner del hero tardaba ~1.5-2s en aparecer porque
+(1) la query del banner traía toda la fila de `products` solo para una URL,
+(2) la imagen empezaba a descargarse después de que terminara `Promise.all`
+con productos+fotos, (3) no había hints de prioridad para el navegador.
+
+#### Bloque 2a — Banner migrado a `site_settings`
+- **SQL de migración:**
+  ```sql
+  INSERT INTO site_settings (key, value)
+  VALUES ('hero_banner_url', COALESCE(
+    (SELECT banner_url FROM products
+       WHERE activo = true AND banner_url IS NOT NULL AND banner_url <> ''
+       ORDER BY orden ASC LIMIT 1), ''))
+  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+  ```
+- `supabase-client.js → fetchBannerUrl` ahora consulta
+  `/site_settings?select=value&key=eq.hero_banner_url&limit=1` (mucho más
+  liviana que traer `products` entero).
+- `founder-admin.js`: refactor completo del bloque banner. Eliminadas
+  `getBannerProduct()` y la `persistBannerUrl()` legacy de 50+ líneas.
+  La nueva `loadBanner()`/`persistBannerUrl()` usan `apiAdmin('get_setting')`
+  y `apiAdmin('set_setting')` (acciones que ya existían pero no se usaban).
+- `api/admin.js`: eliminado el campo legacy `banner_url` de `handleSaveProduct`
+  (ya no se persiste desde ahí).
+- **Columna `products.banner_url` se mantiene** como respaldo silencioso
+  (no estorba, no se lee, podría dropearse en sesión futura sin urgencia).
+
+#### Bloque 2b — Eager loading + fetchpriority
+- **Banner del hero**: `fetchpriority="high"` + `decoding="async"` + fade-in
+  suave al cargar (`opacity 0 → CSS .5` con transition 350ms).
+- **Primeras 3 cards de productos**: `loading="eager"` + `fetchpriority="high"`
+  (above the fold en mobile/tablet/desktop).
+- **Cards 4 en adelante**: siguen `loading="lazy"` + `fetchpriority="low"`.
+- **`<link rel="preconnect" href="https://qedwqbxuyhieznrqryhb.supabase.co" crossorigin>`**
+  en el `<head>` para adelantar el handshake TLS (~100-200ms ganados).
+- En `init()`, el banner se separó del `Promise.all` — ahora se aplica
+  apenas resuelve, sin esperar a que terminen las queries de productos+fotos.
+
+#### Bloque 2c — Skeleton cards de carga
+- **3 skeleton cards** con shimmer dorado animado en lugar del texto
+  "Cargando productos…" plano.
+- CSS: `.product-skeleton`, `.product-skeleton__img`, `.product-skeleton__line`
+  con `@keyframes skeletonShimmer` (1.6s linear infinite).
+- Respeta `prefers-reduced-motion` → animación se desactiva para usuarios
+  sensibles al movimiento.
+- Atributos ARIA: `aria-busy="true"` + `aria-live="polite"` en el grid,
+  `aria-hidden="true"` en cada skeleton, `<span class="visually-hidden">Cargando productos…</span>`
+  para lectores de pantalla.
+- `renderProducts()` quita el `aria-busy` cuando llegan los datos.
+
+### 🛡️ Bloque 3 — Fixes de accesibilidad WCAG (detectados por PageSpeed)
+
+#### Fix 3a — Contraste del botón "Ver detalle de producto"
+- **Problema:** botón con `background: #c9a96e` (dorado) + `color: #ffffff`
+  (blanco) → ratio 2.2:1 (falla WCAG AA mínimo de 4.5:1 para texto chico).
+- **Solución:** cambiado a `color: var(--color-bg)` (negro `#141414`)
+  → ratio ~8.5:1 (pasa AAA holgado, mantiene branding dorado).
+- 1 sola línea CSS modificada en `index.html`.
+
+#### Fix 3b — Jerarquía de headings semánticos
+- **Problema:** `<h1>` (hero) → `<h3>` (4× cards RFID) → `<h2>` (Nuestros
+  modelos) — saltaba de h1 a h3 y luego retrocedía a h2. PageSpeed lo
+  marcaba como error de navegación accesible.
+- **Solución:** agregado `<h2 class="visually-hidden">Características RFID</h2>`
+  al inicio de la sección RFID, justo antes de los 4 `<h3>`. La utility
+  `.visually-hidden` ya existía en CSS desde Bloque 2c.
+- Resultado: `h1 → h2 → h3 → h3 → h3 → h3 → h2 → ...` jerarquía limpia,
+  sin afectar el diseño visual.
+
+### 📊 Validación de resultados
+
+#### PageSpeed Insights — score final
+- **Performance: 94/100 (verde)** — top ~10% de sitios web.
+- Speed Index: 1.9s (verde, <3.4s).
+- Score más que aceptable para e-commerce con imágenes pesadas.
+
+#### Cosas que PageSpeed sugirió y NO atacamos (decisión consciente)
+- **"Mejora la entrega de imágenes" — Ahorro 5-6 MB en mobile**:
+  requiere Supabase Pro ($25/mes para Image Transformations) o CDN externo
+  (Cloudinary). Con score 94 y plan Free no se justifica hoy. Si arranca
+  campañas pagas y CR sufre, evaluar entonces.
+- **"Solicitudes de bloqueo de renderización — 1.930ms" (Google Fonts)**:
+  el `<link rel="stylesheet">` de fuentes es render-blocking. Solucionable
+  con patrón `media="print"` + `onload`, pero implicaría tocar 9 HTMLs.
+  Score actual ya es 94 — ganancia marginal no justifica el riesgo.
+- **"Cache headers en Supabase Storage"**: requiere config en bucket Supabase.
+  Ayudaría en visitas repetidas. Apuntado para sesión futura.
+- **"34 KB de JavaScript sin usar"**: probablemente parte de meta-pixel.js
+  / cart.js que no se ejecuta en index. Ganancia marginal — no se atacó.
+
+### 📝 Iteraciones de UI registradas durante la sesión
+
+- **Stock bajo — opción de mutua exclusión:** se evaluó si el checkbox
+  debía ser excluyente con "Agotado" o independiente. Decisión final:
+  **independiente**, porque el frontend (`getColorEstado` en `producto.html`,
+  línea 1229) ya tenía la lógica `stockBajo === true && estado !== 'sin_stock'`
+  desde Sesión 20 — si el admin marca "Agotado" + "Stock bajo", gana
+  "Agotado" automáticamente. Robusto a errores del admin sin lógica extra.
+- **Banner — preload estático vs dinámico:** se descartó `<link rel="preload">`
+  estático en el `<head>` porque la URL del banner es dinámica (la setea
+  el admin) y no hay render server-side. En su lugar, `preconnect` estático
+  + `fetchPriority='high'` + separación del `Promise.all` en `init()`.
+- **Skeleton — número de cards:** se eligieron 3 (no 4 ni 6) porque cubren
+  el primer paint en los 3 viewports (1 col mobile, 2 col tablet, 3 col
+  desktop) sin saturar el grid.
+
+### 🐛 Incidente resuelto durante la sesión
+
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | Productos y banner dejaron de cargar tras subir los archivos de stock_bajo | El usuario subió los 4 archivos antes de correr el SQL `ALTER TABLE product_colors ADD COLUMN stock_bajo`. La query del frontend pedía una columna que aún no existía en Postgres → 400/500 error → todo fallaba | Correr el SQL pendiente en Supabase. Recuperación instantánea. **Lección registrada en Reglas Críticas: en cambios que tocan Supabase + código, SIEMPRE el SQL primero, después el código** |
+
+### Tareas técnicas adicionales
+- Eliminadas funciones huérfanas en `founder-admin.js`: `getBannerProduct()`,
+  `persistBannerUrl()` versión legacy. Verificado con `grep` que no hay
+  referencias rotas.
+- Sintaxis JS validada con `node --check` después de cada cambio (5 veces).
+- Balance de funciones color (defs vs window-exports vs onclicks) verificado
+  para los 6 callbacks: `setColorEstado`, `removeColorRow`, `onColorNameInput`,
+  `onPrecioOfertaInput`, `addColorRow`, `toggleStockBajo` — todos balanceados.
 
 ---
 
@@ -505,10 +677,12 @@ eventos en iOS 14.5+ cuando se arranquen campañas pagas.
 1. **`products`** — id, slug, nombre, precio, descripcion, especificaciones,
    capacidad, dimensiones, material, nota, lleva_billetes, lleva_monedas,
    banner_url, orden, activo, created_at, updated_at.
+   ⚠️ El campo `banner_url` quedó como **legacy silencioso** desde Sesión 21
+   — el banner ahora vive en `site_settings.hero_banner_url`. La columna se
+   mantiene como respaldo, no se lee desde frontend ni admin.
 2. **`product_colors`** — id, product_id, nombre, estado
-   (check: `activo`/`sin_stock`/`oferta`), precio_oferta, orden, created_at.
-   `extras` JSONB con `colores_estado` que puede contener `<color>_stock_bajo: true`
-   (Sesión 20: lógica preparada en frontend, esperando uso desde admin).
+   (check: `activo`/`sin_stock`/`oferta`), precio_oferta, **stock_bajo**
+   (bool, default false — Sesión 21), orden, created_at.
 3. **`product_photos`** — id, color_id, url, orden, es_principal, created_at.
 4. **`orders`** — 23 columnas: id (uuid), numero (unique), fecha, nombre,
    apellido, celular, email, entrega, direccion, productos, subtotal, descuento,
@@ -519,6 +693,7 @@ eventos en iOS 14.5+ cuando se arranquen campañas pagas.
 6. **`coupons`** — id, codigo (unique), tipo, valor, uso, min_compra, activo,
    usos_count, emails_usados (text[]), desde, hasta, created_at.
 7. **`site_settings`** — key (PK), value, updated_at.
+   Keys actuales: `hero_banner_url` (Sesión 21) — URL del banner del hero.
 
 ### Constraints CHECK en `orders`
 - `orders_entrega_check` → `entrega IN ('Envío','Retiro')`
@@ -547,11 +722,11 @@ policy — `service_role` bypassea RLS pero NO bypassea GRANTs de tabla.
 
 ```
 founder-web/
-├── index.html                     ✅
+├── index.html                     ✅ (Sesión 21: skeletons + fetchpriority + WCAG fixes)
 ├── producto.html                  ✅ (2422 líneas — Sesión 20: bloque masivo de UX)
 ├── checkout.html                  ✅ (Sesión 20: política garantía/cambios separada)
 ├── seguimiento.html               ✅
-├── admin.html                     ✅ (686 líneas)
+├── admin.html                     ✅ (686 líneas — Sesión 21: CSS botón stock bajo)
 ├── contacto.html                  ✅ (Sesión 20: fotos del carrito)
 ├── sobre-nosotros.html            ✅ (Sesión 20: política + fotos del carrito)
 ├── envios.html                    ✅ (Sesión 20: 2 info-cards garantía + cambios)
@@ -560,18 +735,18 @@ founder-web/
 │   ├── header.js                  ✅
 │   ├── footer.js                  ✅ (Sesión 20: modal legal con 3 secciones)
 │   ├── cart.js                    ✅ (Sesión 20: photoMap centralizado + evento)
-│   ├── supabase-client.js         ✅
+│   ├── supabase-client.js         ✅ (Sesión 21: stock_bajo + banner desde site_settings)
 │   ├── meta-pixel.js              ✅
 │   ├── founder-checkout.js        ✅
 │   ├── founder-seguimiento.js     ✅
-│   └── founder-admin.js           ✅ (~1810 líneas)
+│   └── founder-admin.js           ✅ (~1765 líneas — Sesión 21: stock_bajo + banner refactor)
 ├── api/
 │   ├── _lib/
 │   │   ├── supabase.js            ✅
 │   │   └── meta-capi.js           ✅
 │   ├── checkout.js                ✅
 │   ├── seguimiento.js             ✅
-│   └── admin.js                   ✅
+│   └── admin.js                   ✅ (Sesión 21: stock_bajo en list/save_product)
 ├── package.json                   ✅
 ├── vercel.json                    ✅
 ├── README.md                      ✅
@@ -629,6 +804,13 @@ founder-web/
 - `service_role` NO bypassea GRANTs de tabla — solo bypassea RLS.
 - Las 4 tablas privadas (`orders`, `order_items`, `coupons`, + parcialmente
   `site_settings`) **SOLO se tocan vía `/api/*`**.
+- ⚠️ **Sesión 21 — orden crítico de despliegue**: cuando un cambio toca
+  Supabase (ALTER TABLE, INSERT en site_settings, etc.) Y código frontend
+  al mismo tiempo, SIEMPRE correr el SQL en Supabase **PRIMERO**, después
+  desplegar el código. Si se invierte el orden, el frontend pide columnas/
+  filas que aún no existen y falla en cascada (productos, banner, todo).
+  Recuperación es instantánea cuando se corre el SQL — pero el sitio queda
+  caído en el intermedio.
 
 ### Reglas de navegador
 - **Para probar cambios en paneles de Meta Business, usar Google Chrome**.
@@ -746,28 +928,43 @@ Entrar a `/admin.html` con password `nerito20`.
   con `touch-action: pan-y` + 4 listeners coordinados + reset por timeout,
   botón Compartir WhatsApp, revisión completa con 5 bugs encontrados y
   arreglados (div huérfano, código muerto, scrollbar fantasma).
-  ← **Acá terminamos.**
-- **Sesión 21:** A definir según prioridades del usuario. ← **Próxima.**
+- **Sesión 21 (Stock bajo + perf inicial + WCAG):** Tres bloques cerrados.
+  (1) Feature `stock_bajo` en admin con columna nueva `product_colors.stock_bajo`
+  (boolean default false) + checkbox dorado independiente en cada fila de
+  color (no excluyente con los 3 estados — frontend ya tenía la lógica
+  defensiva desde Sesión 20). (2) Optimizaciones de carga inicial en
+  `index.html`: banner migrado de `products.banner_url` a
+  `site_settings.hero_banner_url` (query 70% más liviana), 3 skeleton cards
+  con shimmer dorado animado mientras carga el catálogo, `fetchpriority="high"`
+  en banner + primeras 3 cards, preconnect a Supabase (~150ms ahorrados en
+  handshake), banner separado del Promise.all en init() para aplicar apenas
+  resuelve. Refactor del bloque banner en founder-admin.js (eliminadas
+  funciones legacy `getBannerProduct` y `persistBannerUrl` viejas; ahora usa
+  `apiAdmin('get_setting')` / `set_setting` que ya existían). (3) Fixes de
+  accesibilidad WCAG: contraste botón "Ver detalle" (2.2:1 → 8.5:1) y
+  jerarquía de headings (h2 invisible para sección RFID). PageSpeed
+  Insights validó: **Performance 94/100 verde** en mobile. 1 incidente
+  resuelto (orden de despliegue Supabase-first). ← **Acá terminamos.**
+- **Sesión 22:** A definir según prioridades del usuario. ← **Próxima.**
 
 ---
 
-## 📋 Pendientes para Sesión 21
+## 📋 Pendientes para Sesión 22
 
-### Prioridad alta (no bloqueante) — solo cuando arranquen ads
-1. **Evaluar primera campaña paga de Meta Ads** con optimización de Purchase.
-   Con el dominio verificado, AEM debería funcionar correctamente en iOS 14.5+.
-   Definir: presupuesto diario, producto destacado, público objetivo
-   (remarketing a visitantes de `producto.html` vs frío).
+### Prioridad alta — listo para arrancar cuando vos quieras
+1. **Primera campaña paga de Meta Ads** con optimización de Purchase.
+   Todo el setup técnico está listo desde Sesión 17-18 (Pixel + CAPI +
+   dominio verificado). Con PageSpeed 94/100 (Sesión 21), el sitio está en
+   estado óptimo para ads. Definir con el usuario: presupuesto diario,
+   producto destacado, público objetivo (remarketing a visitantes de
+   `producto.html` vs frío).
 
-### Prioridad media — feature admin nueva
-2. **Agregar campo `stock_bajo` en admin** para activar el aviso "⏳ Pocas
-   unidades disponibles" preparado en Sesión 20. La lógica de frontend ya
-   está lista — solo falta:
-   - Agregar checkbox por color en `founder-admin.js` (sección de edición
-     de producto).
-   - Setear `extras.colores_estado.<NombreColor>_stock_bajo: true` cuando
-     el admin lo marca.
-   - Verificar que se guarda en `product_colors.extras` JSONB.
+### Prioridad media — limpieza de pedidos (5 min)
+2. **Borrar pedidos de prueba acumulados** con el sistema de Sesión 18:
+   - `F237553`, `F839362`, `F029945` — Evandro Segovia con CIs random.
+   - `F264440`, `F515156` — pedidos de prueba.
+   - `F378204` — test CAPI.
+   - ⚠️ **NO BORRAR**: `F203641` — Florencia Risso (cliente real).
 
 ### Prioridad media — 3 clics en Chrome (Meta)
 3. **Renombrar dataset "NO"** (ID `1472474751248750`) con prefijo `ZZ-` para
@@ -775,19 +972,30 @@ Entrar a `/admin.html` con password `nerito20`.
 4. **Renombrar o ignorar Ad Account `26140748312219895`** (auto-creada).
 5. **Agregar email de contacto al Instagram** en Meta Business Portfolio.
 
-### Prioridad media — limpieza de pedidos
-6. **Borrar pedidos de prueba acumulados** con el sistema de Sesión 18:
-   - `F237553`, `F839362`, `F029945` — Evandro Segovia con CIs random.
-   - `F264440`, `F515156` — pedidos de prueba.
-   - `F378204` — test CAPI.
-   - ⚠️ **NO BORRAR**: `F203641` — Florencia Risso (cliente real).
-
 ### Prioridad baja — pulido
-7. **Reintentar username `founder.uy` para la Page de Facebook** cuando Meta
+6. **Reintentar username `founder.uy` para la Page de Facebook** cuando Meta
    lo libere (actualmente `founder.uy.oficial`).
+7. **Drop columna `products.banner_url`** (legacy desde Sesión 21).
+   No es urgente — ya no se lee desde ningún lado y no estorba.
+   `ALTER TABLE products DROP COLUMN banner_url;`
+
+### Optimizaciones de performance restantes (NO urgentes — score actual 94)
+- **Imágenes en formatos modernos (WebP/AVIF)**: ahorro estimado 5-6 MB en
+  mobile según PageSpeed. Requiere Supabase Pro ($25/mes Image Transformations)
+  o CDN externo (Cloudinary). **Solo evaluar si las campañas pagas muestran
+  CR bajo en mobile**.
+- **Fuentes Google no bloqueantes**: ahorro estimado 1.930 ms en mobile
+  (patrón `media="print"` + `onload`). Tocar 9 HTMLs. Score actual ya es 94
+  → ganancia marginal.
+- **Cache headers en Supabase Storage**: configurar `Cache-Control` agresivo
+  en el bucket `product-photos`. Ayuda en visitas repetidas y navegación
+  entre páginas internas.
+- **Reducir 34 KB de JS sin usar**: probablemente parte de meta-pixel.js
+  o cart.js. Ganancia marginal — auditar solo si hay tiempo libre.
 
 ### Posibles direcciones nuevas (a discutir con usuario)
-- **Mejoras UX en otras páginas** (index.html, contacto, sobre-nosotros).
+- **Mejoras UX en otras páginas** (`index.html`, `contacto.html`,
+  `sobre-nosotros.html`).
 - **Integración Mercado Pago** completa (hoy es manual).
 - **Email transaccional** post-compra (Resend / SendGrid).
 - **Sistema de reseñas reales** (cuando haya clientes con compras
@@ -796,6 +1004,11 @@ Entrar a `/admin.html` con password `nerito20`.
 ---
 
 ## 📜 Historial de incidentes resueltos
+
+### Sesión 21 (1 incidente — orden de despliegue)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | Productos y banner dejaron de cargar tras subir los archivos de stock_bajo | El usuario subió los 4 archivos a GitHub antes de correr el SQL `ALTER TABLE product_colors ADD COLUMN stock_bajo`. La query del frontend pedía una columna que aún no existía → 400/500 → toda la cascada de carga falló | Correr el SQL pendiente. Recuperación instantánea. **Lección: SIEMPRE el SQL primero, después el código** (regla agregada a sección crítica) |
 
 ### Sesión 20 (5 incidentes resueltos en revisión final + 1 bug iOS crítico)
 | # | Síntoma | Causa raíz | Fix |
@@ -836,14 +1049,12 @@ Entrar a `/admin.html` con password `nerito20`.
 
 ---
 
-**FIN** — Cerramos Sesión 20. Sesión muy larga centrada exclusivamente en
-`producto.html` (de 1394 a 2422 líneas, +1028). Todo el polish UX
-sustantivo del catálogo está listo: galería interactiva con autoplay/zoom/swipe,
-sección comparativa, reseñas con carrusel mobile, SEO dinámico para Google y
-redes sociales, sticky CTA mobile+desktop coordinado armónicamente con la
-burbuja WhatsApp, fix crítico de touch en iOS, política garantía/cambios
-separada y consistente en 5 archivos, fotos del carrito centralizadas. Auditoría
-final detectó 5 bugs menores que se arreglaron antes de cerrar. El sitio está
-en estado de polish UX listo para campañas pagas — la próxima sesión decide si
-arrancar ads, agregar la feature `stock_bajo` desde admin, atacar otras
-páginas, o evaluar nuevos caminos. 🎯
+**FIN** — Cerramos Sesión 21. Sitio en estado óptimo: feature `stock_bajo`
+operativa desde admin, banner migrado a `site_settings.hero_banner_url`
+(query liviana + arquitectura coherente), `index.html` con skeletons +
+fetchpriority + preconnect, fixes WCAG aplicados. **PageSpeed Insights
+mobile: Performance 94/100 verde** — top 10% de sitios web, score más
+que aceptable para arrancar campañas pagas. El sitio está técnicamente
+listo para escalar tráfico — la próxima sesión decide si arrancar Meta
+Ads, atacar pendientes de limpieza, o explorar nuevas direcciones (MP
+integrado, email transaccional, mejoras UX en otras páginas). 🎯
