@@ -139,9 +139,27 @@ async function processWebhook(req, res) {
 
   // ── 3. Validar firma HMAC ──────────────────────────────────────
   // Solo MP conoce el MP_WEBHOOK_SECRET, así que esto es nuestra auth.
-  const isValidSignature = verifyWebhookSignature(req.headers, paymentId);
+  //
+  // 🚨 IMPORTANTE: MP firma el manifest con el `data.id` que viene en
+  // los QUERY PARAMS de la URL (`?data.id=XXX`), NO con el `body.data.id`.
+  // En la mayoría de los webhooks coinciden, pero ante divergencia hay
+  // que usar el de la URL — la docu oficial es explícita.
+  //
+  // Pasamos el de URL como prioritario y el del body como fallback.
+  const dataIdForSignature =
+       req.query?.['data.id']
+    || req.query?.id
+    || body?.data?.id
+    || body?.id;
+
+  const isValidSignature = verifyWebhookSignature(req.headers, dataIdForSignature);
   if (!isValidSignature) {
-    console.warn('[mp-webhook] firma inválida — rechazando', { payment_id: paymentId });
+    console.warn('[mp-webhook] firma inválida — rechazando', {
+      payment_id: paymentId,
+      data_id_for_sig: dataIdForSignature,
+      from_query: req.query?.['data.id'] || req.query?.id || null,
+      from_body:  body?.data?.id || body?.id || null,
+    });
     // 401 acá hace que MP marque el webhook como "fallido" y reintente.
     // Eso es bueno: si era una firma legítima que falló por algún
     // motivo transitorio, el reintento la pasa.
