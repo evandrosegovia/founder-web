@@ -446,6 +446,7 @@
       'Pendiente confirmación': { color: '#8888ff',      icon: '🔔' },
       'Confirmado':             { color: 'var(--green)', icon: '✅' },
       'Entregado':              { color: 'var(--green)', icon: '📦' },
+      'Pago rechazado':         { color: 'var(--red)',   icon: '⚠️' },
       'Cancelado':              { color: 'var(--red)',   icon: '❌' },
     };
     const porEstado = {};
@@ -617,6 +618,7 @@
       'En camino':              'status-confirmado',
       'Listo para retirar':     'status-confirmado',
       'Entregado':              'status-entregado',
+      'Pago rechazado':         'status-cancelado',
       'Cancelado':              'status-cancelado',
     };
 
@@ -852,6 +854,7 @@
       'Listo para retirar':     'status-confirmado',
       'Confirmado':             'status-confirmado',
       'Entregado':              'status-entregado',
+      'Pago rechazado':         'status-cancelado',
       'Cancelado':              'status-cancelado',
     };
     const cls = statusMap[o.estado] || '';

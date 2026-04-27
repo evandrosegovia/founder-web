@@ -157,6 +157,15 @@
   }
 
   async function init() {
+    // 0) ¿Volvemos de Mercado Pago? Si la URL trae ?mp=success/pending/failure
+    //    significa que el cliente acaba de pagar (o intentar pagar) en MP.
+    //    Mostramos la pantalla correspondiente y NO procesamos el carrito.
+    const mpReturn = parseMpReturn();
+    if (mpReturn) {
+      handleMpReturn(mpReturn);
+      return;
+    }
+
     // 1) Fetch fresco desde Supabase para saber el stock ACTUAL (no
     //    depende de que el usuario haya pasado antes por index/producto).
     try {
@@ -192,6 +201,157 @@
       window.founderPixel.trackInitiateCheckout(state.cart, total);
     }
   }
+
+  // ── RETORNO DE MERCADO PAGO ──────────────────────────────────
+  /**
+   * Lee la URL para detectar si el cliente vuelve de Mercado Pago.
+   * MP nos redirige a checkout.html?mp=<estado>&numero=<F######>
+   * con uno de los 3 estados posibles. Devuelve null si no es retorno.
+   */
+  function parseMpReturn() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const mp     = params.get('mp');
+      if (!mp) return null;
+      if (!['success', 'pending', 'failure'].includes(mp)) return null;
+      return {
+        estado: mp,
+        numero: params.get('numero') || '',
+        // MP también agrega payment_id, status, etc. por defecto en
+        // back_urls. Los capturamos por si algún día los necesitamos.
+        paymentId: params.get('payment_id') || '',
+        status:    params.get('status')     || '',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Maneja la pantalla de retorno post-MP.
+   *
+   * Casos:
+   *  - success: pago aprobado. Recuperamos snapshot del sessionStorage
+   *             (que se guardó antes de redirigir a MP), abrimos WhatsApp
+   *             con el resumen del pedido y mostramos la confirmación.
+   *  - pending: pago en proceso (Abitab/Redpagos pendiente, o tarjeta
+   *             en revisión). Mostramos mensaje específico — el cliente
+   *             tiene que terminar el pago en otro lado.
+   *  - failure: pago rechazado. Mostramos error con opción de volver
+   *             al carrito y reintentar.
+   */
+  function handleMpReturn(mpReturn) {
+    // Recuperamos el snapshot guardado antes de redirigir a MP.
+    // Tiene email + waMsg pre-armado + datos del cliente.
+    let snap = null;
+    try {
+      snap = JSON.parse(sessionStorage.getItem('founder_last_order') || 'null');
+    } catch { /* sin snapshot, igual seguimos */ }
+
+    // Limpiar la URL para que un refresh no re-dispare el flujo.
+    // Usamos replaceState para sacar el query string pero conservar el path.
+    try {
+      history.replaceState(null, '', window.location.pathname);
+    } catch { /* ignorar errores de replaceState */ }
+
+    // Ocultar el formulario en todos los casos
+    $('checkoutForm').style.display = 'none';
+
+    if (mpReturn.estado === 'success') {
+      // ── ÉXITO ─────────────────────────────────────────────
+      // Limpiar carrito (el pedido ya se procesó). Si por algún motivo
+      // el cliente vuelve a este flujo desde otra pestaña, el carrito
+      // ya estará vacío.
+      clearCart();
+
+      // Abrir WhatsApp con el resumen (mismo patrón que transferencia).
+      // Acá NO necesitamos el truco iOS-safe de pre-open porque ya
+      // estamos dentro de una navegación post-redirect — ya no hay
+      // gesto de usuario reciente. Pero es justamente por eso que
+      // muchos navegadores mobiles van a bloquear el window.open
+      // automático. Solución: mostramos un BOTÓN dentro de la pantalla
+      // de confirmación que el cliente clickea para abrir WhatsApp.
+      // Eso lo manejamos en el HTML: el botón "↺ Reenviar pedido por
+      // WhatsApp" que ya existe sirve perfectamente para este caso.
+      if (snap?.id) {
+        setText('confirmOrderId', `Pedido #${snap.id}`);
+      } else if (mpReturn.numero) {
+        setText('confirmOrderId', `Pedido #${mpReturn.numero}`);
+      }
+      $('confirmScreen').classList.add('is-visible');
+
+      // Intento "best effort" de abrir WhatsApp automáticamente.
+      // En desktop suele funcionar. En mobile/iOS post-redirect lo
+      // bloquean — pero el botón "Reenviar por WhatsApp" queda visible
+      // como fallback y SÍ tiene gesto de usuario.
+      if (snap?.waMsg) {
+        const waUrl = `https://wa.me/${CONFIG.WA_NUMBER}?text=${encodeURIComponent(snap.waMsg)}`;
+        try { window.open(waUrl, '_blank', 'noopener'); } catch { /* OK, hay fallback */ }
+      }
+      return;
+    }
+
+    if (mpReturn.estado === 'pending') {
+      // ── PENDIENTE (Abitab, Redpagos, tarjeta en revisión) ─────
+      // El pedido está creado en Supabase con estado 'Pendiente pago'.
+      // El webhook lo va a actualizar cuando el cliente termine de pagar.
+      // No limpiamos el carrito acá — si el cliente quiere volver a
+      // intentar con otro método, todavía tiene los items.
+      showMpStatusScreen({
+        icon:   '⏳',
+        title:  'Pago pendiente',
+        msg:    snap?.id
+          ? `Tu pedido <strong>#${snap.id}</strong> fue registrado y está esperando que completes el pago.<br><br>Si elegiste Abitab o Redpagos, tenés <strong>3 días hábiles</strong> para pagar. Te avisaremos por email cuando se acredite.`
+          : 'Tu pedido fue registrado. Cuando termines el pago, te avisaremos por email.',
+        btnText: 'Volver a la tienda',
+        btnHref: 'index.html',
+      });
+      return;
+    }
+
+    // ── FAILURE (rechazado) ─────────────────────────────────
+    // El pedido quedó en Supabase con estado 'Pendiente pago' (el
+    // webhook lo va a marcar como 'Pago rechazado' cuando llegue
+    // el aviso de MP). El carrito NO se limpia para que el cliente
+    // pueda volver a intentar.
+    showMpStatusScreen({
+      icon:    '❌',
+      title:   'Pago no procesado',
+      msg:     'El pago fue rechazado por Mercado Pago. Esto puede pasar por fondos insuficientes, datos incorrectos o un problema con la tarjeta.<br><br>Podés intentar de nuevo con otro método o contactarnos por WhatsApp.',
+      btnText: 'Volver al checkout',
+      btnHref: 'checkout.html',
+      btn2Text: 'Contactar por WhatsApp',
+      btn2Href: `https://wa.me/${CONFIG.WA_NUMBER}?text=${encodeURIComponent('Hola, tuve un problema con el pago en Mercado Pago' + (snap?.id ? ' del pedido #' + snap.id : ''))}`,
+    });
+  }
+
+  /**
+   * Pinta la pantalla de retorno reutilizando #confirmScreen.
+   * Cambia el ícono, título, mensaje y botones según el caso.
+   */
+  function showMpStatusScreen({ icon, title, msg, btnText, btnHref, btn2Text, btn2Href }) {
+    const screen = $('confirmScreen');
+    if (!screen) return;
+    const iconEl   = screen.querySelector('.confirm-screen__icon');
+    const titleEl  = screen.querySelector('.confirm-screen__title');
+    const idEl     = $('confirmOrderId');
+    const msgEl    = screen.querySelector('.confirm-screen__msg');
+    const actions  = screen.querySelector('.confirm-screen__actions');
+
+    if (iconEl)  iconEl.textContent  = icon;
+    if (titleEl) titleEl.textContent = title;
+    if (idEl)    idEl.textContent    = ''; // sin ID en pending/failure
+    if (msgEl)   msgEl.innerHTML     = msg;
+    if (actions) {
+      const primary = `<a href="${btnHref}" class="confirm-screen__btn">${btnText}</a>`;
+      const secondary = btn2Text
+        ? `<a href="${btn2Href}" class="confirm-screen__btn--secondary" target="_blank" rel="noopener">${btn2Text}</a>`
+        : '';
+      actions.innerHTML = primary + secondary;
+    }
+    screen.classList.add('is-visible');
+  }
+
 
   /** Muestra una notificación recuadrada arriba del formulario listando
    *  los productos que fueron eliminados del carrito porque se agotaron.
@@ -506,7 +666,11 @@
     const orderId = 'F' + Date.now().toString().slice(-6);
     const fecha   = new Date().toLocaleString('es-UY');
     const pagoStr = state.pagoMode === 'mercadopago' ? 'Mercado Pago' : 'Transferencia';
-    const estado  = state.pagoMode === 'transfer' ? 'Pendiente pago' : 'Pendiente confirmación';
+    // Ambos métodos arrancan como 'Pendiente pago':
+    //  - Transferencia: el cliente todavía tiene que hacer la transfer manual.
+    //  - Mercado Pago:  el cliente está por entrar al checkout de MP. Cuando
+    //                   MP apruebe, el webhook sube a 'Pendiente confirmación'.
+    const estado  = 'Pendiente pago';
     const cuponStr = state.coupon
       ? `${state.coupon.codigo} (-$${discountAmount.toLocaleString('es-UY')})`
       : '';
@@ -582,18 +746,9 @@
     // que alguna vez el servidor reescriba el formato, ej: añadir prefijo).
     const numeroConfirmado = apiResp.data.numero || orderId;
 
-    // Meta Pixel — Purchase (lado cliente)
-    // El servidor también va a emitir este evento por CAPI con el mismo
-    // event_id = numeroConfirmado → Meta deduplica automáticamente.
-    if (window.founderPixel) {
-      window.founderPixel.trackPurchase({
-        numero: numeroConfirmado,
-        total,
-        cart: state.cart,
-      });
-    }
-
-    // ── 2. Abrir WhatsApp con resumen ─────────────────────────
+    // Armar siempre el mensaje de WhatsApp (lo necesitamos en ambos
+    // flujos: ahora para transferencia, o cuando el cliente vuelva
+    // de MP en caso de Mercado Pago).
     const waMsg = [
       `🛍️ *NUEVO PEDIDO FOUNDER — ${numeroConfirmado}*`,
       ``,
@@ -612,10 +767,8 @@
       `🔖 *ID:* ${numeroConfirmado}`,
     ].join('\n');
 
-    const waUrl = `https://wa.me/${CONFIG.WA_NUMBER}?text=${encodeURIComponent(waMsg)}`;
-    openWhatsApp(waTab, waUrl);
-
-    // ── 3. Guardar snapshot en sessionStorage (para reenvío + ver detalles) ──
+    // Snapshot único — sirve para reenviar/ver detalles después,
+    // y también para recuperar el waMsg cuando el cliente vuelve de MP.
     const orderSnapshot = {
       id:       numeroConfirmado,
       nombre, apellido, email,
@@ -627,7 +780,40 @@
       console.warn('[Founder] sessionStorage no disponible:', e);
     }
 
-    // ── 4. Limpiar carrito y mostrar confirmación ────────────
+    // ── BIFURCACIÓN: Mercado Pago vs Transferencia ──────────────
+    if (apiResp.data.init_point) {
+      // ── Mercado Pago: redirigir al checkout de MP ──────────────
+      // El backend ya creó el pedido en Supabase con estado 'Pendiente
+      // pago'. El webhook lo va a actualizar cuando MP confirme/rechace
+      // el pago. El Pixel.Purchase NO se dispara acá — lo dispara el
+      // webhook cuando el pago es realmente aprobado (vía CAPI).
+      //
+      // Cerramos la pestaña pre-abierta de WhatsApp porque acá todavía
+      // no hay nada que mostrarle al cliente — abriremos WhatsApp
+      // cuando vuelva con ?mp=success.
+      closeWhatsAppTab(waTab);
+      // Redirigimos a init_point en la pestaña actual. Si todo va bien,
+      // el cliente vuelve a checkout.html?mp=<estado> tras pagar.
+      window.location.href = apiResp.data.init_point;
+      return;
+    }
+
+    // ── Transferencia: flujo original (WhatsApp + confirmación) ─
+    // Meta Pixel — Purchase (lado cliente)
+    // El servidor también va a emitir este evento por CAPI con el mismo
+    // event_id = numeroConfirmado → Meta deduplica automáticamente.
+    if (window.founderPixel) {
+      window.founderPixel.trackPurchase({
+        numero: numeroConfirmado,
+        total,
+        cart: state.cart,
+      });
+    }
+
+    const waUrl = `https://wa.me/${CONFIG.WA_NUMBER}?text=${encodeURIComponent(waMsg)}`;
+    openWhatsApp(waTab, waUrl);
+
+    // Limpiar carrito y mostrar confirmación
     clearCart();
     $('checkoutForm').style.display = 'none';
     setText('confirmOrderId', `Pedido #${numeroConfirmado}`);
