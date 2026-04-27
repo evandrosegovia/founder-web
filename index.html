@@ -692,7 +692,14 @@ select:active,
 .cart__mp-info { text-align: center; margin-top: 12px; font-size: 9px; letter-spacing: 2px; color: var(--color-muted); }
 .cart__mp-info strong { color: var(--color-text); letter-spacing: 3px; }
 
-/* ── SHARED — Toast de notificación ────────────────────────── */
+/* ── SHARED — Toast de notificación ──────────────────────────
+   Sistema de variantes:
+     • Default (sin modificador): blanco — info neutral.
+     • .toast--success: verde — agregados al carrito, acciones positivas.
+     • .toast--error:   rojo — eliminaciones, errores, validaciones fallidas.
+   Las 3 variantes comparten posición/tipografía/animación; solo cambian
+   colores y un sutil acento (border-left) para reforzar el significado.
+*/
 .toast {
   position: fixed; bottom: 24px; left: 50%;
   transform: translateX(-50%) translateY(12px);
@@ -703,6 +710,8 @@ select:active,
   white-space: nowrap; pointer-events: none;
 }
 .toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast--success { background: var(--color-success); color: #fff; }
+.toast--error   { background: var(--color-danger);  color: #fff; }
 
 /* ── ANIMATIONS ───────────────────────────────────────────── */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
@@ -1584,7 +1593,7 @@ function addToCart(product, color, precio) {
     state.cart.push({ id: product.id, name: product.name, color: color.name, price: precioFinal, qty: 1 });
   }
   updateCart();
-  showToast(`Founder ${product.name} — ${color.name} agregado`);
+  showToast(`Founder ${product.name} — ${color.name} agregado`, 'success');
 
   // Meta Pixel — AddToCart
   if (window.founderPixel) window.founderPixel.trackAddToCart(product.name, color.name, precioFinal);
@@ -1645,13 +1654,22 @@ function updateCart() {
 }
 
 function changeQty(idx, delta) {
-  state.cart[idx].qty += delta;
-  if (state.cart[idx].qty <= 0) state.cart.splice(idx, 1);
+  const item = state.cart[idx];
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) {
+    // El cliente bajó el contador hasta 0 → tratamos como eliminación.
+    state.cart.splice(idx, 1);
+    showToast(`✕ Founder ${item.name} removido del carrito`, 'error');
+  }
   updateCart();
 }
 
 function removeItem(idx) {
+  const item = state.cart[idx];
+  if (!item) return;
   state.cart.splice(idx, 1);
+  showToast(`✕ Founder ${item.name} removido del carrito`, 'error');
   updateCart();
 }
 
@@ -1676,10 +1694,19 @@ function toggleMenu() {
 }
 
 // ── SHARED UI — Toast ───────────────────────────────────────────
+// Soporta 3 variantes según el segundo parámetro:
+//   showToast('mensaje')              → default (blanco)
+//   showToast('mensaje', 'success')   → verde (agregados al carrito, etc.)
+//   showToast('mensaje', 'error')     → rojo (eliminaciones, errores)
+// La clase modificadora se limpia en cada llamada para evitar que un
+// toast quede pegado con el color de uno anterior.
 let toastTimer;
-function showToast(msg) {
+function showToast(msg, variant) {
   const t = $('toast');
   t.textContent = msg;
+  t.classList.remove('toast--success', 'toast--error');
+  if (variant === 'success') t.classList.add('toast--success');
+  else if (variant === 'error') t.classList.add('toast--error');
   t.classList.add('is-visible');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('is-visible'), 3000);

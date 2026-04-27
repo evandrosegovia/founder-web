@@ -580,9 +580,13 @@ select:active,
 .cart__mp-info { text-align: center; margin-top: 12px; font-size: 9px; letter-spacing: 2px; color: var(--color-muted); }
 .cart__mp-info strong { color: var(--color-text); letter-spacing: 3px; }
 
-/* ── SHARED — Toast ────────────────────────────────────────── */
+/* ── SHARED — Toast ──────────────────────────────────────────
+   Sistema de variantes: default (blanco) / .toast--success (verde) /
+   .toast--error (rojo). Las 3 comparten posición/tipografía/animación. */
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--color-text); color: var(--color-bg); padding: 12px 24px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; opacity: 0; transition: all .4s; z-index: var(--z-toast); white-space: nowrap; pointer-events: none; }
 .toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast--success { background: var(--color-success); color: #fff; }
+.toast--error   { background: var(--color-danger);  color: #fff; }
 
 /* ── SHARED — Animaciones ───────────────────────────────────── */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
@@ -2217,7 +2221,7 @@ function addToCart() {
   }
 
   updateCart();
-  showToast(`Founder ${p.name} — ${color} agregado`);
+  showToast(`Founder ${p.name} — ${color} agregado`, 'success');
   pulseAddButtons(); // feedback visual en los botones (2s)
 
   // Meta Pixel — AddToCart
@@ -2324,12 +2328,24 @@ function updateCart() {
 }
 
 function changeQty(idx, delta) {
-  state.cart[idx].qty += delta;
-  if (state.cart[idx].qty <= 0) state.cart.splice(idx, 1);
+  const item = state.cart[idx];
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) {
+    // El cliente bajó el contador hasta 0 → tratamos como eliminación.
+    state.cart.splice(idx, 1);
+    showToast(`✕ Founder ${item.name} removido del carrito`, 'error');
+  }
   updateCart();
 }
 
-function removeItem(idx) { state.cart.splice(idx, 1); updateCart(); }
+function removeItem(idx) {
+  const item = state.cart[idx];
+  if (!item) return;
+  state.cart.splice(idx, 1);
+  showToast(`✕ Founder ${item.name} removido del carrito`, 'error');
+  updateCart();
+}
 
 function toggleCart() {
   const sidebar = $('cartSidebar');
@@ -2352,10 +2368,18 @@ function toggleMenu() {
 }
 
 // ── SHARED UI — Toast ───────────────────────────────────────────
+// ── TOAST ──────────────────────────────────────────────────────
+// Soporta 3 variantes:
+//   showToast('mensaje')              → default (blanco)
+//   showToast('mensaje', 'success')   → verde
+//   showToast('mensaje', 'error')     → rojo
 let toastTimer;
-function showToast(msg) {
+function showToast(msg, variant) {
   const t = $('toast');
   t.textContent = msg;
+  t.classList.remove('toast--success', 'toast--error');
+  if (variant === 'success') t.classList.add('toast--success');
+  else if (variant === 'error') t.classList.add('toast--error');
   t.classList.add('is-visible');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('is-visible'), 3000);
