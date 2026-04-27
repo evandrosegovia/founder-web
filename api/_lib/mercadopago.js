@@ -332,13 +332,25 @@ export async function getPayment(paymentId) {
  *   2. MP calcula HMAC-SHA256(manifest, MP_WEBHOOK_SECRET) en hex.
  *   3. Lo manda como v1=<hash>.
  *
+ * 🚨 IMPORTANTE — el `dataId` del manifest es el `data.id` que viene como
+ * QUERY PARAM de la URL del webhook (ej: ?data.id=156703706004), NO el
+ * `body.data.id` que viene en el JSON del body. La docu oficial de MP es
+ * explícita en esto: todos los ejemplos (PHP, Node, Go, Java) leen el
+ * data.id desde URLSearchParams. En la mayoría de los casos coincide con
+ * el del body, pero pueden diferir y la firma SE FIRMA CON EL DE LA URL.
+ *
+ * 🚨 IMPORTANTE 2 — si el dataId es alfanumérico, MP lo manda en lowercase.
+ * Aplicamos .toLowerCase() defensivo aunque sean dígitos numéricos
+ * (no afecta a strings numéricos y previene bugs si MP cambia el formato).
+ *
  * Nuestro lado:
  *   1. Extraemos ts y v1 del header.
- *   2. Recalculamos el HMAC con el mismo manifest.
- *   3. Comparamos. Si coincide → webhook genuino. Si no → ignorar.
+ *   2. Tomamos el data.id de los query params (con fallbacks).
+ *   3. Recalculamos el HMAC con el mismo manifest.
+ *   4. Comparamos. Si coincide → webhook genuino. Si no → ignorar.
  *
  * @param {Object} headers     — request.headers (Vercel los pasa lowercase)
- * @param {string} dataId      — el data.id del body (el ID del pago)
+ * @param {string} dataId      — el data.id (idealmente del query param ?data.id=...)
  * @returns {boolean}          — true si la firma valida, false en cualquier otro caso
  */
 export function verifyWebhookSignature(headers, dataId) {
@@ -373,8 +385,12 @@ export function verifyWebhookSignature(headers, dataId) {
     return false;
   }
 
+  // Normalización defensiva del dataId: MP exige lowercase para alfanumérico.
+  // Para IDs solo numéricos no cambia nada, pero previene bugs.
+  const normalizedDataId = String(dataId).trim().toLowerCase();
+
   // Manifest según especificación de MP — los `;` finales SÍ van.
-  const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+  const manifest = `id:${normalizedDataId};request-id:${xRequestId};ts:${ts};`;
 
   const expected = createHmac('sha256', SECRET).update(manifest).digest('hex');
 
@@ -384,8 +400,18 @@ export function verifyWebhookSignature(headers, dataId) {
   const isValid = expected === v1;
 
   if (!isValid) {
-    console.warn('[mp] firma inválida — rechazando webhook',
-      { ts, request_id: xRequestId, data_id: dataId });
+    // Logging detallado — sin filtrar el SECRET, pero con los inputs
+    // que usamos para el manifest. Permite diagnosticar mismatches.
+    console.warn('[mp] firma inválida — rechazando webhook', {
+      ts,
+      request_id: xRequestId,
+      data_id_raw: dataId,
+      data_id_normalized: normalizedDataId,
+      manifest_preview: manifest, // sin el secret, no es sensible
+      received_v1: v1,
+      computed_v1: expected,
+      secret_length: SECRET.length, // nos dice si la env var está rara
+    });
   }
 
   return isValid;
