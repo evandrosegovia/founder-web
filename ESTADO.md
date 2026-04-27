@@ -1,13 +1,93 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 22 — cierre (27/04/2026)
-**Próxima sesión:** 23 — Cerrar testing real de Mercado Pago (necesita acceso a la cuenta de MP de la esposa). Después: definir datos bancarios reales para email de transferencia, primera campaña paga de Meta Ads, o explorar si conviene rediseñar el modal del index.html con dos CTAs equivalentes (decisión postergada de Sesión 22 con la idea de revisarla "en un tiempo").
+**Última actualización:** Sesión 23 — cierre EXITOSO (27/04/2026)
+**Próxima sesión:** 24 — Pulido y crecimiento. Sitio en producción profesional con cobro online MP funcionando end-to-end. Pendientes secundarios: limpiar pedidos de prueba, definir datos bancarios para email transferencia, primera campaña paga Meta Ads, cambios de estado del admin disparando emails (opcional).
+
+---
+
+## 🎉 SESIÓN 23 — Mercado Pago en producción REAL validado
+
+**Hito histórico:** después de un debug extenso, el sitio quedó **100% operativo en modo productivo** con cobro online de Mercado Pago. **Pago real con tarjeta real validado end-to-end** con webhook 200, email transaccional automático y estado correcto en admin.
+
+### 🐛 Bugs encontrados y resueltos en Sesión 23
+
+#### Bug 1 — Validación HMAC del webhook leía data.id del lugar equivocado
+- **Síntoma:** todos los webhooks de MP fallaban con 401 ("invalid_signature").
+- **Causa raíz real:** la documentación oficial de MP indica que la firma HMAC se calcula sobre el `data.id` que viene como **query param** (`?data.id=XXX`), no el del body. El código original usaba el del body. Adicionalmente, la docu exige `.toLowerCase()` para IDs alfanuméricos.
+- **Fix:** modificar `verifyWebhookSignature` en `api/_lib/mercadopago.js` para aceptar el dataId con normalización `.toLowerCase()`. Modificar `api/mp-webhook.js` para priorizar `req.query['data.id']` sobre `body.data.id`.
+- **Impacto adicional:** se agregaron logs de diagnóstico mostrando `received_v1`, `computed_v1`, `manifest_preview`, `secret_length` y body crudo. Estos logs quedaron permanentes — son útiles para futuros debugs.
+
+#### Bug 2 — Confusión TEST vs PRODUCCIÓN en credenciales MP
+- **Síntoma:** después del Fix 1, el HMAC seguía sin coincidir.
+- **Causa raíz real:** MP cambió la nomenclatura de credenciales. El prefijo `TEST-` ya no existe — ahora **AMBAS** (test y producción) arrancan con `APP_USR-`. La confusión de paneles + el indicador `live_mode: true` en los webhooks confirmó que el `MP_ACCESS_TOKEN` cargado en Vercel desde Sesión 22 era el **productivo**, no el de prueba (a pesar de que MP en algunos paneles lo mostraba como "test").
+- **Fix:** alinear las 3 variables al mismo modo (Producción): `MP_PUBLIC_KEY`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` actualizadas a las credenciales productivas. Webhook configurado en MP modo Productivo con clave secreta regenerada.
+- **Lección documentada:** el dato `live_mode: true/false` del payload del webhook es la única forma confiable de saber con qué sistema te conectaste. No confiar en los nombres de las pantallas de MP.
+
+### ✅ Validación final end-to-end (pago real)
+
+Pago real con tarjeta personal, monto $2.490 UYU, ejecutado el 27/04/2026:
+
+| Punto | Resultado |
+|---|---|
+| Redirección sitio → MP | ✅ OK |
+| Aprobación pago en MP | ✅ OK |
+| Retorno MP → sitio (`?mp=success`) | ✅ OK |
+| Webhook recibido por `/api/mp-webhook` | ✅ 200 OK |
+| Pedido en Supabase pasa a `'Pendiente confirmación'` | ✅ OK |
+| Email "Recibimos tu pago" recibido | ✅ OK |
+| Admin muestra estado correcto | ✅ OK |
+
+### 🆕 Cambios de código en Sesión 23
+
+#### `api/_lib/mercadopago.js` — función `verifyWebhookSignature`
+- Normalización con `.toLowerCase()` aplicada al dataId antes de armar el manifest.
+- Logging detallado en caso de firma inválida: incluye `received_v1`, `computed_v1`, `manifest_preview`, `secret_length`, `data_id_raw`, `data_id_normalized`. Sin filtrar el SECRET.
+
+#### `api/mp-webhook.js` — handler principal
+- Nueva variable `dataIdForSignature` que prioriza `req.query['data.id']` sobre body, alineado con docu oficial MP.
+- Nuevo log `[mp-webhook] DIAG raw_body` con body crudo y headers MP. Útil para debugs futuros.
+
+### 🧠 Lecciones documentadas para evitar repetirlas
+
+1. **MP no usa prefijos visibles para distinguir TEST/PROD desde 2024-2025.** Ambos arrancan con `APP_USR-...`. La única forma confiable de saber qué sistema usás es el campo `live_mode` que viene en el payload del webhook.
+
+2. **Webhook de MP firma con el `data.id` que viene en query params**, no con el del body. Aunque coincidan en la mayoría de los casos, hay casos edge donde difieren — la docu oficial es explícita.
+
+3. **`MP_WEBHOOK_SECRET` se regenera independiente entre TEST y PROD.** Si configurás webhook en ambos modos y los secret están desincronizados, los webhooks fallan con 401.
+
+4. **El user-agent `MercadoPago WebHook v1.0 payment` confirma que es webhook moderno** (no IPN legacy). MP Uruguay puede mandar webhooks LIVE incluso con TESTUSER si la app está en modo Productivo.
+
+5. **CI uruguaya en formularios de tarjeta MP**: el campo "CI" valida dígito verificador real. Para pagos con tarjeta de prueba, usar tipo **"Otro"** + número arbitrario (ej `12345678`).
+
+6. **TESTUSER de MP requiere saldo precargado** para que el botón "Pagar" se habilite. Crear con saldo > $0 desde el panel de cuentas de prueba.
+
+7. **Vercel requiere redeploy manual** después de cambiar variables de entorno. Los deploys existentes NO toman las variables nuevas automáticamente.
+
+### ⚠️ Pendiente menor
+- El pago real de validación ($2.490) quedó como pedido genuino en el sistema. Decidir si:
+  - Marcarlo como "Cancelado" en admin (no devuelve plata, solo limpia estado).
+  - Reembolsar desde panel MP "Tu dinero" → "Devolver" (devuelve a tarjeta en 5-10 días).
+- Limpiar pedidos de prueba acumulados de Sesión 23: F933757, F030973, F431103, y otros generados durante el debug. ⚠️ NO BORRAR F203641 (Florencia Risso, cliente real).
 
 ---
 
 ## 🚀 Para iniciar el próximo chat
 
 Pegale a Claude este mensaje al arrancar:
+
+> Leé `ESTADO.md` y retomamos después de Sesión 23. La Sesión 23 cerró
+> con éxito Mercado Pago en producción REAL: pago real con tarjeta
+> real validado end-to-end (webhook 200 + email + admin OK). El sitio
+> está oficialmente en e-commerce profesional completo. Pendientes
+> menores: limpiar pedidos de prueba en admin, decidir si cancelar/
+> reembolsar el pedido de validación, datos bancarios para email
+> transferencia. Pendientes mayores opcionales: primera campaña Meta
+> Ads, sistema de emails de cambios de estado del admin, polish UX
+> en otras páginas (index, contacto, sobre-nosotros).
+
+---
+
+## 🚀 Para iniciar el chat siguiente (referencia histórica Sesión 22)
 
 > Leé `ESTADO.md` y retomamos después de Sesión 22. La Sesión 22 cerró 3
 > bloques grandes y 1 ajuste UX: (1) **Mercado Pago Checkout Pro integrado
