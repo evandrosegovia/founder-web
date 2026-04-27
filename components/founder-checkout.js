@@ -574,7 +574,7 @@
         closeWhatsAppTab(waTab); // cortamos: cerrar placeholder
         state.cart = loadCart();
         showRemovedNotice(check.removed);
-        showToast('Se eliminaron productos agotados de tu carrito');
+        showToast('Se eliminaron productos agotados de tu carrito', 'error');
         if (!state.cart.length) {
           $('checkoutForm').style.display = 'none';
           $('emptyCart').style.display    = 'flex';
@@ -596,7 +596,7 @@
 
     if (!nombre || !apellido || !celular || !email) {
       closeWhatsAppTab(waTab);
-      showToast('Completá todos los datos personales');
+      showToast('Completá todos los datos personales', 'error');
       return;
     }
 
@@ -604,7 +604,7 @@
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       closeWhatsAppTab(waTab);
-      showToast('Ingresá un email válido');
+      showToast('Ingresá un email válido', 'error');
       return;
     }
 
@@ -612,7 +612,7 @@
     const celularClean = celular.replace(/[\s\-\+]/g, '');
     if (!/^\d{7,15}$/.test(celularClean)) {
       closeWhatsAppTab(waTab);
-      showToast('Ingresá un número de celular válido');
+      showToast('Ingresá un número de celular válido', 'error');
       return;
     }
 
@@ -620,20 +620,20 @@
     if (state.entregaMode === 'envio') {
       if (!$('coDepartamento').value || !$('coDireccion').value.trim()) {
         closeWhatsAppTab(waTab);
-        showToast('Completá los datos de envío');
+        showToast('Completá los datos de envío', 'error');
         return;
       }
     } else {
       if (!$('coNombreRetira').value.trim() || !$('coCIRetira').value.trim()) {
         closeWhatsAppTab(waTab);
-        showToast('Completá los datos de retiro');
+        showToast('Completá los datos de retiro', 'error');
         return;
       }
     }
 
     if (!$('coConsent').checked) {
       closeWhatsAppTab(waTab);
-      showToast('Debés aceptar la política de privacidad');
+      showToast('Debés aceptar la política de privacidad', 'error');
       return;
     }
 
@@ -718,7 +718,7 @@
     } catch (err) {
       console.error('[Founder] Error de red creando pedido:', err);
       closeWhatsAppTab(waTab);
-      showToast('No se pudo conectar. Verificá tu internet e intentá de nuevo.');
+      showToast('No se pudo conectar. Verificá tu internet e intentá de nuevo.', 'error');
       btn.disabled    = false;
       btn.textContent = pagoStr === 'Transferencia'
         ? 'Confirmar pedido (Transferencia)'
@@ -734,7 +734,7 @@
         || (errCode === 'numero_duplicate' ? 'Intentá de nuevo en un segundo' : 'No pudimos procesar el pedido');
       console.warn('[Founder] Error creando pedido:', errCode, errMsg);
       closeWhatsAppTab(waTab);
-      showToast(errMsg);
+      showToast(errMsg, 'error');
       btn.disabled    = false;
       btn.textContent = pagoStr === 'Transferencia'
         ? 'Confirmar pedido (Transferencia)'
@@ -824,10 +824,10 @@
   function reenviarPedido() {
     try {
       const snap = JSON.parse(sessionStorage.getItem('founder_last_order') || 'null');
-      if (!snap?.waMsg) { showToast('No se encontraron datos del pedido'); return; }
+      if (!snap?.waMsg) { showToast('No se encontraron datos del pedido', 'error'); return; }
       window.open(`https://wa.me/${CONFIG.WA_NUMBER}?text=${encodeURIComponent(snap.waMsg)}`, '_blank');
     } catch (e) {
-      showToast('No se pudo reenviar el pedido');
+      showToast('No se pudo reenviar el pedido', 'error');
     }
   }
 
@@ -865,11 +865,18 @@
   }
 
   // ── TOAST ────────────────────────────────────────────────────
+  // Soporta 3 variantes según el segundo parámetro:
+  //   showToast('mensaje')              → default (blanco)
+  //   showToast('mensaje', 'success')   → verde
+  //   showToast('mensaje', 'error')     → rojo
   let toastTimer;
-  function showToast(msg) {
+  function showToast(msg, variant) {
     const toast = $('toast');
     if (!toast) return;
     toast.textContent = msg;
+    toast.classList.remove('toast--success', 'toast--error');
+    if (variant === 'success') toast.classList.add('toast--success');
+    else if (variant === 'error') toast.classList.add('toast--error');
     toast.classList.add('is-visible');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 3000);
