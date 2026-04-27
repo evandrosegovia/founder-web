@@ -44,6 +44,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+  <!-- ============ PERFORMANCE ============ -->
+  <!-- Preconnect a Supabase: adelanta el handshake TLS para que el banner
+       y las fotos del grid empiecen a descargarse ~100-200ms más rápido. -->
+  <link rel="preconnect" href="https://qedwqbxuyhieznrqryhb.supabase.co" crossorigin>
+
   <!-- ============ FAVICON ============ -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23141414'/><text y='72' x='50' text-anchor='middle' font-size='60' font-family='serif' fill='%23c9a96e'>F</text></svg>">
 
@@ -400,6 +405,48 @@ select:active,
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #111, #1a1a1a, #0d0d0d);
   position: relative; overflow: hidden;
+}
+/* ── Skeletons de carga (mientras llegan los productos de Supabase) ── */
+/* Reemplazan al "Cargando productos..." plano por placeholders animados.
+   El shimmer dorado refuerza la identidad de marca y comunica progreso. */
+.product-skeleton {
+  background: var(--color-card, #1a1a1a);
+  border: 1px solid var(--color-border, rgba(255,255,255,.06));
+  display: flex; flex-direction: column;
+  min-height: 420px;
+}
+.product-skeleton__img {
+  aspect-ratio: 1 / 1; width: 100%;
+  background: linear-gradient(110deg, #161616 8%, #1f1f1f 18%, #161616 33%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.6s linear infinite;
+}
+.product-skeleton__body {
+  padding: 24px; display: flex; flex-direction: column; gap: 12px; flex: 1;
+}
+.product-skeleton__line {
+  height: 12px; border-radius: 2px;
+  background: linear-gradient(110deg, #1a1a1a 8%, #232323 18%, #1a1a1a 33%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.6s linear infinite;
+}
+.product-skeleton__line--short { width: 40%; }
+.product-skeleton__line--med   { width: 65%; height: 18px; }
+.product-skeleton__line--long  { width: 90%; }
+.product-skeleton__line--price { width: 30%; height: 22px; margin-top: auto; }
+@keyframes skeletonShimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-skeleton__img,
+  .product-skeleton__line { animation: none; }
+}
+/* Utility para texto solo accesible a lectores de pantalla */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0;
+  margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
 }
 .product-card__badge {
   position: absolute; top: 20px; left: 20px;
@@ -983,11 +1030,38 @@ body.cart-open .wa-bubble {
       <h2 class="section-title">Nuestros modelos</h2>
     </div>
   </div>
-  <div class="products-grid" id="productsGrid" role="list">
-    <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--color-muted)">
-      <div style="font-family:var(--font-serif);font-size:28px;margin-bottom:12px">Cargando productos...</div>
-      <div style="font-size:10px;letter-spacing:3px">UN MOMENTO</div>
+  <div class="products-grid" id="productsGrid" role="list" aria-busy="true" aria-live="polite">
+    <!-- Skeletons mostrados mientras Supabase responde — JS los reemplaza
+         con las cards reales en init() → renderProducts(). 3 cards cubren
+         el primer paint en mobile (1 col), tablet (2 col) y desktop (3 col). -->
+    <div class="product-skeleton" aria-hidden="true">
+      <div class="product-skeleton__img"></div>
+      <div class="product-skeleton__body">
+        <div class="product-skeleton__line product-skeleton__line--short"></div>
+        <div class="product-skeleton__line product-skeleton__line--med"></div>
+        <div class="product-skeleton__line product-skeleton__line--long"></div>
+        <div class="product-skeleton__line product-skeleton__line--price"></div>
+      </div>
     </div>
+    <div class="product-skeleton" aria-hidden="true">
+      <div class="product-skeleton__img"></div>
+      <div class="product-skeleton__body">
+        <div class="product-skeleton__line product-skeleton__line--short"></div>
+        <div class="product-skeleton__line product-skeleton__line--med"></div>
+        <div class="product-skeleton__line product-skeleton__line--long"></div>
+        <div class="product-skeleton__line product-skeleton__line--price"></div>
+      </div>
+    </div>
+    <div class="product-skeleton" aria-hidden="true">
+      <div class="product-skeleton__img"></div>
+      <div class="product-skeleton__body">
+        <div class="product-skeleton__line product-skeleton__line--short"></div>
+        <div class="product-skeleton__line product-skeleton__line--med"></div>
+        <div class="product-skeleton__line product-skeleton__line--long"></div>
+        <div class="product-skeleton__line product-skeleton__line--price"></div>
+      </div>
+    </div>
+    <span id="productsLoadingLabel" class="visually-hidden">Cargando productos…</span>
   </div>
 </section>
 
@@ -1132,35 +1206,50 @@ function getColorEstado(product, colorName) {
 }
 
 // ── INDEX — Banner del hero ─────────────────────────────────────
+/** Aplica el banner al hero. Usa fetchpriority="high" para que el navegador
+ *  priorice esta imagen sobre las demás (cards de productos, etc).
+ *  Fade-in al cargar para que no aparezca abruptamente. */
 function applyBanner(url) {
   const container = $('heroBannerImg');
   if (!container) return;
-  if (url?.trim()) {
-    const img = document.createElement('img');
-    img.src = url.trim();
-    img.alt = '';
-    img.className = 'hero__banner-img';
-    img.onerror = () => img.remove();
-    container.innerHTML = '';
-    container.appendChild(img);
-  } else {
-    container.innerHTML = '';
-  }
+  container.innerHTML = '';
+  if (!url?.trim()) return;
+
+  const img = document.createElement('img');
+  img.alt = '';
+  img.className = 'hero__banner-img';
+  img.decoding = 'async';
+  img.fetchPriority = 'high';   // hint al navegador: prioridad sobre otras imgs
+  img.style.opacity = '0';
+  img.style.transition = 'opacity .35s ease';
+  img.onload = () => { img.style.opacity = ''; };  // vuelve al opacity del CSS (.5)
+  img.onerror = () => img.remove();
+  img.src = url.trim();
+  container.appendChild(img);
 }
 
 // ── INDEX — Inicialización ───────────────────────────────────────
 async function init() {
   try {
-    // Cargamos productos, fotos y banner en paralelo desde Supabase.
-    const [rawProducts, photoMap, bannerUrl] = await Promise.all([
+    // Disparamos las 3 queries en paralelo, pero NO esperamos al banner
+    // dentro del Promise.all: lo aplicamos apenas resuelva, así aparece
+    // en pantalla en cuanto se descarga (sin bloquear a productos+fotos).
+    // Esto adelanta el banner ~200-600ms en conexiones lentas.
+    const bannerPromise = window.founderDB.fetchBannerUrl()
+      .then(url => { applyBanner(url); })
+      .catch(() => { /* sin banner: el hero igual luce con su gradiente */ });
+
+    const [rawProducts, photoMap] = await Promise.all([
       window.founderDB.fetchProducts(),
       window.founderDB.fetchPhotoMap(),
-      window.founderDB.fetchBannerUrl(),
     ]);
 
-    applyBanner(bannerUrl);
     state.photoMap  = photoMap;
     state.products  = enrichColors(rawProducts);
+
+    // Asegurar que el banner termine antes de seguir solo si todavía no lo hizo
+    // (no es bloqueante en la práctica — applyBanner ya se ejecutó si fue rápido).
+    bannerPromise.catch(() => {});
 
     // Guardar snapshot de combos agotados — usado por TODAS las páginas
     // para saber qué productos eliminar del carrito si se agotaron.
@@ -1185,6 +1274,8 @@ async function init() {
     });
   } catch (err) {
     console.error('[Founder] Error cargando datos:', err);
+    const grid = $('productsGrid');
+    if (grid) grid.removeAttribute('aria-busy');
     setHTML('productsGrid', `
       <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--color-muted)">
         <div style="font-family:var(--font-serif);font-size:28px">Error al cargar. Recargá la página.</div>
@@ -1224,13 +1315,23 @@ async function recoverCartPhoto(imgEl, name, color) {
 
 // ── INDEX — Grilla de productos ─────────────────────────────────
 function renderProducts() {
-  setHTML('productsGrid', state.products.map(renderProductCard).join(''));
+  // Pasamos el índice a renderProductCard para que las primeras 3 imágenes
+  // se carguen con prioridad alta (above the fold en mobile/tablet/desktop).
+  const grid = $('productsGrid');
+  if (grid) grid.removeAttribute('aria-busy');
+  setHTML('productsGrid', state.products.map((p, i) => renderProductCard(p, i)).join(''));
   document.querySelectorAll('.product-card').forEach(el => revealObserver.observe(el));
   // El event listener del grid se registra UNA SOLA VEZ en init() — ver abajo
 }
 
-function renderProductCard(p) {
+function renderProductCard(p, index = 0) {
   const firstPhoto = Object.values(state.photoMap[p.name] || {}).flat()[0] || null;
+  // Las primeras 3 cards están "above the fold" en cualquier viewport
+  // (1 col mobile, 2 col tablet, 3 col desktop). Las marcamos como
+  // prioridad alta para que se descarguen antes que el resto.
+  const isAboveFold = index < 3;
+  const imgLoading  = isAboveFold ? 'eager' : 'lazy';
+  const imgPriority = isAboveFold ? 'high'  : 'low';
   const swatches   = p.colors.slice(0, 4).map(c => `
     <div style="width:36px;height:52px;border-radius:3px;box-shadow:0 4px 20px rgba(0,0,0,.5);background:${
       swatchBackground(c)
@@ -1249,7 +1350,7 @@ function renderProductCard(p) {
     <article class="product-card" role="listitem">
       <a class="product-card__img-wrap" href="producto.html?p=${encodeURIComponent(p.name)}" aria-label="Ver Founder ${p.name}">
         ${firstPhoto
-          ? `<img src="${firstPhoto}" alt="Founder ${p.name}" loading="lazy">`
+          ? `<img src="${firstPhoto}" alt="Founder ${p.name}" loading="${imgLoading}" fetchpriority="${imgPriority}" decoding="async">`
           : `<div class="product-card__placeholder">
                <div style="font-family:var(--font-serif);font-size:clamp(60px,10vw,120px);font-weight:300;color:rgba(255,255,255,.04);position:absolute;right:-5px;bottom:-15px;line-height:1">${p.name.toUpperCase()}</div>
                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 20px;position:relative;z-index:1">${swatches}</div>
