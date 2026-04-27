@@ -40,9 +40,26 @@
   </script>
 
   <!-- ============ FONTS ============ -->
+  <!-- Carga no bloqueante de fuentes Google. Patrón estándar:
+       1) preconnect adelanta el handshake TLS contra los CDN.
+       2) preload pide la hoja de estilos con prioridad alta sin bloquear.
+       3) <link rel="stylesheet" media="print" onload="this.media='all'"> hace
+          que el navegador la trate como "para imprimir" (no bloquea render)
+          y la activa para pantalla cuando termina de descargar.
+       4) <noscript> es el fallback para navegadores con JS deshabilitado.
+       Las fuentes ya tienen `display=swap` en la URL → si tarda, se muestra
+       primero la fuente del sistema y se reemplaza al cargar la real (FOUT
+       limitado, ~50-200ms en mobile lento). -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preload" as="style"
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" media="print" onload="this.media='all'"
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap">
+  <noscript>
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap">
+  </noscript>
 
   <!-- ============ PERFORMANCE ============ -->
   <!-- Preconnect a Supabase: adelanta el handshake TLS para que el banner
