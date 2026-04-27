@@ -39,6 +39,10 @@
 import { supabase, json, fail, parseBody } from './_lib/supabase.js';
 import { getPayment, verifyWebhookSignature } from './_lib/mercadopago.js';
 import { sendPurchaseEvent } from './_lib/meta-capi.js';
+import {
+  sendOrderConfirmationMpApproved,
+  sendOrderConfirmationMpPending,
+} from './_lib/email.js';
 
 // ── Mapa MP status → estado de FOUNDER ────────────────────────────
 // 'approved' es el caso feliz: el pago se acreditó. Lo dejamos en
@@ -170,7 +174,8 @@ async function processWebhook(req, res) {
     .from('orders')
     .select(`
       id, numero, estado, mp_payment_id, mp_payment_status,
-      nombre, apellido, celular, email, total,
+      nombre, apellido, celular, email,
+      total, envio, descuento, entrega,
       order_items ( product_name, color, cantidad, precio_unitario )
     `)
     .ilike('numero', numero)
@@ -257,42 +262,78 @@ async function processWebhook(req, res) {
   console.log('[mp-webhook] pedido actualizado OK',
     { numero, payment_id: paymentId, mp_status: mpStatus, new_estado: estadoFinal });
 
-  // ── 10. Meta CAPI Purchase — solo cuando MP aprueba por primera vez ──
-  // Disparamos Purchase a Meta SOLO la primera vez que MP confirma el
-  // pago. La detección "primera vez" es: este UPDATE pasó de un estado
-  // sin mp_payment_id (o con uno diferente) a tener payment_id ahora,
-  // y el status es 'approved'/'authorized'.
-  // Meta deduplica con event_id = numero, así que aunque disparemos
-  // por error 2 veces no contaría como 2 compras — pero reducirlo es
-  // limpio para los logs.
-  const yaSeDisparoCAPI = order.mp_payment_id === String(paymentId)
-                       && order.mp_payment_status === mpStatus;
-  const esAprobacion    = mpStatus === 'approved' || mpStatus === 'authorized';
+  // ── 10. Eventos secundarios (CAPI + emails) — solo si "primera vez" ──
+  //
+  // "Primera vez" = es la primera vez que vemos ESTE pago + ESTE status
+  // para este pedido. MP a veces reintenta el mismo webhook; queremos
+  // disparar emails y eventos UNA sola vez por transición real de estado.
+  //
+  // Regla: si el pedido ya tenía guardado el mismo payment_id Y el mismo
+  // status, no es transición — ya disparamos esto antes y volvemos a
+  // recibir el mismo webhook. Skip.
+  const esTransicionNueva = !(
+    order.mp_payment_id     === String(paymentId) &&
+    order.mp_payment_status === mpStatus
+  );
 
-  if (esAprobacion && !yaSeDisparoCAPI) {
+  // Datos comunes para todos los disparos secundarios
+  const orderForEvents = {
+    numero:    order.numero,
+    email:     order.email,
+    celular:   order.celular,
+    nombre:    order.nombre,
+    apellido:  order.apellido,
+    total:     order.total,
+    envio:     order.envio,
+    descuento: order.descuento,
+    entrega:   order.entrega,
+  };
+  const itemsForEvents = Array.isArray(order.order_items) ? order.order_items : [];
+
+  // Helper local: dispara una promesa con timeout, sin propagar errores.
+  // Mantiene el patrón de fire-and-forget compatible con Vercel Serverless.
+  const TIMEOUT_MS = 3500;
+  const fireAndForget = async (promise, label) => {
     try {
-      const CAPI_TIMEOUT_MS = 3000;
-      const orderForCapi = {
-        numero:   order.numero,
-        email:    order.email,
-        celular:  order.celular,
-        nombre:   order.nombre,
-        apellido: order.apellido,
-        total:    order.total,
-      };
-      const itemsForCapi = Array.isArray(order.order_items) ? order.order_items : [];
-      const capiPromise = sendPurchaseEvent({
-        order: orderForCapi,
-        items: itemsForCapi,
-        req,
-      });
       const timeoutPromise = new Promise(resolve =>
-        setTimeout(() => resolve({ ok: false, error: 'timeout' }), CAPI_TIMEOUT_MS)
+        setTimeout(() => resolve({ ok: false, error: 'timeout' }), TIMEOUT_MS)
       );
-      const capiResult = await Promise.race([capiPromise, timeoutPromise]);
-      console.log('[mp-webhook] CAPI Purchase result:', capiResult);
+      const result = await Promise.race([promise, timeoutPromise]);
+      console.log(`[mp-webhook] ${label}:`, result);
     } catch (err) {
-      console.error('[mp-webhook] CAPI Purchase falló:', err?.message || err);
+      console.error(`[mp-webhook] ${label} falló:`, err?.message || err);
+    }
+  };
+
+  if (esTransicionNueva) {
+    const esAprobacion = mpStatus === 'approved' || mpStatus === 'authorized';
+    const esPendiente  = mpStatus === 'pending'  || mpStatus === 'in_process';
+
+    // Disparamos los eventos secundarios en paralelo. Cada uno tiene
+    // su propio timeout y manejo de errores.
+    const tasks = [];
+
+    if (esAprobacion) {
+      // Meta Pixel CAPI — Purchase (con dedup vía event_id = numero)
+      tasks.push(fireAndForget(
+        sendPurchaseEvent({ order: orderForEvents, items: itemsForEvents, req }),
+        'CAPI Purchase'
+      ));
+      // Email de pago aprobado al cliente
+      tasks.push(fireAndForget(
+        sendOrderConfirmationMpApproved(orderForEvents, itemsForEvents),
+        'email mp_approved'
+      ));
+    } else if (esPendiente) {
+      // Email de pago pendiente (Abitab/Redpagos por pagar)
+      tasks.push(fireAndForget(
+        sendOrderConfirmationMpPending(orderForEvents, itemsForEvents),
+        'email mp_pending'
+      ));
+    }
+
+    if (tasks.length > 0) {
+      await Promise.all(tasks);
     }
   }
 

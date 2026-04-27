@@ -26,6 +26,7 @@
 import { supabase, createHandler, ok, fail, parseBody } from './_lib/supabase.js';
 import { sendPurchaseEvent } from './_lib/meta-capi.js';
 import { createPreference } from './_lib/mercadopago.js';
+import { sendOrderConfirmationTransfer } from './_lib/email.js';
 
 // ── Mapa de errores SQL → código HTTP + mensaje amigable ──────
 // La función SQL lanza excepciones con mensajes específicos; acá
@@ -214,23 +215,29 @@ async function handleCreateOrder(body, res, req) {
     });
   }
 
-  // ── Transferencia: disparar Meta CAPI ahora ─────────────────────
-  // En Vercel Serverless, si la función retorna antes de que el fetch
-  // complete, el runtime puede matar el proceso y perdemos el evento.
-  // Solución: await con timeout de 3s. Si Meta responde en ≤3s, bien.
-  // Si tarda más, igual respondemos al cliente para no demorar el
-  // checkout; el pedido ya está creado en Supabase independientemente.
+  // ── Transferencia: disparar Meta CAPI + email en paralelo ──────
+  // Ambos son fire-and-forget desde el punto de vista del cliente:
+  // si tardan o fallan, igual respondemos OK y el pedido ya está en
+  // Supabase. Los hacemos en paralelo (Promise.all) para no sumar
+  // latencias. Cada uno tiene su propio timeout interno.
+  const FIRE_AND_FORGET_TIMEOUT = 3500; // ms
+  const withTimeout = (promise, label) => Promise.race([
+    promise,
+    new Promise(resolve =>
+      setTimeout(() => resolve({ ok: false, error: 'timeout', label }), FIRE_AND_FORGET_TIMEOUT)
+    ),
+  ]);
+
   try {
-    const CAPI_TIMEOUT_MS = 3000;
-    const capiPromise = sendPurchaseEvent({ order: cleanOrder, items: cleanItems, req });
-    const timeoutPromise = new Promise(resolve =>
-      setTimeout(() => resolve({ ok: false, error: 'timeout' }), CAPI_TIMEOUT_MS)
-    );
-    const capiResult = await Promise.race([capiPromise, timeoutPromise]);
-    console.log('[checkout] CAPI result:', capiResult);
+    const [capiResult, emailResult] = await Promise.all([
+      withTimeout(sendPurchaseEvent({ order: cleanOrder, items: cleanItems, req }), 'capi'),
+      withTimeout(sendOrderConfirmationTransfer(cleanOrder, cleanItems),            'email'),
+    ]);
+    console.log('[checkout] CAPI result:',  capiResult);
+    console.log('[checkout] email result:', emailResult);
   } catch (err) {
-    // No debería caer acá porque sendPurchaseEvent nunca tira, pero por las dudas
-    console.error('[checkout] CAPI Purchase falló:', err?.message || err);
+    // Ninguna de las dos funciones tira excepciones, pero por las dudas.
+    console.error('[checkout] fire-and-forget falló:', err?.message || err);
   }
 
   return ok(res, {
