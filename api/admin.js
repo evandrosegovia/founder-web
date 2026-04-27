@@ -295,7 +295,7 @@ async function handleListProducts(body, res) {
       lleva_billetes, lleva_monedas, banner_url,
       orden, activo, created_at, updated_at,
       product_colors (
-        id, nombre, estado, precio_oferta, orden,
+        id, nombre, estado, precio_oferta, stock_bajo, orden,
         product_photos ( id, url, orden, es_principal )
       )
     `)
@@ -377,6 +377,10 @@ async function handleSaveProduct(body, res) {
     const precioOferta = (estado === 'oferta' && c.precio_oferta)
       ? parseInt(c.precio_oferta, 10)
       : null;
+    // Stock bajo: flag boolean independiente del estado. El frontend
+    // (producto.html) ya ignora stock_bajo cuando estado === 'sin_stock',
+    // así que no hace falta lógica extra acá.
+    const stockBajo = c.stock_bajo === true;
 
     const { data: insertedColor, error: colorErr } = await supabase
       .from('product_colors')
@@ -385,6 +389,7 @@ async function handleSaveProduct(body, res) {
         nombre:        colorName,
         estado,
         precio_oferta: precioOferta,
+        stock_bajo:    stockBajo,
         orden:         i + 1,
       })
       .select()
