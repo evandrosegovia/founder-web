@@ -278,6 +278,7 @@
           nombre:        c.nombre,
           estado:        c.estado || 'activo',
           precio_oferta: c.precio_oferta || null,
+          stock_bajo:    c.stock_bajo === true,
           orden:         c.orden || 0,
           photos,
         };
@@ -1082,6 +1083,7 @@
       nombre:        c.nombre,
       estado:        c.estado || 'activo',
       precio_oferta: c.precio_oferta || null,
+      stock_bajo:    c.stock_bajo === true,
       photos:        [...c.photos, '', '', '', '', ''].slice(0, 5),  // pad a 5
     }));
 
@@ -1104,6 +1106,7 @@
 
     cont.innerHTML = state.colorRows.map((c, idx) => {
       const isOferta = c.estado === 'oferta';
+      const stockBajoSel = c.stock_bajo === true;
       return `
       <div class="color-row" data-uid="${c.uid}">
         <div class="color-dot" id="cd_${c.uid}" style="background:${COLOR_MAP[c.nombre] || '#555'}"></div>
@@ -1116,6 +1119,10 @@
             onclick="setColorEstado(${c.uid},'sin_stock')" type="button">🔴 Agotado</button>
           <button class="estado-btn ${c.estado === 'oferta'    ? 'oferta--sel'   : ''}"
             onclick="setColorEstado(${c.uid},'oferta')"   type="button">🏷️ Oferta</button>
+          <button class="estado-btn estado-btn--stockbajo ${stockBajoSel ? 'stockbajo--sel' : ''}"
+            onclick="toggleStockBajo(${c.uid})"
+            title="Mostrar aviso de Pocas unidades en producto.html"
+            type="button">⏳ Stock bajo</button>
         </div>
         <button class="rem-color" onclick="removeColorRow(${c.uid})" type="button">✕</button>
         <div class="oferta-precio-wrap" ${isOferta ? '' : 'style="display:none"'}>
@@ -1136,6 +1143,7 @@
       nombre:        '',
       estado:        'activo',
       precio_oferta: null,
+      stock_bajo:    false,
       photos:        ['', '', '', '', ''],
     });
     renderColorRows();
@@ -1173,6 +1181,17 @@
     const row = state.colorRows.find(c => c.uid === uid);
     if (!row) return;
     row.precio_oferta = parseInt(val, 10) || null;
+  }
+
+  /** Toggle del flag stock_bajo. Independiente de los 3 botones de estado:
+   *  un color en "Oferta" o "Activo" puede tener stock bajo a la vez.
+   *  Si el color está en "Agotado", el frontend (producto.html) ya ignora
+   *  el flag automáticamente — no hace falta lógica extra acá. */
+  function toggleStockBajo(uid) {
+    const row = state.colorRows.find(c => c.uid === uid);
+    if (!row) return;
+    row.stock_bajo = !row.stock_bajo;
+    renderColorRows();
   }
 
   // ── EDITOR DE FOTOS POR COLOR ─────────────────────────────────
@@ -1334,6 +1353,7 @@
         nombre:        c.nombre.trim(),
         estado:        c.estado || 'activo',
         precio_oferta: c.estado === 'oferta' ? (c.precio_oferta || null) : null,
+        stock_bajo:    c.stock_bajo === true,
         fotos:         c.photos.filter(u => u && u.trim()),
       }));
 
@@ -1666,11 +1686,14 @@
       banner_url:       url,
     };
 
-    // Mapear colores actuales al formato que espera save_product
+    // Mapear colores actuales al formato que espera save_product.
+    // IMPORTANTE: incluir stock_bajo para no pisar el flag al guardar el banner
+    // (save_product hace delete + insert de colores → si no lo enviamos, se pierde).
     const colors = prod.colors.map(c => ({
       nombre:        c.nombre,
       estado:        c.estado,
       precio_oferta: c.precio_oferta,
+      stock_bajo:    c.stock_bajo === true,
       fotos:         c.photos.filter(Boolean),
     }));
 
@@ -1742,6 +1765,7 @@
   window.onColorNameInput    = onColorNameInput;
   window.setColorEstado      = setColorEstado;
   window.onPrecioOfertaInput = onPrecioOfertaInput;
+  window.toggleStockBajo     = toggleStockBajo;
   window.onPhotoUrlInput     = onPhotoUrlInput;
   window.pickPhotoFile       = pickPhotoFile;
   window.saveProduct         = saveProduct;

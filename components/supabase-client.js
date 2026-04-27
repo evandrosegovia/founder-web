@@ -54,6 +54,12 @@
       if (c.estado === 'oferta' && c.precio_oferta != null) {
         colores_estado[`${c.nombre}_precio_oferta`] = c.precio_oferta;
       }
+      // Flag opcional de stock bajo. El frontend (producto.html) lee
+      // `<color>_stock_bajo: true` y muestra el aviso "Pocas unidades".
+      // Si es false/null, simplemente no se incluye la clave.
+      if (c.stock_bajo === true) {
+        colores_estado[`${c.nombre}_stock_bajo`] = true;
+      }
     });
 
     const extras = {
@@ -94,7 +100,7 @@
     // `order=orden.asc` en la relación anidada ordena los colores.
     const path =
       '/products' +
-      '?select=*,product_colors(nombre,estado,precio_oferta,orden)' +
+      '?select=*,product_colors(nombre,estado,precio_oferta,stock_bajo,orden)' +
       '&activo=eq.true' +
       '&order=orden.asc' +
       '&product_colors.order=orden.asc';
