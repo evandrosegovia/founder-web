@@ -25,6 +25,7 @@
 
 import { supabase, createHandler, ok, fail, parseBody } from './_lib/supabase.js';
 import { sendPurchaseEvent } from './_lib/meta-capi.js';
+import { createPreference } from './_lib/mercadopago.js';
 
 // ── Mapa de errores SQL → código HTTP + mensaje amigable ──────
 // La función SQL lanza excepciones con mensajes específicos; acá
@@ -162,7 +163,58 @@ async function handleCreateOrder(body, res, req) {
     return fail(res, 500, 'db_error', error.message);
   }
 
-  // ── Meta Conversion API — disparar Purchase con timeout ──────
+  // ── Bifurcar según método de pago ─────────────────────────────
+  // Para Mercado Pago: creamos la preference y devolvemos init_point.
+  // El evento Purchase de Meta lo dispara el webhook cuando MP aprueba
+  // (no acá, porque la compra todavía no es real).
+  //
+  // Para Transferencia: el pedido ya es definitivo desde el punto de
+  // vista del cliente (paga después), así que disparamos Purchase ahora.
+  const esMercadoPago = cleanOrder.pago === 'Mercado Pago';
+
+  if (esMercadoPago) {
+    // ── Mercado Pago: crear preference y devolver init_point ─────
+    const mpResult = await createPreference({
+      order:          cleanOrder,
+      items:          cleanItems,
+      shipping:       cleanOrder.envio,
+      discountAmount: cleanOrder.descuento,
+    });
+
+    if (!mpResult.ok) {
+      // El pedido YA está creado en Supabase con estado 'Pendiente pago'
+      // y mp_preference_id = NULL. Lo dejamos así — el admin lo verá
+      // como pedido raro y puede eliminarlo. Devolvemos error al
+      // frontend para que muestre mensaje claro al cliente.
+      console.error('[checkout] MP createPreference falló:',
+        mpResult.error, mpResult.detail || '',
+        { numero: cleanOrder.numero });
+      return fail(res, 502, 'mp_error',
+        'No pudimos iniciar el pago en Mercado Pago. Intentá de nuevo o elegí transferencia.');
+    }
+
+    // Guardar el preference_id en la orden para poder cruzarlo después
+    // (auditoría + fallback de búsqueda en el webhook).
+    const { error: updErr } = await supabase
+      .from('orders')
+      .update({ mp_preference_id: mpResult.preference_id })
+      .eq('id', data?.id);
+    if (updErr) {
+      // No crítico — el webhook usa external_reference como ancla
+      // primaria. Solo logueamos.
+      console.warn('[checkout] no se pudo guardar mp_preference_id:', updErr.message);
+    }
+
+    return ok(res, {
+      id:            data?.id,
+      numero:        data?.numero,
+      pago:          'Mercado Pago',
+      init_point:    mpResult.init_point,
+      preference_id: mpResult.preference_id,
+    });
+  }
+
+  // ── Transferencia: disparar Meta CAPI ahora ─────────────────────
   // En Vercel Serverless, si la función retorna antes de que el fetch
   // complete, el runtime puede matar el proceso y perdemos el evento.
   // Solución: await con timeout de 3s. Si Meta responde en ≤3s, bien.
@@ -184,6 +236,7 @@ async function handleCreateOrder(body, res, req) {
   return ok(res, {
     id:     data?.id,
     numero: data?.numero,
+    pago:   'Transferencia',
   });
 }
 
