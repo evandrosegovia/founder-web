@@ -118,6 +118,42 @@ function blockItems(items, total, envio, descuento) {
 }
 
 /**
+ * Bloque CTA para seguir el pedido. Se inserta justo antes del footer.
+ * El link va a seguimiento.html con ?pedido y ?email pre-cargados, así
+ * el cliente abre el detalle de su pedido sin tener que tipear nada
+ * (founder-seguimiento.js auto-rellena y dispara la búsqueda).
+ *
+ * Estilo: outline dorado para diferenciarse del CTA WhatsApp del footer
+ * (que es sólido). Mantiene jerarquía visual: WhatsApp es más urgente,
+ * seguimiento es informativo.
+ */
+function blockTrackingButton(numero, email) {
+  // Si falta cualquiera de los 2, no rendereamos el bloque (defensa
+  // contra emails malformados — preferible no mostrar nada que un link roto).
+  if (!numero || !email) return '';
+
+  const trackingUrl = `https://www.founder.uy/seguimiento.html`
+    + `?pedido=${encodeURIComponent(numero)}`
+    + `&email=${encodeURIComponent(email)}`;
+
+  return `
+    <tr>
+      <td style="padding:0 32px 36px 32px;text-align:center;">
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;color:#9a9a9a;text-transform:uppercase;margin-bottom:14px;">
+          📍 Seguí tu pedido
+        </div>
+        <a href="${trackingUrl}"
+           style="display:inline-block;background:transparent;color:#c9a96e;border:1px solid #c9a96e;padding:13px 32px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;text-decoration:none;">
+          Ver estado del pedido
+        </a>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#9a9a9a;line-height:1.6;margin-top:12px;">
+          Mirá en cualquier momento en qué etapa está y, cuando se despache,<br>el código de seguimiento del envío.
+        </div>
+      </td>
+    </tr>`;
+}
+
+/**
  * Footer con WhatsApp + redes sociales + mensaje legal mínimo.
  */
 function blockFooter() {
@@ -249,6 +285,8 @@ export function templateOrderTransfer(order, items) {
       </td>
     </tr>
 
+    ${blockTrackingButton(numero, order.email)}
+
     ${blockFooter()}
   `;
 
@@ -317,6 +355,8 @@ export function templateOrderMpApproved(order, items) {
         </div>
       </td>
     </tr>
+
+    ${blockTrackingButton(numero, order.email)}
 
     ${blockFooter()}
   `;
@@ -393,6 +433,8 @@ export function templateOrderMpPending(order, items) {
         </div>
       </td>
     </tr>
+
+    ${blockTrackingButton(numero, order.email)}
 
     ${blockFooter()}
   `;
