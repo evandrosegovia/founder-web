@@ -108,23 +108,6 @@ export default async function handler(req, res) {
 async function processWebhook(req, res) {
   const body = parseBody(req);
 
-  // 🔬 LOG DIAGNÓSTICO TEMPORAL — para entender qué llega exactamente
-  // cuando MP firma con HMAC distinto al esperado. Vamos a ver:
-  //   - El body crudo (req.body antes de parsear) — descarta problema de parseo
-  //   - Los headers MP relevantes — para verificar el formato real
-  //   - Las keys del body parseado — para ver qué campos tiene
-  console.log('[mp-webhook] DIAG raw_body', {
-    body_type: typeof req.body,
-    body_value: req.body, // si es string, lo veremos crudo; si es objeto, sus keys
-    body_keys: body && typeof body === 'object' ? Object.keys(body) : null,
-    headers_mp: {
-      'x-signature':  req.headers['x-signature'] || null,
-      'x-request-id': req.headers['x-request-id'] || null,
-      'user-agent':   req.headers['user-agent'] || null,
-      'content-type': req.headers['content-type'] || null,
-    },
-  });
-
   // Log del cuerpo del webhook — útil para debugging en Vercel logs.
   // No imprime PII porque el body de MP solo trae { type, data: { id }, ... }.
   console.log('[mp-webhook] recibido',
