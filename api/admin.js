@@ -345,9 +345,8 @@ async function handleSaveProduct(body, res) {
     lleva_monedas:    p.lleva_monedas  === true || p.lleva_monedas  === 'si',
     orden:            parseInt(p.orden, 10) || 1,
     activo:           p.activo !== false,
-    // banner_url NO se toca acá (se maneja por site_settings ahora),
-    // pero preservamos si vino explícitamente:
-    ...(p.banner_url !== undefined ? { banner_url: p.banner_url } : {}),
+    // banner_url ya no se toca desde acá: vive en site_settings.hero_banner_url
+    // y se gestiona vía las acciones get_setting / set_setting.
   };
 
   // 1) Upsert del producto
