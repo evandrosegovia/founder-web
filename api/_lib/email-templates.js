@@ -147,7 +147,7 @@ function blockTrackingButton(numero, email) {
           Ver estado del pedido
         </a>
         <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#9a9a9a;line-height:1.6;margin-top:12px;">
-          Mirá en cualquier momento en qué etapa está y, cuando se despache,<br>el código de seguimiento del envío.
+          Mirá en cualquier momento en qué etapa está tu pedido<br>y todos los detalles.
         </div>
       </td>
     </tr>`;
@@ -222,6 +222,11 @@ export function templateOrderTransfer(order, items) {
   const envio     = Number(order.envio || 0);
   const descuento = Number(order.descuento || 0);
 
+  // Detectar tipo de entrega para personalizar el mensaje sobre los
+  // próximos pasos (envío vs retiro).
+  const entrega = String(order.entrega || '').toLowerCase();
+  const esEnvio = entrega.includes('env');
+
   const inner = `
     ${blockHeader()}
 
@@ -280,6 +285,11 @@ export function templateOrderTransfer(order, items) {
         <div style="background:#0f0f0f;border-left:3px solid #c9a96e;padding:18px 22px;">
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#f8f8f4;line-height:1.7;">
             <strong style="color:#c9a96e;">💰 Bonificación 10%</strong> — Pagando por transferencia ya estás aprovechando el descuento.
+          </div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;line-height:1.7;margin-top:10px;border-top:1px solid #2e2e2e;padding-top:10px;">
+            ${esEnvio
+              ? '📦 Una vez confirmemos tu transferencia, preparamos tu pedido y te avisamos por WhatsApp cuando esté en camino.'
+              : '📍 Una vez confirmemos tu transferencia, preparamos tu pedido y te avisamos por WhatsApp cuando esté listo para retirar.'}
           </div>
         </div>
       </td>
@@ -349,8 +359,10 @@ export function templateOrderMpApproved(order, items) {
       <td style="padding:0 32px 36px 32px;">
         <div style="background:#0f0f0f;border-left:3px solid #4caf82;padding:18px 22px;">
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#f8f8f4;line-height:1.7;">
-            <strong style="color:#4caf82;">📦 Próximos pasos</strong><br>
-            <span style="color:#9a9a9a;font-size:12px;">Estamos preparando tu pedido. Te avisamos cuando esté en camino.</span>
+            <strong style="color:#4caf82;">${esEnvio ? '📦' : '📍'} Próximos pasos</strong><br>
+            <span style="color:#9a9a9a;font-size:12px;">${esEnvio
+              ? 'Estamos preparando tu pedido. Te avisamos por WhatsApp cuando esté en camino.'
+              : 'Estamos preparando tu pedido. Te avisamos por WhatsApp cuando esté listo para retirar.'}</span>
           </div>
         </div>
       </td>
