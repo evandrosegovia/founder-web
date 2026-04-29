@@ -789,6 +789,9 @@ body.cart-open .wa-bubble {
 
 <!-- ── HEADER + MENÚ MOBILE (componente compartido) ──────────── -->
 <div id="site-header"></div>
+<!-- cloudinary.js antes de cualquier render: lo usan galería, modales,
+     cards relacionados, meta og:image y carrito. -->
+<script src="components/cloudinary.js"></script>
 <script src="components/header.js"></script>
 
 <!-- ── BREADCRUMB ─────────────────────────────────────────── -->
@@ -1255,7 +1258,7 @@ async function recoverCartPhoto(imgEl, name, color) {
     const photoMap = await window.founderDB.fetchPhotoMap();
     const foto = photoMap[name]?.[color]?.[0];
     if (foto) {
-      imgEl.src = foto;
+      imgEl.src = cld(foto, 'thumb');
       imgEl.onerror = () => imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
       return;
     }
@@ -1400,13 +1403,13 @@ function injectOpenGraph(p) {
   setMeta('meta[property="og:description"]', 'content', desc);
   setMeta('meta[property="og:url"]',         'content', url);
   setMeta('meta[property="og:site_name"]',   'content', 'Founder.uy');
-  if (firstPhoto) setMeta('meta[property="og:image"]', 'content', firstPhoto);
+  if (firstPhoto) setMeta('meta[property="og:image"]', 'content', cld(firstPhoto, 'og'));
 
   // Twitter Card
   setMeta('meta[name="twitter:card"]',        'content', 'summary_large_image');
   setMeta('meta[name="twitter:title"]',       'content', title);
   setMeta('meta[name="twitter:description"]', 'content', desc);
-  if (firstPhoto) setMeta('meta[name="twitter:image"]', 'content', firstPhoto);
+  if (firstPhoto) setMeta('meta[name="twitter:image"]', 'content', cld(firstPhoto, 'og'));
 
   // Canonical URL
   let canonical = document.head.querySelector('link[rel="canonical"]');
@@ -1697,7 +1700,12 @@ function renderGallery() {
   photos.forEach((url, i) => {
     const isActive = (i === state.activePhoto);
     const img = document.createElement('img');
-    img.src     = url;
+    img.src     = cld(url, 'gallery');
+    const set = cldSrcset(url, 'gallery');
+    if (set) {
+      img.srcset = set;
+      img.sizes  = CLD_SIZES.gallery;
+    }
     img.alt     = `Founder ${state.product.name} — foto ${i + 1}`;
     img.className = `gallery__img${isActive ? ' is-active' : ''}`;
     img.loading        = isActive ? 'eager' : 'lazy';
@@ -1705,11 +1713,11 @@ function renderGallery() {
     main.insertBefore(img, main.querySelector('.gallery__rfid-badge'));
   });
 
-  // Render thumbnails
+  // Render thumbnails (preset 'thumb' = 200w)
   thumbs.innerHTML = photos.map((url, i) => `
     <div class="gallery__thumb ${i === state.activePhoto ? 'is-active' : ''}"
       onclick="setActivePhoto(${i}, true)" role="button" aria-label="Foto ${i + 1}" tabindex="0">
-      <img src="${url}" alt="Foto ${i + 1}" loading="lazy">
+      <img src="${cld(url, 'thumb')}" alt="Foto ${i + 1}" loading="lazy">
     </div>`).join('');
 
   updateArrowsVisibility();
@@ -1750,7 +1758,10 @@ function preloadFirstPhotoOfEachColor() {
       // fetchPriority low: el navegador la baja cuando hay ancho libre.
       // No se inserta al DOM → solo va al cache HTTP y luego es garbage-collected.
       if ('fetchPriority' in img) img.fetchPriority = 'low';
-      img.src = firstUrl;
+      // Pasamos por Cloudinary con MISMO preset que la galería principal,
+      // así el cache HTTP precalentado coincide exactamente con la URL real
+      // que se va a renderizar cuando el usuario clickee otro color.
+      img.src = cld(firstUrl, 'gallery');
     });
   };
 
@@ -2179,7 +2190,7 @@ function renderRelated() {
       <a href="producto.html?p=${encodeURIComponent(p.name)}" class="related-card" aria-label="Ver Founder ${p.name}">
         <div class="related-card__img">
           ${firstPhoto
-            ? `<img src="${firstPhoto}" alt="Founder ${p.name}" loading="lazy" style="width:100%;height:100%;object-fit:cover">`
+            ? `<img src="${cld(firstPhoto, 'card')}" srcset="${cldSrcset(firstPhoto, 'card')}" sizes="${CLD_SIZES.card}" alt="Founder ${p.name}" loading="lazy" style="width:100%;height:100%;object-fit:cover">`
             : `<div class="related-card__placeholder">
                  <div style="font-family:var(--font-serif);font-size:60px;font-weight:300;color:rgba(255,255,255,.04);position:absolute">${p.name.toUpperCase()}</div>
                  <div style="display:flex;gap:6px;position:relative;z-index:1">${swatches}</div>
@@ -2297,7 +2308,7 @@ function updateCart() {
     return `
       <div class="cart-item">
         ${photo
-          ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
+          ? `<img src="${cld(photo, 'thumb')}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
                onerror="recoverCartPhoto(this,'${item.name.replace(/'/g,"\\'")}','${item.color.replace(/'/g,"\\'")}');">`
           : `<div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>`}
         <div class="cart-item__info">

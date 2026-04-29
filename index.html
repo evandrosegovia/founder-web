@@ -989,6 +989,10 @@ body.cart-open .wa-bubble {
 
 <!-- ── HEADER + MENÚ MOBILE (componente compartido) ──────────── -->
 <div id="site-header"></div>
+<!-- cloudinary.js antes de cualquier render: expone window.cld /
+     window.cldSrcset / window.CLD_SIZES que usan las cards, el banner,
+     la galería y el carrito. -->
+<script src="components/cloudinary.js"></script>
 <script src="components/header.js"></script>
 
 <!-- ── HERO ────────────────────────────────────────────────── -->
@@ -1237,7 +1241,16 @@ function applyBanner(url) {
   img.style.transition = 'opacity .35s ease';
   img.onload = () => { img.style.opacity = ''; };  // vuelve al opacity del CSS (.5)
   img.onerror = () => img.remove();
-  img.src = url.trim();
+  // Cloudinary fetch + srcset responsive: el banner es LCP; servimos
+  // entre 800w (mobile) y 2000w (retina desktop). f_auto sirve AVIF
+  // donde se soporta, lo cual baja el peso ~60-80% vs JPG original.
+  const trimmed = url.trim();
+  img.src = cld(trimmed, 'hero');
+  const set = cldSrcset(trimmed, 'hero');
+  if (set) {
+    img.srcset = set;
+    img.sizes  = CLD_SIZES.hero;
+  }
   container.appendChild(img);
 }
 
@@ -1317,7 +1330,7 @@ async function recoverCartPhoto(imgEl, name, color) {
     const photoMap = await window.founderDB.fetchPhotoMap();
     const foto = photoMap[name]?.[color]?.[0];
     if (foto) {
-      imgEl.src = foto;
+      imgEl.src = cld(foto, 'thumb');
       imgEl.onerror = () => imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
       return;
     }
@@ -1363,7 +1376,7 @@ function renderProductCard(p, index = 0) {
     <article class="product-card" role="listitem">
       <a class="product-card__img-wrap" href="producto.html?p=${encodeURIComponent(p.name)}" aria-label="Ver Founder ${p.name}">
         ${firstPhoto
-          ? `<img src="${firstPhoto}" alt="Founder ${p.name}" loading="${imgLoading}" fetchpriority="${imgPriority}" decoding="async">`
+          ? `<img src="${cld(firstPhoto, 'card')}" srcset="${cldSrcset(firstPhoto, 'card')}" sizes="${CLD_SIZES.card}" alt="Founder ${p.name}" loading="${imgLoading}" fetchpriority="${imgPriority}" decoding="async">`
           : `<div class="product-card__placeholder">
                <div style="font-family:var(--font-serif);font-size:clamp(60px,10vw,120px);font-weight:300;color:rgba(255,255,255,.04);position:absolute;right:-5px;bottom:-15px;line-height:1">${p.name.toUpperCase()}</div>
                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 20px;position:relative;z-index:1">${swatches}</div>
@@ -1453,15 +1466,32 @@ function updateModalGallery() {
   const thumbs = $('modalThumbs');
   const track  = $('thumbsTrack');
 
-  img.src = photos[0] || '';
+  // Foto principal: preset 'modal' (1000w + srcset hasta 1200w).
+  const mainPhoto = photos[0] || '';
+  img.src = cld(mainPhoto, 'modal');
+  if (mainPhoto) {
+    const set = cldSrcset(mainPhoto, 'modal');
+    if (set) {
+      img.srcset = set;
+      img.sizes  = CLD_SIZES.modal;
+    } else {
+      img.removeAttribute('srcset');
+      img.removeAttribute('sizes');
+    }
+  } else {
+    img.removeAttribute('srcset');
+    img.removeAttribute('sizes');
+  }
   img.style.background = photos.length ? '' : 'linear-gradient(135deg,#111,#1a1a1a)';
   state.thumbOffset = 0;
 
   if (photos.length > 1) {
     thumbs.style.display = 'flex';
+    // Thumbs: preset 'thumb' (200w fijo). El click pasa la URL ORIGINAL
+    // a setModalMainPhoto para no acoplar la lógica al preset.
     track.innerHTML = photos.map((p, i) => `
-      <img src="${p}" class="modal__thumb ${i===0 ? 'is-active' : ''}"
-        onclick="setModalMainPhoto('${p}', this)" alt="Foto ${i+1}" loading="lazy">`
+      <img src="${cld(p, 'thumb')}" class="modal__thumb ${i===0 ? 'is-active' : ''}"
+        onclick="setModalMainPhoto('${p.replace(/'/g, "\\'")}', this)" alt="Foto ${i+1}" loading="lazy">`
     ).join('');
     updateThumbArrows(photos.length);
   } else {
@@ -1470,7 +1500,18 @@ function updateModalGallery() {
 }
 
 function setModalMainPhoto(src, el) {
-  $('modalImg').src = src;
+  // src es la URL ORIGINAL de Supabase. Aplicamos el preset 'modal'
+  // al asignar al <img> principal. Mantenemos srcset/sizes coherentes.
+  const main = $('modalImg');
+  main.src = cld(src, 'modal');
+  const set = cldSrcset(src, 'modal');
+  if (set) {
+    main.srcset = set;
+    main.sizes  = CLD_SIZES.modal;
+  } else {
+    main.removeAttribute('srcset');
+    main.removeAttribute('sizes');
+  }
   document.querySelectorAll('.modal__thumb').forEach(t => t.classList.remove('is-active'));
   el.classList.add('is-active');
 }
@@ -1623,7 +1664,7 @@ function updateCart() {
     return `
       <div class="cart-item">
         ${photo
-          ? `<img src="${photo}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
+          ? `<img src="${cld(photo, 'thumb')}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
                onerror="recoverCartPhoto(this,'${item.name.replace(/'/g,"\\'")}','${item.color.replace(/'/g,"\\'")}');">`
           : `<div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>`}
         <div class="cart-item__info">
