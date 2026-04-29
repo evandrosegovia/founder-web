@@ -445,7 +445,7 @@
       return `
       <div class="co-summary__product">
         ${photo
-          ? `<img src="${photo}" class="co-summary__product-img" alt="Founder ${item.name}" loading="lazy">`
+          ? `<img src="${cld(photo, 'thumb')}" class="co-summary__product-img" alt="Founder ${item.name}" loading="lazy">`
           : `<div class="co-summary__product-placeholder">👜</div>`}
         <div class="co-summary__product-info">
           <div class="co-summary__product-name">Founder ${item.name}</div>

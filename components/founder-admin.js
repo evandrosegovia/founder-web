@@ -321,8 +321,12 @@
     cont.innerHTML = state.products.map(p => {
       const firstFoto = p.colors.flatMap(c => c.photos).find(Boolean);
       const setsConFoto = p.colors.filter(c => c.photos.length > 0).length;
+      // Thumb 200w por Cloudinary (la lista renderiza miniaturas chicas).
+      // window.cld puede no estar definido si cloudinary.js no cargó:
+      // hacemos fallback a la URL original para no romper el admin.
+      const cldFn = (typeof cld === 'function') ? cld : (u => u);
       const thumb = firstFoto
-        ? `<img src="${esc(firstFoto)}" class="prod-img" style="object-fit:cover" alt="${esc(p.nombre)}">`
+        ? `<img src="${esc(cldFn(firstFoto, 'thumb'))}" class="prod-img" style="object-fit:cover" alt="${esc(p.nombre)}">`
         : `<div class="prod-img">👜</div>`;
 
       return `<div class="product-row">
@@ -490,9 +494,10 @@
       const firstFoto  = p.colors.flatMap(c => c.photos).find(Boolean);
       const setsFotosP = p.colors.filter(c => c.photos.length > 0).length;
       const ventasProd = porProducto[p.nombre] || 0;
+      const cldFn = (typeof cld === 'function') ? cld : (u => u);
       return `<div class="product-row">
         ${firstFoto
-          ? `<img src="${esc(firstFoto)}" class="prod-img" style="object-fit:cover" alt="${esc(p.nombre)}">`
+          ? `<img src="${esc(cldFn(firstFoto, 'thumb'))}" class="prod-img" style="object-fit:cover" alt="${esc(p.nombre)}">`
           : `<div class="prod-img">👜</div>`}
         <div style="flex:1">
           <div class="prod-name">Founder ${esc(p.nombre)}</div>
@@ -1226,7 +1231,7 @@
                   <button class="slot-btn up" onclick="pickPhotoFile(${c.uid}, ${fi})" type="button">📁 Subir</button>
                 </div>
                 ${f
-                  ? `<img src="${esc(f)}" class="slot-prev" id="prev_${sid}_${fi}" alt="Foto ${fi + 1}">`
+                  ? `<img src="${esc((typeof cld === 'function' ? cld : u => u)(f, 'thumb'))}" class="slot-prev" id="prev_${sid}_${fi}" alt="Foto ${fi + 1}">`
                   : `<div class="slot-empty" id="prev_${sid}_${fi}">📷</div>`}
               </div>`).join('')}
           </div>
@@ -1247,8 +1252,9 @@
     const sid = sanitizeId('u' + uid);
     const el = $('prev_' + sid + '_' + fi);
     if (!el) return;
+    const cldFn = (typeof cld === 'function') ? cld : (u => u);
     el.outerHTML = url
-      ? `<img src="${esc(url)}" class="slot-prev" id="prev_${sid}_${fi}" alt="Foto ${fi + 1}">`
+      ? `<img src="${esc(cldFn(url, 'thumb'))}" class="slot-prev" id="prev_${sid}_${fi}" alt="Foto ${fi + 1}">`
       : `<div class="slot-empty" id="prev_${sid}_${fi}">📷</div>`;
   }
 
