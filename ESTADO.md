@@ -1,7 +1,183 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 23 — cierre EXITOSO (27/04/2026)
-**Próxima sesión:** 24 — Pulido y crecimiento. Sitio en producción profesional con cobro online MP funcionando end-to-end. Pendientes secundarios: limpiar pedidos de prueba, definir datos bancarios para email transferencia, primera campaña paga Meta Ads, cambios de estado del admin disparando emails (opcional).
+**Última actualización:** Sesión 24 — cierre EXITOSO con aprendizaje (28/04/2026)
+**Próxima sesión:** 25 — Continuación de optimización de performance. Sitio con imágenes optimizadas vía Cloudinary CDN (ahorro 92% medido). Score actual: 85 mobile / 98 desktop. Pendiente clave de Sesión 25: optimización de Google Fonts (intento fallido en Sesión 24, ver lección documentada). Pendientes secundarios: limpiar pedidos prueba, datos bancarios reales para email transferencia, primera campaña Meta Ads.
+
+---
+
+## ⚡ SESIÓN 24 — Migración de imágenes a Cloudinary CDN + lección de optimización de fonts
+
+**Hito de performance:** todas las imágenes del sitio se sirven optimizadas a través de Cloudinary CDN en formatos modernos (AVIF/WebP) y tamaños responsive según dispositivo. **Page weight medido: ~3,5 MB → ~290 KB (-92%)**. Score Lighthouse mobile: 85-90 / desktop: 95-99 (rango con variación natural ±3-5 puntos).
+
+**Sesión con éxito principal pero también con un aprendizaje técnico documentado:** un intento de optimización adicional de Google Fonts causó regresión y fue revertido vía rollback en Vercel (no en GitHub). El aprendizaje queda para Sesión 25.
+
+### 🎯 Decisión arquitectural clave: Cloudinary fetch mode (no migración 1-a-1)
+
+Se descartó la migración 1-a-1 (descargar imágenes de Supabase, subirlas a Cloudinary, cambiar URLs en DB) y se usó **Cloudinary fetch mode**: Cloudinary lee la imagen original desde Supabase la primera vez, la cachea para siempre en su CDN global y la sirve transformada. Razones:
+
+1. **Cero riesgo en producción** — las URLs guardadas en `product_photos.url` y `site_settings.value` no se modifican; el wrapping ocurre en el momento de renderizar.
+2. **Backup automático** — las originales siguen en Supabase Storage como fuente de verdad.
+3. **Imágenes futuras heredan la optimización** — el flujo de subida del admin sigue funcionando exactamente igual; las nuevas fotos pasan por Cloudinary automáticamente.
+4. **Rollback en 1 línea de código** — `ENABLED = false` en `cloudinary.js` revierte instantáneamente sin tocar la DB.
+
+### 🆕 Cambios de código en Sesión 24 (los que QUEDARON en producción)
+
+#### `components/cloudinary.js` (NUEVO)
+Módulo central con:
+- Función `cld(url, presetName)` que envuelve URLs Supabase con el endpoint `https://res.cloudinary.com/founder-uy/image/fetch/{transformations}/{remote_url}`.
+- Función `cldSrcset(url, presetName)` que genera atributos `srcset` responsive con múltiples anchos.
+- Constante `CLD_SIZES` con los atributos `sizes` por preset (alineados a los breakpoints reales del CSS del sitio: 599px, 1023px).
+- Whitelist de hosts permitidos (`ALLOWED_HOSTS = ['qedwqbxuyhieznrqryhb.supabase.co']`) — URLs externas / data: / blob: / relativas pasan sin tocar.
+- Kill-switch global `ENABLED = true/false`.
+
+#### Presets definidos (6 contextos)
+
+| Preset | Width target | Widths del srcset | Crop | Uso |
+|---|---|---|---|---|
+| `card` | 800 | 400, 600, 800, 1200 | fill | Cards del listado en index y producto.html |
+| `gallery` | 1000 | 600, 900, 1200, 1600 | limit | Galería principal de producto.html |
+| `hero` | 1600 | 800, 1200, 1600, 2000 | limit | Banner del hero del index (LCP del sitio) |
+| `thumb` | 200 | (sin srcset) | fill | Carrito 56px, gallery thumbs ~80px, admin ~90px |
+| `modal` | 1000 | 600, 900, 1200 | limit | Modal "vista rápida" del index |
+| `og` | 1200 | (sin srcset) | fill | og:image y twitter:image (q_auto:good para previews sociales) |
+
+#### 21 puntos de render envueltos en 11 archivos
+
+| Archivo | Puntos modificados |
+|---|---|
+| `index.html` | Cards listado (1), banner hero (1), modal vista rápida foto principal + thumbs (2), carrito + recoverCartPhoto (2) |
+| `producto.html` | Galería principal + preload de fotos (2), thumbnails galería (1), cards relacionados (1), og:image + twitter:image (2), carrito + recoverCartPhoto (2) |
+| `admin.html` + `components/founder-admin.js` | Listado productos (1), dashboard (1), slots de fotos en editor + refreshPhotoPreview (2) |
+| `checkout.html` + `components/founder-checkout.js` | Resumen del pedido (1) |
+| `contacto.html`, `envios.html`, `sobre-nosotros.html`, `tecnologia-rfid.html`, `seguimiento.html` | Carrito (1 c/u, total 5) |
+
+Todos los archivos cargan `<script src="components/cloudinary.js"></script>` ANTES de cualquier renderizador de imágenes.
+
+### 🧹 Limpieza de fotos legacy en Google Drive
+
+Antes de la migración el sitio tenía algunas fotos cargadas con URLs `lh3.googleusercontent.com/d/...` (Google Drive como host de imágenes). Esto era inestable (Google puede bloquear ese tipo de uso, formato de URLs cambia sin aviso, no es CDN) y además sumaba ~3 MB de bandwidth no optimizado por carga del index.
+
+**Acción tomada:** desde el admin se eliminaron todas las fotos cuyas URLs contenían `googleusercontent.com`. Esto fue posible sin perder contenido visual porque cada producto tenía múltiples fotos por color y los colores afectados igual mantuvieron al menos una foto válida en Supabase Storage.
+
+**Resultado validado en producción:** banner del hero presente, todas las cards de producto con foto.
+
+### 📊 Mejora medida en producción (final, post-cleanup)
+
+Foto típica del sitio: **1,16 MB / 1200×1200 px JPG sin optimizar (exportada por Canva)**.
+
+| Contexto | Antes | Después | Ahorro |
+|---|---|---|---|
+| Card mobile (~400px) | 1.160 KB | ~25 KB | **98%** |
+| Galería desktop AVIF (~1000px) | 1.160 KB | ~140 KB | **88%** |
+| Banner hero mobile (~800px) | 1.160 KB | ~80 KB | **93%** |
+| Carrito thumb 56px | 1.160 KB | ~3 KB | **99,7%** |
+| Page weight index mobile | ~3.500 KB | ~290 KB transferred | **92%** |
+| Performance Score (mobile) | inicial 94 | 85-90 con variación normal | rango |
+| Performance Score (desktop) | inicial 95 | 95-99 con variación normal | mantenido |
+| CLS (Layout Shift) | 0 | 0 | perfecto |
+| TBT (Blocking Time) | n/d | 40 ms | excelente |
+
+Validación adicional con DevTools Network: `crema-1-1777033558996-1777033558401.jpg` original sirve como `Type: webp` → `f_auto` activo y entregando formatos modernos.
+
+### ⚙️ Configuración Cloudinary
+
+- **Cuenta:** registrada con email `evandrosegovia@gmail.com` (cuenta técnica/admin separada de `info@founder.uy`).
+- **Cloud name:** `founder-uy` (renombrado desde `doscquud7` autogenerado).
+- **Plan:** Free (25 créditos/mes).
+- **Settings → Security:**
+  - "Fetched URL" NO está en Restricted media types ✅
+  - "Allowed fetch domains" contiene `qedwqbxuyhieznrqryhb.supabase.co` ✅
+- **Storage usado:** ~0 (fetch mode no almacena, solo cachea).
+- **Capacidad estimada del Free para nuestro tráfico:** ~25.000-30.000 visitas/mes antes de saturar bandwidth.
+
+### ❌ Intento fallido — Optimización de Google Fonts (revertido)
+
+**Hipótesis:** convertir el `<link rel="stylesheet">` de Google Fonts en `<link rel="preload" onload="this.rel='stylesheet'">` con fallback `<noscript>` ahorraría ~800 ms de FCP en mobile (Lighthouse así lo sugería).
+
+**Implementación:** se aplicó la conversión a los 9 HTMLs del sitio. Validación automática con HTML parser pasó OK. Deploy a Vercel completo.
+
+**Resultado real medido en producción:**
+
+| Métrica | Antes | Después | Cambio |
+|---|---|---|---|
+| Score mobile | 88 | **79** | -9 (regresión) |
+| Score desktop | 95 | **69** | -26 (regresión grave) |
+| FCP mobile | 3,0 s | 3,0 s | sin cambio |
+| TBT mobile | 40 ms | **330 ms** | +290 ms |
+| Speed Index mobile | 3,1 s | **4,8 s** | +1,7 s |
+
+**Causa raíz probable:** la técnica preload+onload **NO siempre rinde** en sitios con CSS inline grande dentro del HTML. El navegador empieza el render, se encuentra con `<style>` interno que referencia las fuentes, las fuentes aún no están listas, entra en FOUT, y el reflow posterior cuando llegan las fuentes mata el Speed Index. La penalización fue mayor que el beneficio del unblock inicial.
+
+**Acción tomada:** rollback inmediato vía Vercel "Promote to Production" sobre el deploy anterior (estado pre-fonts). Tardó <60 segundos. **NO se hizo revert en GitHub** — el código de la optimización fallida sigue en el branch `main` de GitHub, pero no está en producción.
+
+**Pendiente para limpiar en Sesión 25:** revertir los HTMLs en GitHub al estado pre-fonts (commit anterior a "perf: carga no-bloqueante de Google Fonts") O hacer un nuevo commit que restaure el `<link rel="stylesheet">` original. Si no se hace, cualquier futuro deploy va a re-aplicar la regresión.
+
+### 🧠 Lecciones documentadas para evitar repetirlas
+
+#### Sobre Cloudinary (lo que SÍ funcionó)
+
+1. **Cloudinary cobra por créditos (1 crédito = 1 GB bandwidth O 1.000 transformaciones O 1 GB storage).** En fetch mode el storage queda en 0, así que el techo real es bandwidth de salida.
+
+2. **`f_auto` genera 2-4 variantes por imagen** (AVIF para Chrome, WebP para Safari/Firefox, JPG fallback). Cada variante cuenta como 1 transformación la primera vez; después se cachea y NO consume créditos en pedidos siguientes.
+
+3. **Las URLs de Supabase Storage públicas son ESTABLES** — Cloudinary fetch mode las puede leer sin auth. Si el bucket fuera privado habría que firmar URLs (no es nuestro caso).
+
+4. **`f_auto + q_auto` rinde MUCHO MÁS en imágenes mal exportadas** que en imágenes ya optimizadas. Como las fotos del sitio salen de Canva sin compresión agresiva (1,16 MB en 1200×1200), el ahorro fue enorme.
+
+5. **El `srcset + sizes` necesita coincidir con los breakpoints reales del CSS** para que el navegador elija bien.
+
+6. **Subir el archivo NUEVO antes que los modificados es la única secuencia segura** — los HTMLs llaman a `cld()` de un archivo que tiene que existir antes en producción.
+
+#### Sobre fonts (lo que NO funcionó — IMPORTANTE)
+
+7. **NO aplicar técnicas de carga no-bloqueante de fonts (preload+onload) sin medir antes en mobile real.** Lighthouse las recomienda pero NO siempre rinden, especialmente en sitios con CSS inline grande. **El reflow que generan al aplicar la fuente puede ser peor que el bloqueo que evitan.**
+
+8. **PageSpeed varía ±3-5 puntos entre corridas** del mismo sitio sin cambios. Para validar mejoras o regresiones reales, correr 3-5 veces y promediar, o mirar las métricas individuales (LCP, FCP, CLS, TBT) en lugar del score agregado.
+
+9. **Vercel "Promote to Production" sobre deploy anterior es el rollback más rápido** (<60 s) sin tocar GitHub. Útil para emergencias. **PERO** el código en GitHub queda desincronizado con producción hasta que se haga el revert formal.
+
+#### Sobre limpieza de fotos legacy
+
+10. **Eliminar fotos sin reemplazo es seguro SI el producto tiene más de una foto por color.** En Founder cada color tiene múltiples fotos, así que borrar la "mala" (Drive) dejó visible "la buena" (Supabase) automáticamente. **En productos con una sola foto por color, esto sería destructivo.**
+
+### ⚠️ Pendientes específicos de Sesión 24 que quedan abiertos
+
+- 🔴 **Resincronizar GitHub con producción.** Los HTMLs de fonts fallidos están en `main` de GitHub. Cualquier deploy nuevo va a romper otra vez. **Acción Sesión 25:** revertir el commit "perf: carga no-bloqueante de Google Fonts" o subir HTMLs con stylesheet original.
+- 🟢 **Re-intentar optimización de fonts con técnica diferente.** Opciones a probar en Sesión 25: (a) auto-host de las fuentes en Vercel, (b) inline de CSS critical + defer del resto, (c) reducir variantes de pesos cargadas, (d) `font-display: optional` en vez de `swap`.
+- 🟢 Mejora futura opcional: agregar placeholder `e_blur:1000,q_1` para fade-in suave mientras carga la imagen real (LQIP).
+
+### 🔄 Rollback documentado (si Cloudinary fallara en algún momento futuro)
+
+1. GitHub → `components/cloudinary.js` → click en ✏️ "edit".
+2. Línea `const ENABLED    = true;` cambiar a `const ENABLED    = false;`.
+3. Commit con mensaje `hotfix: disable cloudinary wrapper`.
+4. Vercel deploya en ~30 s.
+5. Todas las imágenes vuelven a servirse desde Supabase como antes de la sesión 24.
+
+Esto NO borra nada — el módulo sigue cargado, simplemente devuelve la URL original sin transformar.
+
+---
+
+## 🚀 Para iniciar el chat siguiente (Sesión 25)
+
+Pegale a Claude este mensaje al arrancar:
+
+> Leé `ESTADO.md` y retomamos después de Sesión 24. La Sesión 24 cerró
+> con éxito principal: migración de imágenes a Cloudinary CDN en fetch
+> mode (21 puntos de render, 6 presets responsive, ahorro 92% en page
+> weight). Score Lighthouse mobile 85-90 / desktop 95-99. Cuenta
+> Cloudinary `founder-uy` plan Free configurada con fetch desde Supabase
+> autorizado. Limpieza de fotos legacy en Drive completada (todas las
+> URLs `googleusercontent.com` removidas, sitio sigue funcionando OK).
+> **PERO la sesión también tuvo un intento fallido**: optimización de
+> Google Fonts (preload+onload) causó regresión grave (-26 puntos
+> desktop) y fue revertido vía Vercel rollback. **El código fallido sigue
+> en main de GitHub** — primer pendiente urgente de Sesión 25 es
+> resincronizar GitHub (revertir el commit "perf: carga no-bloqueante
+> de Google Fonts"). Después: re-intentar optimización de fonts con
+> técnica diferente (auto-host / font-display: optional / etc), limpieza
+> de pedidos prueba (NO borrar F203641 — Florencia Risso), datos
+> bancarios reales para email transferencia, primera campaña Meta Ads.
 
 ---
 
@@ -130,6 +306,8 @@ Pegale a Claude este mensaje al arrancar:
 | **8** — Mercado Pago integrado | 🟡 Casi completa | Código + DB + smoke test parcial OK. Faltan tests reales con tarjetas de prueba (bloqueado por acceso de la esposa). Sesión 22 |
 | **9** — Email transaccional | ✅ Completa | Resend integrado, 3 templates HTML profesionales, dominio `founder.uy` verificado, validado en producción (transferencia). Sesión 22 |
 | **10** — Sistema de variantes en toasts | ✅ Completa | Verde/rojo/blanco con CSS variants, 18 llamadas clasificadas. Sesión 22 |
+| **11** — Imágenes optimizadas vía Cloudinary CDN | ✅ Completa | Fetch mode envuelve URLs Supabase con `f_auto,q_auto,w_xxx`. 6 presets responsive. 21 puntos de render en 11 archivos. Ahorro 92% en page weight. Plan Free `founder-uy`. DB intacta. Sesión 24 |
+| **12** — Optimización de Google Fonts | 🔴 Intentada y revertida | Sesión 24 intentó `preload+onload` y causó regresión (-26 score desktop). Rollback vía Vercel. Pendiente: re-intentar con técnica diferente + resincronizar GitHub con producción. Para Sesión 25 |
 
 ---
 
@@ -1088,12 +1266,22 @@ founder-web/
 
 ---
 
-**FIN** — Cerramos Sesión 22. Sitio en estado óptimo: integraciones de
-pago y email transaccional operativas, sistema de feedback visual UX
-mejorado, todas las pruebas controladas pasaron OK. **El último paso
-crítico para salir 100% a producción con MP integrado es el testing
-real con tarjetas de prueba — bloqueado solo por logística personal
-(acceso a cuenta MP de la esposa)**. Una vez ese bloque se libere, el
-cambio a credenciales productivas es ~5 minutos y el sitio queda en
-estado de **e-commerce profesional completo**: pago online integrado,
-email transaccional, tracking Meta, admin robusto, UX pulida. 🎯
+**FIN** — Cerramos Sesión 24. **Sesión con éxito principal y un aprendizaje
+documentado.** Sobre la base de Sesión 23 (e-commerce profesional con MP en
+producción real), Sesión 24 sumó la **migración de imágenes a Cloudinary
+CDN en fetch mode**: page weight bajó de ~3,5 MB a ~290 KB (-92%), todas
+las imágenes ahora se sirven en formatos modernos AVIF/WebP con tamaños
+responsive según dispositivo, sin tocar la base de datos de Supabase.
+Score Lighthouse: 85-90 mobile / 95-99 desktop con variación natural.
+**También tuvo un intento fallido:** optimización de Google Fonts con
+preload+onload causó regresión y fue revertida en producción vía Vercel
+rollback (deploy anterior promovido). El código de la optimización fallida
+sigue en `main` de GitHub — pendiente urgente de Sesión 25 es
+resincronizar GitHub con producción antes de cualquier deploy nuevo.
+**Lección importante:** en sitios con CSS inline grande (como este), las
+técnicas de carga no-bloqueante de fonts pueden empeorar Speed Index por
+reflow. Próxima vez, probar auto-host de fuentes o `font-display: optional`.
+**El sitio quedó listo para arrancar campañas Meta Ads** con LCP optimizado.
+La pieza arquitectural de Cloudinary (fetch mode) garantiza rollback
+instantáneo y heredabilidad automática para todas las imágenes futuras
+que se suban desde el admin. 🚀
