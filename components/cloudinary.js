@@ -71,21 +71,34 @@
       widths: [600, 900, 1200, 1600],
       crop: 'limit',
     },
-    // Banner del hero del index (LCP del sitio). Es decorativo,
-    // ocupa todo el ancho del hero. Va sin srcset porque solo se
-    // ve una vez por página, pero con calidad alta porque es lo
-    // primero que ve el usuario.
+    // Banner del hero del index (LCP del sitio). Ocupa el viewport
+    // completo (100vw × 100vh) con object-fit: cover. En monitores
+    // 1440p (2560px) y 4K (3840px) los anchos previos quedaban
+    // cortos y el navegador escalaba hacia arriba → pixelado.
+    // Calidad q_auto:good porque es lo primero que ve el usuario.
     hero: {
-      width: 1600,
-      widths: [800, 1200, 1600, 2000],
+      width: 2400,
+      widths: [800, 1200, 1600, 2000, 2800, 3600],
+      quality: 'q_auto:good',
       crop: 'limit',
     },
-    // Thumbnails chicos: carrito (56px), gallery thumbs (~80px),
+    // Thumbnails chicos: carrito (56px), gallery thumbs del modal (~80px),
     // admin (~90px). Servimos una sola variante a 200px que cubre
     // 2x en mobile sin srcset (no compensa la complejidad).
     thumb: {
       width: 200,
       widths: null,
+      crop: 'fill',
+    },
+    // Miniaturas grandes de la galería de producto.html. En desktop
+    // la columna izquierda ocupa ~50vw y se reparte entre 4-6 thumbs
+    // (cada uno ~150-200px de ancho). En pantallas Retina/HiDPI con
+    // DPR 2x el navegador necesita ~480px para que se vea nítido.
+    // Ladder responsive para que mobile no descargue de más.
+    gallery_thumb: {
+      width: 480,
+      widths: [240, 360, 480, 720],
+      quality: 'q_auto:good',
       crop: 'fill',
     },
     // Modal "vista rápida" del index (foto principal grande).
@@ -111,10 +124,14 @@
   // viewport, así elige bien del srcset. Coincide con los breakpoints
   // reales del CSS del sitio.
   const SIZES = {
-    card:    '(max-width: 599px) 92vw, (max-width: 1023px) 46vw, 30vw',
-    gallery: '(max-width: 1023px) 92vw, 50vw',
-    hero:    '100vw',
-    modal:   '(max-width: 1023px) 92vw, 60vw',
+    card:          '(max-width: 599px) 92vw, (max-width: 1023px) 46vw, 30vw',
+    gallery:       '(max-width: 1023px) 92vw, 50vw',
+    hero:          '100vw',
+    modal:         '(max-width: 1023px) 92vw, 60vw',
+    // Miniaturas grandes de producto.html. La galería ocupa ~92vw en
+    // mobile/tablet y ~50vw en desktop, repartido entre 4-6 thumbs
+    // en fila → cada thumb ocupa ~15vw mobile, ~10vw desktop.
+    gallery_thumb: '(max-width: 1023px) 15vw, 10vw',
   };
 
   // ── Helpers internos ─────────────────────────────────────────
