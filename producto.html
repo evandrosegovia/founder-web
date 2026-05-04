@@ -968,7 +968,7 @@ body.cart-open .wa-bubble {
   </section>
 
   <!-- COMPARATIVA — Founder vs billetera tradicional -->
-  <section class="compare-section" aria-labelledby="compareTitle">
+  <section class="compare-section reveal-up" aria-labelledby="compareTitle">
     <div class="compare-section__eyebrow">Por qué elegir Founder</div>
     <h2 class="compare-section__title" id="compareTitle">Una billetera que va con vos</h2>
     <p class="compare-section__lead">Diseñada para acompañarte todos los días. No es solo una billetera, es un accesorio que combina protección, orden y estilo en un solo lugar.</p>
@@ -1031,7 +1031,7 @@ body.cart-open .wa-bubble {
   </section>
 
   <!-- REVIEWS — Lo que dicen nuestros clientes -->
-  <section class="reviews-section" aria-labelledby="reviewsTitle">
+  <section class="reviews-section reveal-up" aria-labelledby="reviewsTitle">
     <div class="reviews-section__eyebrow">Lo que dicen nuestros clientes</div>
     <h2 class="reviews-section__title" id="reviewsTitle">Confianza ganada con cada compra</h2>
 
@@ -1087,10 +1087,10 @@ body.cart-open .wa-bubble {
   </section>
 
   <!-- RELATED PRODUCTS -->
-  <section class="related-section" aria-label="Productos relacionados">
+  <section class="related-section reveal-up" aria-label="Productos relacionados">
     <div class="related-section__eyebrow">También te puede gustar</div>
     <div class="related-section__title">Otros modelos</div>
-    <div class="related-grid" id="relatedGrid"></div>
+    <div class="related-grid reveal-stagger" id="relatedGrid"></div>
   </section>
 
 </div><!-- /productContent -->
@@ -1104,6 +1104,7 @@ body.cart-open .wa-bubble {
 <!-- supabase-client.js debe ir ANTES que cart.js (cart.js depende de window.founderDB) -->
 <script src="components/supabase-client.js"></script>
 <script src="components/cart.js"></script>
+<script src="components/scroll-reveal.js" defer></script>
 <script src="components/meta-pixel.js"></script>
 
 
@@ -1713,11 +1714,11 @@ function renderGallery() {
     main.insertBefore(img, main.querySelector('.gallery__rfid-badge'));
   });
 
-  // Render thumbnails (preset 'gallery_thumb' = 480w + srcset responsive)
+  // Render thumbnails (preset 'thumb' = 200w)
   thumbs.innerHTML = photos.map((url, i) => `
     <div class="gallery__thumb ${i === state.activePhoto ? 'is-active' : ''}"
       onclick="setActivePhoto(${i}, true)" role="button" aria-label="Foto ${i + 1}" tabindex="0">
-      <img src="${cld(url, 'gallery_thumb')}" srcset="${cldSrcset(url, 'gallery_thumb')}" sizes="${CLD_SIZES.gallery_thumb}" alt="Foto ${i + 1}" loading="lazy">
+      <img src="${cld(url, 'thumb')}" alt="Foto ${i + 1}" loading="lazy">
     </div>`).join('');
 
   updateArrowsVisibility();

@@ -9,7 +9,8 @@
   <meta name="description" content="¿Qué es RFID y por qué importa? Entendé el riesgo del skimming electrónico y cómo los productos FOUNDER protegen tus tarjetas." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=optional" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
   <!-- ============ FAVICON ============ -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23141414'/><text y='72' x='50' text-anchor='middle' font-size='60' font-family='serif' fill='%23c9a96e'>F</text></svg>">
 
@@ -549,7 +550,7 @@
 <main class="page-body">
 
   <!-- ══ SECCIÓN 1: QUÉ ES RFID ══ -->
-  <section class="info-section" aria-labelledby="titulo-que-es">
+  <section class="info-section reveal-up" aria-labelledby="titulo-que-es">
     <div class="info-section__header">
       <div class="info-section__icon" aria-hidden="true">📡</div>
       <h2 class="info-section__title" id="titulo-que-es">¿Qué es RFID?</h2>
@@ -571,7 +572,7 @@
   </section>
 
   <!-- ══ SECCIÓN 2: EL RIESGO ══ -->
-  <section class="info-section" aria-labelledby="titulo-riesgo">
+  <section class="info-section reveal-up" aria-labelledby="titulo-riesgo">
     <div class="info-section__header">
       <div class="info-section__icon" aria-hidden="true">⚠️</div>
       <h2 class="info-section__title" id="titulo-riesgo">¿Por qué es un riesgo?</h2>
@@ -589,7 +590,7 @@
   </section>
 
   <!-- ══ SECCIÓN 3: CÓMO PROTEGE FOUNDER ══ -->
-  <section class="info-section" aria-labelledby="titulo-proteccion">
+  <section class="info-section reveal-up" aria-labelledby="titulo-proteccion">
     <div class="info-section__header">
       <div class="info-section__icon" aria-hidden="true">🛡️</div>
       <h2 class="info-section__title" id="titulo-proteccion">¿Cómo te protege FOUNDER?</h2>
@@ -609,7 +610,7 @@
   </section>
 
   <!-- ══ SECCIÓN 4: QUÉ TARJETAS PROTEGE ══ -->
-  <section class="info-section" aria-labelledby="titulo-tarjetas">
+  <section class="info-section reveal-up" aria-labelledby="titulo-tarjetas">
     <div class="info-section__header">
       <div class="info-section__icon" aria-hidden="true">💳</div>
       <h2 class="info-section__title" id="titulo-tarjetas">¿Qué tarjetas protege?</h2>
@@ -630,7 +631,7 @@
   </section>
 
   <!-- ══ SECCIÓN 5: FAQ ══ -->
-  <section class="info-section" aria-labelledby="titulo-faq">
+  <section class="info-section reveal-up" aria-labelledby="titulo-faq">
     <div class="info-section__header">
       <div class="info-section__icon" aria-hidden="true">❓</div>
       <h2 class="info-section__title" id="titulo-faq">Preguntas frecuentes</h2>
@@ -675,6 +676,7 @@
 <!-- supabase-client.js debe ir ANTES que cart.js (cart.js depende de window.founderDB) -->
 <script src="components/supabase-client.js"></script>
 <script src="components/cart.js"></script>
+<script src="components/scroll-reveal.js" defer></script>
 <script src="components/meta-pixel.js"></script>
 
 

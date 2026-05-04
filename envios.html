@@ -9,7 +9,8 @@
   <meta name="description" content="Conocé nuestras políticas de envío, medios de pago aceptados y cómo gestionar cambios o devoluciones. Founder Uruguay." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=optional" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
   <!-- ============ FAVICON ============ -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23141414'/><text y='72' x='50' text-anchor='middle' font-size='60' font-family='serif' fill='%23c9a96e'>F</text></svg>">
 
@@ -532,7 +533,7 @@
 <main class="page-body">
 
   <!-- ══ SECCIÓN 1: MEDIOS DE PAGO ══ -->
-  <section class="info-section" aria-labelledby="titulo-pagos">
+  <section class="info-section reveal-up" aria-labelledby="titulo-pagos">
     <div class="info-section__header">
       <div class="info-section__icon" aria-hidden="true">💳</div>
       <h2 class="info-section__title" id="titulo-pagos">Medios de pago</h2>
@@ -563,7 +564,7 @@
   </section>
 
   <!-- ══ SECCIÓN 2: ENVÍOS ══ -->
-  <section class="info-section" aria-labelledby="titulo-envios">
+  <section class="info-section reveal-up" aria-labelledby="titulo-envios">
     <div class="info-section__header">
       <div class="info-section__icon" aria-hidden="true">🚚</div>
       <h2 class="info-section__title" id="titulo-envios">Envíos</h2>
@@ -627,7 +628,7 @@
   </section>
 
   <!-- ══ SECCIÓN 3: CAMBIOS Y DEVOLUCIONES ══ -->
-  <section class="info-section" aria-labelledby="titulo-cambios">
+  <section class="info-section reveal-up" aria-labelledby="titulo-cambios">
     <div class="info-section__header">
       <div class="info-section__icon" aria-hidden="true">↩️</div>
       <h2 class="info-section__title" id="titulo-cambios">Cambios y devoluciones</h2>
@@ -672,6 +673,7 @@
 <!-- supabase-client.js debe ir ANTES que cart.js (cart.js depende de window.founderDB) -->
 <script src="components/supabase-client.js"></script>
 <script src="components/cart.js"></script>
+<script src="components/scroll-reveal.js" defer></script>
 <script src="components/meta-pixel.js"></script>
 
 

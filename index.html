@@ -251,23 +251,6 @@ select:active,
   opacity: 0.50;
   pointer-events: none; z-index: 0;
 }
-/* ── LQIP del banner — placeholder borroso mientras carga la imagen real.
-   Se renderiza primero, queda DEBAJO de .hero__banner-img.
-   filter: blur(20px) suaviza el escalado de 64px → viewport completo.
-   scale(1.05) compensa el "halo" que aparece en los bordes con blur. */
-.hero__banner-blur {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover;
-  filter: blur(20px);
-  transform: scale(1.05);
-  opacity: 0.50;
-  pointer-events: none; z-index: 0;
-}
-/* Estado inicial de la imagen real: invisible, fade-in al cargar.
-   transition heredada de inline style en JS para sincronizar con el delay. */
-.hero__banner-img--loading {
-  opacity: 0 !important;
-}
 .hero__content {
   position: relative; z-index: 2;
   max-width: 700px; animation: fadeUp 1.2s ease both;
@@ -1030,7 +1013,7 @@ body.cart-open .wa-bubble {
 </section>
 
 <!-- ── RFID ─────────────────────────────────────────────────── -->
-<section class="rfid-grid" id="rfid" aria-label="Características RFID">
+<section class="rfid-grid reveal-stagger" id="rfid" aria-label="Características RFID">
   <!-- h2 invisible para mantener la jerarquía semántica h1 → h2 → h3.
        Solo lo leen lectores de pantalla y motores de búsqueda. -->
   <h2 class="visually-hidden">Características RFID</h2>
@@ -1058,13 +1041,13 @@ body.cart-open .wa-bubble {
 
 <!-- ── PRODUCTS ─────────────────────────────────────────────── -->
 <section class="products-section" id="productos" aria-label="Catálogo de productos">
-  <div class="section-header">
+  <div class="section-header reveal-up">
     <div>
       <div class="section-label">Colección 2026</div>
       <h2 class="section-title">Nuestros modelos</h2>
     </div>
   </div>
-  <div class="products-grid" id="productsGrid" role="list" aria-busy="true" aria-live="polite">
+  <div class="products-grid reveal-stagger" id="productsGrid" role="list" aria-busy="true" aria-live="polite">
     <!-- Skeletons mostrados mientras Supabase responde — JS los reemplaza
          con las cards reales en init() → renderProducts(). 3 cards cubren
          el primer paint en mobile (1 col), tablet (2 col) y desktop (3 col). -->
@@ -1116,6 +1099,7 @@ body.cart-open .wa-bubble {
 <!-- supabase-client.js debe ir ANTES que cart.js (cart.js depende de window.founderDB) -->
 <script src="components/supabase-client.js"></script>
 <script src="components/cart.js"></script>
+<script src="components/scroll-reveal.js" defer></script>
 <script src="components/meta-pixel.js"></script>
 
 <!-- ── PRODUCT MODAL ─────────────────────────────────────────── -->
@@ -1240,55 +1224,28 @@ function getColorEstado(product, colorName) {
 }
 
 // ── INDEX — Banner del hero ─────────────────────────────────────
-/** Aplica el banner al hero usando técnica LQIP (Low Quality Image Placeholder):
- *  1) Inserta inmediatamente un blur de 64px borroseado (~500-800 bytes)
- *     que aparece casi instantáneo y refleja los colores reales del banner.
- *  2) Inserta encima la imagen real con fetchpriority="high" + srcset responsive.
- *  3) Cuando la real carga Y pasaron al menos 300ms desde el inicio,
- *     hace crossfade suave (350ms) revelándola sobre el blur.
- *  El blur queda debajo siempre (z-index 0) — si la real falla, el blur
- *  se queda visible como fallback elegante. */
+/** Aplica el banner al hero. Usa fetchpriority="high" para que el navegador
+ *  priorice esta imagen sobre las demás (cards de productos, etc).
+ *  Fade-in al cargar para que no aparezca abruptamente. */
 function applyBanner(url) {
   const container = $('heroBannerImg');
   if (!container) return;
   container.innerHTML = '';
   if (!url?.trim()) return;
-  const trimmed = url.trim();
 
-  // ── 1. Placeholder borroso (LQIP) ─────────────────────────────
-  // Aparece casi instantáneo y cubre el período de descarga de la real.
-  const blur = document.createElement('img');
-  blur.alt = '';
-  blur.className = 'hero__banner-blur';
-  blur.decoding = 'async';
-  blur.src = cld(trimmed, 'hero_blur');
-  blur.onerror = () => blur.remove(); // si falla, no mostramos nada raro
-  container.appendChild(blur);
-
-  // ── 2. Imagen real ────────────────────────────────────────────
   const img = document.createElement('img');
   img.alt = '';
-  img.className = 'hero__banner-img hero__banner-img--loading';
+  img.className = 'hero__banner-img';
   img.decoding = 'async';
   img.fetchPriority = 'high';   // hint al navegador: prioridad sobre otras imgs
+  img.style.opacity = '0';
   img.style.transition = 'opacity .35s ease';
-
-  // Crossfade garantizado: aunque la real cargue en 50ms desde cache,
-  // esperamos al menos MIN_FADE_DELAY ms para que se vea el efecto premium.
-  // En conexiones lentas el delay es invisible (la imagen tarda más igual).
-  const startTime = performance.now();
-  const MIN_FADE_DELAY = 300;
-  const reveal = () => {
-    const elapsed = performance.now() - startTime;
-    const wait = Math.max(0, MIN_FADE_DELAY - elapsed);
-    setTimeout(() => img.classList.remove('hero__banner-img--loading'), wait);
-  };
-  img.onload = reveal;
-  img.onerror = () => img.remove(); // si falla, queda visible solo el blur
-
+  img.onload = () => { img.style.opacity = ''; };  // vuelve al opacity del CSS (.5)
+  img.onerror = () => img.remove();
   // Cloudinary fetch + srcset responsive: el banner es LCP; servimos
-  // entre 800w (mobile) y 3600w (4K). f_auto sirve AVIF donde se soporta,
-  // lo cual baja el peso ~60-80% vs JPG original.
+  // entre 800w (mobile) y 2000w (retina desktop). f_auto sirve AVIF
+  // donde se soporta, lo cual baja el peso ~60-80% vs JPG original.
+  const trimmed = url.trim();
   img.src = cld(trimmed, 'hero');
   const set = cldSrcset(trimmed, 'hero');
   if (set) {
@@ -1332,7 +1289,6 @@ async function init() {
     renderProducts();
     // Refrescar visualmente el contador del carrito en el header.
     updateCart();
-    document.querySelectorAll('.rfid-item').forEach(el => revealObserver.observe(el));
 
     // Event delegation para modal — se registra UNA SOLA VEZ aquí, no en renderProducts()
     document.getElementById('productsGrid').addEventListener('click', function(e) {
@@ -1390,7 +1346,8 @@ function renderProducts() {
   const grid = $('productsGrid');
   if (grid) grid.removeAttribute('aria-busy');
   setHTML('productsGrid', state.products.map((p, i) => renderProductCard(p, i)).join(''));
-  document.querySelectorAll('.product-card').forEach(el => revealObserver.observe(el));
+  // Las cards heredan el reveal del grid padre (.products-grid.reveal-stagger).
+  // El MutationObserver de scroll-reveal.js detecta los nodos nuevos y los anima.
   // El event listener del grid se registra UNA SOLA VEZ en init() — ver abajo
 }
 
@@ -1798,14 +1755,10 @@ function showToast(msg, variant) {
 }
 
 // ── SHARED UI — Scroll reveal ────────────────────────────────────
-const revealObserver = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      e.target.style.animation = 'fadeUp .8s ease both';
-      revealObserver.unobserve(e.target);
-    }
-  });
-}, { threshold: 0.1 });
+// Migrado en Sesión 25 al componente compartido components/scroll-reveal.js
+// que maneja revelado en TODAS las páginas con clases .reveal-up,
+// .reveal-stagger, etc. + soporte reduced-motion + MutationObserver
+// para inyecciones dinámicas (cards de productos del catálogo).
 
 // ── SHARED UI — Páginas legales ──────────────────────────────────
 // showLegal() / hideLegal() ahora viven en components/footer.js
