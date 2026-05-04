@@ -34,6 +34,9 @@ import {
   templateOrderTransfer,
   templateOrderMpApproved,
   templateOrderMpPending,
+  templateOrderStatusUpdate,
+  statusEmailSubject,
+  statusTriggersEmail,
 } from './email-templates.js';
 
 // ── CONFIG ───────────────────────────────────────────────────────
@@ -186,5 +189,40 @@ export async function sendOrderConfirmationMpPending(order, items) {
     subject: `Tu pedido Founder #${order.numero} está esperando el pago`,
     html:    templateOrderMpPending(order, items || []),
     type:    'mp_pending',
+  });
+}
+
+/**
+ * Envía el email de actualización de estado del pedido.
+ *
+ * Disparado desde api/admin.js cuando el admin cambia el estado
+ * vía panel. Solo dispara si statusKey está en STATUS_CONFIG del
+ * template (los estados internos como "Pendiente pago" o "Pago
+ * rechazado" NO disparan email — los gestiona el sistema).
+ *
+ * @param {Object} order      pedido completo (con nro_seguimiento si aplica)
+ * @param {Array}  items      items del pedido
+ * @param {string} statusKey  estado destino — ej "En camino", "Entregado"
+ * @returns {Promise<{ok:boolean, error?:string, message_id?:string}>}
+ */
+export async function sendOrderStatusUpdate(order, items, statusKey) {
+  if (!order || !order.numero || !order.email) {
+    return { ok: false, error: 'invalid_order' };
+  }
+  if (!statusTriggersEmail(statusKey)) {
+    // El estado no tiene template asociado — no es un error,
+    // simplemente no enviamos email para este estado.
+    return { ok: true, error: null, skipped: true };
+  }
+  const html    = templateOrderStatusUpdate(order, items || [], statusKey);
+  const subject = statusEmailSubject(order, statusKey);
+  if (!html || !subject) {
+    return { ok: false, error: 'template_render_failed' };
+  }
+  return sendEmail({
+    to:      order.email,
+    subject,
+    html,
+    type:    `status_${statusKey.toLowerCase().replace(/\s+/g, '_')}`,
   });
 }

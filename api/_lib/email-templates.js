@@ -453,3 +453,215 @@ export function templateOrderMpPending(order, items) {
 
   return wrapEmail(inner, `Tu pedido #${numero} está reservado. Falta completar el pago.`);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// TEMPLATE 4: ACTUALIZACIÓN DE ESTADO (Sesión 25)
+// Disparado desde api/admin.js cuando el admin cambia el estado de
+// un pedido vía panel. Un único template parametrizado que cambia
+// color/emoji/textos según el estado destino. Centralizar en un
+// solo template (en vez de 5 separados) facilita mantener la
+// consistencia visual del sistema.
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Configuración por estado: define cómo se ve el email para cada
+ * transición. Si en el futuro se agrega un estado nuevo que dispare
+ * email, solo hay que sumar una entrada acá.
+ *
+ * Campos:
+ *   eyebrow:       texto del rótulo superior (uppercase)
+ *   eyebrowColor:  color hex del rótulo y barra lateral
+ *   emoji:         emoji decorativo del título
+ *   title:         título grande (admite ${nombre})
+ *   intro:         párrafo introductorio (admite ${nombre})
+ *   nextStepLabel: título del bloque "próximos pasos"
+ *   nextStepText:  cuerpo del bloque (admite ${tracking} placeholder)
+ *   subject:       asunto del email (admite ${numero})
+ *   preview:       texto preview que se ve en bandejas tipo Gmail
+ *
+ * `entrega` (envío vs retiro) se aplica recién cuando se renderiza —
+ * ciertos textos cambian según si el cliente eligió envío o retiro.
+ */
+const STATUS_CONFIG = {
+  // Admin valida el pedido (típico paso siguiente a "Pendiente conf.")
+  'Confirmado': {
+    eyebrow:       '✅ Pedido confirmado',
+    eyebrowColor:  '#4caf82',
+    emoji:         '✅',
+    title:         '¡Tu pedido está confirmado, ${nombre}!',
+    intro:         'Recibimos tu pedido y ya está en nuestra cola de preparación. En breve empezamos a armarlo.',
+    nextStepLabel: 'Próximos pasos',
+    nextStepEnvio:  'Vamos a preparar tu pedido y te avisamos por WhatsApp y email cuando esté en camino.',
+    nextStepRetiro: 'Vamos a preparar tu pedido y te avisamos por WhatsApp y email cuando esté listo para retirar.',
+    subject:       'Confirmamos tu pedido Founder #${numero}',
+    preview:       'Confirmamos tu pedido. Ya empezamos a prepararlo.',
+  },
+  // Empezamos a armar la billetera
+  'En preparación': {
+    eyebrow:       '🛠️ En preparación',
+    eyebrowColor:  '#c9a96e',
+    emoji:         '🛠️',
+    title:         '${nombre}, ya estamos preparando tu pedido',
+    intro:         'Tu Founder está siendo armada con cuidado. Materiales premium, control de calidad uno por uno.',
+    nextStepLabel: 'Qué sigue',
+    nextStepEnvio:  'En cuanto esté lista, despachamos el envío y te llega el código de seguimiento.',
+    nextStepRetiro: 'En cuanto esté lista, te avisamos para que pases a retirarla por nuestro punto en zona Prado, Montevideo.',
+    subject:       'Tu pedido Founder #${numero} está en preparación',
+    preview:       'Estamos armando tu Founder con dedicación.',
+  },
+  // Salió del local — el más importante para envío
+  'En camino': {
+    eyebrow:       '🚚 En camino',
+    eyebrowColor:  '#5b9bd5',
+    emoji:         '🚚',
+    title:         '${nombre}, tu pedido está en camino',
+    intro:         'Tu Founder ya salió rumbo a vos. ${tracking}',
+    nextStepLabel: 'Tiempo estimado de entrega',
+    nextStepEnvio:  '1 a 3 días hábiles según tu departamento. Si tenés el código de seguimiento, podés ver el estado en tiempo real.',
+    nextStepRetiro: 'Tu pedido salió del taller hacia el punto de retiro.',
+    subject:       'Tu pedido Founder #${numero} está en camino',
+    preview:       'Tu Founder ya salió rumbo a vos.',
+  },
+  // Para retiro presencial
+  'Listo para retirar': {
+    eyebrow:       '📍 Listo para retirar',
+    eyebrowColor:  '#c9a96e',
+    emoji:         '📍',
+    title:         '${nombre}, tu Founder te está esperando',
+    intro:         'Tu pedido está listo para retirar en nuestro punto.',
+    nextStepLabel: 'Cómo retirarlo',
+    nextStepEnvio:  'Tu pedido cambió a modalidad retiro. Por favor confirmanos por WhatsApp para coordinar.',
+    nextStepRetiro: 'Acercate al punto de retiro en zona Prado, Montevideo. Si necesitás coordinar día y hora, escribinos por WhatsApp.',
+    subject:       'Tu pedido Founder #${numero} está listo para retirar',
+    preview:       'Tu Founder está lista para que la retires.',
+  },
+  // Cierre del ciclo
+  'Entregado': {
+    eyebrow:       '🎉 Entregado',
+    eyebrowColor:  '#4caf82',
+    emoji:         '🎉',
+    title:         '¡Listo, ${nombre}! Tu Founder ya está con vos',
+    intro:         'Esperamos que la disfrutes mucho. Diseñamos cada detalle para que dure años.',
+    nextStepLabel: '¿Cómo te fue con tu Founder?',
+    nextStepEnvio:  'Si te gustó la experiencia, contanos por WhatsApp — nos motiva mucho leer a clientes contentos. Y si tenés cualquier consulta sobre el cuidado de la billetera, también escribinos.',
+    nextStepRetiro: 'Si te gustó la experiencia, contanos por WhatsApp — nos motiva mucho leer a clientes contentos. Y si tenés cualquier consulta sobre el cuidado de la billetera, también escribinos.',
+    subject:       'Tu pedido Founder #${numero} fue entregado',
+    preview:       'Esperamos que disfrutes mucho tu Founder.',
+  },
+};
+
+/**
+ * Devuelve true si el estado tiene template asociado (es decir, dispara
+ * email). Útil para que admin.js pueda decidir si vale la pena el fetch.
+ * Estados como "Cancelado" o "Pendiente pago" NO disparan email.
+ */
+export function statusTriggersEmail(estado) {
+  return Object.prototype.hasOwnProperty.call(STATUS_CONFIG, estado);
+}
+
+/**
+ * Renderiza el email de actualización de estado.
+ *
+ * @param {Object} order      pedido con numero, email, nombre, total, envio,
+ *                            descuento, entrega, nro_seguimiento, url_seguimiento.
+ * @param {Array}  items      items del pedido (puede ser []).
+ * @param {string} statusKey  estado destino (debe existir en STATUS_CONFIG).
+ * @returns {string} HTML del email, o '' si statusKey no es válido.
+ */
+export function templateOrderStatusUpdate(order, items, statusKey) {
+  const cfg = STATUS_CONFIG[statusKey];
+  if (!cfg) return '';
+
+  const numero    = esc(order.numero || '');
+  const nombre    = esc(order.nombre || 'cliente');
+  const total     = Number(order.total || 0);
+  const envio     = Number(order.envio || 0);
+  const descuento = Number(order.descuento || 0);
+
+  // Detectar tipo de entrega (mismo patrón que en otros templates)
+  const entrega = String(order.entrega || '').toLowerCase();
+  const esEnvio = entrega.includes('env');
+
+  // Bloque de tracking opcional (solo para "En camino" con código cargado)
+  const nroTracking = String(order.nro_seguimiento || '').trim();
+  const urlTracking = String(order.url_seguimiento || '').trim();
+  let trackingFragment = '';
+  if (statusKey === 'En camino' && nroTracking) {
+    trackingFragment = urlTracking
+      ? `Código de seguimiento: <strong style="color:#c9a96e;">${esc(nroTracking)}</strong>. <a href="${esc(urlTracking)}" style="color:#c9a96e;">Ver estado del envío</a>.`
+      : `Código de seguimiento: <strong style="color:#c9a96e;">${esc(nroTracking)}</strong>.`;
+  }
+
+  // Aplicar interpolación simple ${nombre} / ${tracking} en los textos
+  const interp = (s) => String(s)
+    .replace('${nombre}', nombre)
+    .replace('${numero}', numero)
+    .replace('${tracking}', trackingFragment);
+
+  const titleText = interp(cfg.title);
+  const introText = interp(cfg.intro);
+  const nextStepText = esEnvio ? cfg.nextStepEnvio : cfg.nextStepRetiro;
+
+  const inner = `
+    ${blockHeader()}
+
+    <tr>
+      <td style="padding:36px 32px 8px 32px;">
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:3px;color:${cfg.eyebrowColor};text-transform:uppercase;margin-bottom:12px;">
+          ${esc(cfg.eyebrow)}
+        </div>
+        <div style="font-family:Georgia,serif;font-size:32px;font-weight:300;color:#f8f8f4;line-height:1.2;">
+          ${titleText}
+        </div>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;margin-top:14px;">
+          Pedido #${numero}
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding:18px 32px 24px 32px;">
+        <p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#f8f8f4;line-height:1.7;margin:0;">
+          ${introText}
+        </p>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding:0 32px 32px 32px;">
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;color:#9a9a9a;text-transform:uppercase;margin-bottom:18px;">
+          Detalle del pedido
+        </div>
+        ${blockItems(items, total, envio, descuento)}
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding:0 32px 36px 32px;">
+        <div style="background:#0f0f0f;border-left:3px solid ${cfg.eyebrowColor};padding:18px 22px;">
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#f8f8f4;line-height:1.7;">
+            <strong style="color:${cfg.eyebrowColor};">${esc(cfg.emoji)} ${esc(cfg.nextStepLabel)}</strong><br>
+            <span style="color:#9a9a9a;font-size:12px;">${nextStepText}</span>
+          </div>
+        </div>
+      </td>
+    </tr>
+
+    ${blockTrackingButton(numero, order.email)}
+
+    ${blockFooter()}
+  `;
+
+  return wrapEmail(inner, cfg.preview);
+}
+
+/**
+ * Devuelve el subject formateado para un estado dado (útil para que
+ * email.js no tenga que conocer la config de los estados).
+ */
+export function statusEmailSubject(order, statusKey) {
+  const cfg = STATUS_CONFIG[statusKey];
+  if (!cfg) return '';
+  const numero = esc(order.numero || '');
+  return cfg.subject.replace('${numero}', numero);
+}
