@@ -167,13 +167,71 @@ async function handleUpdateOrderStatus(body, res) {
     const items = Array.isArray(prevOrder.order_items)
       ? prevOrder.order_items
       : [];
+
+    // Lookup de fotos (Sesión 25): los emails de status sin precios
+    // muestran foto del producto. Construimos un map "Nombre||Color" → URL
+    // consultando products + colors + photos. Si la query falla, el
+    // email se manda igual con placeholders en vez de fotos.
+    //
+    // URLs envueltas con Cloudinary fetch para servir 200px optimizado
+    // (mismo patrón que el preset 'thumb' de components/cloudinary.js).
+    // Para emails 200px es perfecto: ahorro de bytes + carga rápida en
+    // Gmail/Outlook que descargan la imagen al abrir el email.
+    let photoMap = {};
+    try {
+      const { data: products, error: prodErr } = await supabase
+        .from('products')
+        .select(`
+          nombre,
+          product_colors (
+            nombre,
+            product_photos ( url, orden, es_principal )
+          )
+        `)
+        .eq('activo', true);
+      if (!prodErr && Array.isArray(products)) {
+        const CLD_BASE = 'https://res.cloudinary.com/founder-uy/image/fetch/f_auto,q_auto,w_200,c_fill/';
+        const ALLOWED_HOST = 'qedwqbxuyhieznrqryhb.supabase.co';
+        const wrapWithCloudinary = (rawUrl) => {
+          // Solo envolvemos URLs de Supabase Storage. Cualquier otra cosa
+          // (data:, blob:, dominios externos) se devuelve sin tocar.
+          if (!rawUrl || typeof rawUrl !== 'string') return rawUrl;
+          if (!rawUrl.startsWith('http')) return rawUrl;
+          try {
+            const host = new URL(rawUrl).host;
+            return host === ALLOWED_HOST ? CLD_BASE + rawUrl : rawUrl;
+          } catch (_e) {
+            return rawUrl;
+          }
+        };
+
+        for (const p of products) {
+          for (const c of (p.product_colors || [])) {
+            const photos = c.product_photos || [];
+            // Foto principal primero, fallback a la de menor 'orden'
+            const principal = photos.find(ph => ph.es_principal);
+            const sorted = [...photos].sort((a, b) => (a.orden || 0) - (b.orden || 0));
+            const rawUrl = (principal && principal.url) || (sorted[0] && sorted[0].url) || null;
+            if (rawUrl) {
+              photoMap[`${p.nombre}||${c.nombre}`] = wrapWithCloudinary(rawUrl);
+            }
+          }
+        }
+      } else if (prodErr) {
+        console.warn('[admin] photo lookup falló:', prodErr.message);
+      }
+    } catch (err) {
+      console.warn('[admin] photo lookup threw:', err?.message || err);
+      photoMap = {};
+    }
+
     const TIMEOUT_MS = 3500;
     const timeoutPromise = new Promise(resolve =>
       setTimeout(() => resolve({ ok: false, error: 'timeout' }), TIMEOUT_MS)
     );
     try {
       const result = await Promise.race([
-        sendOrderStatusUpdate(orderForEmail, items, estado),
+        sendOrderStatusUpdate(orderForEmail, items, estado, photoMap),
         timeoutPromise,
       ]);
       if (result?.skipped) {
