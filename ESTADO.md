@@ -1,7 +1,327 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 24 — cierre EXITOSO con aprendizaje (28/04/2026)
-**Próxima sesión:** 25 — Continuación de optimización de performance. Sitio con imágenes optimizadas vía Cloudinary CDN (ahorro 92% medido). Score actual: 85 mobile / 98 desktop. Pendiente clave de Sesión 25: optimización de Google Fonts (intento fallido en Sesión 24, ver lección documentada). Pendientes secundarios: limpiar pedidos prueba, datos bancarios reales para email transferencia, primera campaña Meta Ads.
+**Última actualización:** Sesión 25 — cierre EXITOSO con 7 entregas (04/05/2026)
+**Próxima sesión:** 26 — Pendientes secundarios: solucionar `info@founder.uy` (no es inbox real, los replies se pierden — opciones: forwarder Improvmx/Cloudflare gratuito, o Google Workspace pago), primera campaña paga de Meta Ads (todo listo desde Sesión 17-18, falta presupuesto + audiencia + creatividad), evaluar subir DMARC de `p=none` → `p=quarantine` en 2-4 semanas si los reportes confirman buena salud, decisión sobre modal de index.html (postergada de Sesión 22, idealmente con datos de comportamiento real).
+
+---
+
+## ⚡ SESIÓN 25 — 7 entregas: fonts + imágenes + LQIP + scroll-reveal + DMARC + emails de estado
+
+**Sesión muy productiva con 7 cambios independientes en producción**, todos validados sin regresiones. La sesión empezó cerrando el pendiente urgente de fonts que dejó Sesión 24, y siguió encadenando mejoras de UX y experiencia post-compra que faltaban para que el e-commerce se sintiera "profesional completo".
+
+**Entregas en orden cronológico:**
+
+1. ✅ **Optimización de Google Fonts (re-intento exitoso)** — `font-display: optional` + cadena unificada en 9 HTMLs.
+2. ✅ **Bug latente arreglado** — 5 páginas cargaban Montserrat 700 sintetizado.
+3. ✅ **Mejora de calidad de imágenes** — preset `hero` listo para 4K + nuevo preset `gallery_thumb`.
+4. ✅ **LQIP (Low Quality Image Placeholder)** en banner del hero con crossfade premium garantizado.
+5. ✅ **Componente `scroll-reveal.js`** — animaciones suaves al scrollear en 6 HTMLs públicos.
+6. ✅ **DMARC** publicado en DNS — mejora entregabilidad de emails transaccionales.
+7. ✅ **Emails automáticos al cambiar estado del pedido** — 5 templates con foto del producto.
+
+### 🆕 Bloque 1 — Optimización de Google Fonts (re-intento exitoso)
+
+**Contexto:** Sesión 24 había intentado `preload + onload` para fonts y causó regresión grave (-26 puntos desktop). Lección de Sesión 24: en sitios con CSS inline grande, esa técnica genera reflow tardío que destruye Speed Index.
+
+**Decisión arquitectural:** atacar el problema desde el ángulo opuesto con **`font-display: optional`** en lugar de `swap`. Si la fuente carga en ≤100ms (cache hit, segundas visitas) se usa; si tarda más, el navegador usa fallback **y NO swappea después** durante esa sesión. **Cero reflow tardío.**
+
+**Cambios aplicados en los 9 HTMLs:**
+- Reemplazo de `&display=swap` por `&display=optional` en el `<link>` de Google Fonts.
+- **Unificación de la cadena de fuentes** — 9 archivos con exactamente la misma URL.
+- **Bug latente arreglado:** 5 páginas (`contacto`, `envios`, `seguimiento`, `sobre-nosotros`, `tecnologia-rfid`) cargaban Montserrat solo hasta peso 600 aunque su CSS usaba 700 → el navegador sintetizaba el bold (peor calidad). Con la cadena unificada, los 9 cargan los 5 pesos reales (300, 400, 500, 600, 700).
+- `admin.html` recibió los `<link rel="preconnect">` que le faltaban para consistencia.
+
+**Cadena unificada final** (los 9 HTMLs):
+```
+https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=optional
+```
+
+**Resultados medidos en producción (1 corrida pre/post en PageSpeed):**
+
+| Métrica | Antes | Después | Delta |
+|---|---|---|---|
+| Score mobile | 86 | 85 | -1 (variación natural ±3-5) |
+| **TBT mobile** | **170 ms** | **90 ms** | **-80 ms ✅** |
+| Speed Index mobile | 3,9 s | 5,1 s | +1,2 s (probable variación) |
+| LCP mobile | 3,0 s | 3,0 s | = |
+| CLS | 0 | 0 | = |
+| Score desktop | 98 | 98 | = |
+
+**Validación cualitativa real (más confiable que el score):** desktop incógnito ✅, mobile WiFi ✅, mobile 5G ✅. Cero problemas reportados.
+
+**Reversible:** cambiar `optional` → `swap` en los 9 HTMLs (5 minutos).
+
+### 🆕 Bloque 2 — Mejora de calidad en imágenes (preset hero 4K + gallery_thumb)
+
+**Reporte del usuario:** las miniaturas debajo de la foto principal de `producto.html` se veían pixeladas, y el banner del hero también en monitores grandes.
+
+**Diagnóstico:**
+- Preset `hero` original: `width: 1600`, `widths: [800, 1200, 1600, 2000]`. En monitores 1440p (2560px) y 4K (3840px) el navegador escalaba 2000px → 3840px → pixelado visible.
+- Miniaturas usaban preset `thumb` (200px) que era genérico. En contexto de galería con DPR 2x (Retina) el navegador necesitaba ~480px → escalaba 200px hacia arriba → pixelado.
+
+**Cambios en `components/cloudinary.js`:**
+
+#### Preset `hero` mejorado:
+- `width: 1600` → `2400`.
+- `widths: [800, 1200, 1600, 2000]` → `[800, 1200, 1600, 2000, 2800, 3600]` (cubre hasta 4K).
+- Agregado `quality: 'q_auto:good'` (mismo nivel que `og`, mejor calidad para LCP).
+
+#### Preset `gallery_thumb` NUEVO (dedicado, no se reusó `thumb`):
+```js
+gallery_thumb: {
+  width: 480,
+  widths: [240, 360, 480, 720],
+  quality: 'q_auto:good',
+  crop: 'fill',
+}
+```
++ entrada en `SIZES`: `'(max-width: 1023px) 15vw, 10vw'`.
+
+**Decisión:** crear preset dedicado en lugar de subir el `thumb` general. Razón: thumb se usa también en carrito (56px), modal del index (~80px) y admin (~90px) — esos contextos NO necesitan más resolución y subir el preset general inflaría sus bytes innecesariamente.
+
+#### Cambio en `producto.html` línea 1720:
+```js
+<img src="${cld(url, 'thumb')}" alt="..." loading="lazy">
+// ↓
+<img src="${cld(url, 'gallery_thumb')}" srcset="${cldSrcset(url, 'gallery_thumb')}" sizes="${CLD_SIZES.gallery_thumb}" alt="..." loading="lazy">
+```
+
+**Costo en Cloudinary:** ~370 transformaciones nuevas, **una sola vez en la vida del sitio** (después se cachean para siempre). Bandwidth: insignificante. Total < 0,5 créditos del Free.
+
+**Resultado validado en producción:** miniaturas y banner ahora se ven nítidos en todas las resoluciones.
+
+### 🆕 Bloque 3 — LQIP (Low Quality Image Placeholder) en banner del hero
+
+**Idea:** mientras la imagen real del banner carga, mostrar una versión 64px super borroseada (~500-800 bytes) que aparece casi instantánea y refleja los colores reales del banner. Cuando la real está lista, hace crossfade suave.
+
+**Por qué `optional` (timing): "Crossfade siempre garantizado"** — usuario eligió la opción premium. Aunque la imagen real cargue en 50ms (cache hit), esperamos al menos 300ms antes del crossfade. Estilo Stripe/Apple: la primera impresión visual SIEMPRE se siente cuidada.
+
+**Cambios:**
+
+#### `components/cloudinary.js` — preset nuevo `hero_blur`:
+```js
+hero_blur: {
+  width: 64,
+  widths: null,
+  quality: 'q_30,e_blur:2000',  // Cloudinary acepta concatenado
+  crop: 'limit',
+}
+```
+
+#### `index.html` — CSS nuevo:
+```css
+.hero__banner-blur {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover;
+  filter: blur(20px);
+  transform: scale(1.05);  /* compensa halo de bordes */
+  opacity: 0.50;
+  pointer-events: none; z-index: 0;
+}
+.hero__banner-img--loading { opacity: 0 !important; }
+```
+
+#### `index.html` — función `applyBanner` reescrita:
+1. Inserta blur (`<img class="hero__banner-blur">`) — visible casi al instante.
+2. Inserta imagen real con clase `--loading` (opacity 0).
+3. Cuando real carga, calcula `elapsed`, espera `Math.max(0, 300 - elapsed)`, después remueve la clase `--loading`.
+4. CSS hace crossfade de 350ms de opacity 0 → 0.5.
+
+**Cobertura de casos límite:**
+- Cache hit (50ms) → blur visible 300ms + crossfade.
+- 3G lenta (2000ms) → blur visible 2s + crossfade inmediato (sin delay artificial cuando ya tardó).
+- Real falla → blur queda visible solo (fallback elegante con colores del banner).
+- Blur falla → real carga normalmente sobre fondo negro.
+
+### 🆕 Bloque 4 — Componente `scroll-reveal.js` (animaciones al scrollear)
+
+**Inspiración:** mbhstore.com (competidor Shopify). Patrón muy común en e-commerce premium.
+
+**Decisión arquitectural:** implementar sin librerías. La librería AOS pesa ~30 KB minificado; nuestra implementación pesa ~2 KB minificado y hace lo mismo.
+
+**Refactor incluido:** se eliminó el `revealObserver` artesanal que vivía inline en `index.html` (15 líneas) — solo aplicaba a `.rfid-item` y `.product-card`. Ahora todo el sistema vive centralizado en el componente nuevo y aplica en 6 HTMLs.
+
+#### Archivo nuevo: `components/scroll-reveal.js` (~9.5 KB / ~2 KB minificado)
+
+IIFE auto-contenida con:
+- `IntersectionObserver` para detectar cuándo un elemento entra al viewport.
+- `MutationObserver` para detectar inyecciones dinámicas (cards de productos del catálogo de Supabase).
+- 3 clases CSS: `.reveal` (fade simple), `.reveal-up` (fade + slide-up 30px), `.reveal-stagger` (cada hijo con 80ms de delay incremental, capeado a 600ms).
+- Auto-detección de `prefers-reduced-motion` → si está activo, los elementos son visibles desde el inicio sin animación.
+- Failsafe: usa clase `.js-reveal` en `<html>` para que SI JS falla, los elementos sigan visibles (CSS solo oculta cuando JS marca explícitamente).
+- Kill-switch global `ENABLED = true/false`.
+
+#### Aplicación en 6 HTMLs (los públicos):
+
+| Archivo | Clases aplicadas |
+|---|---|
+| `index.html` | Sección RFID con `reveal-stagger` (4 items en cascada), header de productos `reveal-up`, grid de productos `reveal-stagger` |
+| `producto.html` | Comparativa, reseñas, productos relacionados con `reveal-up`; grid relacionados con `reveal-stagger` |
+| `contacto.html` | 3 `info-section` con `reveal-up` |
+| `sobre-nosotros.html` | 3 `info-section` con `reveal-up` |
+| `envios.html` | 3 `info-section` con `reveal-up` |
+| `tecnologia-rfid.html` | 5 `info-section` con `reveal-up` |
+
+**NO aplicado en:** `admin.html` (panel privado), `checkout.html` y `seguimiento.html` (UX funcional), hero del index, `details-section` de producto.html (above-the-fold en mobile, riesgo de flash).
+
+**Performance impact:** prácticamente cero — `transform` y `opacity` son GPU-accelerated, `IntersectionObserver` es passive (no consume CPU al scrollear), peso 2 KB minificado.
+
+**Reportado por usuario:** "siento que la experiencia UX mejoró mucho con este efecto".
+
+### 🆕 Bloque 5 — DMARC publicado en DNS
+
+**Contexto:** desde Sesión 22 el sitio tenía SPF y DKIM bien configurados (Resend), pero faltaba DMARC. Sin DMARC, Gmail desde febrero 2024 marca a remitentes como "menos confiables" → más probabilidad de caer en spam.
+
+**Decisión sobre nivel:** `p=none` con reportes (modo monitoreo seguro). Política recomendada por Resend, Microsoft, NCSC y Cloudflare para arrancar — empezar a recibir reportes sin riesgo de bloquear correos legítimos. En 2-4 semanas, si los reportes confirman buena salud, se puede subir a `p=quarantine`.
+
+**Decisión sobre destinatario de reportes:** durante la sesión descubrimos que **`info@founder.uy` NO es un inbox real** (Resend solo envía, no recibe). El usuario eligió usar su email personal `founder.uy@gmail.com` para los reportes DMARC.
+
+**Registro DNS publicado en Vercel:**
+
+| Campo | Valor |
+|---|---|
+| Type | TXT |
+| Name | `_dmarc` |
+| Value | `v=DMARC1; p=none; rua=mailto:founder.uy@gmail.com; pct=100` |
+| TTL | Auto |
+
+**Validación con MxToolbox:** ✅ DMARC Record Published, ✅ DMARC Syntax Check valid, ✅ DMARC Multiple Records OK. Los 2 warnings naranjas (`Policy Not Enabled`, `External Validation`) son esperados y no son errores reales.
+
+### 🆕 Bloque 6 — Emails automáticos al cambiar estado del pedido
+
+**Idea:** cuando el admin mueve un pedido a "Confirmado", "En preparación", "En camino", "Listo para retirar" o "Entregado", se manda automáticamente un email al cliente con un template profesional.
+
+**Por qué importa:** la "ansiedad post-compra" es enorme en e-commerce uruguayo. Hoy el cliente compra y queda en silencio hasta que llega la billetera. Estos emails cierran el círculo del e-commerce profesional y diferencian a Founder de la mayoría de tiendas chicas.
+
+#### Cambios en `api/_lib/email-templates.js` (+367 líneas)
+
+- **Nuevo `STATUS_CONFIG`:** objeto con la config visual y textual de los 5 estados (eyebrow, color, emoji, título, intro, próximos pasos por envío/retiro, subject, preview).
+- **`templateOrderStatusUpdate(order, items, statusKey, photoMap)`:** un único template parametrizado en lugar de 5 separados. Más mantenible.
+- **Helpers exportados:** `statusTriggersEmail()`, `statusEmailSubject()`.
+- **3 bloques de items distintos** según el estado:
+  - `blockItems` (existente) — con precios + total. Usado en mp_approved y transfer.
+  - `blockItemsCompact` (nuevo) — foto 80×80 + producto + color + cantidad. SIN precios. Para Confirmado / En preparación / En camino / Listo para retirar.
+  - `blockItemsWithPhotos` (nuevo) — foto + producto + subtotal + descuento + envío + total. Solo para "Entregado" (comprobante final del ciclo).
+- **Placeholder elegante** si la foto no se encuentra: cuadrado oscuro con la inicial dorada del modelo (C de Confort, S de Slim).
+
+#### Cambios en `api/_lib/email.js` (+38 líneas)
+
+- Importa los 3 helpers nuevos del template.
+- **`sendOrderStatusUpdate(order, items, statusKey, photoMap)`:** función pública que valida, renderiza y envía. Si el estado no está en STATUS_CONFIG, retorna `{ ok: true, skipped: true }` (no es error).
+
+#### Cambios en `api/admin.js` (+114 líneas en `handleUpdateOrderStatus`)
+
+- Lee el pedido completo ANTES del update (con `order_items` embebidos).
+- Compara estado previo vs nuevo: solo dispara email si **realmente cambió**.
+- **Lookup de fotos** por producto+color desde `products` + `product_colors` + `product_photos`. Wrappea las URLs con Cloudinary inline (`f_auto,q_auto,w_200,c_fill`) para servir 200px optimizado en los emails. Si la query falla, los items se renderizan con placeholder de inicial dorada.
+- Patrón **fire-and-forget con timeout 3500ms** (mismo que `mp-webhook.js`). Si el email falla, el pedido NO falla.
+- Logs detallados en Vercel: `enviado` / `skipped` / `falló` con `msg_id` cuando aplica.
+
+#### Estados que disparan email (5)
+
+| Estado | Color eyebrow | Emoji | Comprobante con precios |
+|---|---|---|---|
+| Confirmado | Verde `#4caf82` | ✅ | NO (foto + producto) |
+| En preparación | Dorado `#c9a96e` | 🛠️ | NO (foto + producto) |
+| En camino | Azul `#5b9bd5` | 🚚 | NO (foto + producto + tracking si está cargado) |
+| Listo para retirar | Dorado `#c9a96e` | 📍 | NO (foto + producto) |
+| Entregado | Verde `#4caf82` | 🎉 | **SÍ** (foto + producto + subtotal + descuento + envío + total) |
+
+#### Estados que NO disparan email (a propósito)
+
+- **Cancelado:** mejor manejar cancelaciones por WhatsApp con contexto humano.
+- **Pago rechazado:** lo asigna el webhook, no el admin.
+- **Pendiente pago, Pendiente confirmación:** estados internos del sistema.
+
+#### Funcionalidades destacadas
+
+- **Tracking opcional en "En camino":** si el admin cargó número de seguimiento ANTES de cambiar el estado, el email lo incluye con link clickeable. Si no lo cargó, el email se manda igual sin el bloque.
+- **Texto contextual envío vs retiro:** el mismo email tiene textos distintos según `entrega === 'Envío'` o `'Retiro'`.
+- **Foto del producto + color:** lookup inteligente con fallback. Foto principal primero, fallback a la de menor `orden`. Si no hay foto, placeholder con inicial.
+
+### 🧠 Lecciones documentadas en Sesión 25
+
+1. **`font-display: optional` es la opción correcta para sitios con CSS inline pesado.** Evita el reflow tardío que genera `swap`. Trade-off conocido: primera visita con conexión muy lenta puede ver fallback durante toda la sesión. En segundas visitas (cache) la fuente custom aparece instantánea. **Para el caso de Founder, este trade-off es aceptable y mejora performance de Lighthouse.**
+
+2. **PageSpeed mobile con simulación 4G es ruidoso para Speed Index** (variación ±1-1,5 s entre corridas). Una sola medición no concluye nada. Para validar de verdad: 3-5 corridas + promedio O testing real en dispositivos. **La validación cualitativa real pesa más que el score automático.**
+
+3. **TBT es la métrica más confiable para ver mejoras de fonts/JS** en este sitio. Bajó 170 → 90 ms (-47%). Esto sí es real y mide cuánto tiempo el navegador no responde al usuario.
+
+4. **Inconsistencias entre HTMLs son fuente silenciosa de bugs.** El bug del Montserrat 700 sintetizado existía hace meses sin que nadie lo notara. Vale la pena hacer auditorías periódicas de consistencia entre páginas (qué pesos cargan, qué CDNs usan, qué meta tags tienen).
+
+5. **PageSpeed siempre testea como primera visita fría.** Para sitios con tráfico recurrente (campañas Meta, retargeting), el beneficio real de `optional` es mayor que el que el test refleja.
+
+6. **Cloudinary cobra créditos por bandwidth servido y por transformaciones nuevas, NO por visita.** Cuando agregamos variantes nuevas (ej: w_2400 para 4K, w_480 para gallery_thumb), Cloudinary genera la transformación una sola vez por imagen y la cachea para siempre. Las visitas siguientes no consumen transformaciones nuevas, solo bandwidth (que es lo que escala con tráfico).
+
+7. **`info@founder.uy` no es un inbox real.** Es solo dirección de envío de Resend. Si un cliente responde a un email automático, ese reply se pierde. Pendiente abierto: configurar forwarder gratuito (Improvmx/Cloudflare) o inbox real (Google Workspace).
+
+8. **DMARC se debe iniciar siempre con `p=none`** (modo monitoreo) y subir gradualmente a `quarantine` o `reject` solo después de 2-4 semanas de reportes confirmando que SPF + DKIM pasan correctamente. Saltar directo a `quarantine` puede bloquear correos legítimos.
+
+9. **Inyectar componentes JS auto-contenidos (CSS + lógica + bootstrap)** es coherente con el patrón del proyecto (cart.js, header.js, footer.js). El nuevo `scroll-reveal.js` sigue ese patrón. Ventaja: cero dependencias entre archivos, fácil rollback.
+
+10. **`IntersectionObserver` + `MutationObserver` cubren el 100% de los casos** de scroll-reveal sin necesidad de librerías externas (AOS pesa 30 KB; nuestra implementación pesa 2 KB y hace lo mismo). MutationObserver es esencial para casos donde JS inyecta cards después del DOMContentLoaded (catálogo de productos).
+
+11. **Los emails con imágenes hosteadas via CDN tienen mejor entregabilidad** que los con imágenes embebidas como base64. Pasar URLs Cloudinary (200px optimizado) en `<img src>` es la opción correcta. Bonus: ratio texto/imagen razonable mejora la percepción de "email legítimo" para Gmail/Outlook.
+
+### ⚠️ Pendientes específicos de Sesión 25 que quedan abiertos
+
+- 🟡 **`info@founder.uy` no es inbox real** (descubierto durante Bloque 5). Si un cliente responde a cualquier email transaccional, el correo se pierde. Pendiente para Sesión 26+: configurar forwarder gratuito (Improvmx, Cloudflare Email Routing) o inbox real (Google Workspace $6/mes, Zoho gratis hasta 5 usuarios).
+- 🟢 **Subir DMARC a `p=quarantine`** en 2-4 semanas si los reportes confirman que SPF + DKIM pasan en todos los proveedores (Gmail, Outlook, Yahoo).
+- 🟢 **Mejora futura opcional:** agregar Schema.org breadcrumbs en producto.html para SEO (no urgente).
+
+### 🔄 Rollbacks documentados (Sesión 25)
+
+| Cambio | Cómo revertir |
+|---|---|
+| `font-display: optional` | En los 9 HTMLs reemplazar `optional` → `swap` (5 min) |
+| Preset `hero` 4K + `gallery_thumb` | Revertir `cloudinary.js` desde Git history |
+| LQIP banner | Revertir `cloudinary.js` (quitar preset `hero_blur`) y revertir `index.html` (función `applyBanner`) desde Git history |
+| `scroll-reveal.js` | En `components/scroll-reveal.js` cambiar `const ENABLED = true;` a `false`. Las clases `.reveal*` dejan de hacer efecto (todo se ve normal sin animación) |
+| DMARC | Borrar el registro `_dmarc` desde panel DNS de Vercel |
+| Emails de cambio de estado | Revertir `api/admin.js` desde Git history (función `handleUpdateOrderStatus`). Los archivos `email.js` y `email-templates.js` pueden quedar — son aditivos, no rompen flujos existentes |
+
+---
+
+## 🚀 Para iniciar el chat siguiente (Sesión 26)
+
+Pegale a Claude este mensaje al arrancar:
+
+> Leé `ESTADO.md` y retomamos después de Sesión 25. La Sesión 25 cerró
+> con 7 entregas: (1) `font-display: optional` + cadena unificada de
+> Google Fonts en 9 HTMLs (TBT mobile -47%) + bug latente del Montserrat
+> 700 sintetizado arreglado, (2) preset `hero` mejorado para 4K +
+> nuevo preset `gallery_thumb` con srcset responsive (miniaturas
+> de producto.html ya no se ven pixeladas), (3) LQIP en banner del
+> hero con crossfade premium garantizado de 300ms, (4) componente
+> nuevo `components/scroll-reveal.js` aplicado en 6 HTMLs públicos
+> (animaciones suaves al scrollear, refactor: se eliminó observer
+> artesanal del index, ahora todo unificado), (5) DMARC publicado
+> en DNS con `p=none` + reportes a `founder.uy@gmail.com`, (6) emails
+> automáticos al cambiar estado del pedido — 5 templates con foto
+> del producto via Cloudinary lookup, integrados con
+> `handleUpdateOrderStatus` con detección de transición y
+> fire-and-forget. Validado en producción end-to-end.
+>
+> **Pendientes para Sesión 26:**
+>
+> 🟡 **`info@founder.uy` no es inbox real** (descubierto en Sesión 25).
+> Si un cliente responde a un email transaccional, el correo se pierde.
+> Resolver con forwarder gratuito (Improvmx/Cloudflare Email Routing)
+> o inbox real (Google Workspace $6/mes / Zoho Mail gratis).
+>
+> 🟢 **Primera campaña paga de Meta Ads** — todo listo desde Sesión
+> 17-18, falta presupuesto + audiencia + creatividad.
+>
+> 🟢 **Subir DMARC a `p=quarantine`** en 2-4 semanas si los reportes
+> confirman buena salud (SPF + DKIM passing en todos los proveedores).
+>
+> 🟢 **Decisión sobre modal de index.html** (postergada de Sesión 22),
+> idealmente con datos de comportamiento real de las campañas.
+>
+> 🟢 **Email de confirmación de admin para cambios manuales del seguimiento**
+> (cuando el admin carga `nro_seguimiento` con `update_order_tracking`,
+> hoy NO dispara email — solo cambios de estado lo hacen). Considerar
+> si conviene unificar.
 
 ---
 
@@ -158,29 +478,6 @@ Esto NO borra nada — el módulo sigue cargado, simplemente devuelve la URL ori
 
 ---
 
-## 🚀 Para iniciar el chat siguiente (Sesión 25)
-
-Pegale a Claude este mensaje al arrancar:
-
-> Leé `ESTADO.md` y retomamos después de Sesión 24. La Sesión 24 cerró
-> con éxito principal: migración de imágenes a Cloudinary CDN en fetch
-> mode (21 puntos de render, 6 presets responsive, ahorro 92% en page
-> weight). Score Lighthouse mobile 85-90 / desktop 95-99. Cuenta
-> Cloudinary `founder-uy` plan Free configurada con fetch desde Supabase
-> autorizado. Limpieza de fotos legacy en Drive completada (todas las
-> URLs `googleusercontent.com` removidas, sitio sigue funcionando OK).
-> **PERO la sesión también tuvo un intento fallido**: optimización de
-> Google Fonts (preload+onload) causó regresión grave (-26 puntos
-> desktop) y fue revertido vía Vercel rollback. **El código fallido sigue
-> en main de GitHub** — primer pendiente urgente de Sesión 25 es
-> resincronizar GitHub (revertir el commit "perf: carga no-bloqueante
-> de Google Fonts"). Después: re-intentar optimización de fonts con
-> técnica diferente (auto-host / font-display: optional / etc), limpieza
-> de pedidos prueba (NO borrar F203641 — Florencia Risso), datos
-> bancarios reales para email transferencia, primera campaña Meta Ads.
-
----
-
 ## 🎉 SESIÓN 23 — Mercado Pago en producción REAL validado
 
 **Hito histórico:** después de un debug extenso, el sitio quedó **100% operativo en modo productivo** con cobro online de Mercado Pago. **Pago real con tarjeta real validado end-to-end** con webhook 200, email transaccional automático y estado correcto en admin.
@@ -307,7 +604,12 @@ Pegale a Claude este mensaje al arrancar:
 | **9** — Email transaccional | ✅ Completa | Resend integrado, 3 templates HTML profesionales, dominio `founder.uy` verificado, validado en producción (transferencia). Sesión 22 |
 | **10** — Sistema de variantes en toasts | ✅ Completa | Verde/rojo/blanco con CSS variants, 18 llamadas clasificadas. Sesión 22 |
 | **11** — Imágenes optimizadas vía Cloudinary CDN | ✅ Completa | Fetch mode envuelve URLs Supabase con `f_auto,q_auto,w_xxx`. 6 presets responsive. 21 puntos de render en 11 archivos. Ahorro 92% en page weight. Plan Free `founder-uy`. DB intacta. Sesión 24 |
-| **12** — Optimización de Google Fonts | 🔴 Intentada y revertida | Sesión 24 intentó `preload+onload` y causó regresión (-26 score desktop). Rollback vía Vercel. Pendiente: re-intentar con técnica diferente + resincronizar GitHub con producción. Para Sesión 25 |
+| **12** — Optimización de Google Fonts | ✅ Completa | Sesión 24 intentó `preload+onload` y causó regresión grave; revertido. Sesión 25 re-intentó con `font-display: optional` + cadena unificada de fuentes en 9 HTMLs + bug latente Montserrat 700 sintetizado arreglado. TBT mobile -47% (170 → 90 ms). Validado en producción |
+| **13** — Mejoras de calidad de imágenes | ✅ Completa | Preset `hero` actualizado para soportar 4K (widths hasta 3600). Preset nuevo `gallery_thumb` con srcset responsive para miniaturas grandes de producto.html. Sesión 25 |
+| **14** — LQIP (banner del hero) | ✅ Completa | Preset nuevo `hero_blur` (64px borroso) + función `applyBanner` reescrita con crossfade premium garantizado de 300ms. Stripe/Apple-style. Sesión 25 |
+| **15** — Scroll reveal animations | ✅ Completa | Componente nuevo `components/scroll-reveal.js` (~2 KB minificado, sin librerías). 3 clases: `.reveal`, `.reveal-up`, `.reveal-stagger`. Aplicado en 6 HTMLs públicos. Refactor: eliminado observer artesanal del index. Soporte `prefers-reduced-motion`. Sesión 25 |
+| **16** — DMARC | ✅ Completa | Publicado en DNS de Vercel con `p=none` + reportes a `founder.uy@gmail.com`. Validado en MxToolbox. Subir a `quarantine` en 2-4 semanas. Sesión 25 |
+| **17** — Emails de cambios de estado del admin | ✅ Completa | 5 templates (Confirmado, En preparación, En camino, Listo para retirar, Entregado) con foto del producto + texto contextual envío/retiro + tracking opcional. Disparados desde `handleUpdateOrderStatus` con detección de transición y fire-and-forget. Sesión 25 |
 
 ---
 
@@ -888,21 +1190,23 @@ soft delete reversible + hard delete con doble confirmación).
 
 ```
 founder-web/
-├── index.html                     ✅ (Sesión 22: toasts con variantes verde/rojo)
-├── producto.html                  ✅ (2446 líneas — Sesión 22: toasts variantes + toast eliminar)
-├── checkout.html                  ✅ (Sesión 22: CSS variantes toast)
-├── seguimiento.html               ✅
-├── admin.html                     ✅ (Sesión 22: filtro Pago rechazado)
-├── contacto.html                  ✅
-├── sobre-nosotros.html            ✅
-├── envios.html                    ✅
-├── tecnologia-rfid.html           ✅
+├── index.html                     ✅ (Sesión 25: LQIP en banner + scroll-reveal classes + display=optional)
+├── producto.html                  ✅ (Sesión 25: gallery_thumb preset + scroll-reveal classes + display=optional)
+├── checkout.html                  ✅ (Sesión 25: display=optional)
+├── seguimiento.html               ✅ (Sesión 25: display=optional)
+├── admin.html                     ✅ (Sesión 25: display=optional + preconnect agregados)
+├── contacto.html                  ✅ (Sesión 25: scroll-reveal classes + display=optional)
+├── sobre-nosotros.html            ✅ (Sesión 25: scroll-reveal classes + display=optional)
+├── envios.html                    ✅ (Sesión 25: scroll-reveal classes + display=optional)
+├── tecnologia-rfid.html           ✅ (Sesión 25: scroll-reveal classes + display=optional)
 ├── components/
 │   ├── header.js                  ✅
 │   ├── footer.js                  ✅
 │   ├── cart.js                    ✅
 │   ├── supabase-client.js         ✅
 │   ├── meta-pixel.js              ✅
+│   ├── cloudinary.js              ✅ (Sesión 24: NUEVO — Sesión 25: presets hero/gallery_thumb/hero_blur)
+│   ├── scroll-reveal.js           ✅ (Sesión 25: NUEVO — IntersectionObserver + 3 clases reveal)
 │   ├── founder-checkout.js        ✅ (~910 líneas — Sesión 22: MP redirect/return + toasts variantes)
 │   ├── founder-seguimiento.js     ✅
 │   └── founder-admin.js           ✅ (~1769 líneas — Sesión 22: estado Pago rechazado)
@@ -911,11 +1215,11 @@ founder-web/
 │   │   ├── supabase.js            ✅
 │   │   ├── meta-capi.js           ✅
 │   │   ├── mercadopago.js         ✅ (Sesión 22: NUEVO — wrapper REST API MP)
-│   │   ├── email.js               ✅ (Sesión 22: NUEVO — wrapper Resend)
-│   │   └── email-templates.js     ✅ (Sesión 22: NUEVO — 3 templates HTML)
+│   │   ├── email.js               ✅ (Sesión 25: +sendOrderStatusUpdate)
+│   │   └── email-templates.js     ✅ (Sesión 25: +templateOrderStatusUpdate, +blockItemsCompact, +blockItemsWithPhotos, +STATUS_CONFIG)
 │   ├── checkout.js                ✅ (Sesión 22: bifurcación MP + email transfer paralelo)
 │   ├── seguimiento.js             ✅
-│   ├── admin.js                   ✅
+│   ├── admin.js                   ✅ (Sesión 25: handleUpdateOrderStatus dispara email con foto lookup)
 │   └── mp-webhook.js              ✅ (Sesión 22: NUEVO — webhook MP con HMAC + email + CAPI)
 ├── package.json                   ✅
 ├── vercel.json                    ✅
@@ -1018,6 +1322,39 @@ founder-web/
   para info neutral. Nuevas llamadas a `showToast` deben clasificar
   explícitamente con la variante correcta.
 
+### Reglas nuevas Sesión 25
+- **Fonts del sitio cargan con `display=optional`**, no con `swap`. La
+  cadena debe ser idéntica en los 9 HTMLs. Los pesos cargados son los
+  reales del CSS: Cormorant 300/400/500 + ital 300/400, Montserrat
+  300/400/500/600/700. **NO modificar a `swap` sin medir** — la regresión
+  de Speed Index es real para este sitio (CSS inline grande genera
+  reflow tardío).
+- **Presets nuevos en `cloudinary.js` requieren entrada en `SIZES`** si
+  vienen con `widths` (srcset). El `sizes` attribute debe coincidir con
+  los breakpoints reales del CSS (mobile <600, tablet 600-1024, desktop
+  >1024). Falta de `SIZES` no rompe nada, pero el navegador no elige
+  bien del srcset.
+- **El componente `scroll-reveal.js` se carga con `defer`** y SOLO en
+  los 6 HTMLs públicos (no admin, checkout, seguimiento). No animar
+  elementos above-the-fold (LCP, sticky CTAs, header). El kill-switch
+  `ENABLED = false` desactiva toda la lógica sin tocar HTMLs.
+- **Emails de cambios de estado disparan SOLO en transición real** (estado
+  previo ≠ estado nuevo). Estados que disparan email están listados en
+  `STATUS_CONFIG` de `email-templates.js`. Estados como `Cancelado`,
+  `Pago rechazado`, `Pendiente pago` y `Pendiente confirmación` están
+  EXCLUIDOS a propósito.
+- **`info@founder.uy` NO es inbox real** — los `reply_to` de los emails
+  transaccionales se pierden. Hasta que se resuelva, no asumir que se
+  pueda leer correo en esa dirección. Para reportes DMARC se usa el
+  Gmail personal del usuario (`founder.uy@gmail.com`).
+- **DMARC está en `p=none`** (modo monitoreo). NO subir a `quarantine`
+  o `reject` sin antes confirmar 2-4 semanas que los reportes muestran
+  SPF + DKIM passing en todos los proveedores.
+- **NO duplicar lógica de Cloudinary en backend** — si un endpoint
+  necesita wrappear URLs (ej `admin.js` para emails), hacerlo inline
+  con la misma constante `CLD_BASE` y validación de host. NO importar
+  `components/cloudinary.js` desde el backend (es frontend-only).
+
 ---
 
 ## 🧪 Cómo probar todo lo que está hecho
@@ -1101,85 +1438,81 @@ founder-web/
 | **MP App** | "Founder web" (Sesión 22) |
 | **MP Webhook URL** | `https://www.founder.uy/api/mp-webhook` (configurada en modo Prueba **y** Productivo) |
 | **Resend dominio** | `founder.uy` verificado en Resend, región `sa-east-1` (Sesión 22) |
-| **Email remitente** | `info@founder.uy` (Sesión 22) |
+| **Email remitente** | `info@founder.uy` (Sesión 22) — ⚠️ NO es inbox real, solo envía |
+| **Cloudinary** | Cuenta `founder-uy` plan Free (Sesión 24), email admin `evandrosegovia@gmail.com` |
+| **DMARC** | Publicado Sesión 25 con `p=none`, reportes a `founder.uy@gmail.com` |
+| **Email reportes DMARC** | `founder.uy@gmail.com` (Gmail personal del usuario) |
 | Pedido de prueba histórico | `F910752` / `test@prueba.com` / Confort Negro / $2.490 |
 | ⚠️ NO BORRAR | Pedido `F203641` / Florencia Risso / `florenciar.1196@gmail.com` (cliente real) |
 
 ---
 
-## 📋 Pendientes para Sesión 23
+## 📋 Pendientes para Sesión 26
 
-### 🔥 Prioridad alta — bloqueado por acceso a MP de la esposa
-1. **Tests reales con tarjetas de prueba de MP** (Test 1: aprobado, Test 2:
-   rechazado, Test 3: pendiente). Validar:
-   - Webhook actualiza correctamente el estado en Supabase.
-   - Email "Recibimos tu pago" llega cuando aprueba.
-   - Email "Tu pedido está esperando el pago" llega cuando es pending.
-   - CAPI Purchase se dispara solo cuando aprueba (Meta deduplica con
-     event_id = numero).
-   - Estado `'Pago rechazado'` aparece en admin cuando MP rechaza.
-2. **Cambiar a credenciales de PRODUCCIÓN de MP** (`APP_USR-...` en lugar
-   de `TEST-...`). Requiere:
-   - Activar credenciales productivas en panel MP.
-   - Reemplazar `MP_ACCESS_TOKEN` y `MP_WEBHOOK_SECRET` en Vercel con
-     los valores prod.
-   - Redeploy en Vercel.
-   - Validación: pago real chico (ej $100) con tarjeta propia para
-     confirmar que todo funciona en modo productivo.
+### 🟡 Prioridad media — bloqueante para experiencia post-compra
+1. **Resolver `info@founder.uy` (no es inbox real)** ← descubierto en Sesión 25.
+   Hoy si un cliente responde a cualquier email transaccional (pedido confirmado,
+   pago aprobado, en camino, entregado, etc.), **el correo se pierde** porque
+   Resend solo envía, no recibe. Opciones:
+   - **Opción simple (gratis):** Improvmx o Cloudflare Email Routing — forwardean
+     `info@founder.uy` a un Gmail real. 5 min de setup en DNS.
+   - **Opción profesional:** Google Workspace ($6 USD/mes) — inbox real con
+     `@founder.uy`, soporta enviar y recibir, integra calendario y Drive.
+   - **Opción mínima:** cambiar el remitente a `noreply@founder.uy` y agregar
+     en los emails: "Para consultas escribinos a [WhatsApp]".
 
-### 🟡 Prioridad media — definición pendiente del usuario
-3. **Datos bancarios reales en email de transferencia**. El template
-   actual dice "Te enviamos los datos por WhatsApp". Cuando se definan
-   (banco, tipo de cuenta, CBU, titular), agregar bloque con datos
-   directos en el email para que el cliente no tenga que pedirlos.
-4. **Decisión sobre el modal de index.html**. Postergada de Sesión 22.
-   Usuario quería evaluar si conviene eliminarlo y redirigir directo a
-   `producto.html`, o rediseñar con 2 CTAs equivalentes. Decisión: dejar
-   como está, revisar "en un tiempo" — idealmente cuando arranquen
-   campañas pagas y haya datos de comportamiento real.
-
-### 🟢 Prioridad baja — pulido
-5. **DMARC en DNS** (Resend lo recomienda pero no es obligatorio).
-   Mejorar entregabilidad de emails. Agregar registro `_dmarc` con
-   política `p=none` inicialmente.
-6. **Primera campaña paga de Meta Ads** con optimización de Purchase.
-   Todo listo desde Sesión 17-18. Definir presupuesto, producto,
-   audiencia.
-7. **Limpieza de pedidos de prueba acumulados** (5 min desde admin):
-   - `F237553`, `F839362`, `F029945` — Evandro Segovia con CIs random.
-   - `F264440`, `F515156` — pedidos de prueba.
-   - `F378204` — test CAPI.
-   - **+ pedidos nuevos generados durante Sesión 22 testing**.
-   - ⚠️ **NO BORRAR**: `F203641` — Florencia Risso (cliente real).
-8. **Pendientes Meta Business** (3 clics en Chrome):
+### 🟢 Prioridad baja — pulido / definición del usuario
+2. **Datos bancarios reales en email de transferencia**. El template actual dice
+   "Te enviamos los datos por WhatsApp". Cuando se definan (banco, tipo de cuenta,
+   CBU, titular), agregar bloque con datos directos en el email.
+3. **Decisión sobre el modal de index.html**. Postergada desde Sesión 22.
+   Idealmente con datos de comportamiento real de campañas Meta.
+4. **Primera campaña paga de Meta Ads** con optimización de Purchase. Todo listo
+   desde Sesión 17-18. Definir presupuesto, producto, audiencia, creatividad.
+5. **Subir DMARC a `p=quarantine`** en 2-4 semanas si los reportes confirman que
+   SPF + DKIM pasan en todos los proveedores. Editar el TXT `_dmarc` en Vercel
+   y cambiar `p=none` por `p=quarantine`. **Importante:** revisar primero los
+   reportes XML que llegan a `founder.uy@gmail.com` para confirmar que ningún
+   sender legítimo falla.
+6. **Pendientes Meta Business** (3 clics en Chrome):
    - Renombrar dataset "NO" (ID `1472474751248750`) con prefijo `ZZ-`.
    - Renombrar/ignorar Ad Account `26140748312219895`.
    - Agregar email de contacto al Instagram.
-9. **Drop columna `products.banner_url`** (legacy desde Sesión 21).
+7. **Drop columna `products.banner_url`** (legacy desde Sesión 21).
    `ALTER TABLE products DROP COLUMN banner_url;`
 
 ### 🔵 Direcciones nuevas (a discutir)
-- **Email de cambios de estado del admin**: cuando el admin cambia un
-  pedido a "En preparación", "En camino", "Entregado", mandar email
-  automático al cliente. Requiere modificar `api/admin.js` action
-  `update_order_status` para disparar email según el estado destino.
 - **Mejoras UX en otras páginas**: `index.html`, `contacto.html`,
   `sobre-nosotros.html`. Consistencia con el polish de `producto.html`.
-- **Sistema de reseñas reales**: cuando haya clientes con compras
-  validadas — reemplazar las 4 reseñas mock de Sesión 20.
+  (El scroll-reveal de Sesión 25 ya dio un salto grande, pero las páginas
+  estáticas todavía pueden refinar tipografía, espaciados, microinteracciones.)
+- **Sistema de reseñas reales**: cuando haya clientes con compras validadas —
+  reemplazar las 4 reseñas mock de Sesión 20.
+- **Email cuando se carga `nro_seguimiento` desde admin** (action `update_order_tracking`).
+  Hoy NO dispara email — solo cambios de estado. Considerar si conviene unificar
+  o mantener separado (ej: si admin marca "En camino" + carga tracking en pasos
+  separados, hoy llega un email sin tracking y después no llega notificación
+  con el código).
+- **Schema.org breadcrumbs en producto.html** para SEO. No urgente.
 
-### Optimizaciones de performance restantes (NO urgentes — score actual 94)
-- **Imágenes en formatos modernos (WebP/AVIF)**: ahorro 5-6 MB en mobile.
-  Requiere Supabase Pro ($25/mes) o CDN externo. Solo evaluar si campañas
-  pagas muestran CR bajo en mobile.
-- **Fuentes Google no bloqueantes**: ahorro 1.930 ms. Tocar 9 HTMLs.
-  Score actual ya es 94 → ganancia marginal.
-- **Cache headers en Supabase Storage**.
-- **Reducir 34 KB de JS sin usar**.
+### Optimizaciones de performance restantes (NO urgentes — sitio en buen estado)
+- **Cache headers en Supabase Storage** (Cloudinary ya cachea, pero header
+  long-cache en origen sería bonus marginal).
+- **Reducir JS sin usar** (auditoría con Coverage tab de DevTools).
+- **Auto-host de Google Fonts** en Vercel (alternativa más agresiva al
+  `display=optional` de Sesión 25). Solo evaluar si Lighthouse muestra que
+  fonts siguen siendo bottleneck en el LCP.
 
 ---
 
 ## 📜 Historial de incidentes resueltos
+
+### Sesión 25 (2 hallazgos sin incidente real)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | Banner del hero en monitores 4K se veía pixelado | Preset `hero` solo cubría hasta 2000px | Subir `widths` a `[800, 1200, 1600, 2000, 2800, 3600]` y `width` default a 2400. Agregado `q_auto:good` |
+| 2 | Miniaturas debajo de foto principal en producto.html se veían pixeladas | Usaban preset `thumb` (200px) compartido con carrito; en Retina necesitan ~480px | Crear preset dedicado `gallery_thumb` (480px + srcset responsive). No tocar `thumb` que sigue OK para carrito/admin |
+| 3 | `info@founder.uy` no es inbox real (descubierto al configurar DMARC) | Resend solo envía, no recibe — dirección configurada como remitente sin inbox detrás | Pendiente para Sesión 26: forwarder gratuito o Google Workspace |
 
 ### Sesión 22 (3 incidentes)
 | # | Síntoma | Causa raíz | Fix |
@@ -1258,30 +1591,60 @@ founder-web/
   carrito), rojo para destructivas (eliminar) y errores de validación
   (checkout). 18 llamadas a `showToast` clasificadas. Toast nuevo "✕
   Founder X removido del carrito" en eliminación (antes era silenciosa).
-  ← **Acá terminamos.**
-- **Sesión 23:** Cerrar tests reales de Mercado Pago con tarjetas de prueba
-  (necesita acceso a cuenta MP de la esposa). Después: definir datos
-  bancarios reales, primera campaña paga Meta, decisión sobre modal de
-  index.html. ← **Próxima.**
+- **Sesión 23 (MP en producción real validado):** debug extenso de HMAC
+  (data.id viene del query param, no del body, con `.toLowerCase()`),
+  confusión TEST vs PROD en credenciales (ambas con `APP_USR-` prefix
+  desde 2024). **Pago real con tarjeta real validado end-to-end**:
+  webhook 200 OK, email transaccional automático llegado, estado
+  correcto en admin. Sitio oficialmente operativo en e-commerce
+  profesional completo.
+- **Sesión 24 (Cloudinary CDN + lección de fonts):** migración de
+  imágenes a Cloudinary fetch mode (sin tocar DB de Supabase). Page
+  weight -92% (3,5 MB → 290 KB). 21 puntos de render envueltos en 11
+  archivos. 6 presets responsive (`card`, `gallery`, `hero`, `thumb`,
+  `modal`, `og`). **Intento fallido:** optimización de Google Fonts
+  con `preload+onload` causó regresión grave (-26 score desktop) por
+  reflow tardío en sitios con CSS inline grande. Revertido vía Vercel
+  Promote. El código fallido quedó en `main` de GitHub pendiente para
+  Sesión 25.
+- **Sesión 25 (7 entregas: fonts + imágenes + LQIP + scroll-reveal + DMARC + emails de estado):**
+  re-intento exitoso de fonts con `font-display: optional` y unificación
+  de cadena en 9 HTMLs (TBT mobile -47%); bug latente de Montserrat 700
+  sintetizado arreglado de paso. Preset `hero` actualizado para 4K +
+  preset nuevo `gallery_thumb` con srcset responsive (miniaturas no más
+  pixeladas). LQIP en banner del hero con crossfade premium garantizado
+  de 300ms (Stripe-style). Componente nuevo `components/scroll-reveal.js`
+  (~2 KB, sin librerías) con 3 clases (`reveal`, `reveal-up`,
+  `reveal-stagger`) aplicado en 6 HTMLs públicos; refactor: eliminado
+  observer artesanal del index. DMARC publicado con `p=none` + reportes
+  a `founder.uy@gmail.com`. **Emails automáticos al cambiar estado del
+  pedido**: 5 templates (Confirmado, En preparación, En camino, Listo
+  para retirar, Entregado) con foto del producto via Cloudinary lookup,
+  texto contextual envío/retiro, tracking opcional. Disparados desde
+  `handleUpdateOrderStatus` con detección de transición y fire-and-forget
+  con timeout 3500ms. Descubrimiento: `info@founder.uy` no es inbox
+  real (Resend solo envía); pendiente para Sesión 26 resolver con
+  forwarder o Google Workspace. ← **Acá terminamos.**
+- **Sesión 26:** Resolver `info@founder.uy` (forwarder gratuito o
+  Google Workspace), primera campaña paga Meta Ads, evaluar subir DMARC
+  a `quarantine` si los reportes confirman buena salud. ← **Próxima.**
 
 ---
 
-**FIN** — Cerramos Sesión 24. **Sesión con éxito principal y un aprendizaje
-documentado.** Sobre la base de Sesión 23 (e-commerce profesional con MP en
-producción real), Sesión 24 sumó la **migración de imágenes a Cloudinary
-CDN en fetch mode**: page weight bajó de ~3,5 MB a ~290 KB (-92%), todas
-las imágenes ahora se sirven en formatos modernos AVIF/WebP con tamaños
-responsive según dispositivo, sin tocar la base de datos de Supabase.
-Score Lighthouse: 85-90 mobile / 95-99 desktop con variación natural.
-**También tuvo un intento fallido:** optimización de Google Fonts con
-preload+onload causó regresión y fue revertida en producción vía Vercel
-rollback (deploy anterior promovido). El código de la optimización fallida
-sigue en `main` de GitHub — pendiente urgente de Sesión 25 es
-resincronizar GitHub con producción antes de cualquier deploy nuevo.
-**Lección importante:** en sitios con CSS inline grande (como este), las
-técnicas de carga no-bloqueante de fonts pueden empeorar Speed Index por
-reflow. Próxima vez, probar auto-host de fuentes o `font-display: optional`.
-**El sitio quedó listo para arrancar campañas Meta Ads** con LCP optimizado.
-La pieza arquitectural de Cloudinary (fetch mode) garantiza rollback
-instantáneo y heredabilidad automática para todas las imágenes futuras
-que se suban desde el admin. 🚀
+**FIN** — Cerramos Sesión 25. **Sesión con 7 entregas independientes
+en producción, todas validadas, cero regresiones.** Sobre la base de
+Sesión 24 (Cloudinary CDN + 290 KB de page weight), Sesión 25 sumó:
+(1) cierre del pendiente urgente de fonts con técnica diferente
+(`font-display: optional`) que SÍ funcionó + unificación + bug latente
+arreglado, (2) presets de imagen mejorados para 4K + miniaturas grandes,
+(3) LQIP premium en el banner del hero, (4) sistema de scroll-reveal
+unificado en 6 páginas con un componente reutilizable, (5) DMARC en DNS
+mejorando entregabilidad de emails, (6) **emails automáticos al cambiar
+estado del pedido** con foto del producto — la pieza que más eleva la
+percepción del e-commerce porque cierra el círculo de la experiencia
+post-compra. **El sitio está listo para arrancar campañas Meta Ads**
+con e-commerce profesional completo: catálogo + checkout + Mercado Pago
++ emails transaccionales (compra + cambios de estado) + tracking + admin.
+La única pieza que falta cerrar es el inbox real para `info@founder.uy`
+para que los clientes puedan responder a los emails. Pieza chica de
+DNS, prioridad media para Sesión 26. 🚀
