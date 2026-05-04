@@ -1,7 +1,7 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 25 — cierre EXITOSO con 7 entregas (04/05/2026)
-**Próxima sesión:** 26 — Pendientes secundarios: solucionar `info@founder.uy` (no es inbox real, los replies se pierden — opciones: forwarder Improvmx/Cloudflare gratuito, o Google Workspace pago), primera campaña paga de Meta Ads (todo listo desde Sesión 17-18, falta presupuesto + audiencia + creatividad), evaluar subir DMARC de `p=none` → `p=quarantine` en 2-4 semanas si los reportes confirman buena salud, decisión sobre modal de index.html (postergada de Sesión 22, idealmente con datos de comportamiento real).
+**Última actualización:** Sesión 25 — cierre EXITOSO con 7 entregas + análisis competitivo (04/05/2026)
+**Próxima sesión:** 26 — **Arranca con el menú de 4 opciones técnicas** acordado al cierre de Sesión 25 (sección "🎯 PRIORIDAD #1 PARA SESIÓN 26"). Resumen: A) resolver `info@founder.uy` con forwarder gratis (urgente, 15 min, sin código), B) sistema de reseñas reales (1.5-2 hs), C) SEO técnico (1-1.5 hs), D) limpieza de deuda técnica (30-45 min). Recomendación: empezar por **A + C** (urgente primero + base SEO universal). Decisiones de negocio (personalización, garantía, narrativa, programa de primeros clientes) quedan pendientes para que el usuario las piense entre sesiones.
 
 ---
 
@@ -284,44 +284,107 @@ IIFE auto-contenida con:
 
 ## 🚀 Para iniciar el chat siguiente (Sesión 26)
 
+### 🎯 PRIORIDAD #1 PARA SESIÓN 26 — Menú de 4 opciones técnicas acordado al cierre de Sesión 25
+
+Al final de Sesión 25 hicimos un **análisis competitivo honesto** vs Baleine, Inverness, Liguria, MBH. Conclusión: **el sitio técnicamente está al nivel o por arriba de la competencia** — el problema de Founder NO es técnico, es de **posicionamiento + prueba social + narrativa de marca**. Sumar más features al sitio no mueve la aguja en ventas. Lo que mueve la aguja son decisiones de NEGOCIO (personalización con grabado, programa de primeros clientes con reseñas reales, narrativa de marca, garantía a 1 año).
+
+Esas decisiones de negocio **quedan pendientes para que el usuario las piense entre sesiones** (ver bloque "🤔 Preguntas de negocio abiertas" más abajo). Mientras tanto, en Sesión 26 avanzamos con **una de estas 4 opciones técnicas que NO dependen de esas decisiones**:
+
+#### 🔥 Opción A — Resolver `info@founder.uy` (forwarder gratis con Cloudflare Email Routing)
+**Tiempo:** 15-20 minutos. **Sin código.** Solo configuración DNS.
+
+Hoy `info@founder.uy` es un remitente sin inbox real (Resend solo envía, no recibe). **Cualquier cliente que respondió alguna vez a un email automático, ese reply se perdió.** Con cada compra el problema crece. Bloqueante para cualquier crecimiento real (especialmente si después se corren campañas Meta Ads).
+
+Solución: Cloudflare Email Routing (gratis ilimitado) o Improvmx (gratis hasta 10 forwards) reenvían automáticamente todo lo que llegue a `info@founder.uy` al Gmail personal del usuario.
+
+#### 🟡 Opción B — Sistema de reseñas reales (base técnica)
+**Tiempo:** 1.5-2 horas. Sesión completa de código.
+
+Hoy `producto.html` muestra 4 reseñas mock hardcodeadas (declarado como deuda técnica desde Sesión 20). Cuando el usuario decida lanzar "programa de primeros clientes" (decisión de negocio pendiente), no tiene infraestructura para gestionar reseñas reales.
+
+Implementar:
+- Tabla `reviews` en Supabase: `order_id` (link al pedido para verificar compra real), `rating`, `texto`, `nombre`, `producto_nombre`, `color`, `aprobado`, `created_at`.
+- Página nueva `/dejar-resena.html` accesible solo por link tokenizado (token va en email de "Entregado" como botón "Dejá tu reseña").
+- Endpoint `/api/reviews` con acciones `create` (público con token), `list_public` (para producto.html), `list_admin`, `approve`, `reject`.
+- Panel admin para moderar reseñas antes de publicar (anti-spam crítico).
+- `producto.html` lee reseñas reales con fallback a mocks si no hay aprobadas.
+- Diferencial vs Baleine: reseñas **vinculadas a pedidos verificados** = más creíbles que reseñas anónimas.
+
+#### 🟢 Opción C — SEO técnico (sin tocar contenido ni narrativa)
+**Tiempo:** 1-1.5 horas.
+
+Mejoras técnicas de SEO que no requieren decisiones de marca:
+- `sitemap.xml` generado automáticamente desde `products` de Supabase.
+- `robots.txt` correcto (hoy probablemente no existe o es default de Vercel).
+- Schema.org `Organization` (datos de empresa para Google Knowledge Graph).
+- Schema.org `BreadcrumbList` en `producto.html`.
+- Schema.org `Product` review fields cuando estén las reseñas reales (post-Opción B si se hace).
+- Meta tags faltantes/débiles en páginas estáticas (contacto, sobre-nosotros, envíos, tecnologia-rfid).
+- Open Graph optimizado por página (hoy hay genérico; cada página debería tener og:title y og:description específicos).
+- Canonical URLs correctas.
+
+Por qué importa: cuando alguien busque "billetera RFID Uruguay", "billetera con grabado Montevideo", "tarjetero anticlonación Montevideo" — Founder no aparece hoy. SEO orgánico es tráfico **gratis** vs Meta Ads pagado. Da resultado en 3-6 meses, plantar la semilla ahora.
+
+#### 🔵 Opción D — Limpieza de deuda técnica menor
+**Tiempo:** 30-45 minutos. **La menos impactante** de las 4.
+
+Cosas chicas pendientes hace tiempo:
+- `ALTER TABLE products DROP COLUMN banner_url;` (legacy desde Sesión 21).
+- Limpiar pedidos prueba acumulados en admin (5 min). ⚠️ NO BORRAR `F203641` (Florencia Risso, cliente real).
+- Pendientes Meta Business: renombrar dataset "NO" `1472474751248750` con prefijo `ZZ-`, ignorar Ad Account `26140748312219895`, agregar email de contacto al Instagram.
+- Auditoría ligera de que todos los archivos de Sesión 25 quedaron bien subidos.
+
+#### 🎯 Recomendación al usuario (mi sugerencia honesta)
+**Empezar por A** porque es bloqueante y rápido.
+**Después C** porque es SEO universal (sirve para cualquier estrategia futura).
+**B** queda para cuando el usuario decida el "programa de primeros clientes".
+**D** se hace en cualquier momento, no urgente.
+
+Combo recomendado: **A + C en una sola sesión** (~1.5-2 hs total).
+
+---
+
+### 🤔 Preguntas de negocio abiertas (pendientes que el usuario tiene que pensar entre sesiones)
+
+Estas NO se resuelven con código. Son decisiones que el usuario tiene que tomar para que la estrategia tenga sentido:
+
+1. **¿La billetera Founder es premium real (cuero genuino calidad alta, costuras a mano, durabilidad medible) o es buena pero estándar?** Determina si el precio de $2.490 está bien o si está 30% sobre el mercado.
+2. **¿Puede ofrecer personalización con grabado láser?** Es el diferencial más fuerte que tiene MBH. Requiere máquina o servicio externo, costo extra, tiempo extra. Si puede, es bandera. Si no puede, hay que buscar otro diferencial.
+3. **¿Cuántas billeteras tiene en stock hoy?** Cambia la viabilidad del programa de primeros clientes (con 100 unidades sí, con 10 no).
+4. **¿Hay una historia real detrás de Founder?** ¿La creó solo o con socios? ¿Hay diseño propio o es modelo importado etiquetado? ¿Cara visible? El comprador uruguayo conecta con historias reales de uruguayos.
+5. **¿Founder es negocio principal o side-project?** Define tiempo, presupuesto, urgencia.
+6. **¿Cuánto presupuesto real para marca/marketing los próximos 3 meses?** $5.000, $50.000, $500.000 ARS — la estrategia es totalmente distinta.
+7. **¿Subir garantía de 60 días → 1 año?** Baleine ofrece 1 año, vos 60 días. Se ve mal en commodities premium. Decisión depende de si el producto la aguanta.
+
+### 📋 Mensaje listo para pegar al iniciar Sesión 26
+
 Pegale a Claude este mensaje al arrancar:
 
 > Leé `ESTADO.md` y retomamos después de Sesión 25. La Sesión 25 cerró
-> con 7 entregas: (1) `font-display: optional` + cadena unificada de
-> Google Fonts en 9 HTMLs (TBT mobile -47%) + bug latente del Montserrat
-> 700 sintetizado arreglado, (2) preset `hero` mejorado para 4K +
-> nuevo preset `gallery_thumb` con srcset responsive (miniaturas
-> de producto.html ya no se ven pixeladas), (3) LQIP en banner del
-> hero con crossfade premium garantizado de 300ms, (4) componente
-> nuevo `components/scroll-reveal.js` aplicado en 6 HTMLs públicos
-> (animaciones suaves al scrollear, refactor: se eliminó observer
-> artesanal del index, ahora todo unificado), (5) DMARC publicado
-> en DNS con `p=none` + reportes a `founder.uy@gmail.com`, (6) emails
-> automáticos al cambiar estado del pedido — 5 templates con foto
-> del producto via Cloudinary lookup, integrados con
-> `handleUpdateOrderStatus` con detección de transición y
-> fire-and-forget. Validado en producción end-to-end.
+> con 7 entregas técnicas + análisis competitivo honesto vs Baleine,
+> Inverness, Liguria, MBH. Conclusión del análisis: el sitio
+> técnicamente está al nivel o por arriba de la competencia; el
+> problema de Founder es de posicionamiento + prueba social +
+> narrativa de marca, NO es técnico. Las decisiones de negocio
+> (personalización, garantía, programa de primeros clientes,
+> narrativa) quedan pendientes para que yo las piense entre sesiones.
 >
-> **Pendientes para Sesión 26:**
+> Para Sesión 26 acordamos avanzar con una de estas 4 opciones
+> técnicas que NO dependen de esas decisiones — buscalas en
+> ESTADO.md sección "🎯 PRIORIDAD #1 PARA SESIÓN 26":
 >
-> 🟡 **`info@founder.uy` no es inbox real** (descubierto en Sesión 25).
-> Si un cliente responde a un email transaccional, el correo se pierde.
-> Resolver con forwarder gratuito (Improvmx/Cloudflare Email Routing)
-> o inbox real (Google Workspace $6/mes / Zoho Mail gratis).
+> - **A.** Resolver `info@founder.uy` con forwarder gratis (15 min,
+>   sin código, urgente).
+> - **B.** Sistema de reseñas reales (base técnica, 1.5-2 hs).
+> - **C.** SEO técnico (sitemap, schema, meta tags, 1-1.5 hs).
+> - **D.** Limpieza de deuda técnica menor (30-45 min).
 >
-> 🟢 **Primera campaña paga de Meta Ads** — todo listo desde Sesión
-> 17-18, falta presupuesto + audiencia + creatividad.
->
-> 🟢 **Subir DMARC a `p=quarantine`** en 2-4 semanas si los reportes
-> confirman buena salud (SPF + DKIM passing en todos los proveedores).
->
-> 🟢 **Decisión sobre modal de index.html** (postergada de Sesión 22),
-> idealmente con datos de comportamiento real de las campañas.
->
-> 🟢 **Email de confirmación de admin para cambios manuales del seguimiento**
-> (cuando el admin carga `nro_seguimiento` con `update_order_tracking`,
-> hoy NO dispara email — solo cambios de estado lo hacen). Considerar
-> si conviene unificar.
+> Tu recomendación al cierre de Sesión 25 fue: **A + C** combo en una
+> sesión. Pero la decisión final la voy a tomar yo al arrancar Sesión 26.
+
+---
+
+### Pendientes secundarios para Sesión 26+ (no bloqueantes)
 
 ---
 
@@ -1449,6 +1512,13 @@ founder-web/
 
 ## 📋 Pendientes para Sesión 26
 
+> **⚠️ IMPORTANTE:** la prioridad #1 para Sesión 26 está en la sección
+> **"🎯 PRIORIDAD #1 PARA SESIÓN 26"** al inicio del documento (debajo
+> del bloque "🚀 Para iniciar el chat siguiente"). Es un menú de 4
+> opciones técnicas (A, B, C, D) acordado al cierre de Sesión 25. **Lo
+> de abajo son pendientes secundarios** que se atacan después de elegir
+> entre A/B/C/D.
+
 ### 🟡 Prioridad media — bloqueante para experiencia post-compra
 1. **Resolver `info@founder.uy` (no es inbox real)** ← descubierto en Sesión 25.
    Hoy si un cliente responde a cualquier email transaccional (pedido confirmado,
@@ -1631,20 +1701,35 @@ founder-web/
 
 ---
 
-**FIN** — Cerramos Sesión 25. **Sesión con 7 entregas independientes
-en producción, todas validadas, cero regresiones.** Sobre la base de
-Sesión 24 (Cloudinary CDN + 290 KB de page weight), Sesión 25 sumó:
-(1) cierre del pendiente urgente de fonts con técnica diferente
-(`font-display: optional`) que SÍ funcionó + unificación + bug latente
-arreglado, (2) presets de imagen mejorados para 4K + miniaturas grandes,
-(3) LQIP premium en el banner del hero, (4) sistema de scroll-reveal
-unificado en 6 páginas con un componente reutilizable, (5) DMARC en DNS
-mejorando entregabilidad de emails, (6) **emails automáticos al cambiar
-estado del pedido** con foto del producto — la pieza que más eleva la
-percepción del e-commerce porque cierra el círculo de la experiencia
-post-compra. **El sitio está listo para arrancar campañas Meta Ads**
-con e-commerce profesional completo: catálogo + checkout + Mercado Pago
-+ emails transaccionales (compra + cambios de estado) + tracking + admin.
-La única pieza que falta cerrar es el inbox real para `info@founder.uy`
-para que los clientes puedan responder a los emails. Pieza chica de
-DNS, prioridad media para Sesión 26. 🚀
+**FIN** — Cerramos Sesión 25. **Sesión con 7 entregas técnicas
+independientes en producción + análisis competitivo honesto al cierre.**
+
+Sobre la base de Sesión 24 (Cloudinary CDN + 290 KB de page weight),
+Sesión 25 sumó: (1) cierre del pendiente urgente de fonts con técnica
+diferente (`font-display: optional`) que SÍ funcionó + unificación +
+bug latente arreglado, (2) presets de imagen mejorados para 4K +
+miniaturas grandes, (3) LQIP premium en el banner del hero, (4) sistema
+de scroll-reveal unificado en 6 páginas con un componente reutilizable,
+(5) DMARC en DNS mejorando entregabilidad de emails, (6) **emails
+automáticos al cambiar estado del pedido** con foto del producto — la
+pieza que más eleva la percepción del e-commerce porque cierra el
+círculo de la experiencia post-compra.
+
+**Análisis competitivo al cierre (Baleine, Inverness, Liguria, MBH):**
+el sitio técnicamente está al nivel o por arriba de la competencia.
+**El problema de Founder NO es técnico.** Es de posicionamiento
+(precio premium sin justificación clara), prueba social (cero reseñas
+reales vs 136-294 de Baleine), narrativa de marca (commodity vs
+historias diferenciadas) y diferencial de producto (RFID ya no es
+diferencial — es commodity). Las decisiones que mueven la aguja son
+de NEGOCIO (personalización con grabado, programa de primeros clientes,
+narrativa real, garantía a 1 año), no de código.
+
+**Cierre acordado:** las decisiones de negocio quedan pendientes para
+que el usuario las piense entre sesiones. Para Sesión 26 se acordó
+arrancar con un menú de 4 opciones técnicas que NO dependen de esas
+decisiones (sección "🎯 PRIORIDAD #1 PARA SESIÓN 26" en este mismo
+documento): A) resolver `info@founder.uy`, B) sistema de reseñas
+reales, C) SEO técnico, D) limpieza menor. Recomendación: A + C combo.
+
+Sesión muy productiva técnicamente y muy honesta estratégicamente. 🚀
