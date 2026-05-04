@@ -82,6 +82,20 @@
       quality: 'q_auto:good',
       crop: 'limit',
     },
+    // LQIP (Low Quality Image Placeholder) del banner del hero.
+    // Servimos una versión 64px super borroseada (~500-800 bytes) que
+    // aparece instantáneamente mientras carga la imagen real. Cuando
+    // la real está lista, JS hace crossfade. Refleja los colores reales
+    // del banner porque toma la misma URL fuente que el preset 'hero'.
+    // - e_blur:2000 = nivel de blur agresivo (rango 1-2000).
+    // - q_30 = calidad baja, no importa porque va borroseada.
+    // - sin srcset: no tiene sentido para un placeholder de 64px.
+    hero_blur: {
+      width: 64,
+      widths: null,
+      quality: 'q_30,e_blur:2000',
+      crop: 'limit',
+    },
     // Thumbnails chicos: carrito (56px), gallery thumbs del modal (~80px),
     // admin (~90px). Servimos una sola variante a 200px que cubre
     // 2x en mobile sin srcset (no compensa la complejidad).
