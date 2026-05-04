@@ -118,6 +118,137 @@ function blockItems(items, total, envio, descuento) {
 }
 
 /**
+ * Bloque compacto SIN precios, CON foto del producto. Usado en los
+ * emails de actualización de estado (Sesión 25): el cliente ya conoce
+ * los precios desde el email de confirmación inicial; en los siguientes
+ * solo le importa "qué pedido es" y verlo visualmente.
+ *
+ * @param {Array}  items     [{ product_name, color, cantidad, ... }]
+ * @param {Object} photoMap  diccionario "ProductName||ColorName" → URL.
+ *                           Si la foto no se encuentra, se renderiza
+ *                           un placeholder dorado discreto en su lugar.
+ *
+ * Compatibilidad de email: las imágenes se renderizan dentro de una
+ * tabla con anchos fijos para que se vean correctamente en Gmail,
+ * Outlook, Apple Mail, etc. (ningún cliente moderno tiene problemas
+ * con esta estructura).
+ */
+function blockItemsCompact(items, photoMap) {
+  const safeMap = photoMap || {};
+
+  const rows = (items || []).map(it => {
+    const productName = String(it.product_name || '');
+    const color       = String(it.color || '');
+    const cantidad    = Number(it.cantidad || 0);
+
+    // Lookup: misma key que arma admin.js al construir el map
+    const key = `${productName}||${color}`;
+    const photoUrl = safeMap[key] || null;
+
+    // Foto: si existe la servimos a través de Cloudinary thumb (200w).
+    // Si no existe, mostramos un placeholder con la inicial del modelo.
+    const photoCell = photoUrl
+      ? `<img src="${esc(photoUrl)}" width="80" height="80" alt="${esc(productName)}" style="display:block;width:80px;height:80px;object-fit:cover;border:1px solid #2e2e2e;background:#0f0f0f;">`
+      : `<div style="width:80px;height:80px;background:#1a1a1a;border:1px solid #2e2e2e;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-size:32px;font-weight:300;color:#c9a96e;line-height:80px;text-align:center;">${esc(productName.charAt(0).toUpperCase() || 'F')}</div>`;
+
+    return `
+      <tr>
+        <td style="padding:12px 0;border-bottom:1px solid #2e2e2e;vertical-align:top;width:80px;">
+          ${photoCell}
+        </td>
+        <td style="padding:12px 0 12px 16px;border-bottom:1px solid #2e2e2e;vertical-align:top;font-family:Arial,Helvetica,sans-serif;">
+          <div style="font-size:14px;color:#f8f8f4;line-height:1.4;margin-bottom:4px;">
+            <strong>Founder ${esc(productName)}</strong>
+          </div>
+          <div style="font-size:11px;color:#9a9a9a;letter-spacing:1px;line-height:1.5;">
+            Color: ${esc(color)}<br>
+            Cantidad: ${cantidad}
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      ${rows}
+    </table>`;
+}
+
+/**
+ * Bloque CON foto + CON precios + total. Usado en el email de
+ * "Entregado" como comprobante final del ciclo. Combina lo mejor
+ * de los dos bloques anteriores: foto del producto a la izquierda,
+ * datos al centro, subtotal a la derecha. Al final descuento, envío
+ * y total como en blockItems.
+ *
+ * @param {Array}  items     items del pedido
+ * @param {number} total     total del pedido
+ * @param {number} envio     costo del envío (0 si retiro/gratis)
+ * @param {number} descuento descuento aplicado (0 si no hay)
+ * @param {Object} photoMap  diccionario "ProductName||ColorName" → URL
+ */
+function blockItemsWithPhotos(items, total, envio, descuento, photoMap) {
+  const safeMap = photoMap || {};
+
+  const rows = (items || []).map(it => {
+    const productName = String(it.product_name || '');
+    const color       = String(it.color || '');
+    const cantidad    = Number(it.cantidad || 0);
+    const subtotal    = cantidad * Number(it.precio_unitario || 0);
+
+    const key = `${productName}||${color}`;
+    const photoUrl = safeMap[key] || null;
+
+    const photoCell = photoUrl
+      ? `<img src="${esc(photoUrl)}" width="80" height="80" alt="${esc(productName)}" style="display:block;width:80px;height:80px;object-fit:cover;border:1px solid #2e2e2e;background:#0f0f0f;">`
+      : `<div style="width:80px;height:80px;background:#1a1a1a;border:1px solid #2e2e2e;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-size:32px;font-weight:300;color:#c9a96e;line-height:80px;text-align:center;">${esc(productName.charAt(0).toUpperCase() || 'F')}</div>`;
+
+    return `
+      <tr>
+        <td style="padding:12px 0;border-bottom:1px solid #2e2e2e;vertical-align:top;width:80px;">
+          ${photoCell}
+        </td>
+        <td style="padding:12px 0 12px 16px;border-bottom:1px solid #2e2e2e;vertical-align:top;font-family:Arial,Helvetica,sans-serif;">
+          <div style="font-size:14px;color:#f8f8f4;line-height:1.4;margin-bottom:4px;">
+            <strong>Founder ${esc(productName)}</strong>
+          </div>
+          <div style="font-size:11px;color:#9a9a9a;letter-spacing:1px;line-height:1.5;">
+            Color: ${esc(color)}<br>
+            Cantidad: ${cantidad}
+          </div>
+        </td>
+        <td style="padding:12px 0;border-bottom:1px solid #2e2e2e;vertical-align:top;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#f8f8f4;text-align:right;white-space:nowrap;">
+          $${fmtUYU(subtotal)}
+        </td>
+      </tr>`;
+  }).join('');
+
+  // Líneas de descuento y envío solo si aplican (mismo patrón que blockItems)
+  const lineDescuento = Number(descuento) > 0
+    ? `<tr>
+         <td colspan="2" style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;">Descuento</td>
+         <td style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#4caf82;text-align:right;">-$${fmtUYU(descuento)}</td>
+       </tr>`
+    : '';
+
+  const lineEnvio = `<tr>
+       <td colspan="2" style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;">Envío</td>
+       <td style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#f8f8f4;text-align:right;">${Number(envio) > 0 ? '$' + fmtUYU(envio) : 'Gratis'}</td>
+     </tr>`;
+
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      ${rows}
+      ${lineDescuento}
+      ${lineEnvio}
+      <tr>
+        <td colspan="2" style="padding:18px 0 0 0;font-family:Georgia,serif;font-size:14px;color:#c9a96e;letter-spacing:2px;text-transform:uppercase;">Total</td>
+        <td style="padding:18px 0 0 0;font-family:Georgia,serif;font-size:22px;color:#c9a96e;text-align:right;font-weight:600;">$${fmtUYU(total)} UYU</td>
+      </tr>
+    </table>`;
+}
+
+/**
  * Bloque CTA para seguir el pedido. Se inserta justo antes del footer.
  * El link va a seguimiento.html con ?pedido y ?email pre-cargados, así
  * el cliente abre el detalle de su pedido sin tener que tipear nada
@@ -566,9 +697,12 @@ export function statusTriggersEmail(estado) {
  *                            descuento, entrega, nro_seguimiento, url_seguimiento.
  * @param {Array}  items      items del pedido (puede ser []).
  * @param {string} statusKey  estado destino (debe existir en STATUS_CONFIG).
+ * @param {Object} [photoMap] diccionario "ProductName||ColorName" → URL.
+ *                            Si no se provee, los items se muestran sin foto
+ *                            (con placeholder dorado de inicial).
  * @returns {string} HTML del email, o '' si statusKey no es válido.
  */
-export function templateOrderStatusUpdate(order, items, statusKey) {
+export function templateOrderStatusUpdate(order, items, statusKey, photoMap) {
   const cfg = STATUS_CONFIG[statusKey];
   if (!cfg) return '';
 
@@ -598,9 +732,19 @@ export function templateOrderStatusUpdate(order, items, statusKey) {
     .replace('${numero}', numero)
     .replace('${tracking}', trackingFragment);
 
-  const titleText = interp(cfg.title);
-  const introText = interp(cfg.intro);
+  const titleText    = interp(cfg.title);
+  const introText    = interp(cfg.intro);
   const nextStepText = esEnvio ? cfg.nextStepEnvio : cfg.nextStepRetiro;
+
+  // Decisión de bloque: en "Entregado" mostramos el bloque con foto +
+  // precios + total como comprobante final. En los estados intermedios
+  // (Confirmado, En preparación, En camino, Listo para retirar) usamos
+  // el bloque compacto: foto + producto, sin precios. Si quiere ver
+  // detalle, hace click en "Ver estado del pedido" y entra al seguimiento.
+  const showPrices = statusKey === 'Entregado';
+  const itemsBlock = showPrices
+    ? blockItemsWithPhotos(items, total, envio, descuento, photoMap)
+    : blockItemsCompact(items, photoMap);
 
   const inner = `
     ${blockHeader()}
@@ -630,9 +774,9 @@ export function templateOrderStatusUpdate(order, items, statusKey) {
     <tr>
       <td style="padding:0 32px 32px 32px;">
         <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;color:#9a9a9a;text-transform:uppercase;margin-bottom:18px;">
-          Detalle del pedido
+          ${showPrices ? 'Detalle del pedido' : 'Tu pedido'}
         </div>
-        ${blockItems(items, total, envio, descuento)}
+        ${itemsBlock}
       </td>
     </tr>
 

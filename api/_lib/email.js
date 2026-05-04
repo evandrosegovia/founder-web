@@ -203,9 +203,13 @@ export async function sendOrderConfirmationMpPending(order, items) {
  * @param {Object} order      pedido completo (con nro_seguimiento si aplica)
  * @param {Array}  items      items del pedido
  * @param {string} statusKey  estado destino — ej "En camino", "Entregado"
+ * @param {Object} [photoMap] diccionario "ProductName||ColorName" → URL.
+ *                            Si no se provee, los emails de status sin
+ *                            precios renderizan placeholder en lugar de foto.
+ *                            "Entregado" no usa este map (muestra precios).
  * @returns {Promise<{ok:boolean, error?:string, message_id?:string}>}
  */
-export async function sendOrderStatusUpdate(order, items, statusKey) {
+export async function sendOrderStatusUpdate(order, items, statusKey, photoMap) {
   if (!order || !order.numero || !order.email) {
     return { ok: false, error: 'invalid_order' };
   }
@@ -214,7 +218,7 @@ export async function sendOrderStatusUpdate(order, items, statusKey) {
     // simplemente no enviamos email para este estado.
     return { ok: true, error: null, skipped: true };
   }
-  const html    = templateOrderStatusUpdate(order, items || [], statusKey);
+  const html    = templateOrderStatusUpdate(order, items || [], statusKey, photoMap);
   const subject = statusEmailSubject(order, statusKey);
   if (!html || !subject) {
     return { ok: false, error: 'template_render_failed' };
