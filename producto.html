@@ -15,7 +15,8 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=optional" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
 /* =============================================================
    FOUNDER producto.html — Design System (mismo que index.html)
@@ -1712,11 +1713,11 @@ function renderGallery() {
     main.insertBefore(img, main.querySelector('.gallery__rfid-badge'));
   });
 
-  // Render thumbnails (preset 'thumb' = 200w)
+  // Render thumbnails (preset 'gallery_thumb' = 480w + srcset responsive)
   thumbs.innerHTML = photos.map((url, i) => `
     <div class="gallery__thumb ${i === state.activePhoto ? 'is-active' : ''}"
       onclick="setActivePhoto(${i}, true)" role="button" aria-label="Foto ${i + 1}" tabindex="0">
-      <img src="${cld(url, 'thumb')}" alt="Foto ${i + 1}" loading="lazy">
+      <img src="${cld(url, 'gallery_thumb')}" srcset="${cldSrcset(url, 'gallery_thumb')}" sizes="${CLD_SIZES.gallery_thumb}" alt="Foto ${i + 1}" loading="lazy">
     </div>`).join('');
 
   updateArrowsVisibility();
