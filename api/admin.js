@@ -46,6 +46,7 @@
 // ═════════════════════════════════════════════════════════════════
 
 import { supabase, createHandler, ok, fail, parseBody } from './_lib/supabase.js';
+import { sendOrderStatusUpdate } from './_lib/email.js';
 import crypto from 'node:crypto';
 
 const BUCKET_PHOTOS = 'product-photos';
@@ -122,11 +123,73 @@ async function handleUpdateOrderStatus(body, res) {
   if (!id)     return fail(res, 400, 'id_required');
   if (!estado) return fail(res, 400, 'estado_required');
 
-  const { error } = await supabase
+  // 1) Leer pedido ANTES del update — necesitamos el estado previo
+  //    para detectar si esto es una transición real (no re-click), y
+  //    los datos completos para componer el email si corresponde.
+  //    Mismo set de columnas que list_orders + items embebidos.
+  const { data: prevOrder, error: readErr } = await supabase
+    .from('orders')
+    .select(`
+      id, numero, fecha, nombre, apellido, celular, email,
+      entrega, direccion, productos,
+      subtotal, descuento, envio, total,
+      pago, estado, notas, cupon_codigo,
+      nro_seguimiento, url_seguimiento,
+      archivado,
+      order_items ( id, product_name, color, cantidad, precio_unitario )
+    `)
+    .eq('id', id)
+    .single();
+  if (readErr || !prevOrder) {
+    return fail(res, 500, 'db_error', readErr?.message || 'pedido no encontrado');
+  }
+
+  // 2) Update del estado
+  const { error: updErr } = await supabase
     .from('orders')
     .update({ estado })
     .eq('id', id);
-  if (error) return fail(res, 500, 'db_error', error.message);
+  if (updErr) return fail(res, 500, 'db_error', updErr.message);
+
+  // 3) Disparo fire-and-forget del email si:
+  //    - El estado realmente cambió (no es re-click).
+  //    - El estado nuevo está en la lista de estados que disparan email
+  //      (la chequea internamente sendOrderStatusUpdate vía
+  //      statusTriggersEmail). Estados como "Cancelado", "Pago rechazado"
+  //      o "Pendiente pago" NO disparan.
+  //
+  //    Patrón Promise.race con timeout, mismo que mp-webhook.js — Vercel
+  //    Serverless mata la función al retornar, así que con fire-and-forget
+  //    sin timeout perderíamos el envío. 3500ms es suficiente para Resend.
+  const cambio = prevOrder.estado !== estado;
+  if (cambio) {
+    const orderForEmail = { ...prevOrder, estado };
+    const items = Array.isArray(prevOrder.order_items)
+      ? prevOrder.order_items
+      : [];
+    const TIMEOUT_MS = 3500;
+    const timeoutPromise = new Promise(resolve =>
+      setTimeout(() => resolve({ ok: false, error: 'timeout' }), TIMEOUT_MS)
+    );
+    try {
+      const result = await Promise.race([
+        sendOrderStatusUpdate(orderForEmail, items, estado),
+        timeoutPromise,
+      ]);
+      if (result?.skipped) {
+        console.log(`[admin] update_order_status: ${prevOrder.numero} → "${estado}" (sin email — estado no notifica)`);
+      } else if (result?.ok) {
+        console.log(`[admin] update_order_status: ${prevOrder.numero} → "${estado}" (email enviado, msg_id=${result.message_id})`);
+      } else {
+        console.warn(`[admin] update_order_status: ${prevOrder.numero} → "${estado}" (email falló: ${result?.error || 'unknown'})`);
+      }
+    } catch (err) {
+      // Nunca propagar — el update del estado YA está hecho en DB,
+      // que un email falle no debe romper la respuesta al admin.
+      console.error('[admin] sendOrderStatusUpdate threw:', err?.message || err);
+    }
+  }
+
   return ok(res);
 }
 
