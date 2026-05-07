@@ -1,0 +1,26 @@
+# ═══════════════════════════════════════════════════════════════
+# FOUNDER.UY — robots.txt
+# ───────────────────────────────────────────────────────────────
+# Le dice a los crawlers (Google, Bing, etc.) qué pueden indexar
+# del sitio. Generado en Sesión 26 — Bloque C SEO técnico.
+# ═══════════════════════════════════════════════════════════════
+
+User-agent: *
+Allow: /
+
+# Páginas privadas / utilitarias que no aportan valor en buscadores.
+# Bloquear el panel admin y los endpoints de la API serverless.
+Disallow: /admin.html
+Disallow: /api/
+
+# Checkout y seguimiento son funcionales, no tienen contenido SEO,
+# y no queremos que aparezcan como resultados sueltos en Google.
+Disallow: /checkout.html
+Disallow: /seguimiento.html
+
+# Bloquear parámetros internos que generan URLs duplicadas.
+# (?mp=success, ?mp=pending, ?mp=failure tras volver de Mercado Pago)
+Disallow: /*?mp=*
+
+# Sitemap principal — generado dinámicamente desde Supabase.
+Sitemap: https://www.founder.uy/sitemap.xml
