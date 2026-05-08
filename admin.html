@@ -287,6 +287,136 @@ textarea.fi{resize:vertical;min-height:70px}
 .cupon-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .no-cupones{padding:40px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px}
 @media(max-width:900px){.cupones-layout{grid-template-columns:1fr}}
+
+/* ── PERSONALIZACIÓN LÁSER (Sesión 28) ──────────────────────────
+   Sub-panel de Admin > Herramientas. Permite editar la config global
+   y los toggles por producto. Reusa .card / .fg / .fl / .fi cuando
+   puede; clases nuevas solo donde hace falta.
+*/
+.laser-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.laser-grid .form-full { grid-column: 1 / -1; }
+
+/* Master switch — pill grande para que no haya dudas de qué es */
+.laser-master {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--mid);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color .2s;
+}
+.laser-master:hover { border-color: var(--gold); }
+.laser-master__txt { flex: 1; min-width: 0; }
+.laser-master__title {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--white);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.laser-master__sub { font-size: 10px; color: var(--muted); line-height: 1.6; }
+.laser-master__switch {
+  position: relative;
+  width: 44px; height: 24px;
+  background: var(--gray);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  flex-shrink: 0;
+  transition: background .2s, border-color .2s;
+}
+.laser-master__switch::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--white);
+  transition: transform .25s;
+}
+.laser-master.is-on .laser-master__switch {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.laser-master.is-on .laser-master__switch::after { transform: translateX(20px); background: var(--black); }
+
+/* Lista de productos — cada uno una fila con 4 checkboxes */
+.laser-prod-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--mid);
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.laser-prod-row__name {
+  font-size: 12px;
+  color: var(--white);
+  letter-spacing: 1px;
+  font-weight: 500;
+}
+.laser-prod-row__checks {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.laser-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--gray);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  transition: all .2s;
+  white-space: nowrap;
+}
+.laser-check:hover { border-color: var(--gold); color: var(--gold); }
+.laser-check.is-on {
+  background: rgba(201,169,110,.12);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.laser-check__box {
+  width: 14px; height: 14px;
+  border: 1px solid var(--border);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; line-height: 1;
+  background: var(--black);
+}
+.laser-check.is-on .laser-check__box {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--black);
+}
+
+/* Estado vacío cuando no hay productos */
+.laser-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+
+@media(max-width:700px){
+  .laser-grid { grid-template-columns: 1fr; }
+  .laser-prod-row { grid-template-columns: 1fr; }
+  .laser-prod-row__checks { width: 100%; }
+}
 </style>
 </head>
 <body>
@@ -332,6 +462,7 @@ textarea.fi{resize:vertical;min-height:70px}
       <div class="nav-section">Herramientas</div>
       <div class="nav-item" onclick="nav('cupones',this)"><span class="nav-icon">🏷️</span>Cupones</div>
       <div class="nav-item" onclick="nav('banner',this)"><span class="nav-icon">🖼️</span>Banner inicio</div>
+      <div class="nav-item" onclick="nav('personalizacion',this)"><span class="nav-icon">✦</span>Personalización láser</div>
       <div class="nav-section">Accesos</div>
       <div class="nav-item" onclick="window.open('https://www.founder.uy','_blank')"><span class="nav-icon">🌐</span>Ver tienda</div>
       <div class="nav-item" onclick="window.open('https://wa.me/598098550096','_blank')"><span class="nav-icon">💬</span>WhatsApp</div>
@@ -572,6 +703,120 @@ textarea.fi{resize:vertical;min-height:70px}
               <button class="btn btn-primary" id="cpSaveBtn" onclick="saveCupon()" style="margin-top:4px">Crear cupón</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ── PERSONALIZACIÓN LÁSER (Sesión 28) ──────────────────────
+           Configuración global del feature de grabado láser. La data
+           se guarda en site_settings.personalizacion_config (JSON). -->
+      <div class="page" id="page-personalizacion">
+        <div class="ph">
+          <div>
+            <div class="ph-title">Personalización láser</div>
+            <div class="ph-sub">Configurá los precios, plazos y qué productos pueden personalizarse</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="loadPersonalizacion()">↻ Actualizar</button>
+        </div>
+
+        <!-- Master switch + info de qué hace -->
+        <div class="card">
+          <div class="card-head"><div class="card-title">Estado del feature</div></div>
+          <div class="card-body">
+            <div class="info-box" style="margin-bottom:14px">
+              <strong>¿Cómo funciona?</strong><br>
+              Cuando este interruptor está apagado, los clientes <strong>no ven</strong> ninguna opción de personalización en el sitio.
+              Cuando lo prendés, aparece el bloque "Personalizá tu Founder" en cada producto que tenga al menos un tipo de grabado habilitado abajo.<br><br>
+              <strong>Recomendado:</strong> dejar apagado hasta tener el láser operativo y haber hecho pruebas.
+            </div>
+            <div class="laser-master" id="lpMaster" onclick="toggleLpMaster()" role="button" tabindex="0">
+              <div class="laser-master__txt">
+                <div class="laser-master__title">Activar personalización láser</div>
+                <div class="laser-master__sub" id="lpMasterSub">El feature está apagado — los clientes no lo ven.</div>
+              </div>
+              <div class="laser-master__switch" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Configuración global -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-head"><div class="card-title">Configuración general</div></div>
+          <div class="card-body">
+            <div class="laser-grid">
+              <div class="fg">
+                <div class="fl">Precio por elemento (UYU)</div>
+                <input type="number" class="fi" id="lpPrecio" min="0" step="10">
+                <div class="fhint">Se cobra por cada grabado elegido. Acumulable hasta 4 elementos.</div>
+              </div>
+              <div class="fg">
+                <div class="fl">Tiempo extra (horas)</div>
+                <input type="number" class="fi" id="lpHoras" min="0" max="240">
+                <div class="fhint">Horas hábiles que se suman al tiempo de preparación normal.</div>
+              </div>
+              <div class="fg">
+                <div class="fl">Caracteres máx en texto</div>
+                <input type="number" class="fi" id="lpMaxChars" min="1" max="200">
+                <div class="fhint">Cuántos caracteres puede grabar el cliente en la opción "Texto".</div>
+              </div>
+              <div class="fg">
+                <div class="fl">Peso máx de imagen (MB)</div>
+                <input type="number" class="fi" id="lpMaxMb" min="1" max="50" step="1">
+                <div class="fhint">Tamaño máximo del archivo que el cliente puede subir.</div>
+              </div>
+              <div class="fg">
+                <div class="fl">Resolución mínima (px)</div>
+                <input type="number" class="fi" id="lpDimMin" min="100" step="50">
+                <div class="fhint">Bloquea imágenes más chicas que esto. Default: 500.</div>
+              </div>
+              <div class="fg">
+                <div class="fl">Resolución recomendada (px)</div>
+                <input type="number" class="fi" id="lpDimRec" min="100" step="50">
+                <div class="fhint">Avisa al cliente si la imagen es menor. Default: 800.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Textos legales -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-head"><div class="card-title">Textos que ve el cliente</div></div>
+          <div class="card-body">
+            <div class="laser-grid">
+              <div class="fg form-full">
+                <div class="fl">Aviso de no devolución</div>
+                <textarea class="fi" id="lpTxtNoDev" rows="2"></textarea>
+                <div class="fhint">Se muestra en el bloque de personalización. Editable sin tocar código.</div>
+              </div>
+              <div class="fg form-full">
+                <div class="fl">Aviso de tiempo extra</div>
+                <textarea class="fi" id="lpTxtTiempo" rows="2"></textarea>
+              </div>
+              <div class="fg form-full">
+                <div class="fl">Disclaimer de copyright</div>
+                <textarea class="fi" id="lpTxtCopyright" rows="3"></textarea>
+                <div class="fhint">Se muestra al subir imágenes (visible en Sesión B cuando el upload esté activo).</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toggles por producto -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-head"><div class="card-title">Productos que aceptan personalización</div></div>
+          <div class="card-body">
+            <div class="info-box" style="margin-bottom:14px">
+              Marcá qué tipos de grabado acepta cada producto. Si un producto tiene <strong>todos apagados</strong>, no muestra el bloque de personalización (aunque el feature esté activo arriba).
+            </div>
+            <div id="lpProductsList">
+              <div class="laser-empty">Cargando productos...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botón guardar -->
+        <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="lpSaveBtn" onclick="savePersonalizacion()">💾 Guardar configuración</button>
+          <button class="btn btn-secondary" onclick="loadPersonalizacion()">↺ Descartar cambios</button>
         </div>
       </div>
 

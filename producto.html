@@ -278,6 +278,226 @@ select:active,
   align-self: center;
 }
 
+/* ── PRODUCTO — Personalización láser (Sesión 28) ──────────────
+   Bloque que aparece entre el selector de color y el CTA de compra
+   cuando el feature está habilitado globalmente Y el producto tiene
+   al menos un tipo de grabado permitido. La visibilidad se controla
+   desde JS — por defecto el contenedor está oculto.
+
+   Estructura visual:
+     .laser-section (contenedor)
+       .laser-toggle      → header con título + switch
+       .laser-content     → cuerpo (oculto si toggle apagado)
+         .laser-options   → grid de 4 cards (adelante/interior/atrás/texto)
+         .laser-text-input→ aparece cuando "TEXTO" está seleccionado
+         .laser-warnings  → avisos de no-devolución y +24 hs
+*/
+.laser-section {
+  display: none;                               /* JS lo prende cuando corresponde */
+  border-top: 1px solid var(--color-border);
+  margin-top: 16px;
+  padding-top: 24px;
+}
+.laser-section.is-visible { display: block; }
+
+.laser-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
+}
+.laser-toggle__text { flex: 1; min-width: 0; }
+.laser-toggle__title {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--color-text);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.laser-toggle__title-icon { color: var(--color-gold); margin-right: 8px; }
+.laser-toggle__sub {
+  font-size: var(--text-body-sm);
+  color: var(--color-muted);
+  line-height: var(--lh-body-sm);
+}
+
+/* Switch estilo iOS — minimalista, dorado cuando está activo */
+.laser-switch {
+  position: relative;
+  width: 44px; height: 24px;
+  background: var(--color-surface2);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.laser-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--color-text);
+  transition: transform var(--transition-base);
+}
+.laser-section.is-open .laser-switch {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+}
+.laser-section.is-open .laser-switch::after { transform: translateX(20px); background: var(--color-bg); }
+
+/* Cuerpo expandible — animación suave de apertura */
+.laser-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--transition-slow), padding-top var(--transition-base);
+}
+.laser-section.is-open .laser-content {
+  max-height: 1200px;                /* alto generoso — el contenido real es menor */
+  padding-top: 20px;
+}
+
+.laser-content__intro {
+  font-size: var(--text-body-sm);
+  color: var(--color-muted);
+  margin-bottom: 16px;
+  letter-spacing: 0.3px;
+}
+
+/* Grid de opciones — 2 columnas en mobile, 4 en desktop si caben */
+.laser-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 720px) {
+  .laser-options { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Cada opción es un "card" tappable. Estado base: borde sutil.
+   Estado seleccionado: borde dorado + fondo levemente dorado.
+   Indicador "✓" arriba a la derecha cuando está activa. */
+.laser-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 14px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  text-align: left;
+}
+.laser-option:hover { border-color: rgba(201,169,110,.4); }
+.laser-option.is-selected {
+  border-color: var(--color-gold);
+  background: rgba(201,169,110,.06);
+}
+.laser-option__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.laser-option__name {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--color-text);
+  text-transform: uppercase;
+}
+.laser-option__price {
+  font-size: 11px;
+  color: var(--color-gold);
+  letter-spacing: 0.5px;
+}
+.laser-option__check {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  color: var(--color-bg);
+  font-size: 10px;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.laser-option.is-selected .laser-option__check { display: flex; }
+
+/* Input de texto — solo aparece si "TEXTO" está seleccionado */
+.laser-text-input {
+  display: none;
+  margin-top: 14px;
+  padding: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+.laser-text-input.is-visible { display: block; }
+.laser-text-input__label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.laser-text-input__field {
+  width: 100%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 3px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.laser-text-input__field:focus { border-color: var(--color-gold); }
+.laser-text-input__counter {
+  font-size: 10px;
+  color: var(--color-muted);
+  margin-top: 6px;
+  text-align: right;
+  letter-spacing: 0.5px;
+}
+
+/* Resumen del precio agregado — pill dorado al final del bloque */
+.laser-summary {
+  display: none;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(201,169,110,.08);
+  border-left: 3px solid var(--color-gold);
+  border-radius: 2px;
+  font-size: 12px;
+  color: var(--color-text);
+  letter-spacing: 0.3px;
+}
+.laser-summary.is-visible { display: block; }
+.laser-summary strong { color: var(--color-gold); font-weight: 600; }
+
+/* Avisos legales — siempre visibles cuando el toggle está abierto */
+.laser-warnings {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--color-muted);
+  line-height: 1.7;
+  letter-spacing: 0.2px;
+}
+.laser-warnings__item { display: flex; align-items: flex-start; gap: 8px; }
+.laser-warnings__item + .laser-warnings__item { margin-top: 6px; }
+.laser-warnings__icon { color: var(--color-gold); flex-shrink: 0; }
+
 /* ── PRODUCTO — Especificaciones inline ────────────────────── */
 .specs-list { border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); padding: 28px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; }
 .specs-list__item { display: flex; align-items: flex-start; gap: 14px; font-size: var(--text-body-sm); color: var(--color-muted); line-height: var(--lh-body-sm); }
@@ -861,6 +1081,63 @@ body.cart-open .wa-bubble {
         <div class="colors-grid" id="colorsGrid"></div>
       </div>
 
+      <!-- PERSONALIZACIÓN LÁSER (Sesión 28)
+           Visible solo si:
+             1) site_settings.personalizacion_config.enabled === true
+             2) El producto tiene al menos un permite_grabado_* en true
+           Caso contrario, JS deja .laser-section sin la clase .is-visible
+           y queda completamente oculto (display:none por CSS). -->
+      <div class="laser-section" id="laserSection" aria-label="Personalización con grabado láser">
+        <div class="laser-toggle" id="laserToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="laserContent">
+          <div class="laser-toggle__text">
+            <div class="laser-toggle__title">
+              <span class="laser-toggle__title-icon" aria-hidden="true">✦</span>Personalizá tu Founder
+            </div>
+            <div class="laser-toggle__sub" id="laserToggleSub">Hacé tu billetera única con grabado láser. +24 hs de preparación.</div>
+          </div>
+          <div class="laser-switch" aria-hidden="true"></div>
+        </div>
+
+        <div class="laser-content" id="laserContent">
+          <p class="laser-content__intro">Elegí qué querés grabar (podés combinar varias):</p>
+
+          <div class="laser-options" id="laserOptions">
+            <!-- Las opciones se renderizan desde JS, una por cada permite_grabado_* en true -->
+          </div>
+
+          <!-- Input de texto — visible solo si "TEXTO" está seleccionado -->
+          <div class="laser-text-input" id="laserTextInput">
+            <div class="laser-text-input__label">Texto a grabar</div>
+            <input type="text"
+                   class="laser-text-input__field"
+                   id="laserTextField"
+                   placeholder="Ej: Juan, 2026, ANV..."
+                   maxlength="40"
+                   autocomplete="off">
+            <div class="laser-text-input__counter">
+              <span id="laserTextCount">0</span> / <span id="laserTextMax">40</span> caracteres
+            </div>
+          </div>
+
+          <!-- Resumen del precio agregado -->
+          <div class="laser-summary" id="laserSummary">
+            Personalización: <strong id="laserSummaryAmount">+$0 UYU</strong>
+          </div>
+
+          <!-- Avisos legales — texto editable desde admin -->
+          <div class="laser-warnings">
+            <div class="laser-warnings__item">
+              <span class="laser-warnings__icon" aria-hidden="true">⏳</span>
+              <span id="laserWarningTime">La personalización agrega 24 hs hábiles al tiempo de preparación.</span>
+            </div>
+            <div class="laser-warnings__item">
+              <span class="laser-warnings__icon" aria-hidden="true">⚠</span>
+              <span id="laserWarningReturn">Los productos personalizados no admiten devolución. Mantienen garantía de fabricación de 60 días.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- SPECS -->
       <div class="specs-list" id="specsList"></div>
 
@@ -1190,6 +1467,21 @@ const state = {
   reviewsAutoplayPausedUntil: 0,    // timestamp hasta el cual está pausado
   reviewsEventsBound:         false, // listeners del carrusel de reseñas ya enganchados
   cart:          loadCartFromStorage(), // carrito persistente compartido con index.html
+
+  // ── PERSONALIZACIÓN LÁSER (Sesión 28) ────────────────────────
+  // `config` se llena cuando window.founderDB.fetchPersonalizacionConfig()
+  // resuelve. Hasta entonces es null y el bloque queda oculto. La forma
+  // de `config` está documentada en supabase-client.js (defaults).
+  //
+  // `selected` mantiene qué grabados eligió el cliente para ESTE producto.
+  // No se persiste en localStorage en Sesión A — eso llega en Sesión B
+  // junto con la persistencia en el carrito.
+  laser: {
+    config:   null,
+    selected: { adelante: false, interior: false, atras: false, texto: false },
+    texto:    '',
+    isOpen:   false,
+  },
 };
 
 // ── SHARED DOM HELPERS ────────────────────────────────────────────
@@ -1320,6 +1612,10 @@ async function init() {
     injectSEOMetadata(state.product);
     // Carrusel de reseñas (autoplay 4s en mobile, oculto en desktop).
     bindReviewsCarousel();
+    // Personalización láser (Sesión 28). Es async — corre en background.
+    // No bloquea el render porque si la config no llega, simplemente el
+    // bloque queda oculto (estado por defecto seguro).
+    initLaserSection();
 
   } catch (err) {
     console.error('[Founder] Error cargando producto:', err);
@@ -1670,6 +1966,237 @@ function selectColor(i) {
   // Badge oferta sobre galería
   const badgeEl = $('ofertaBadge');
   if (badgeEl) badgeEl.style.display = (estado === 'oferta') ? 'block' : 'none';
+
+  // Personalización láser: el botón "Agregar al carrito" puede haber
+  // recalculado su label sin contar el extra de personalización.
+  // Forzar update si el módulo ya está inicializado.
+  if (state.laser && state.laser.config) updateLaserCTA();
+}
+
+// ═════════════════════════════════════════════════════════════════
+// PRODUCTO — Personalización láser (Sesión 28)
+// ─────────────────────────────────────────────────────────────────
+// Módulo autónomo que controla el bloque #laserSection. Reglas:
+//
+// 1) Visibilidad: el bloque es visible (display:block via .is-visible)
+//    SOLO si `config.enabled === true` Y el producto actual tiene al
+//    menos un `permite_grabado_*` en true. Si alguno falla → display:none.
+//
+// 2) Apertura: aunque sea visible, el toggle arranca cerrado (.is-open
+//    ausente). Se abre con click en el header. La animación max-height
+//    está en CSS.
+//
+// 3) Selección: cada opción es un toggle independiente. Acumulables.
+//    Cambiar selección → recalcular extra → actualizar resumen + CTA.
+//
+// 4) Texto: si "TEXTO" está seleccionado, aparece el input con counter.
+//    El cliente puede escribir hasta config.texto_max_caracteres.
+//
+// 5) Sesión A no persiste nada en el carrito. addToCart() consulta
+//    state.laser.selected/texto pero solo lo loguea — la integración
+//    real con el carrito llega en Sesión B.
+// ═════════════════════════════════════════════════════════════════
+
+/** Lee la config global desde Supabase y arma el bloque para el producto
+ *  actual. Se llama una vez al cargar la página, después de que
+ *  state.product está poblado. Si algo falla → bloque queda oculto. */
+async function initLaserSection() {
+  const section = $('laserSection');
+  if (!section) return;
+
+  // 1) Cargar config global. fetchPersonalizacionConfig() siempre
+  //    devuelve un objeto válido — los defaults garantizan que nunca
+  //    sea null.
+  let config;
+  try {
+    config = await window.founderDB.fetchPersonalizacionConfig();
+  } catch (e) {
+    console.warn('[laser] fetch config falló — bloque queda oculto:', e);
+    return;
+  }
+  state.laser.config = config;
+
+  // 2) Master switch global. Si está apagado → fin de la historia.
+  if (!config.enabled) return;
+
+  // 3) Toggles por producto. Mientras la columna real no exista, leemos
+  //    de config.productos[<nombre>]. Si el producto no figura → todos
+  //    los grabados quedan en false → bloque oculto.
+  const perms = (config.productos && config.productos[state.product.name]) || {};
+  const tipos = [
+    { key: 'adelante', icon: '🖼️', label: 'Adelante' },
+    { key: 'interior', icon: '📐', label: 'Interior' },
+    { key: 'atras',    icon: '🔖', label: 'Atrás'    },
+    { key: 'texto',    icon: '✍️', label: 'Texto'    },
+  ];
+  const habilitados = tipos.filter(t => perms[t.key] === true);
+  if (habilitados.length === 0) return;        // producto no soporta personalización
+
+  // 4) Renderizar las opciones disponibles
+  const optionsEl = $('laserOptions');
+  if (optionsEl) {
+    optionsEl.innerHTML = habilitados.map(t => `
+      <button type="button"
+              class="laser-option"
+              data-laser-key="${t.key}"
+              onclick="toggleLaserOption('${t.key}')"
+              aria-pressed="false">
+        <span class="laser-option__icon" aria-hidden="true">${t.icon}</span>
+        <span class="laser-option__name">${t.label}</span>
+        <span class="laser-option__price">+$${config.precio_por_elemento.toLocaleString('es-UY')} UYU</span>
+        <span class="laser-option__check" aria-hidden="true">✓</span>
+      </button>
+    `).join('');
+  }
+
+  // 5) Aplicar textos editables (vienen del admin)
+  const subEl = $('laserToggleSub');
+  if (subEl) {
+    const horas = config.tiempo_extra_horas || 24;
+    subEl.textContent = `Hacé tu billetera única con grabado láser. +${horas} hs de preparación.`;
+  }
+  const wTime = $('laserWarningTime');
+  if (wTime && config.textos?.aviso_tiempo_extra) wTime.textContent = config.textos.aviso_tiempo_extra;
+  const wReturn = $('laserWarningReturn');
+  if (wReturn && config.textos?.aviso_no_devolucion) wReturn.textContent = config.textos.aviso_no_devolucion;
+
+  // 6) Configurar input de texto
+  const maxChars = config.texto_max_caracteres || 40;
+  const fieldEl  = $('laserTextField');
+  const maxEl    = $('laserTextMax');
+  if (fieldEl) fieldEl.setAttribute('maxlength', String(maxChars));
+  if (maxEl)   maxEl.textContent = String(maxChars);
+
+  // 7) Bindear eventos del toggle (header) y del input de texto
+  bindLaserEvents();
+
+  // 8) Hacer visible el bloque
+  section.classList.add('is-visible');
+}
+
+/** Engancha los listeners del header (click + teclado) y del input
+ *  de texto. Idempotente: usa un flag en el dataset para no duplicar. */
+function bindLaserEvents() {
+  const toggleEl = $('laserToggle');
+  if (toggleEl && !toggleEl.dataset.bound) {
+    toggleEl.dataset.bound = '1';
+    toggleEl.addEventListener('click', toggleLaserOpen);
+    toggleEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleLaserOpen();
+      }
+    });
+  }
+
+  const fieldEl = $('laserTextField');
+  if (fieldEl && !fieldEl.dataset.bound) {
+    fieldEl.dataset.bound = '1';
+    fieldEl.addEventListener('input', onLaserTextInput);
+  }
+}
+
+/** Abre/cierra el bloque expandible. Sólo cambia estado UI — no toca
+ *  selecciones ni precios. */
+function toggleLaserOpen() {
+  const section = $('laserSection');
+  if (!section) return;
+  state.laser.isOpen = !state.laser.isOpen;
+  section.classList.toggle('is-open', state.laser.isOpen);
+  const toggleEl = $('laserToggle');
+  if (toggleEl) toggleEl.setAttribute('aria-expanded', String(state.laser.isOpen));
+}
+
+/** Toggle de una opción de grabado (adelante/interior/atras/texto).
+ *  Se llama vía onclick="toggleLaserOption('texto')". */
+function toggleLaserOption(key) {
+  if (!state.laser.config) return;
+  if (!Object.prototype.hasOwnProperty.call(state.laser.selected, key)) return;
+
+  state.laser.selected[key] = !state.laser.selected[key];
+
+  // Reflejo visual en el botón
+  const btn = document.querySelector(`.laser-option[data-laser-key="${key}"]`);
+  if (btn) {
+    btn.classList.toggle('is-selected', state.laser.selected[key]);
+    btn.setAttribute('aria-pressed', String(state.laser.selected[key]));
+  }
+
+  // Mostrar/ocultar input de texto si la opción TEXTO cambió
+  if (key === 'texto') {
+    const inputEl = $('laserTextInput');
+    if (inputEl) inputEl.classList.toggle('is-visible', state.laser.selected.texto);
+    if (!state.laser.selected.texto) {
+      // Si destildaron TEXTO → limpiar el campo
+      state.laser.texto = '';
+      const fieldEl = $('laserTextField');
+      if (fieldEl) fieldEl.value = '';
+      updateLaserTextCounter();
+    }
+  }
+
+  updateLaserSummary();
+  updateLaserCTA();
+}
+
+/** Listener del input de texto. Solo actualiza state + counter. */
+function onLaserTextInput(e) {
+  state.laser.texto = (e.target.value || '').slice(0, getLaserMaxChars());
+  e.target.value = state.laser.texto;
+  updateLaserTextCounter();
+}
+
+function getLaserMaxChars() {
+  return state.laser.config?.texto_max_caracteres || 40;
+}
+
+function updateLaserTextCounter() {
+  const countEl = $('laserTextCount');
+  if (countEl) countEl.textContent = String(state.laser.texto.length);
+}
+
+/** Suma cuántas opciones están seleccionadas y devuelve el extra total. */
+function getLaserExtraTotal() {
+  if (!state.laser.config || !state.laser.config.enabled) return 0;
+  const precio = state.laser.config.precio_por_elemento || 0;
+  const count  = Object.values(state.laser.selected).filter(Boolean).length;
+  return precio * count;
+}
+
+/** Refresca el "pill" dorado con el resumen del extra. */
+function updateLaserSummary() {
+  const sumEl    = $('laserSummary');
+  const amountEl = $('laserSummaryAmount');
+  if (!sumEl || !amountEl) return;
+
+  const extra = getLaserExtraTotal();
+  if (extra > 0) {
+    amountEl.textContent = `+$${extra.toLocaleString('es-UY')} UYU`;
+    sumEl.classList.add('is-visible');
+  } else {
+    sumEl.classList.remove('is-visible');
+  }
+}
+
+/** Actualiza el texto de los botones "Agregar al carrito" (inline + sticky)
+ *  para incluir el extra de personalización en el total mostrado. NO toca
+ *  state.precioEfectivo (eso queda como precio del producto solo).
+ *
+ *  Esto se llama desde:
+ *    - selectColor() después de calcular el precio efectivo del color.
+ *    - toggleLaserOption() cuando el cliente cambia opciones. */
+function updateLaserCTA() {
+  if (!state.precioEfectivo) return;          // sin color válido → no tocar
+  const extra = getLaserExtraTotal();
+  const total = state.precioEfectivo + extra;
+  const label = `Agregar al carrito — $${total.toLocaleString('es-UY')} UYU`;
+
+  const addBtn    = $('addCartBtn');
+  const stickyBtn = $('stickyAddBtn');
+  // Solo actualizamos el texto si el botón está habilitado (color elegido).
+  // Cuando está deshabilitado mantiene su mensaje de "Seleccioná un color...".
+  if (addBtn && !addBtn.disabled)    addBtn.textContent    = label;
+  if (stickyBtn && !stickyBtn.disabled) stickyBtn.textContent = label;
 }
 
 // ── PRODUCTO — Galería de fotos ─────────────────────────────────
