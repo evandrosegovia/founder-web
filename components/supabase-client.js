@@ -239,14 +239,14 @@
    *  (Sesión 28 Bloque B). RLS filtra por activo=true automáticamente,
    *  pero igual lo pedimos explícito por claridad.
    *
-   *  Devuelve array de { id, tipo, url, descripcion, colores[], orden }.
+   *  Devuelve array de { id, tipo, url, descripcion, colores[], modelos[], orden }.
    *  Si la query falla (tabla no existe en deploys viejos), retorna [].
    */
   async function fetchPersonalizacionExamples() {
     try {
       const path =
         '/personalizacion_examples' +
-        '?select=id,tipo,url,descripcion,colores,orden' +
+        '?select=id,tipo,url,descripcion,colores,modelos,orden' +
         '&activo=eq.true' +
         '&order=orden.asc';
       const rows = await supaGet(path);

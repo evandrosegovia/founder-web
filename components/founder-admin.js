@@ -2064,6 +2064,9 @@
       '<div class="lp-ex-grid">' +
       list.map(ex => {
         const inactiveTag = ex.activo ? '' : '<div class="lp-ex-card__inactive">Oculto</div>';
+        const modelos = (Array.isArray(ex.modelos) && ex.modelos.length > 0)
+          ? ex.modelos.join(', ')
+          : 'Todos los modelos';
         const colores = (Array.isArray(ex.colores) && ex.colores.length > 0)
           ? ex.colores.join(', ')
           : 'Todos los colores';
@@ -2073,7 +2076,8 @@
             <img src="${esc(ex.url)}" class="lp-ex-card__img" alt="" loading="lazy">
             <div class="lp-ex-card__info">
               <div class="lp-ex-card__tipo">${tipoLabels[ex.tipo] || ex.tipo}</div>
-              <div>${esc(colores)}</div>
+              <div>${esc(modelos)}</div>
+              <div style="margin-top:2px">${esc(colores)}</div>
             </div>
           </div>`;
       }).join('') +
@@ -2091,6 +2095,7 @@
     $('lpExActivo').value      = 'true';
     setHTML('lpExImagePreview', '');
     renderLpExampleColoresChecks([]);
+    renderLpExampleModelosChecks([]);
 
     // Botón "Eliminar" oculto en modo "nuevo"
     const delBtn = $('lpExDeleteBtn');
@@ -2114,6 +2119,7 @@
     $('lpExActivo').value      = ex.activo ? 'true' : 'false';
     setHTML('lpExImagePreview', `<img src="${esc(ex.url)}" alt="">`);
     renderLpExampleColoresChecks(Array.isArray(ex.colores) ? ex.colores : []);
+    renderLpExampleModelosChecks(Array.isArray(ex.modelos) ? ex.modelos : []);
 
     // Botón "Eliminar" visible solo cuando hay id
     const delBtn = $('lpExDeleteBtn');
@@ -2158,9 +2164,37 @@
     `).join('');
   }
 
+  /** Renderiza checkboxes para los modelos del catálogo (Sesión 28b fix). */
+  function renderLpExampleModelosChecks(selectedModelos) {
+    const cont = $('lpExModelosChecks');
+    if (!cont) return;
+
+    const productos = state.products || [];
+    if (productos.length === 0) {
+      cont.innerHTML = '<div class="fhint">No hay modelos cargados todavía.</div>';
+      return;
+    }
+
+    const sel = new Set((selectedModelos || []).map(m => m.trim()));
+    cont.innerHTML = productos.map(p => `
+      <label>
+        <input type="checkbox" value="${esc(p.nombre)}" ${sel.has(p.nombre) ? 'checked' : ''}>
+        <span>${esc(p.nombre)}</span>
+      </label>
+    `).join('');
+  }
+
   /** Lee qué colores están tildados en el modal. */
   function getLpExampleSelectedColores() {
     const cont = $('lpExColoresChecks');
+    if (!cont) return [];
+    return Array.from(cont.querySelectorAll('input[type="checkbox"]:checked'))
+      .map(i => i.value);
+  }
+
+  /** Lee qué modelos están tildados en el modal. */
+  function getLpExampleSelectedModelos() {
+    const cont = $('lpExModelosChecks');
     if (!cont) return [];
     return Array.from(cont.querySelectorAll('input[type="checkbox"]:checked'))
       .map(i => i.value);
@@ -2220,6 +2254,7 @@
     const orden       = parseInt($('lpExOrden')?.value, 10) || 0;
     const activo      = $('lpExActivo')?.value === 'true';
     const colores     = getLpExampleSelectedColores();
+    const modelos     = getLpExampleSelectedModelos();
 
     if (!url) { toast('Subí o pegá una URL de imagen', true); return; }
     if (!['adelante', 'interior', 'atras', 'texto'].includes(tipo)) {
@@ -2228,7 +2263,7 @@
     }
 
     const example = {
-      tipo, url, descripcion, colores, orden, activo,
+      tipo, url, descripcion, colores, modelos, orden, activo,
     };
     if (id) example.id = id;
 
