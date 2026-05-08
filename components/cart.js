@@ -84,6 +84,37 @@
   const norm = s => String(s || '').trim().toLowerCase();
   const key  = (name, color) => `${norm(name)}|${norm(color)}`;
 
+  // ── Helper: clave de unicidad considerando personalización ──
+  // Sesión 28 Bloque B: dos items con mismo producto+color pero
+  // personalizaciones distintas DEBEN ser items separados del
+  // carrito (no se combinan en qty).
+  //
+  // Esta función devuelve una clave estable que incluye la "huella"
+  // de la personalización. Items con misma huella se combinan; con
+  // huella distinta quedan separados.
+  //
+  // Para items SIN personalización → fingerprint = "" → comportamiento
+  // exactamente igual al anterior (compatible hacia atrás).
+  function personalizacionFingerprint(personalizacion) {
+    if (!personalizacion) return '';
+    // Estructura estable: tomamos solo los campos que importan para
+    // identidad (NO incluimos `extra` porque es derivable). Ordenamos
+    // las claves antes de stringify para que el orden no afecte.
+    const stable = {
+      adelante: personalizacion.adelante?.path || null,
+      interior: personalizacion.interior?.path || null,
+      atras:    personalizacion.atras?.path    || null,
+      texto:    personalizacion.texto || '',
+      indic:    personalizacion.indicaciones || '',
+    };
+    return JSON.stringify(stable);
+  }
+
+  /** Devuelve la clave de unicidad completa (producto|color|huella). */
+  function itemKey(item) {
+    return `${norm(item.name)}|${norm(item.color)}|${personalizacionFingerprint(item.personalizacion)}`;
+  }
+
   function readLS(k, fallback) {
     try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; }
     catch { return fallback; }
@@ -295,7 +326,10 @@
     flushRemovedNotice,
     // Fotos del carrito (compartidas entre páginas)
     getPhotoUrl,
-    ensurePhotoMap
+    ensurePhotoMap,
+    // Personalización láser (Sesión 28 Bloque B)
+    itemKey,
+    personalizacionFingerprint,
   };
 
   // ── Markup del drawer ────────────────────────────────────────

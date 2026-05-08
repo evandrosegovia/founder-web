@@ -412,10 +412,22 @@
 
   // ── CÁLCULO DE TOTALES ───────────────────────────────────────
   function calculateOrderTotals() {
+    // Subtotal de productos = precio base × qty.
     const subtotal     = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+    // Sesión 28 Bloque B: extra de personalización láser. Se cobra
+    // POR ITEM × cantidad. Acumulable a través de items distintos.
+    const personalizExtra = state.cart.reduce((s, i) => {
+      const e = i.personalizacion?.extra || 0;
+      return s + e * i.qty;
+    }, 0);
+
     const transferDisc = state.pagoMode === 'transfer' ? 0.10 : 0;
 
-    // Descuento del cupón (no acumulable con transferencia — se aplica el mayor)
+    // Descuento del cupón (no acumulable con transferencia — se aplica el mayor).
+    // OJO: el descuento se aplica sobre el SUBTOTAL DE PRODUCTOS, no sobre la
+    // personalización. Esto es decisión de negocio: los grabados son un servicio
+    // adicional y no entran en cupones/descuentos por transferencia.
     let couponAmount = 0;
     if (state.coupon) {
       if (state.coupon.tipo === 'porcentaje') {
@@ -430,18 +442,38 @@
     const discountAmount = Math.max(couponAmount, transferAmount);
     const discountSource = couponAmount >= transferAmount && couponAmount > 0 ? 'cupon' : (transferAmount > 0 ? 'transfer' : 'none');
 
-    const subtotalConDesc = subtotal - discountAmount;
+    const subtotalConDesc = subtotal - discountAmount + personalizExtra;
     const shipping = state.entregaMode === 'retiro' ? 0
       : (subtotalConDesc >= CONFIG.FREE_SHIPPING ? 0 : CONFIG.SHIPPING_COST);
     const total = subtotalConDesc + shipping;
 
-    return { subtotal, discountAmount, discountSource, shipping, total };
+    return { subtotal, personalizExtra, discountAmount, discountSource, shipping, total };
   }
 
   // ── RESUMEN DEL PEDIDO ───────────────────────────────────────
   function renderOrderSummary() {
     let html = state.cart.map(item => {
       const photo = getPhoto(item.name, item.color);
+
+      // Sesión 28 Bloque B: tags chiquitos con las personalizaciones
+      let personalizTags = '';
+      if (item.personalizacion) {
+        const tags = [];
+        if (item.personalizacion.adelante) tags.push('Adelante');
+        if (item.personalizacion.interior) tags.push('Interior');
+        if (item.personalizacion.atras)    tags.push('Atrás');
+        if (item.personalizacion.texto)    tags.push(`Texto: "${item.personalizacion.texto}"`);
+        if (tags.length > 0) {
+          personalizTags = `
+            <div style="font-size:9px;color:var(--color-gold);letter-spacing:1px;margin-top:4px;text-transform:uppercase">
+              ✦ ${tags.join(' · ')}
+            </div>`;
+        }
+      }
+
+      // Línea de precio incluye precio base + extra de personalización × qty
+      const lineTotal = (item.price + (item.personalizacion?.extra || 0)) * item.qty;
+
       return `
       <div class="co-summary__product">
         ${photo
@@ -451,12 +483,18 @@
           <div class="co-summary__product-name">Founder ${item.name}</div>
           <div class="co-summary__product-variant">${item.color}</div>
           <div class="co-summary__product-qty">x${item.qty}</div>
+          ${personalizTags}
         </div>
-        <div class="co-summary__product-price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
+        <div class="co-summary__product-price">$${lineTotal.toLocaleString('es-UY')}</div>
       </div>`;
     }).join('');
 
-    const { subtotal, discountAmount, discountSource, shipping, total } = calculateOrderTotals();
+    const { subtotal, personalizExtra, discountAmount, discountSource, shipping, total } = calculateOrderTotals();
+
+    // Mostrar línea explícita de personalización si hay
+    if (personalizExtra > 0) {
+      html += `<div class="co-summary__item"><span>Personalización láser</span><span style="color:var(--color-gold)">+$${personalizExtra.toLocaleString('es-UY')}</span></div>`;
+    }
 
     if (discountAmount > 0) {
       const label = discountSource === 'cupon'
@@ -468,6 +506,24 @@
     html += `<div class="co-summary__total"><span class="co-summary__total-label">Total</span><span class="co-summary__total-value">$${total.toLocaleString('es-UY')} UYU</span></div>`;
 
     setHTML('coSummaryLines', html);
+
+    // Mostrar/ocultar el checkbox de no-devolución según haya items personalizados
+    updateLaserConsentVisibility();
+  }
+
+  /** Muestra/oculta el checkbox extra de "no devolución" según haya items
+   *  con personalización en el carrito. */
+  function updateLaserConsentVisibility() {
+    const wrap = $('coConsentLaser');
+    if (!wrap) return;
+    const hayPersonalizacion = state.cart.some(i => i.personalizacion);
+    wrap.style.display = hayPersonalizacion ? 'flex' : 'none';
+    if (!hayPersonalizacion) {
+      // Limpiar el check si no hay personalización (por si el cliente
+      // lo había marcado y luego sacó el item del carrito).
+      const cb = $('coConsentNoDev');
+      if (cb) cb.checked = false;
+    }
   }
 
   // ── SISTEMA DE CUPONES ────────────────────────────────────────
@@ -637,10 +693,23 @@
       return;
     }
 
-    const { subtotal, discountAmount, shipping, total } = calculateOrderTotals();
-    const lines = state.cart.map(i =>
-      `- Founder ${i.name} (${i.color}) x${i.qty}: $${(i.price * i.qty).toLocaleString('es-UY')}`
-    ).join('\n');
+    // Sesión 28 Bloque B: si hay items con personalización, validar
+    // el segundo checkbox (no-devolución).
+    const hayPersonalizacion = state.cart.some(i => i.personalizacion);
+    if (hayPersonalizacion && !$('coConsentNoDev')?.checked) {
+      closeWhatsAppTab(waTab);
+      showToast('Debés aceptar el aviso de no-devolución para productos personalizados', 'error');
+      return;
+    }
+
+    const { subtotal, personalizExtra, discountAmount, shipping, total } = calculateOrderTotals();
+    const lines = state.cart.map(i => {
+      const lineTotal = (i.price + (i.personalizacion?.extra || 0)) * i.qty;
+      const personalizSuffix = i.personalizacion
+        ? ` [+grabado láser]`
+        : '';
+      return `- Founder ${i.name} (${i.color}) x${i.qty}${personalizSuffix}: $${lineTotal.toLocaleString('es-UY')}`;
+    }).join('\n');
 
     // Armar info de entrega
     let deliveryInfo = '';
@@ -682,7 +751,10 @@
       nombre, apellido, celular, email,
       entrega:   state.entregaMode === 'envio' ? 'Envío' : 'Retiro',
       direccion: deliveryAddress,
-      productos: state.cart.map(i => `Founder ${i.name} (${i.color}) x${i.qty}`).join(' | '),
+      productos: state.cart.map(i => {
+        const tag = i.personalizacion ? ' [grabado láser]' : '';
+        return `Founder ${i.name} (${i.color}) x${i.qty}${tag}`;
+      }).join(' | '),
       subtotal,
       descuento: discountAmount,
       envio:     shipping,
@@ -690,15 +762,22 @@
       pago:      pagoStr,
       estado,
       notas:     cuponStr ? `Cupón: ${cuponStr}` : '',
+      // Sesión 28 Bloque B
+      personalizacion_extra: personalizExtra,
+      acepto_no_devolucion:  hayPersonalizacion ? !!$('coConsentNoDev')?.checked : false,
     };
 
     // Items estructurados — se guardan en order_items para que el admin
     // pueda listar/filtrar por producto en el futuro.
+    // Sesión 28 Bloque B: se incluye `personalizacion` cuando el item lo tiene.
     const items = state.cart.map(i => ({
       product_name:    i.name,
       color:           i.color,
       cantidad:        i.qty,
       precio_unitario: i.price,
+      // El backend persiste esto en order_items.personalizacion como JSONB.
+      // Si es null/undefined, queda NULL en DB (= comportamiento legacy).
+      personalizacion: i.personalizacion || null,
     }));
 
     // Deshabilitar botón para evitar doble envío

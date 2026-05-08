@@ -65,12 +65,18 @@
     // Personalización láser — config global cargada desde site_settings (Sesión 28).
     // null al inicio, se popula con loadPersonalizacion() al entrar al panel.
     lpConfig: null,
+    // Galería de ejemplos — array de { id, tipo, url, ... }. Cargado por loadLpExamples().
+    lpExamples: [],
   };
 
   // ── DOM HELPERS ──────────────────────────────────────────────
   const $       = id => document.getElementById(id);
   const setHTML = (id, html) => { const el = $(id); if (el) el.innerHTML  = html; };
   const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+  /** Marca/desmarca un checkbox por id. Tolera null. */
+  const setCheckbox = (id, checked) => { const el = $(id); if (el) el.checked = !!checked; };
+  /** Lee el estado de un checkbox por id. Devuelve false si no existe. */
+  const getCheckbox = (id) => !!($(id) && $(id).checked);
 
   /** Escapa HTML para prevenir XSS cuando se inyecta texto del
    *  usuario/DB en atributos o innerHTML. */
@@ -1063,6 +1069,12 @@
      'editBilletes', 'editMonedas']
       .forEach(id => { const el = $(id); if (el) el.value = ''; });
 
+    // Personalización láser (Sesión 28 Bloque B): checkboxes en false por default
+    setCheckbox('editPermAdelante', false);
+    setCheckbox('editPermInterior', false);
+    setCheckbox('editPermAtras',    false);
+    setCheckbox('editPermTexto',    false);
+
     renderColorRows();
     setHTML('colorPhotosSection', '');
 
@@ -1088,6 +1100,14 @@
     $('editNota').value        = p.nota;
     $('editBilletes').value    = p.lleva_billetes ? 'si' : '';
     $('editMonedas').value     = p.lleva_monedas  ? 'si' : '';
+
+    // Personalización láser (Sesión 28 Bloque B): 4 toggles independientes.
+    // Si el producto no tiene definidos estos campos (deploy parcial),
+    // arrancan en false por defecto.
+    setCheckbox('editPermAdelante', p.permite_grabado_adelante === true);
+    setCheckbox('editPermInterior', p.permite_grabado_interior === true);
+    setCheckbox('editPermAtras',    p.permite_grabado_atras    === true);
+    setCheckbox('editPermTexto',    p.permite_grabado_texto    === true);
 
     // Copiar colores a state.colorRows (cada uno con uid único para tracking)
     state.colorRows = p.colors.map(c => ({
@@ -1359,6 +1379,12 @@
     const lleva_billetes = ($('editBilletes')?.value === 'si');
     const lleva_monedas  = ($('editMonedas')?.value  === 'si');
 
+    // Personalización láser (Sesión 28 Bloque B): leer los 4 toggles
+    const permite_grabado_adelante = getCheckbox('editPermAdelante');
+    const permite_grabado_interior = getCheckbox('editPermInterior');
+    const permite_grabado_atras    = getCheckbox('editPermAtras');
+    const permite_grabado_texto    = getCheckbox('editPermTexto');
+
     // Construir colores — solo los que tienen nombre
     const colors = state.colorRows
       .filter(c => (c.nombre || '').trim())
@@ -1386,6 +1412,10 @@
       nota,
       lleva_billetes,
       lleva_monedas,
+      permite_grabado_adelante,
+      permite_grabado_interior,
+      permite_grabado_atras,
+      permite_grabado_texto,
       orden: existing?.orden ?? (state.products.length + 1),
       activo: existing ? existing.activo : true,
     };
@@ -1762,6 +1792,8 @@
     }
 
     renderPersonalizacion();
+    // Cargar también la galería (no bloqueante — si falla el panel principal igual funciona)
+    loadLpExamples();
   }
 
   /** Refresca TODOS los inputs del panel desde state.lpConfig.
@@ -1803,8 +1835,14 @@
   }
 
   /** Renderiza una fila por cada producto activo del catálogo, con
-   *  4 checkboxes. Usa state.products que ya está cargado al entrar
-   *  al admin (lo carga loadProducts() en bootstrap). */
+   *  4 checkboxes. Sesión 28 Bloque B: lee de las columnas reales del
+   *  producto (`permite_grabado_*`). El JSON `productos` queda como
+   *  legacy y no se usa más para esta lectura.
+   *
+   *  El estado local de los toggles vive en `state.products[i].permite_grabado_*`
+   *  (mutado por toggleLpProduct). Al click "Guardar configuración",
+   *  recorremos los productos modificados y persistimos cada uno via
+   *  save_product. */
   function renderLpProducts() {
     const cont = $('lpProductsList');
     if (!cont) return;
@@ -1815,21 +1853,19 @@
       return;
     }
 
-    const cfgProds = state.lpConfig.productos || {};
     cont.innerHTML = productos.map(p => {
-      const perms = cfgProds[p.nombre] || {};
       const tipos = [
-        { k: 'adelante', label: '🖼️ Adelante' },
-        { k: 'interior', label: '📐 Interior' },
-        { k: 'atras',    label: '🔖 Atrás'    },
-        { k: 'texto',    label: '✍️ Texto'    },
+        { k: 'adelante', label: '🖼️ Adelante', col: 'permite_grabado_adelante' },
+        { k: 'interior', label: '📐 Interior', col: 'permite_grabado_interior' },
+        { k: 'atras',    label: '🔖 Atrás',    col: 'permite_grabado_atras'    },
+        { k: 'texto',    label: '✍️ Texto',    col: 'permite_grabado_texto'    },
       ];
       const checks = tipos.map(t => {
-        const on = perms[t.k] === true;
+        const on = p[t.col] === true;
         return `
           <button type="button"
                   class="laser-check ${on ? 'is-on' : ''}"
-                  onclick="toggleLpProduct('${esc(p.nombre)}','${t.k}')">
+                  onclick="toggleLpProduct('${esc(p.id)}','${t.k}')">
             <span class="laser-check__box">${on ? '✓' : ''}</span>
             <span>${t.label}</span>
           </button>`;
@@ -1842,14 +1878,22 @@
     }).join('');
   }
 
-  /** Toggle de un permiso por producto. Solo muta el estado local —
-   *  el guardado real va con el botón "Guardar configuración". */
-  function toggleLpProduct(nombre, tipoKey) {
-    if (!state.lpConfig) return;
-    if (!state.lpConfig.productos) state.lpConfig.productos = {};
-    if (!state.lpConfig.productos[nombre]) state.lpConfig.productos[nombre] = {};
-    const cur = state.lpConfig.productos[nombre][tipoKey] === true;
-    state.lpConfig.productos[nombre][tipoKey] = !cur;
+  /** Toggle de un permiso por producto. Sesión 28 Bloque B: muta el
+   *  state.products[i].permite_grabado_* y marca el producto como
+   *  dirty para que savePersonalizacion sepa qué persistir. */
+  function toggleLpProduct(productId, tipoKey) {
+    const idx = state.products.findIndex(p => p.id === productId);
+    if (idx === -1) return;
+    const colMap = {
+      adelante: 'permite_grabado_adelante',
+      interior: 'permite_grabado_interior',
+      atras:    'permite_grabado_atras',
+      texto:    'permite_grabado_texto',
+    };
+    const col = colMap[tipoKey];
+    if (!col) return;
+    state.products[idx][col] = !state.products[idx][col];
+    state.products[idx]._lpDirty = true;
     renderLpProducts();
   }
 
@@ -1861,7 +1905,9 @@
   }
 
   /** Recoge todos los inputs, valida números mínimos, y persiste el
-   *  JSON en site_settings.personalizacion_config. */
+   *  JSON en site_settings.personalizacion_config. Sesión 28 Bloque B:
+   *  además, persiste los toggles permite_grabado_* de los productos
+   *  marcados como dirty (productos cuyos checkboxes el admin tocó). */
   async function savePersonalizacion() {
     if (!state.lpConfig) state.lpConfig = lpCloneDefaults();
     const c = state.lpConfig;
@@ -1890,21 +1936,334 @@
     if (c.tiempo_extra_horas < 0)   c.tiempo_extra_horas = 0;
     if (c.texto_max_caracteres < 1) c.texto_max_caracteres = 1;
 
+    // Sesión 28 Bloque B: el campo `productos` del JSON queda como legacy.
+    // Lo limpiamos al guardar para que no quede info contradictoria con
+    // las columnas reales. Este es un cleanup one-shot — después de la
+    // primera vez que el admin guarda con esta versión, queda en {}.
+    c.productos = {};
+
     const btn = $('lpSaveBtn');
     if (btn) { btn.textContent = '⏳ Guardando...'; btn.disabled = true; }
 
+    // ── Persistir config global ─────────────────────────────────
     const value = JSON.stringify(c);
     const { ok, data } = await apiAdmin('set_setting', { key: LP_KEY, value });
 
+    if (!ok) {
+      if (btn) { btn.textContent = '💾 Guardar configuración'; btn.disabled = false; }
+      toast('Error guardando configuración' + (data?.message ? ': ' + data.message : ''), true);
+      return;
+    }
+
+    // ── Persistir productos dirty (toggles cambiados) ───────────
+    const dirty = (state.products || []).filter(p => p._lpDirty);
+    let savedCount = 0;
+    let failedCount = 0;
+
+    for (const p of dirty) {
+      const productPayload = {
+        slug:             p.slug,
+        nombre:           p.nombre,
+        precio:           p.precio,
+        descripcion:      p.descripcion,
+        especificaciones: p.especificaciones,
+        capacidad:        p.capacidad,
+        dimensiones:      p.dimensiones,
+        material:         p.material,
+        nota:             p.nota,
+        lleva_billetes:   p.lleva_billetes,
+        lleva_monedas:    p.lleva_monedas,
+        permite_grabado_adelante: p.permite_grabado_adelante === true,
+        permite_grabado_interior: p.permite_grabado_interior === true,
+        permite_grabado_atras:    p.permite_grabado_atras    === true,
+        permite_grabado_texto:    p.permite_grabado_texto    === true,
+        orden:  p.orden,
+        activo: p.activo,
+      };
+      // Reusamos save_product. El backend hace upsert por slug.
+      // IMPORTANTE: save_product borra y re-inserta colores. Para no
+      // perder las fotos, reconstruimos el array de colors completo.
+      const colorsPayload = (p.colors || []).map(c => ({
+        nombre:        c.nombre,
+        estado:        c.estado || 'activo',
+        precio_oferta: c.estado === 'oferta' ? c.precio_oferta : null,
+        stock_bajo:    c.stock_bajo === true,
+        fotos:         (c.photos || []).filter(u => u && u.trim()),
+      }));
+
+      const r = await apiAdmin('save_product', {
+        product: productPayload,
+        colors:  colorsPayload,
+      });
+      if (r.ok) { savedCount++; delete p._lpDirty; }
+      else { failedCount++; }
+    }
+
     if (btn) { btn.textContent = '💾 Guardar configuración'; btn.disabled = false; }
+
+    if (failedCount > 0) {
+      toast(`Configuración guardada, pero ${failedCount} producto(s) fallaron al actualizar.`, true);
+    } else if (savedCount > 0) {
+      toast(`✅ Configuración guardada. ${savedCount} producto(s) actualizados.`);
+    } else {
+      toast('✅ Configuración guardada');
+    }
+
+    renderPersonalizacion();    // refresca para reflejar los valores normalizados
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GALERÍA DE EJEMPLOS — Personalización láser (Sesión 28 Bloque B)
+  // ───────────────────────────────────────────────────────────────
+  // CRUD de la tabla `personalizacion_examples` desde el admin.
+  // Cada ejemplo es:
+  //   { id, tipo, url, descripcion, colores[], orden, activo }
+  //
+  // Storage: bucket público `personalizacion-examples`. Mismo patrón
+  // que `product-photos` (signed upload + URL pública).
+  //
+  // Estado: state.lpExamples se llena con loadLpExamples(). Mientras
+  // se edita un ejemplo en modal, su data temporal vive en variables
+  // de scope local de las funciones (no contamina state).
+  // ═══════════════════════════════════════════════════════════════
+
+  /** Carga la lista de ejemplos desde el backend y la pinta. */
+  async function loadLpExamples() {
+    const cont = $('lpExamplesList');
+    if (!cont) return;
+
+    const { ok, data } = await apiAdmin('list_personalizacion_examples');
+    if (!ok) {
+      cont.innerHTML = '<div class="laser-empty">Error cargando galería</div>';
+      return;
+    }
+
+    state.lpExamples = data?.examples || [];
+    renderLpExamples();
+  }
+
+  /** Pinta los thumbnails de la galería en grid. */
+  function renderLpExamples() {
+    const cont = $('lpExamplesList');
+    if (!cont) return;
+
+    const list = state.lpExamples || [];
+    if (list.length === 0) {
+      cont.innerHTML = '<div class="laser-empty">No hay ejemplos cargados todavía. Usá el botón "+ Subir ejemplo" arriba.</div>';
+      return;
+    }
+
+    const tipoLabels = {
+      adelante: '🖼️ Adelante',
+      interior: '📐 Interior',
+      atras:    '🔖 Atrás',
+      texto:    '✍️ Texto',
+    };
+
+    cont.innerHTML =
+      '<div class="lp-ex-grid">' +
+      list.map(ex => {
+        const inactiveTag = ex.activo ? '' : '<div class="lp-ex-card__inactive">Oculto</div>';
+        const colores = (Array.isArray(ex.colores) && ex.colores.length > 0)
+          ? ex.colores.join(', ')
+          : 'Todos los colores';
+        return `
+          <div class="lp-ex-card" onclick="openLpExampleEdit('${esc(ex.id)}')">
+            ${inactiveTag}
+            <img src="${esc(ex.url)}" class="lp-ex-card__img" alt="" loading="lazy">
+            <div class="lp-ex-card__info">
+              <div class="lp-ex-card__tipo">${tipoLabels[ex.tipo] || ex.tipo}</div>
+              <div>${esc(colores)}</div>
+            </div>
+          </div>`;
+      }).join('') +
+      '</div>';
+  }
+
+  /** Abre el modal con datos vacíos para subir un ejemplo nuevo. */
+  function openLpExampleNew() {
+    setText('lpExampleModalTitle', 'Subir ejemplo');
+    $('lpExId').value          = '';
+    $('lpExUrl').value         = '';
+    $('lpExTipo').value        = 'adelante';
+    $('lpExDescripcion').value = '';
+    $('lpExOrden').value       = '0';
+    $('lpExActivo').value      = 'true';
+    setHTML('lpExImagePreview', '');
+    renderLpExampleColoresChecks([]);
+
+    // Botón "Eliminar" oculto en modo "nuevo"
+    const delBtn = $('lpExDeleteBtn');
+    if (delBtn) delBtn.style.display = 'none';
+
+    const modal = $('lpExampleModal');
+    if (modal) modal.classList.add('open');
+  }
+
+  /** Abre el modal con los datos de un ejemplo existente para editarlo. */
+  function openLpExampleEdit(id) {
+    const ex = (state.lpExamples || []).find(e => e.id === id);
+    if (!ex) { toast('Ejemplo no encontrado', true); return; }
+
+    setText('lpExampleModalTitle', 'Editar ejemplo');
+    $('lpExId').value          = ex.id;
+    $('lpExUrl').value         = ex.url;
+    $('lpExTipo').value        = ex.tipo || 'adelante';
+    $('lpExDescripcion').value = ex.descripcion || '';
+    $('lpExOrden').value       = ex.orden ?? 0;
+    $('lpExActivo').value      = ex.activo ? 'true' : 'false';
+    setHTML('lpExImagePreview', `<img src="${esc(ex.url)}" alt="">`);
+    renderLpExampleColoresChecks(Array.isArray(ex.colores) ? ex.colores : []);
+
+    // Botón "Eliminar" visible solo cuando hay id
+    const delBtn = $('lpExDeleteBtn');
+    if (delBtn) delBtn.style.display = '';
+
+    const modal = $('lpExampleModal');
+    if (modal) modal.classList.add('open');
+  }
+
+  function closeLpExampleModal() {
+    const modal = $('lpExampleModal');
+    if (modal) modal.classList.remove('open');
+  }
+
+  /** Renderiza los checkboxes de colores del catálogo. Marca los que vienen
+   *  pre-seleccionados (`selectedColors`). Los nombres de colores se sacan
+   *  de los productos cargados en state.products (sin duplicar). */
+  function renderLpExampleColoresChecks(selectedColors) {
+    const cont = $('lpExColoresChecks');
+    if (!cont) return;
+
+    // Recolectar todos los colores únicos del catálogo
+    const set = new Set();
+    (state.products || []).forEach(p => {
+      (p.colors || []).forEach(c => {
+        if (c.nombre && c.nombre.trim()) set.add(c.nombre.trim());
+      });
+    });
+    const allColors = Array.from(set).sort();
+
+    if (allColors.length === 0) {
+      cont.innerHTML = '<div class="fhint">No hay colores cargados todavía.</div>';
+      return;
+    }
+
+    const sel = new Set((selectedColors || []).map(c => c.trim()));
+    cont.innerHTML = allColors.map(c => `
+      <label>
+        <input type="checkbox" value="${esc(c)}" ${sel.has(c) ? 'checked' : ''}>
+        <span>${esc(c)}</span>
+      </label>
+    `).join('');
+  }
+
+  /** Lee qué colores están tildados en el modal. */
+  function getLpExampleSelectedColores() {
+    const cont = $('lpExColoresChecks');
+    if (!cont) return [];
+    return Array.from(cont.querySelectorAll('input[type="checkbox"]:checked'))
+      .map(i => i.value);
+  }
+
+  /** Subir foto desde el equipo del usuario al bucket público. */
+  function pickLpExampleFile() {
+    const f = document.createElement('input');
+    f.type = 'file'; f.accept = 'image/*';
+    f.onchange = async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      // Preview local instantáneo
+      const reader = new FileReader();
+      reader.onload = ev => setHTML('lpExImagePreview', `<img src="${ev.target.result}" alt="">`);
+      reader.readAsDataURL(file);
+
+      toast('⏳ Subiendo imagen...');
+
+      // 1) Signed URL del bucket público de ejemplos
+      const filename = `ejemplo-${Date.now()}.${(file.name.split('.').pop() || 'jpg').toLowerCase()}`;
+      const { ok, data } = await apiAdmin('get_personalizacion_example_upload_url', { filename });
+      if (!ok || !data?.uploadUrl) {
+        toast('Error pidiendo URL de subida', true);
+        return;
+      }
+
+      // 2) PUT directo a Supabase Storage
+      try {
+        const putRes = await fetch(data.uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || 'image/jpeg' },
+          body: file,
+        });
+        if (!putRes.ok) throw new Error('PUT failed');
+      } catch (e) {
+        console.error('[lp-ex] error subiendo:', e);
+        toast('Error al subir la imagen', true);
+        return;
+      }
+
+      // 3) Llenar el campo URL con la pública
+      $('lpExUrl').value = data.publicUrl;
+      setHTML('lpExImagePreview', `<img src="${esc(data.publicUrl)}" alt="">`);
+      toast('✅ Imagen subida');
+    };
+    f.click();
+  }
+
+  /** Persiste el ejemplo (insert si no tiene id, update si lo tiene). */
+  async function saveLpExample() {
+    const id          = ($('lpExId')?.value || '').trim();
+    const url         = ($('lpExUrl')?.value || '').trim();
+    const tipo        = $('lpExTipo')?.value || 'adelante';
+    const descripcion = ($('lpExDescripcion')?.value || '').trim();
+    const orden       = parseInt($('lpExOrden')?.value, 10) || 0;
+    const activo      = $('lpExActivo')?.value === 'true';
+    const colores     = getLpExampleSelectedColores();
+
+    if (!url) { toast('Subí o pegá una URL de imagen', true); return; }
+    if (!['adelante', 'interior', 'atras', 'texto'].includes(tipo)) {
+      toast('Tipo de grabado inválido', true);
+      return;
+    }
+
+    const example = {
+      tipo, url, descripcion, colores, orden, activo,
+    };
+    if (id) example.id = id;
+
+    const btn = $('lpExSaveBtn');
+    if (btn) { btn.textContent = '⏳ Guardando...'; btn.disabled = true; }
+
+    const { ok, data } = await apiAdmin('save_personalizacion_example', { example });
+
+    if (btn) { btn.textContent = '💾 Guardar'; btn.disabled = false; }
 
     if (!ok) {
       toast('Error guardando' + (data?.message ? ': ' + data.message : ''), true);
       return;
     }
 
-    toast('✅ Configuración de personalización guardada');
-    renderPersonalizacion();    // refresca para reflejar los valores normalizados
+    toast('✅ Ejemplo guardado');
+    closeLpExampleModal();
+    await loadLpExamples();
+  }
+
+  /** Elimina el ejemplo actual del modal. */
+  async function deleteLpExample() {
+    const id = ($('lpExId')?.value || '').trim();
+    if (!id) return;
+    if (!confirm('¿Eliminar este ejemplo? La foto se quita de la galería del sitio. (La imagen del bucket queda — la limpiará el cron.)')) return;
+
+    const { ok, data } = await apiAdmin('delete_personalizacion_example', { id });
+    if (!ok) {
+      toast('Error eliminando' + (data?.message ? ': ' + data.message : ''), true);
+      return;
+    }
+
+    toast('✅ Ejemplo eliminado');
+    closeLpExampleModal();
+    await loadLpExamples();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1970,6 +2329,14 @@
   window.savePersonalizacion = savePersonalizacion;
   window.toggleLpMaster      = toggleLpMaster;
   window.toggleLpProduct     = toggleLpProduct;
+  // Galería de ejemplos (Sesión 28 Bloque B)
+  window.loadLpExamples      = loadLpExamples;
+  window.openLpExampleNew    = openLpExampleNew;
+  window.openLpExampleEdit   = openLpExampleEdit;
+  window.closeLpExampleModal = closeLpExampleModal;
+  window.pickLpExampleFile   = pickLpExampleFile;
+  window.saveLpExample       = saveLpExample;
+  window.deleteLpExample     = deleteLpExample;
 
   // ═══════════════════════════════════════════════════════════════
   // BOOT — decidir si mostrar login o entrar directo

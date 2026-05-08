@@ -87,6 +87,13 @@
       colors,
       specs:  Array.isArray(row.especificaciones) ? row.especificaciones : [],
       extras,
+      // Personalización láser (Sesión 28 Bloque B): flags por producto.
+      // Defaults a false si la columna aún no existe en DB (para que no
+      // rompa si alguien tiene cache de un schema anterior).
+      permite_grabado_adelante: row.permite_grabado_adelante === true,
+      permite_grabado_interior: row.permite_grabado_interior === true,
+      permite_grabado_atras:    row.permite_grabado_atras    === true,
+      permite_grabado_texto:    row.permite_grabado_texto    === true,
     };
   }
 
@@ -228,6 +235,28 @@
     }
   }
 
+  /** Trae los ejemplos ACTIVOS de la galería de personalización
+   *  (Sesión 28 Bloque B). RLS filtra por activo=true automáticamente,
+   *  pero igual lo pedimos explícito por claridad.
+   *
+   *  Devuelve array de { id, tipo, url, descripcion, colores[], orden }.
+   *  Si la query falla (tabla no existe en deploys viejos), retorna [].
+   */
+  async function fetchPersonalizacionExamples() {
+    try {
+      const path =
+        '/personalizacion_examples' +
+        '?select=id,tipo,url,descripcion,colores,orden' +
+        '&activo=eq.true' +
+        '&order=orden.asc';
+      const rows = await supaGet(path);
+      return Array.isArray(rows) ? rows : [];
+    } catch (e) {
+      console.warn('[founderDB] No se pudieron leer ejemplos de personalización:', e);
+      return [];
+    }
+  }
+
   /** Clona profundo los defaults para que el caller pueda mutarlos sin
    *  contaminar la fuente. JSON parse/stringify alcanza para esta forma
    *  de objeto (sin funciones, sin Dates, sin refs circulares). */
@@ -261,6 +290,7 @@
     fetchPhotoMap,
     fetchBannerUrl,
     fetchPersonalizacionConfig,
+    fetchPersonalizacionExamples,
     PERSONALIZACION_DEFAULTS,
     // Útiles para debugging en consola del navegador
     _url:  SUPABASE_URL,
