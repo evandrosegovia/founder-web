@@ -1,9 +1,178 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 25 — cierre EXITOSO con 7 entregas + análisis competitivo (04/05/2026)
-**Próxima sesión:** 26 — **Arranca con el menú de 4 opciones técnicas** acordado al cierre de Sesión 25 (sección "🎯 PRIORIDAD #1 PARA SESIÓN 26"). Resumen: A) resolver `info@founder.uy` con forwarder gratis (urgente, 15 min, sin código), B) sistema de reseñas reales (1.5-2 hs), C) SEO técnico (1-1.5 hs), D) limpieza de deuda técnica (30-45 min). Recomendación: empezar por **A + C** (urgente primero + base SEO universal). Decisiones de negocio (personalización, garantía, narrativa, programa de primeros clientes) quedan pendientes para que el usuario las piense entre sesiones.
+**Última actualización:** Sesión 26 — cierre EXITOSO con Bloque A + Bloque C completos: ImprovMX para `info@founder.uy`, SEO técnico completo (sitemap dinámico, robots, schema, meta tags, og-image), Google Search Console verificado y sitemap enviado (07/05/2026)
+**Próxima sesión:** 27 — Decidir entre las **opciones B + D** que quedaron pendientes del menú original de Sesión 25 (reseñas reales + limpieza de deuda técnica) o avanzar con las **decisiones de negocio** que siguen abiertas (ver "🤔 Preguntas de negocio abiertas" más abajo). Ver sección "🚀 Para iniciar el chat siguiente (Sesión 27)" al final.
 
 ---
+
+## ⚡ SESIÓN 26 — Bloque A (ImprovMX) + Bloque C completo (SEO técnico end-to-end)
+
+**Sesión muy productiva: combo A + C cerrado al 100% según el plan acordado al cierre de Sesión 25.** El sitio pasó de tener `info@founder.uy` como remitente sin inbox + SEO técnico parcial a: 1) email completamente operativo bidireccional, 2) base SEO universal lista (sitemap, robots, schema, meta tags, og-image), 3) Google Search Console verificado e indexando.
+
+**Lo más importante a recordar:** durante la sesión se descubrió que el DNS del dominio NO está en Cloudflare (como asumía el plan original) sino en **Vercel**. Por eso se cambió la estrategia y se usó **ImprovMX** (gratis, no requiere mover nameservers) en lugar de Cloudflare Email Routing. Funcionalmente idéntico, sin riesgo de perder configuración existente (Resend, DMARC, Meta domain verification).
+
+### 🆕 Bloque A — `info@founder.uy` operativo vía ImprovMX
+
+**Decisión arquitectural:** **NO mover el DNS a Cloudflare** (hubiera obligado a recrear todos los registros existentes con riesgo de romper Resend, Meta, DMARC). En cambio: agregar 3 registros DNS en Vercel (los nameservers actuales) que apuntan a los servidores de ImprovMX.
+
+**Configuración aplicada en Vercel DNS:**
+
+| Tipo | Name | Value | Priority | Comentario |
+|---|---|---|---|---|
+| MX | `@` | `mx1.improvmx.com` | 10 | ImprovMX MX1 |
+| MX | `@` | `mx2.improvmx.com` | 20 | ImprovMX MX2 |
+| TXT | `@` | `v=spf1 include:spf.improvmx.com ~all` | — | SPF de ImprovMX |
+
+**Cuenta ImprovMX creada:** `founder.uy@gmail.com` (mismo Gmail que se usa para Resend y otros servicios).
+
+**Alias configurado por defecto (catch-all):** `*@founder.uy → founder.uy@gmail.com`. Significa que cualquier email a cualquier dirección del dominio (`info@`, `hola@`, `ventas@`, `contacto@`, etc.) se reenvía al Gmail. **No hay que crear alias específicos.**
+
+**Por qué NO hay conflicto con Resend (que también usa SPF):**
+- Resend está configurado en el subdominio `send.founder.uy` (verificado en Sesión 22 con `v=spf1 include:amazonses.com ~all`).
+- ImprovMX está en el dominio raíz `founder.uy`.
+- Son espacios DNS distintos, no se pisan. Cada uno tiene su propio SPF.
+
+**Test end-to-end realizado:** email enviado desde otra cuenta a `info@founder.uy` → llegó correctamente a `founder.uy@gmail.com`. Confirmación visual en ImprovMX dashboard: estado `"Email forwarding active"` en verde + 3 checks verdes en DNS Settings.
+
+**Pendiente menor para próxima sesión (no bloqueante):** configurar Gmail para que cuando el usuario responda, el "From:" muestre `info@founder.uy` (en lugar del Gmail personal). Hoy responde como Gmail; funcional pero menos profesional. Esto requiere la función "Send mail as" de Gmail + un paso adicional en ImprovMX (SMTP credentials).
+
+### 🆕 Bloque C — SEO técnico completo
+
+**Objetivo:** dotar al sitio de la base SEO universal que sirva para cualquier estrategia futura, sin tocar contenido ni narrativa de marca. Tráfico orgánico (Google) es **gratis** vs Meta Ads pagado.
+
+#### C1 — `robots.txt` y `sitemap.xml` dinámico
+
+**Archivos NUEVOS creados:**
+
+`robots.txt` (raíz):
+- `User-agent: *` → `Allow: /` (todo público por default)
+- `Disallow:` para `/admin.html`, `/api/`, `/checkout.html`, `/seguimiento.html`, `/*?mp=*` (parámetros de Mercado Pago tras volver del checkout — generaban URLs duplicadas)
+- `Sitemap:` apunta a `https://www.founder.uy/sitemap.xml`
+
+`api/sitemap.js` (NUEVO endpoint serverless):
+- Genera el `<urlset>` dinámicamente.
+- 5 páginas estáticas hardcodeadas con priority/changefreq apropiados (home 1.0 weekly, sobre-nosotros 0.7 monthly, etc.).
+- N páginas de productos: query `SELECT id, updated_at FROM products` → genera `<url>` con `lastmod` real por producto.
+- Cache 1 hora en CDN (`public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400`).
+- Si Supabase falla, fallback a solo páginas estáticas (no devuelve 500 a Google).
+- Importa `./_lib/supabase.js` (igual patrón que el resto de endpoints).
+
+`vercel.json` actualizado:
+- Agregado bloque `rewrites`: `/sitemap.xml → /api/sitemap` (URL pública limpia, ejecuta el endpoint).
+- Agregado header para `/robots.txt`: `Content-Type: text/plain; charset=utf-8` + `Cache-Control: public, max-age=3600`.
+- Bloque `headers` para `/api/(.*)` y bloque `functions` con `maxDuration: 15` se conservaron tal cual.
+
+**Validación en producción tras deploy:**
+- `https://www.founder.uy/robots.txt` → HTTP 200, contenido correcto.
+- `https://www.founder.uy/sitemap.xml` → HTTP 200, XML válido con **9 URLs** (5 estáticas + 4 productos reales con sus `updated_at` correctos).
+
+**Nota de debug:** durante la subida inicial el archivo `sitemap.js` quedó por error dentro de `api/_lib/` lo que generó 404. Movido a `api/sitemap.js` (al mismo nivel que `mp-webhook.js`, `checkout.js`, etc.) y funcionó instantáneamente. **Para futuro: los endpoints de Vercel funciones van directo en `api/`, no en subdirectorios.** `_lib/` es solo para helpers internos importados.
+
+#### C2 — Schema.org Organization expandido en `index.html`
+
+**Antes:** bloque `Store` mínimo (4 campos: name, url, telephone, address country).
+
+**Después:** bloque `Store` completo con **15 campos** para Google Knowledge Graph:
+- `@id`, `name`, `alternateName`, `description`, `url`
+- `logo` y `image` apuntando a `https://www.founder.uy/og-image.jpg`
+- `telephone` (`+598098550096`), `email` (`info@founder.uy`), `priceRange` (`$$`)
+- `areaServed` → Country `Uruguay`
+- `address` → PostalAddress `{addressLocality: Prado, addressRegion: Montevideo, addressCountry: UY}`
+- `sameAs` → array con `["https://www.instagram.com/founder.uy/", "https://www.facebook.com/founder.uy.oficial/"]`
+- `potentialAction` → SearchAction (sitelink searchbox de Google)
+
+**Validado con Google Rich Results Test:** 2 elementos válidos detectados (`Empresas locales` + `Organización`), rastreado correctamente. **Únicos warnings:** campos `postalCode` y `streetAddress` faltantes en address (ambos marcados `(opcional)` por Google) — **decisión consciente** del usuario de no exponer dirección exacta, solo zona genérica "Prado". Si en el futuro hay local físico con dirección pública, agregar esos 2 campos a la PostalAddress.
+
+#### C3 — Meta tags completas en 5 páginas estáticas + 1 funcional
+
+**Páginas con SEO completo (index, follow):**
+- `sobre-nosotros.html`
+- `contacto.html`
+- `envios.html`
+- `tecnologia-rfid.html` (`og:type=article` por ser contenido educativo)
+
+**Páginas con SEO + `noindex, nofollow` (utilitarias, no aportan valor SEO):**
+- `seguimiento.html`
+- `checkout.html`
+
+**Patrón aplicado en cada página** (consistencia total):
+- **SEO Primary:** `<title>`, `meta description`, `meta keywords`, `meta author`, `meta robots`, `link canonical` específico por página.
+- **Open Graph:** 7 tags (`og:type`, `og:url`, `og:title`, `og:description`, `og:image`, `og:locale=es_UY`, `og:site_name=Founder.uy`).
+- **Twitter Cards:** 4 tags (`twitter:card=summary_large_image`, `twitter:title`, `twitter:description`, `twitter:image`).
+
+**index.html también recibió mejoras:**
+- Agregado `og:image`, `og:site_name`, `twitter:image` y `meta robots` que faltaban.
+- Schema.org expandido (ver C2).
+
+**Validado con metatags.io:** previews correctos en Google, Facebook, Twitter.
+
+#### og-image.jpg (asset crítico para previews sociales)
+
+**Archivo:** `og-image.jpg` en raíz del proyecto. **Dimensiones:** 1200×630 px (estándar Open Graph). **Peso:** 60.5 KB. **Formato:** JPEG real progresivo, calidad 90.
+
+**Diseño:** generado vía Canva MCP integration con instrucciones específicas (paleta `#141414` + `#c9a96e` + `#f8f8f4`, layout 2 columnas, tipografía editorial). Iterado con el usuario hasta obtener composición balanceada (texto a la izquierda + foto de billeteras a la derecha + URL `FOUNDER.UY` en dorado).
+
+**Tomado en cuenta para futuras iteraciones:** la foto de billeteras es de stock generado por Canva, no productos reales de Founder. Si en algún momento esto se quiere reemplazar por foto real del catálogo, regenerar el JPG en Canva y volver a subir `og-image.jpg` con el mismo nombre (todos los HTMLs ya apuntan ahí, no hay que tocar código).
+
+#### Google Search Console — verificado + sitemap enviado
+
+**Propiedad agregada:** tipo "Dominio" (`founder.uy`) — cubre todos los subdominios. Mejor que "Prefijo de URL" porque incluye `www.`, `send.`, etc.
+
+**Verificación vía DNS:** TXT record agregado en Vercel: `google-site-verification=bbDzdg4tXspugrmaCypotegkywEmawCfIsab` con name `@`. Verificación instantánea (<5 min).
+
+⚠️ **REGLA CRÍTICA:** **NO BORRAR** el TXT record `google-site-verification=...` de Vercel. Si se borra, Google pierde la verificación y hay que reagregar la propiedad desde cero.
+
+**Sitemap enviado:** `https://founder.uy/sitemap.xml` → estado `Correcto`, **9 páginas descubiertas** instantáneamente (Google leyó el XML al recibirlo).
+
+**Tiempos esperados:**
+- Crawleo de las 9 URLs: 2-7 días.
+- Primera indexación visible en búsquedas: 7-14 días.
+- Posicionamiento estable y datos en dashboard: 1-3 meses.
+
+### 📐 Patrón "respuesta a fallos" durante la sesión
+
+Durante la sesión hubo varios momentos donde algo no funcionó al primer intento. Documentar el patrón porque es replicable:
+
+1. **Discrepancia entre archivos uploaded y producción:** los archivos del proyecto que el usuario subió al chat **no reflejaban exactamente lo que estaba en producción** (ej: fonts en algunos HTMLs decían `swap` cuando ESTADO.md y producción tenían `optional`). Decisión: **trabajar sobre lo que dice ESTADO.md + verificar con `dig`/`curl` cuando hay duda**, no asumir que los archivos del chat están sincronizados.
+2. **404 inicial del sitemap:** archivo subido a `api/_lib/` por error. Diagnosticado con captura de la estructura GitHub. Movido a `api/`, funcionó instantáneamente.
+3. **Cloudinary vs Cloudflare:** el usuario confundió ambos servicios (entendible, los dos empiezan con "Cloud"). Resuelto con `dig NS founder.uy` que confirmó nameservers de Vercel — ni Cloudflare ni Cloudinary administran el DNS.
+
+### 📂 Archivos modificados / creados en Sesión 26
+
+**Nuevos:**
+- `robots.txt` (raíz)
+- `api/sitemap.js` (endpoint serverless)
+- `og-image.jpg` (raíz, 1200×630, 60.5 KB)
+
+**Modificados:**
+- `vercel.json` (agregado `rewrites` + header para robots.txt; conservado todo lo previo)
+- `index.html` (Schema.org expandido + og:image/og:site_name/twitter:image agregados + meta robots)
+- `sobre-nosotros.html` (SEO completo: keywords, robots, canonical, OG, Twitter)
+- `contacto.html` (SEO completo)
+- `envios.html` (SEO completo)
+- `tecnologia-rfid.html` (SEO completo, og:type=article)
+- `seguimiento.html` (SEO completo + noindex/nofollow)
+- `checkout.html` (SEO completo + conservado noindex/nofollow original)
+
+**No tocados intencionalmente:**
+- `producto.html` ya tenía SEO completo y un Schema.org Product correcto. Tiene un bug latente de SEO conocido (el `og:image` se setea dinámicamente vía JS — los crawlers no lo ven). **No es alcance de Sesión 26**, queda anotado para futuro.
+- `admin.html` no necesita SEO (bloqueado en robots.txt).
+- Ningún archivo `.js` fue tocado.
+
+### 🔄 Plan de rollback (en caso de necesidad)
+
+| Cambio | Cómo revertir |
+|---|---|
+| ImprovMX | Borrar los 3 DNS records (2 MX + 1 TXT SPF) en Vercel. ImprovMX se desactiva solo. |
+| robots.txt | Borrar archivo en GitHub. |
+| sitemap.xml | Borrar `api/sitemap.js` Y borrar bloque `rewrites` de `vercel.json`. |
+| Schema.org expandido | Revertir bloque `<script type="application/ld+json">` en `index.html` desde Git history (volver al `Store` mínimo de 4 campos). |
+| Meta tags páginas estáticas | Revertir cada HTML desde Git history. Aditivo y bien aislado en bloque marcado `<!-- ============ SEO ... ============ -->`. |
+| og-image.jpg | Borrar el archivo. **Los HTMLs siguen funcionando**, solo se rompen los previews al compartir links. |
+| Google Search Console | NO borrar el TXT `google-site-verification=...`. Si se quiere salir de Search Console, hacerlo desde el dashboard de Google primero, después se puede borrar el TXT. |
+
+---
+
 
 ## ⚡ SESIÓN 25 — 7 entregas: fonts + imágenes + LQIP + scroll-reveal + DMARC + emails de estado
 
@@ -282,22 +451,13 @@ IIFE auto-contenida con:
 
 ---
 
-## 🚀 Para iniciar el chat siguiente (Sesión 26)
+## 🚀 Para iniciar el chat siguiente (Sesión 27)
 
-### 🎯 PRIORIDAD #1 PARA SESIÓN 26 — Menú de 4 opciones técnicas acordado al cierre de Sesión 25
+### 🎯 PRIORIDAD #1 PARA SESIÓN 27 — Lo que quedó pendiente del menú de Sesión 25
 
-Al final de Sesión 25 hicimos un **análisis competitivo honesto** vs Baleine, Inverness, Liguria, MBH. Conclusión: **el sitio técnicamente está al nivel o por arriba de la competencia** — el problema de Founder NO es técnico, es de **posicionamiento + prueba social + narrativa de marca**. Sumar más features al sitio no mueve la aguja en ventas. Lo que mueve la aguja son decisiones de NEGOCIO (personalización con grabado, programa de primeros clientes con reseñas reales, narrativa de marca, garantía a 1 año).
+En Sesión 26 se cerraron las opciones **A (info@founder.uy)** y **C (SEO técnico)** del menú original de 4 opciones. Quedan abiertas **B y D**, sumadas al pendiente menor de Sesión 26 sobre Gmail "Send mail as".
 
-Esas decisiones de negocio **quedan pendientes para que el usuario las piense entre sesiones** (ver bloque "🤔 Preguntas de negocio abiertas" más abajo). Mientras tanto, en Sesión 26 avanzamos con **una de estas 4 opciones técnicas que NO dependen de esas decisiones**:
-
-#### 🔥 Opción A — Resolver `info@founder.uy` (forwarder gratis con Cloudflare Email Routing)
-**Tiempo:** 15-20 minutos. **Sin código.** Solo configuración DNS.
-
-Hoy `info@founder.uy` es un remitente sin inbox real (Resend solo envía, no recibe). **Cualquier cliente que respondió alguna vez a un email automático, ese reply se perdió.** Con cada compra el problema crece. Bloqueante para cualquier crecimiento real (especialmente si después se corren campañas Meta Ads).
-
-Solución: Cloudflare Email Routing (gratis ilimitado) o Improvmx (gratis hasta 10 forwards) reenvían automáticamente todo lo que llegue a `info@founder.uy` al Gmail personal del usuario.
-
-#### 🟡 Opción B — Sistema de reseñas reales (base técnica)
+#### 🟡 Opción B — Sistema de reseñas reales (base técnica) — pendiente desde Sesión 25
 **Tiempo:** 1.5-2 horas. Sesión completa de código.
 
 Hoy `producto.html` muestra 4 reseñas mock hardcodeadas (declarado como deuda técnica desde Sesión 20). Cuando el usuario decida lanzar "programa de primeros clientes" (decisión de negocio pendiente), no tiene infraestructura para gestionar reseñas reales.
@@ -308,39 +468,54 @@ Implementar:
 - Endpoint `/api/reviews` con acciones `create` (público con token), `list_public` (para producto.html), `list_admin`, `approve`, `reject`.
 - Panel admin para moderar reseñas antes de publicar (anti-spam crítico).
 - `producto.html` lee reseñas reales con fallback a mocks si no hay aprobadas.
+- **Bonus SEO:** una vez con reseñas reales aprobadas, agregar `aggregateRating` y `review` al Schema.org `Product` de `producto.html` → habilita estrellitas en los resultados de Google. Esto fue mencionado en Sesión 26 como mejora pendiente del Schema.org.
 - Diferencial vs Baleine: reseñas **vinculadas a pedidos verificados** = más creíbles que reseñas anónimas.
 
-#### 🟢 Opción C — SEO técnico (sin tocar contenido ni narrativa)
-**Tiempo:** 1-1.5 horas.
-
-Mejoras técnicas de SEO que no requieren decisiones de marca:
-- `sitemap.xml` generado automáticamente desde `products` de Supabase.
-- `robots.txt` correcto (hoy probablemente no existe o es default de Vercel).
-- Schema.org `Organization` (datos de empresa para Google Knowledge Graph).
-- Schema.org `BreadcrumbList` en `producto.html`.
-- Schema.org `Product` review fields cuando estén las reseñas reales (post-Opción B si se hace).
-- Meta tags faltantes/débiles en páginas estáticas (contacto, sobre-nosotros, envíos, tecnologia-rfid).
-- Open Graph optimizado por página (hoy hay genérico; cada página debería tener og:title y og:description específicos).
-- Canonical URLs correctas.
-
-Por qué importa: cuando alguien busque "billetera RFID Uruguay", "billetera con grabado Montevideo", "tarjetero anticlonación Montevideo" — Founder no aparece hoy. SEO orgánico es tráfico **gratis** vs Meta Ads pagado. Da resultado en 3-6 meses, plantar la semilla ahora.
-
-#### 🔵 Opción D — Limpieza de deuda técnica menor
-**Tiempo:** 30-45 minutos. **La menos impactante** de las 4.
+#### 🔵 Opción D — Limpieza de deuda técnica menor — pendiente desde Sesión 25
+**Tiempo:** 30-45 minutos. **La menos impactante** de las 4 originales, pero higiénica.
 
 Cosas chicas pendientes hace tiempo:
-- `ALTER TABLE products DROP COLUMN banner_url;` (legacy desde Sesión 21).
+- `ALTER TABLE products DROP COLUMN banner_url;` (legacy desde Sesión 21, no se usa en ninguna parte del código).
 - Limpiar pedidos prueba acumulados en admin (5 min). ⚠️ NO BORRAR `F203641` (Florencia Risso, cliente real).
 - Pendientes Meta Business: renombrar dataset "NO" `1472474751248750` con prefijo `ZZ-`, ignorar Ad Account `26140748312219895`, agregar email de contacto al Instagram.
-- Auditoría ligera de que todos los archivos de Sesión 25 quedaron bien subidos.
+- Auditoría ligera de que todos los archivos de Sesiones 25-26 quedaron bien subidos (verificación pre-flight rápida).
+
+#### 🆕 Opción E — "Send mail as info@founder.uy" desde Gmail — nuevo pendiente de Sesión 26
+**Tiempo:** 20-30 minutos. Sin código. Configuración de Gmail + ImprovMX.
+
+Hoy cuando el usuario responde un email reenviado por ImprovMX, Gmail lo manda con el "From:" de su Gmail personal. Funcionalmente correcto pero menos profesional. Configurar Gmail "Send mail as" para que el From: sea `info@founder.uy`. Requiere:
+- En ImprovMX: generar SMTP credentials (función "SMTP Credentials" del dashboard).
+- En Gmail → Settings → Accounts → "Send mail as" → agregar `info@founder.uy` con esos credentials.
+- Verificar el código que Gmail manda al alias.
+
+**No bloqueante** — el reenvío funciona perfecto sin esto. Es polish.
+
+#### 📈 Opción F — Esperar datos de Search Console y optimizar — nuevo pendiente de Sesión 26
+**Tiempo:** ~1 hora cuando haya datos.
+
+Search Console tarda 7-14 días en mostrar datos útiles. Una vez con datos:
+- Ver qué keywords te encuentran ("Performance" tab).
+- Ver qué páginas Google indexó vs cuáles tuvo problemas ("Pages" tab).
+- Ajustar `<title>` y `meta description` de páginas que tengan baja CTR (clic-through-rate).
+- Revisar Core Web Vitals reales (datos de campo, no de lab) en "Experience" tab.
+
+**Esta opción solo tiene sentido a partir de ~21/05/2026** (2 semanas después del envío del sitemap). Antes no hay datos.
 
 #### 🎯 Recomendación al usuario (mi sugerencia honesta)
-**Empezar por A** porque es bloqueante y rápido.
-**Después C** porque es SEO universal (sirve para cualquier estrategia futura).
-**B** queda para cuando el usuario decida el "programa de primeros clientes".
-**D** se hace en cualquier momento, no urgente.
 
-Combo recomendado: **A + C en una sola sesión** (~1.5-2 hs total).
+Las opciones técnicas restantes son **marginales en impacto** vs lo que ya está hecho. El sitio ya tiene:
+- ✅ Performance excelente (Sesión 24-25)
+- ✅ Email operativo (Sesión 26 / Bloque A)
+- ✅ Base SEO completa (Sesión 26 / Bloque C)
+- ✅ Emails transaccionales (Sesión 25)
+- ✅ Tracking Meta funcional (Sesiones 17-18)
+
+**Lo que mueve la aguja desde acá NO es más código.** Es lo que dice el bloque "🤔 Preguntas de negocio abiertas" más abajo. El usuario tiene que tomar esas decisiones de negocio (personalización con grabado, programa de primeros clientes con reseñas reales, narrativa de marca, garantía a 1 año, presupuesto marketing) para que cualquier estrategia tenga sentido.
+
+**Sugerencia priorizada para Sesión 27:**
+1. Si el usuario ya pensó las preguntas de negocio y decidió lanzar el "programa de primeros clientes" → ir directo con **Opción B** (reseñas reales).
+2. Si todavía no decidió y quiere avanzar igual → **Opción D + E** combo (ambas chicas, en una sesión de 1 hora total).
+3. Si ya pasaron 2+ semanas y quiere ver datos reales de SEO → **Opción F**.
 
 ---
 
@@ -356,35 +531,33 @@ Estas NO se resuelven con código. Son decisiones que el usuario tiene que tomar
 6. **¿Cuánto presupuesto real para marca/marketing los próximos 3 meses?** $5.000, $50.000, $500.000 ARS — la estrategia es totalmente distinta.
 7. **¿Subir garantía de 60 días → 1 año?** Baleine ofrece 1 año, vos 60 días. Se ve mal en commodities premium. Decisión depende de si el producto la aguanta.
 
-### 📋 Mensaje listo para pegar al iniciar Sesión 26
+### 📋 Mensaje listo para pegar al iniciar Sesión 27
 
 Pegale a Claude este mensaje al arrancar:
 
-> Leé `ESTADO.md` y retomamos después de Sesión 25. La Sesión 25 cerró
-> con 7 entregas técnicas + análisis competitivo honesto vs Baleine,
-> Inverness, Liguria, MBH. Conclusión del análisis: el sitio
-> técnicamente está al nivel o por arriba de la competencia; el
-> problema de Founder es de posicionamiento + prueba social +
-> narrativa de marca, NO es técnico. Las decisiones de negocio
-> (personalización, garantía, programa de primeros clientes,
-> narrativa) quedan pendientes para que yo las piense entre sesiones.
+> Leé `ESTADO.md` y retomamos después de Sesión 26. La Sesión 26 cerró
+> con el combo A + C completo: ImprovMX para info@founder.uy + SEO
+> técnico universal (sitemap, robots, schema, meta tags, og-image) +
+> Google Search Console verificado e indexando. Quedaron pendientes
+> del menú original de Sesión 25 las opciones **B (reseñas reales)** y
+> **D (limpieza de deuda)**, y se sumaron 2 nuevas pequeñas:
+> **E (Gmail send-as)** y **F (analizar datos de Search Console
+> cuando haya)**.
 >
-> Para Sesión 26 acordamos avanzar con una de estas 4 opciones
-> técnicas que NO dependen de esas decisiones — buscalas en
-> ESTADO.md sección "🎯 PRIORIDAD #1 PARA SESIÓN 26":
+> Mi recomendación al cierre de Sesión 26 fue: si decidiste lanzar
+> el programa de primeros clientes, hacer **Opción B**. Si todavía no
+> decidiste, hacer **D + E combo** (1 hora total). Si pasaron 2+
+> semanas desde el envío del sitemap, considerar **Opción F**.
 >
-> - **A.** Resolver `info@founder.uy` con forwarder gratis (15 min,
->   sin código, urgente).
-> - **B.** Sistema de reseñas reales (base técnica, 1.5-2 hs).
-> - **C.** SEO técnico (sitemap, schema, meta tags, 1-1.5 hs).
-> - **D.** Limpieza de deuda técnica menor (30-45 min).
->
-> Tu recomendación al cierre de Sesión 25 fue: **A + C** combo en una
-> sesión. Pero la decisión final la voy a tomar yo al arrancar Sesión 26.
+> Pero la decisión final la voy a tomar yo al arrancar Sesión 27.
 
 ---
 
-### Pendientes secundarios para Sesión 26+ (no bloqueantes)
+### Pendientes secundarios para Sesión 27+ (no bloqueantes)
+
+- **Bug latente menor en `producto.html`:** el `og:image` se setea vía JS al cargar el producto, pero los crawlers (WhatsApp, Facebook, Google) no ejecutan JS antes de leer meta tags. Resultado: cuando alguien comparta el link de un producto específico, **NO** se ve la foto del producto, se ve el `og-image.jpg` genérico de Founder (que igual queda bien, pero perdemos la oportunidad de mostrar el producto exacto). Solución: SSR del meta tag o usar OG image dinámica vía endpoint. Tiempo estimado: 30-45 min. Prioridad: baja (la imagen genérica funciona bien como fallback).
+- **Foto stock en og-image.jpg:** la imagen actual usa una foto stock de billeteras generada por Canva, no productos reales de Founder. Si en algún momento se quiere reemplazar, regenerar en Canva con foto real del catálogo y resubir como `og-image.jpg` (mismo nombre, los HTMLs ya apuntan ahí).
+- **Schema.org address sin postalCode/streetAddress:** Google detecta esto como warning opcional. Si se monta local físico con dirección pública, agregar esos 2 campos al `address` PostalAddress en el JSON-LD del index.
 
 ---
 
@@ -1510,68 +1683,47 @@ founder-web/
 
 ---
 
-## 📋 Pendientes para Sesión 26
+## 📋 Pendientes para Sesión 27
 
-> **⚠️ IMPORTANTE:** la prioridad #1 para Sesión 26 está en la sección
-> **"🎯 PRIORIDAD #1 PARA SESIÓN 26"** al inicio del documento (debajo
-> del bloque "🚀 Para iniciar el chat siguiente"). Es un menú de 4
-> opciones técnicas (A, B, C, D) acordado al cierre de Sesión 25. **Lo
-> de abajo son pendientes secundarios** que se atacan después de elegir
-> entre A/B/C/D.
+> **⚠️ IMPORTANTE:** la prioridad #1 para Sesión 27 está en la sección
+> **"🎯 PRIORIDAD #1 PARA SESIÓN 27"** al inicio del documento (debajo
+> del bloque "🚀 Para iniciar el chat siguiente (Sesión 27)"). Es el
+> menú actualizado con las opciones B y D que quedaron pendientes del
+> menú original de Sesión 25, más las opciones nuevas E y F surgidas
+> en Sesión 26. **Lo de abajo son pendientes secundarios** que se
+> atacan después de elegir entre las opciones priorizadas.
 
-### 🟡 Prioridad media — bloqueante para experiencia post-compra
-1. **Resolver `info@founder.uy` (no es inbox real)** ← descubierto en Sesión 25.
-   Hoy si un cliente responde a cualquier email transaccional (pedido confirmado,
-   pago aprobado, en camino, entregado, etc.), **el correo se pierde** porque
-   Resend solo envía, no recibe. Opciones:
-   - **Opción simple (gratis):** Improvmx o Cloudflare Email Routing — forwardean
-     `info@founder.uy` a un Gmail real. 5 min de setup en DNS.
-   - **Opción profesional:** Google Workspace ($6 USD/mes) — inbox real con
-     `@founder.uy`, soporta enviar y recibir, integra calendario y Drive.
-   - **Opción mínima:** cambiar el remitente a `noreply@founder.uy` y agregar
-     en los emails: "Para consultas escribinos a [WhatsApp]".
+### ✅ Resueltos en Sesión 26 (ya no son pendientes)
+- ~~Resolver `info@founder.uy` (no es inbox real)~~ → resuelto con ImprovMX. Funcional bidireccional al 100%.
+- ~~`sitemap.xml` y `robots.txt`~~ → resueltos (sitemap dinámico desde Supabase + robots con disallow apropiados).
+- ~~Schema.org Organization básico~~ → resuelto (ahora completo con sameAs, areaServed, address, SearchAction).
+- ~~Meta tags faltantes en páginas estáticas~~ → resueltos (5 páginas con SEO completo: keywords, robots, canonical, OG, Twitter).
+- ~~og:image específico por página~~ → resuelto a nivel base (todas usan `og-image.jpg` central). Pendiente menor: og:image dinámica por producto.
 
-### 🟢 Prioridad baja — pulido / definición del usuario
-2. **Datos bancarios reales en email de transferencia**. El template actual dice
-   "Te enviamos los datos por WhatsApp". Cuando se definan (banco, tipo de cuenta,
-   CBU, titular), agregar bloque con datos directos en el email.
-3. **Decisión sobre el modal de index.html**. Postergada desde Sesión 22.
-   Idealmente con datos de comportamiento real de campañas Meta.
-4. **Primera campaña paga de Meta Ads** con optimización de Purchase. Todo listo
-   desde Sesión 17-18. Definir presupuesto, producto, audiencia, creatividad.
-5. **Subir DMARC a `p=quarantine`** en 2-4 semanas si los reportes confirman que
-   SPF + DKIM pasan en todos los proveedores. Editar el TXT `_dmarc` en Vercel
-   y cambiar `p=none` por `p=quarantine`. **Importante:** revisar primero los
-   reportes XML que llegan a `founder.uy@gmail.com` para confirmar que ningún
-   sender legítimo falla.
-6. **Pendientes Meta Business** (3 clics en Chrome):
+### 🟢 Prioridad media — pulido / definición del usuario
+1. **Datos bancarios reales en email de transferencia**. El template actual dice "Te enviamos los datos por WhatsApp". Cuando se definan (banco, tipo de cuenta, CBU, titular), agregar bloque con datos directos en el email.
+2. **Decisión sobre el modal de index.html**. Postergada desde Sesión 22. Idealmente con datos de comportamiento real de campañas Meta.
+3. **Primera campaña paga de Meta Ads** con optimización de Purchase. Todo listo desde Sesión 17-18. Definir presupuesto, producto, audiencia, creatividad.
+4. **Subir DMARC a `p=quarantine`** en 2-4 semanas si los reportes confirman que SPF + DKIM pasan en todos los proveedores. Editar el TXT `_dmarc` en Vercel y cambiar `p=none` por `p=quarantine`. **Importante:** revisar primero los reportes XML que llegan a `founder.uy@gmail.com` para confirmar que ningún sender legítimo falla.
+5. **Pendientes Meta Business** (3 clics en Chrome):
    - Renombrar dataset "NO" (ID `1472474751248750`) con prefijo `ZZ-`.
    - Renombrar/ignorar Ad Account `26140748312219895`.
    - Agregar email de contacto al Instagram.
-7. **Drop columna `products.banner_url`** (legacy desde Sesión 21).
-   `ALTER TABLE products DROP COLUMN banner_url;`
+6. **Drop columna `products.banner_url`** (legacy desde Sesión 21). `ALTER TABLE products DROP COLUMN banner_url;` — incluido en Opción D del menú principal.
 
 ### 🔵 Direcciones nuevas (a discutir)
-- **Mejoras UX en otras páginas**: `index.html`, `contacto.html`,
-  `sobre-nosotros.html`. Consistencia con el polish de `producto.html`.
-  (El scroll-reveal de Sesión 25 ya dio un salto grande, pero las páginas
-  estáticas todavía pueden refinar tipografía, espaciados, microinteracciones.)
-- **Sistema de reseñas reales**: cuando haya clientes con compras validadas —
-  reemplazar las 4 reseñas mock de Sesión 20.
-- **Email cuando se carga `nro_seguimiento` desde admin** (action `update_order_tracking`).
-  Hoy NO dispara email — solo cambios de estado. Considerar si conviene unificar
-  o mantener separado (ej: si admin marca "En camino" + carga tracking en pasos
-  separados, hoy llega un email sin tracking y después no llega notificación
-  con el código).
-- **Schema.org breadcrumbs en producto.html** para SEO. No urgente.
+- **Mejoras UX en otras páginas**: `index.html`, `contacto.html`, `sobre-nosotros.html`. Consistencia con el polish de `producto.html`. (El scroll-reveal de Sesión 25 ya dio un salto grande, pero las páginas estáticas todavía pueden refinar tipografía, espaciados, microinteracciones.)
+- **Sistema de reseñas reales**: cuando haya clientes con compras validadas — reemplazar las 4 reseñas mock de Sesión 20. Ya está incluido como **Opción B** del menú principal de Sesión 27.
+- **Email cuando se carga `nro_seguimiento` desde admin** (action `update_order_tracking`). Hoy NO dispara email — solo cambios de estado. Considerar si conviene unificar o mantener separado (ej: si admin marca "En camino" + carga tracking en pasos separados, hoy llega un email sin tracking y después no llega notificación con el código).
+- **Schema.org BreadcrumbList en `producto.html`**. Era parte del plan original de Opción C de Sesión 25 pero se priorizaron meta tags base. Tiempo: 15-20 min. Bonus visual: Google muestra "Inicio › Productos › [nombre]" en lugar de la URL.
+- **Schema.org Product `aggregateRating` + `review` fields** en `producto.html` cuando estén las reseñas reales (post-Opción B). Habilita estrellitas en resultados de Google → mucho mejor CTR.
+- **og:image dinámica por producto en `producto.html`**. Hoy se setea vía JS, los crawlers no la ven. Solución vía endpoint `/api/og-image?id=X` que genere la imagen al vuelo, o vía SSR del meta tag. Tiempo: 30-45 min.
+- **Gmail "Send mail as" desde info@founder.uy**. Ya incluido como **Opción E** del menú principal.
 
 ### Optimizaciones de performance restantes (NO urgentes — sitio en buen estado)
-- **Cache headers en Supabase Storage** (Cloudinary ya cachea, pero header
-  long-cache en origen sería bonus marginal).
+- **Cache headers en Supabase Storage** (Cloudinary ya cachea, pero header long-cache en origen sería bonus marginal).
 - **Reducir JS sin usar** (auditoría con Coverage tab de DevTools).
-- **Auto-host de Google Fonts** en Vercel (alternativa más agresiva al
-  `display=optional` de Sesión 25). Solo evaluar si Lighthouse muestra que
-  fonts siguen siendo bottleneck en el LCP.
+- **Auto-host de Google Fonts** en Vercel (alternativa más agresiva al `display=optional` de Sesión 25). Solo evaluar si Lighthouse muestra que fonts siguen siendo bottleneck en el LCP.
 
 ---
 
@@ -1582,7 +1734,7 @@ founder-web/
 |---|---|---|---|
 | 1 | Banner del hero en monitores 4K se veía pixelado | Preset `hero` solo cubría hasta 2000px | Subir `widths` a `[800, 1200, 1600, 2000, 2800, 3600]` y `width` default a 2400. Agregado `q_auto:good` |
 | 2 | Miniaturas debajo de foto principal en producto.html se veían pixeladas | Usaban preset `thumb` (200px) compartido con carrito; en Retina necesitan ~480px | Crear preset dedicado `gallery_thumb` (480px + srcset responsive). No tocar `thumb` que sigue OK para carrito/admin |
-| 3 | `info@founder.uy` no es inbox real (descubierto al configurar DMARC) | Resend solo envía, no recibe — dirección configurada como remitente sin inbox detrás | Pendiente para Sesión 26: forwarder gratuito o Google Workspace |
+| 3 | `info@founder.uy` no es inbox real (descubierto al configurar DMARC) | Resend solo envía, no recibe — dirección configurada como remitente sin inbox detrás | ✅ Resuelto en Sesión 26: ImprovMX configurado (3 DNS records en Vercel, alias catch-all `*@founder.uy → founder.uy@gmail.com`) |
 
 ### Sesión 22 (3 incidentes)
 | # | Síntoma | Causa raíz | Fix |
@@ -1695,41 +1847,49 @@ founder-web/
   con timeout 3500ms. Descubrimiento: `info@founder.uy` no es inbox
   real (Resend solo envía); pendiente para Sesión 26 resolver con
   forwarder o Google Workspace. ← **Acá terminamos.**
-- **Sesión 26:** Resolver `info@founder.uy` (forwarder gratuito o
-  Google Workspace), primera campaña paga Meta Ads, evaluar subir DMARC
-  a `quarantine` si los reportes confirman buena salud. ← **Próxima.**
+- **Sesión 26:** ✅ Cerrada con combo A + C completo. **Bloque A:**
+  ImprovMX configurado (3 DNS records en Vercel — 2 MX + 1 SPF), test
+  end-to-end OK. **Bloque C:** robots.txt + sitemap.xml dinámico
+  (endpoint `/api/sitemap.js` lee productos de Supabase, cache 1h,
+  9 URLs descubiertas), Schema.org Store expandido con sameAs Instagram
+  + Facebook, meta tags completas en 5 páginas estáticas + checkout,
+  og-image.jpg 1200×630 generada via Canva MCP, Google Search Console
+  verificado vía TXT y sitemap enviado con estado "Correcto". Decisión
+  arquitectural clave: **NO mover DNS a Cloudflare** (hubiera roto
+  Resend/Meta/DMARC) — usar ImprovMX en Vercel actual. ← **Acá terminamos.**
+- **Sesión 27:** Decidir entre **Opción B** (sistema de reseñas reales,
+  1.5-2 hs) si el usuario decidió lanzar programa de primeros clientes,
+  **Opción D + E** (limpieza menor + Gmail send-as, ~1 hora) si no
+  decidió, o **Opción F** (analizar datos Search Console) si pasaron
+  2+ semanas. ← **Próxima.**
 
 ---
 
-**FIN** — Cerramos Sesión 25. **Sesión con 7 entregas técnicas
-independientes en producción + análisis competitivo honesto al cierre.**
+**FIN — Cierre Sesión 26.** Sesión muy productiva: combo A + C
+completo según el plan acordado al cierre de Sesión 25.
 
-Sobre la base de Sesión 24 (Cloudinary CDN + 290 KB de page weight),
-Sesión 25 sumó: (1) cierre del pendiente urgente de fonts con técnica
-diferente (`font-display: optional`) que SÍ funcionó + unificación +
-bug latente arreglado, (2) presets de imagen mejorados para 4K +
-miniaturas grandes, (3) LQIP premium en el banner del hero, (4) sistema
-de scroll-reveal unificado en 6 páginas con un componente reutilizable,
-(5) DMARC en DNS mejorando entregabilidad de emails, (6) **emails
-automáticos al cambiar estado del pedido** con foto del producto — la
-pieza que más eleva la percepción del e-commerce porque cierra el
-círculo de la experiencia post-compra.
+**Lo más relevante:** durante Sesión 26 se descubrió que el DNS de
+`founder.uy` NO está en Cloudflare como asumía el plan original, sino
+en Vercel. Por eso el plan se ajustó: en lugar de Cloudflare Email
+Routing se usó ImprovMX (gratis, sin tocar nameservers), y el resto
+del SEO técnico siguió igual.
 
-**Análisis competitivo al cierre (Baleine, Inverness, Liguria, MBH):**
-el sitio técnicamente está al nivel o por arriba de la competencia.
-**El problema de Founder NO es técnico.** Es de posicionamiento
-(precio premium sin justificación clara), prueba social (cero reseñas
-reales vs 136-294 de Baleine), narrativa de marca (commodity vs
-historias diferenciadas) y diferencial de producto (RFID ya no es
-diferencial — es commodity). Las decisiones que mueven la aguja son
-de NEGOCIO (personalización con grabado, programa de primeros clientes,
-narrativa real, garantía a 1 año), no de código.
+**Estado del sitio post-Sesión 26:**
+- ✅ Performance excelente (95-99 desktop, 85-90 mobile)
+- ✅ Email transaccional + bidireccional (`info@founder.uy` operativo)
+- ✅ Base SEO universal completa (sitemap, robots, schema, meta tags, og-image)
+- ✅ Google Search Console verificado e indexando
+- ✅ Tracking Meta funcional con CAPI deduplicado
+- ✅ Mercado Pago en producción real
+- ✅ Emails automáticos al cambiar estado del pedido
 
-**Cierre acordado:** las decisiones de negocio quedan pendientes para
-que el usuario las piense entre sesiones. Para Sesión 26 se acordó
-arrancar con un menú de 4 opciones técnicas que NO dependen de esas
-decisiones (sección "🎯 PRIORIDAD #1 PARA SESIÓN 26" en este mismo
-documento): A) resolver `info@founder.uy`, B) sistema de reseñas
-reales, C) SEO técnico, D) limpieza menor. Recomendación: A + C combo.
+**Nada técnico bloqueante queda pendiente.** Lo que sigue de acá en
+adelante son las **decisiones de negocio** que el usuario tiene que
+pensar entre sesiones (ver "🤔 Preguntas de negocio abiertas" al
+inicio del documento). Sin esas decisiones, agregar más código no
+mueve la aguja en ventas.
 
-Sesión muy productiva técnicamente y muy honesta estratégicamente. 🚀
+Sesión 27 va a ser corta o larga según qué decida el usuario respecto
+a las preguntas de negocio. 🚀
+
+
