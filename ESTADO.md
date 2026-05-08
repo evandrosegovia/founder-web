@@ -1,9 +1,208 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 26 — cierre EXITOSO con Bloque A + Bloque C completos: ImprovMX para `info@founder.uy`, SEO técnico completo (sitemap dinámico, robots, schema, meta tags, og-image), Google Search Console verificado y sitemap enviado (07/05/2026)
-**Próxima sesión:** 27 — Decidir entre las **opciones B + D** que quedaron pendientes del menú original de Sesión 25 (reseñas reales + limpieza de deuda técnica) o avanzar con las **decisiones de negocio** que siguen abiertas (ver "🤔 Preguntas de negocio abiertas" más abajo). Ver sección "🚀 Para iniciar el chat siguiente (Sesión 27)" al final.
+**Última actualización:** Sesión 27 — UX carrito mobile (ícono + 85%), incidente Node 20/Supabase resuelto (upgrade a Node 22), planificación completa de feature de personalización láser (08/05/2026)
+**Próxima sesión:** 28 — Implementar feature de personalización láser (Sesión A: frontend visual + admin config global). Ver `PLAN-PERSONALIZACION.md` v2 para alcance completo. Recomendado iniciar **después** de tener láser físico operativo y haber hecho 1-2 pruebas con cuero descartable para calibrar valores tentativos del plan.
 
 ---
+
+## ⚡ SESIÓN 27 — UX carrito mobile + incidente Node 20/Supabase + planificación personalización láser
+
+**Sesión mixta con tres bloques claramente separados:** (1) ajustes UX chicos en carrito mobile, (2) incidente crítico de producción que tiró el admin con error 500, diagnosticado y resuelto end-to-end, (3) sesión de planificación profunda del feature de personalización láser que va a ser el próximo gran bloque de trabajo.
+
+**Resultado:** sitio público funcionando perfecto, admin operativo de nuevo tras el fix, y un plan detallado v2 documentado en `PLAN-PERSONALIZACION.md` para retomar cuando el usuario tenga el láser físicamente y haya hecho pruebas iniciales con cuero descartable.
+
+### 🆕 Bloque 1 — Ajustes UX en carrito mobile
+
+**Reportado por el usuario:** dos pedidos chicos sobre el carrito en mobile.
+
+**Cambio 1 — Drawer del carrito al 85% en vez de 100%.** Antes ocupaba todo el ancho de la pantalla; ahora deja un margen del 15% del lado izquierdo donde se ve el contenido detrás (con overlay oscuro encima). UX más premium, similar a Apple/Hermès.
+
+**Cambio 2 — Botón "CARRITO" rectangular → ícono silueta de bolsa de compras.** Antes era un botón con borde y texto "CARRITO" en mayúsculas. Ahora es un ícono SVG silueta de bolsa de compras (estilo minimalista, stroke 1.4px), sin borde rectangular. El círculo dorado con el contador de items se mantiene posicionado arriba a la derecha del ícono. Hover: el ícono pasa de blanco a dorado (más sutil que el cambio de fondo anterior).
+
+**Implementación:**
+- HTML del botón centralizado en `header.js` (única fuente de verdad). SVG inline con clases `.cart-btn` y `.cart-btn__icon`.
+- CSS de `.cart-btn` actualizado en los **7 HTMLs** que usan carrito (`index`, `producto`, `contacto`, `envios`, `seguimiento`, `sobre-nosotros`, `tecnologia-rfid`). Mantenida la consistencia de cada archivo (algunos usan formato compacto en una línea, otros en bloque).
+- CSS del `.cart-sidebar` mobile cambiado de `width: 100%` a `width: 85%` en los mismos 7 HTMLs.
+- `checkout.html` y `admin.html` no se tocaron (no usan carrito).
+- La burbuja de WhatsApp en mobile ya estaba programada para ocultarse cuando el carrito se abre, así que no hubo conflictos visuales con el nuevo ancho.
+
+**Validado por el usuario en producción:** ambos cambios quedaron bien.
+
+### 🚨 Bloque 2 — Incidente crítico: admin caído con error 500 (FUNCTION_INVOCATION_FAILED)
+
+**Síntoma reportado:** el usuario no podía entrar al admin. Pantalla de login mostraba "Contraseña incorrecta" sin importar qué password ingresaba. El usuario verificó que NO había tocado nada del admin "desde el último cambio grande del estado anterior" (Sesión 26). Inicialmente sospechó del frontend del login.
+
+**Proceso de diagnóstico en orden cronológico:**
+
+1. **Hipótesis inicial descartada — variable `ADMIN_PASSWORD` mal configurada.** El usuario ya había probado cambiar la contraseña en Vercel + redeploy sin éxito. Confirmé revisando que el código del login (`founder-admin.js` + `api/admin.js`) está intacto y no tiene bugs.
+
+2. **Hipótesis intermedia descartada — sintaxis JavaScript rota o exports faltantes.** Validé con `node --check` los 4 archivos del flow (`admin.js`, `supabase.js`, `email.js`, `email-templates.js`): sintaxis correcta. Validé que todos los handlers referenciados en el router `ACTIONS` existían: los 17 handlers definidos. Validé que todos los exports de los módulos importados existían: todos presentes.
+
+3. **Hallazgo en consola del navegador:** abriendo F12 → Network → click en `admin` → tab "Response" reveló mensaje crítico:
+   ```
+   A server error has occurred
+   FUNCTION_INVOCATION_FAILED
+   gru1::czx7v-1778214011776-4c1da1be67eb
+   ```
+   Este NO era un error de la lógica del login. Era un error de Vercel **antes** de ejecutar el código. El `FUNCTION_INVOCATION_FAILED` indica que el bundler/runtime falló al cargar el módulo serverless.
+
+4. **Primera causa identificada — archivo duplicado `meta-capi.js`.** El usuario detectó (mirando GitHub) que tenía dos copias del archivo: `api/meta-capi.js` (suelto) y `api/_lib/meta-capi.js` (correcto). El archivo suelto llevaba ~2 semanas subido sin causar problemas porque Vercel cacheaba builds anteriores que sí funcionaban. Cuando un deploy reciente forzó rebuild limpio, el bundler encontró ambos archivos y crasheó. Borrado el duplicado de `api/`. **Pero el error 500 persistió.**
+
+5. **Causa real encontrada — incompatibilidad Node 20 + Supabase nuevo.** Tras el borrado del duplicado, los logs de Vercel revelaron el error real:
+   ```
+   Error: Node.js 20 detected without native WebSocket support.
+   Suggested solution: For Node.js < 22, ...
+   ```
+   `package.json` declaraba `"engines": { "node": "20.x" }` con `"@supabase/supabase-js": "^2.45.4"`. El `^` permite versiones nuevas con mismo major. Supabase publicó versiones 2.50+ que **requieren WebSocket nativo**, soportado solo en Node 22+. Mientras Vercel usaba caché del build viejo (Supabase 2.45.4) → todo funcionaba. Cuando hizo build limpio → instaló Supabase nuevo → crash al cargar el módulo en runtime.
+
+**Solución aplicada:** cambiar `"node": "20.x"` → `"node": "22.x"` en `package.json`. Cambio de **un solo carácter** pero estructural. Tras el commit + redeploy → admin funcionando perfecto.
+
+**Lección documentada (CRÍTICA — no repetir):**
+- **Vercel no buildea desde cero cada vez** — reusa caché agresivamente. Bugs latentes pueden quedar dormidos durante semanas hasta que un build limpio los expone.
+- **`^x.y.z` en dependencies es una bomba de tiempo a largo plazo** si la dependencia tiene cambios de runtime requirements. Más seguro: `~x.y.z` (solo patch updates) o pinning exacto `x.y.z`.
+- **Cuando el frontend muestra "Contraseña incorrecta" en el admin pero NO funciona NINGUNA contraseña** — sospechar inmediatamente de error 500 del backend, no del password. El frontend interpreta cualquier respuesta no-200 como "password incorrecta". Abrir F12 → Network → ver Response real es el primer paso de diagnóstico, no jugar con passwords.
+- **`FUNCTION_INVOCATION_FAILED` en Vercel = problema de carga del módulo**, NO de lógica de negocio. Causas comunes: (a) imports rotos, (b) archivos duplicados, (c) dependencias con conflicto de runtime, (d) variables de entorno faltantes que crashean al inicio del archivo (no al usarse).
+
+**Patrón de resolución replicable para futuros incidentes:**
+1. Abrir F12 → Network → ver Response real del endpoint que falla.
+2. Si dice `FUNCTION_INVOCATION_FAILED` → ir a Vercel → Logs del proyecto → buscar el error real en stderr.
+3. Si el error menciona "Node.js X detected without..." → revisar `engines.node` en `package.json`.
+4. Si el error menciona "Cannot find module..." → buscar archivos duplicados o renombrados en GitHub.
+5. Si el error menciona "X is not a function" → revisar imports/exports.
+
+### 📋 Bloque 3 — Planificación completa del feature de personalización láser
+
+**Contexto de negocio:** el usuario está por conseguir una máquina láser y quiere ofrecer grabado personalizado como diferencial competitivo principal vs Baleine (no lo ofrece) y MBH (sí lo ofrece). Detección durante la sesión: este feature es uno de los puntos del bloque "🤔 Preguntas de negocio abiertas" — específicamente el #2 — que tradicionalmente quedaba postergado por no tener decisión clara.
+
+**Resultado de la sesión:** decisiones de negocio cerradas + plan técnico v2 detallado en archivo separado `PLAN-PERSONALIZACION.md` (~1100 líneas, ~50 KB).
+
+**Decisiones de producto cerradas (18 confirmadas):**
+1. Precio: **$290 por elemento de grabado** (vs $320 del competidor analizado).
+2. **Solo láser** (sin grabado por calor que tiene el competidor) — no tenemos máquina de calor.
+3. **4 modalidades acumulables**: imagen adelante / imagen interior / imagen atrás / texto. Combinación máxima = +$1.160.
+4. **+24 hs hábiles** de tiempo extra de preparación.
+5. **No admiten devolución** (sí mantienen garantía de fabricación de 60 días).
+6. **Configuración por producto** vía 4 toggles independientes (`permite_grabado_adelante/interior/atras/texto`) en tabla `products`.
+7. **Configuración global desde Admin > Herramientas** (precios, plazos, validaciones, textos legales) vía `site_settings.personalizacion_config` (JSONB).
+8. **Galería visual de ejemplos** subible desde admin con etiquetado por color de billetera. Modal "Ver ejemplo" en frontend filtrado por color elegido por el cliente (diferencial premium vs competidor).
+9. **Tipos de archivo:** PNG, JPG, JPEG, SVG. Peso máx 5 MB. Mínimo 500×500 px (bloqueo) / recomendado 800×800 px (warning).
+10. **Caracteres máximos en texto:** 40.
+11. **Posicionamiento del grabado:** vía campo de "Indicaciones", sin editor visual (descartado por complejidad).
+12. **Copyright:** disclaimer al subir + derecho de Founder a cancelar y reembolsar pedidos con imágenes que infrinjan derechos.
+13. **Aprobación previa por WhatsApp:** SÍ como paso opcional (manual del admin). Detalles a definir en Sesión D del feature.
+14. **Limpieza automática:** cron Vercel semanal (`api/cleanup-personalizacion.js`) + botón manual en admin.
+15. **Plazos de retención:** 10 días para imágenes huérfanas / 60 días post-entrega. Imágenes de pedidos activos NUNCA se borran.
+16. **Backup manual** del usuario: descarga ZIP previa al ordenador. NO hay backup en cloud secundario (decisión consciente).
+17. **Sin extras complicados:** descartados soft delete, backup automático a Cloudinary y notificaciones email previas a limpieza. Lo simple es mejor.
+18. Garantía de 60 días de fabricación se mantiene igual para productos personalizados.
+
+**Pendientes que requieren prueba física con láser:**
+- Tipografías disponibles para grabado de texto (probar 5-6 en cuero descartable, quedarse con 2-3).
+- Threshold real de calidad de imagen (las cifras 500/800 px son tentativas).
+- Foto stock para galería de ejemplos (las primeras 6-8 fotos se sacan tras tener láser operativo).
+- Tiempo real de preparación (default 24 hs, podría ser 48 hs según volumen).
+
+**Plan técnico final estructurado en 4 sesiones:**
+- **Sesión A** (~2-2.5 hs): frontend visual de personalización en `producto.html` + sub-panel de config global en Admin > Herramientas + 4 toggles en editor de productos. Sin upload real (placeholders).
+- **Sesión B** (~2-2.5 hs): SQL (4 ALTER TABLE + 2 CREATE TABLE), 2 buckets nuevos en Storage, endpoint `api/upload-personalizacion.js`, modificación de `api/checkout.js`, persistencia en cart.js + localStorage, checkbox "no devolución" en checkout, galería de ejemplos en admin + frontend con filtrado por color.
+- **Sesión C** (~1.5-2 hs): endpoint `api/cleanup-personalizacion.js` (cron + manual), endpoint `api/download-personalizacion-bulk.js` (ZIP), cron config en `vercel.json`, sub-panel "Limpieza" en admin con historial + botones, filtros e íconos en lista de pedidos.
+- **Sesión D** (~1-1.5 hs): templates de email modificados con bloque condicional de personalización (cliente + admin), smoke test end-to-end exhaustivo, cierre documentado en `ESTADO.md`.
+
+**Total estimado:** 7-9 hs de código + testing distribuidas en 4 sesiones. Cambio mediano-grande pero **bien aislado** — el flujo de productos sin personalización no se toca.
+
+**SQL pendiente para Sesión B:**
+```sql
+-- Toggles por producto
+ALTER TABLE products ADD COLUMN permite_grabado_adelante BOOLEAN DEFAULT TRUE;
+ALTER TABLE products ADD COLUMN permite_grabado_interior BOOLEAN DEFAULT FALSE;
+ALTER TABLE products ADD COLUMN permite_grabado_atras BOOLEAN DEFAULT TRUE;
+ALTER TABLE products ADD COLUMN permite_grabado_texto BOOLEAN DEFAULT TRUE;
+
+-- Datos de personalización en cada item
+ALTER TABLE order_items ADD COLUMN personalizacion JSONB;
+
+-- Tracking en orders
+ALTER TABLE orders ADD COLUMN tiene_personalizacion BOOLEAN DEFAULT FALSE;
+ALTER TABLE orders ADD COLUMN fecha_entrega TIMESTAMP NULL;
+CREATE INDEX orders_personalizacion_idx ON orders(tiene_personalizacion)
+  WHERE tiene_personalizacion = TRUE;
+
+-- Tabla nueva: galería de ejemplos
+CREATE TABLE personalizacion_examples (...);
+
+-- Tabla nueva: logs de limpieza
+CREATE TABLE cleanup_logs (...);
+
+-- Config global en site_settings
+INSERT INTO site_settings (key, value) VALUES ('personalizacion_config', '{...}'::jsonb);
+```
+
+**Buckets nuevos en Supabase Storage:**
+- `personalizaciones` — imágenes subidas por clientes. Público lectura, service_role escritura.
+- `personalizacion-ejemplos` — galería editorial. Público lectura, service_role escritura.
+
+**Cron a agregar en `vercel.json`:**
+```json
+{
+  "crons": [{
+    "path": "/api/cleanup-personalizacion?trigger=auto",
+    "schedule": "0 6 * * 0"
+  }]
+}
+```
+(Domingos 06:00 UTC = 03:00 hora UY.)
+
+**Recomendación importante para retomar:** NO arrancar Sesión A hasta tener el láser físicamente y haber hecho 1-2 pruebas con cuero descartable. Razón: muchos valores tentativos del plan (resoluciones mínimas, tipografías, tiempo de preparación, calidad de las primeras fotos para la galería) dependen de datos reales. Implementar antes de testear = retrabajo casi seguro.
+
+### 📂 Archivos modificados / creados en Sesión 27
+
+**Modificados (8):**
+- `header.js` — botón carrito reemplazado por SVG silueta de bolsa.
+- `index.html` — CSS `.cart-btn` y `.cart-sidebar` actualizados.
+- `producto.html` — CSS `.cart-btn` y `.cart-sidebar` actualizados.
+- `contacto.html` — CSS `.cart-btn` y `.cart-sidebar` actualizados.
+- `envios.html` — CSS `.cart-btn` y `.cart-sidebar` actualizados.
+- `seguimiento.html` — CSS `.cart-btn` y `.cart-sidebar` actualizados.
+- `sobre-nosotros.html` — CSS `.cart-btn` y `.cart-sidebar` actualizados.
+- `tecnologia-rfid.html` — CSS `.cart-btn` y `.cart-sidebar` actualizados.
+- `package.json` — `"node": "20.x"` → `"node": "22.x"` (fix incidente Supabase).
+
+**Creados (1):**
+- `PLAN-PERSONALIZACION.md` v2 — plan completo del feature de personalización láser. Documento de planificación de ~50 KB con 18 decisiones cerradas, arquitectura técnica detallada, plan en 4 sesiones, riesgos y plan de rollback.
+
+**Borrados (1):**
+- `api/meta-capi.js` (duplicado suelto). El bueno permanece en `api/_lib/meta-capi.js`.
+
+### 🔄 Plan de rollback (Sesión 27)
+
+| Cambio | Cómo revertir |
+|---|---|
+| Ícono SVG del carrito | Revertir `header.js` desde Git history. Las clases CSS pueden quedar en los HTMLs sin afectar nada. |
+| Carrito mobile 85% | Cambiar `.cart-sidebar { width: 85%; }` → `width: 100%;` en los 7 HTMLs. |
+| Node 22.x | **NO REVERTIR** — reverlo causaría el mismo crash del incidente. Si en algún momento Vercel deja de soportar Node 22 (improbable, es LTS hasta 2027), bajar Supabase a `~2.45.4` (pin patch only). |
+| `meta-capi.js` borrado | Restaurar desde Git history del commit `Add files via upload` previo. PERO recordar que es duplicado innecesario — el de `api/_lib/` es el correcto. No hay razón válida para restaurar el de `api/`. |
+| `PLAN-PERSONALIZACION.md` | Borrar archivo. Es documentación, no afecta producción. |
+
+### 🧠 Lecciones documentadas en Sesión 27
+
+1. **Versionado de dependencias `^` puede explotar después de semanas.** Cuando una dependencia importante (DB client, runtime) tiene cambios de requirements, el `^` deja entrar versiones que pueden no funcionar con el Node configurado. Para producción crítica: usar `~` (solo patch) o pinning exacto.
+2. **Vercel cachea builds agresivamente.** Un bug latente puede dormir 2 semanas hasta que un build limpio lo expone. **No asumir** que "si funcionaba ayer, el código está bien".
+3. **El frontend genera "Contraseña incorrecta" para CUALQUIER no-200 del backend.** No es un mensaje confiable de auth — es un error genérico. Diagnosticar siempre con F12 → Network → Response real.
+4. **`FUNCTION_INVOCATION_FAILED` ≠ bug en lógica.** Es problema de carga del módulo. Plan de diagnóstico: (1) buscar duplicados de archivos, (2) revisar imports/exports, (3) revisar engines de Node, (4) revisar env vars que se usen en top-level del archivo.
+5. **Archivos duplicados en distintas carpetas son una bomba.** Especialmente cuando el bundler hace path resolution. El proyecto ya tuvo este síntoma en Sesión 26 con `sitemap.js`. Para evitar repetirlo: ante cualquier duda, mirar GitHub directamente, no asumir.
+6. **Planificar overscope antes de codear es lo correcto cuando el feature toca múltiples capas.** Personalización tocaba: frontend, backend, DB, storage, admin, emails, cron jobs. Sin plan v2 hubiera sido caótico. Con plan: estimaciones realistas + 18 decisiones cerradas + 4 sesiones bien delimitadas.
+7. **Defer hardcodeo hasta tener producto físico.** Tipografías, threshold de calidad, fotos de ejemplo, tiempo real de preparación — todos requieren probar con láser. Implementar antes = retrabajo.
+
+### ⚠️ Pendientes específicos de Sesión 27 que quedan abiertos
+
+- 🔴 **Calibrar valores tentativos del feature de personalización** una vez que el usuario tenga el láser físicamente. Lo hace antes de Sesión A.
+- 🟢 **Sacar primeras 6-8 fotos** para galería de ejemplos. 2 de cada tipo (adelante/interior/atrás/texto) en distintos colores de billetera. Lo hace antes de Sesión B.
+- 🟢 **Arrancar Sesión A** del feature cuando el usuario decida (estimado: cuando tenga datos físicos para calibrar).
+- 🟡 **Pendientes de Sesión 26 que NO se atacaron en 27 y siguen abiertos:** Opción B (reseñas reales), Opción D (limpieza menor), Opción E (Gmail send-as), Opción F (analizar Search Console). Todos siguen vigentes para sesiones futuras.
+
+---
+
+
 
 ## ⚡ SESIÓN 26 — Bloque A (ImprovMX) + Bloque C completo (SEO técnico end-to-end)
 
@@ -451,71 +650,50 @@ IIFE auto-contenida con:
 
 ---
 
-## 🚀 Para iniciar el chat siguiente (Sesión 27)
+## 🚀 Para iniciar el chat siguiente (Sesión 28)
 
-### 🎯 PRIORIDAD #1 PARA SESIÓN 27 — Lo que quedó pendiente del menú de Sesión 25
+### 🎯 PRIORIDAD #1 PARA SESIÓN 28 — Feature de personalización láser (Sesión A)
 
-En Sesión 26 se cerraron las opciones **A (info@founder.uy)** y **C (SEO técnico)** del menú original de 4 opciones. Quedan abiertas **B y D**, sumadas al pendiente menor de Sesión 26 sobre Gmail "Send mail as".
+En Sesión 27 se cerró la **planificación completa** del feature de personalización láser. El plan está en `PLAN-PERSONALIZACION.md` v2 (~50 KB, 18 decisiones cerradas, 4 sesiones de implementación bien delimitadas).
 
-#### 🟡 Opción B — Sistema de reseñas reales (base técnica) — pendiente desde Sesión 25
-**Tiempo:** 1.5-2 horas. Sesión completa de código.
+**Sesión 28 idealmente arranca Sesión A del plan** (frontend visual + admin config global). PERO **NO antes** de que el usuario tenga el láser físicamente y haya hecho 1-2 pruebas con cuero descartable. Razón: muchos valores tentativos del plan (resoluciones mínimas, tipografías, tiempo de preparación, primeras fotos para galería) dependen de datos físicos reales. Implementar antes de testear = retrabajo casi seguro.
 
-Hoy `producto.html` muestra 4 reseñas mock hardcodeadas (declarado como deuda técnica desde Sesión 20). Cuando el usuario decida lanzar "programa de primeros clientes" (decisión de negocio pendiente), no tiene infraestructura para gestionar reseñas reales.
+#### 🟢 Opción A (recomendada cuando el láser esté operativo) — Sesión A del feature
+**Tiempo:** 2-2.5 hs.
 
-Implementar:
-- Tabla `reviews` en Supabase: `order_id` (link al pedido para verificar compra real), `rating`, `texto`, `nombre`, `producto_nombre`, `color`, `aprobado`, `created_at`.
-- Página nueva `/dejar-resena.html` accesible solo por link tokenizado (token va en email de "Entregado" como botón "Dejá tu reseña").
-- Endpoint `/api/reviews` con acciones `create` (público con token), `list_public` (para producto.html), `list_admin`, `approve`, `reject`.
-- Panel admin para moderar reseñas antes de publicar (anti-spam crítico).
-- `producto.html` lee reseñas reales con fallback a mocks si no hay aprobadas.
-- **Bonus SEO:** una vez con reseñas reales aprobadas, agregar `aggregateRating` y `review` al Schema.org `Product` de `producto.html` → habilita estrellitas en los resultados de Google. Esto fue mencionado en Sesión 26 como mejora pendiente del Schema.org.
-- Diferencial vs Baleine: reseñas **vinculadas a pedidos verificados** = más creíbles que reseñas anónimas.
+Frontend visual + admin config global. Sin upload real (placeholders).
+- Diseño y CSS del bloque de personalización en `producto.html`.
+- Toggle abrir/cerrar + 4 botones de modalidad (adelante/interior/atrás/texto).
+- Cálculo de precio en vivo + actualización del sticky CTA.
+- Sub-panel "Config personalización" en Admin > Herramientas (precios, plazos, validaciones, textos legales).
+- 4 toggles por producto en editor de productos del admin.
+- Validaciones de UX (sin upload real todavía — placeholder).
 
-#### 🔵 Opción D — Limpieza de deuda técnica menor — pendiente desde Sesión 25
-**Tiempo:** 30-45 minutos. **La menos impactante** de las 4 originales, pero higiénica.
+**Resultado:** el bloque se ve y funciona visualmente, los toggles del admin funcionan, los datos aún no se persisten en pedidos. Validación con el usuario antes de avanzar a Sesión B (backend).
 
-Cosas chicas pendientes hace tiempo:
-- `ALTER TABLE products DROP COLUMN banner_url;` (legacy desde Sesión 21, no se usa en ninguna parte del código).
-- Limpiar pedidos prueba acumulados en admin (5 min). ⚠️ NO BORRAR `F203641` (Florencia Risso, cliente real).
-- Pendientes Meta Business: renombrar dataset "NO" `1472474751248750` con prefijo `ZZ-`, ignorar Ad Account `26140748312219895`, agregar email de contacto al Instagram.
-- Auditoría ligera de que todos los archivos de Sesiones 25-26 quedaron bien subidos (verificación pre-flight rápida).
+#### 🟡 Opciones alternativas si el usuario aún no tiene el láser operativo
 
-#### 🆕 Opción E — "Send mail as info@founder.uy" desde Gmail — nuevo pendiente de Sesión 26
-**Tiempo:** 20-30 minutos. Sin código. Configuración de Gmail + ImprovMX.
+**Pendientes vigentes desde Sesiones 25-26 que pueden hacerse mientras tanto:**
 
-Hoy cuando el usuario responde un email reenviado por ImprovMX, Gmail lo manda con el "From:" de su Gmail personal. Funcionalmente correcto pero menos profesional. Configurar Gmail "Send mail as" para que el From: sea `info@founder.uy`. Requiere:
-- En ImprovMX: generar SMTP credentials (función "SMTP Credentials" del dashboard).
-- En Gmail → Settings → Accounts → "Send mail as" → agregar `info@founder.uy` con esos credentials.
-- Verificar el código que Gmail manda al alias.
+- **Opción B — Sistema de reseñas reales** (1.5-2 hs). Tabla `reviews` + página `/dejar-resena.html` + endpoint `/api/reviews` + panel admin para moderar. Bonus SEO: `aggregateRating` en Schema.org Product. Si el usuario decidió lanzar "programa de primeros clientes", esta es la opción.
 
-**No bloqueante** — el reenvío funciona perfecto sin esto. Es polish.
+- **Opción D — Limpieza de deuda técnica** (30-45 min). `ALTER TABLE products DROP COLUMN banner_url;` + limpiar pedidos prueba acumulados (⚠️ NO BORRAR `F203641` Florencia Risso) + pendientes Meta Business (renombrar dataset "NO" `1472474751248750` con `ZZ-`, ignorar Ad Account `26140748312219895`, agregar email contacto al Instagram).
 
-#### 📈 Opción F — Esperar datos de Search Console y optimizar — nuevo pendiente de Sesión 26
-**Tiempo:** ~1 hora cuando haya datos.
+- **Opción E — Gmail "Send mail as info@founder.uy"** (20-30 min). Sin código. Generar SMTP credentials en ImprovMX + agregar en Gmail → Settings → Accounts.
 
-Search Console tarda 7-14 días en mostrar datos útiles. Una vez con datos:
-- Ver qué keywords te encuentran ("Performance" tab).
-- Ver qué páginas Google indexó vs cuáles tuvo problemas ("Pages" tab).
-- Ajustar `<title>` y `meta description` de páginas que tengan baja CTR (clic-through-rate).
-- Revisar Core Web Vitals reales (datos de campo, no de lab) en "Experience" tab.
-
-**Esta opción solo tiene sentido a partir de ~21/05/2026** (2 semanas después del envío del sitemap). Antes no hay datos.
+- **Opción F — Analizar datos de Search Console** (~1 hora). **Tiene sentido a partir de ~21/05/2026** (2+ semanas tras envío del sitemap). Ver keywords, páginas indexadas, ajustar `<title>` y `meta description` por CTR.
 
 #### 🎯 Recomendación al usuario (mi sugerencia honesta)
 
-Las opciones técnicas restantes son **marginales en impacto** vs lo que ya está hecho. El sitio ya tiene:
-- ✅ Performance excelente (Sesión 24-25)
-- ✅ Email operativo (Sesión 26 / Bloque A)
-- ✅ Base SEO completa (Sesión 26 / Bloque C)
-- ✅ Emails transaccionales (Sesión 25)
-- ✅ Tracking Meta funcional (Sesiones 17-18)
+**Lo más impactante para el negocio es el feature de personalización láser** (Opción A). Es un diferencial competitivo real y aumenta el ticket promedio.
 
-**Lo que mueve la aguja desde acá NO es más código.** Es lo que dice el bloque "🤔 Preguntas de negocio abiertas" más abajo. El usuario tiene que tomar esas decisiones de negocio (personalización con grabado, programa de primeros clientes con reseñas reales, narrativa de marca, garantía a 1 año, presupuesto marketing) para que cualquier estrategia tenga sentido.
+**Pero la implementación depende del láser físico.** Si el usuario ya lo tiene → Sesión A inmediata. Si no lo tiene aún → cualquiera de las opciones B/D/E/F mientras tanto, en orden de impacto: **B > E > D > F**.
 
-**Sugerencia priorizada para Sesión 27:**
-1. Si el usuario ya pensó las preguntas de negocio y decidió lanzar el "programa de primeros clientes" → ir directo con **Opción B** (reseñas reales).
-2. Si todavía no decidió y quiere avanzar igual → **Opción D + E** combo (ambas chicas, en una sesión de 1 hora total).
-3. Si ya pasaron 2+ semanas y quiere ver datos reales de SEO → **Opción F**.
+**Sugerencia priorizada para Sesión 28:**
+1. Si el usuario ya tiene el láser y testeó → arrancar **Sesión A** del feature de personalización.
+2. Si aún no tiene el láser pero decidió "programa de primeros clientes" → **Opción B** (reseñas reales).
+3. Si no tiene láser y quiere algo chico → **Opción D + E combo** (1 hora total).
+4. Si pasaron 2+ semanas desde el envío del sitemap → considerar **Opción F**.
 
 ---
 
@@ -524,40 +702,44 @@ Las opciones técnicas restantes son **marginales en impacto** vs lo que ya est�
 Estas NO se resuelven con código. Son decisiones que el usuario tiene que tomar para que la estrategia tenga sentido:
 
 1. **¿La billetera Founder es premium real (cuero genuino calidad alta, costuras a mano, durabilidad medible) o es buena pero estándar?** Determina si el precio de $2.490 está bien o si está 30% sobre el mercado.
-2. **¿Puede ofrecer personalización con grabado láser?** Es el diferencial más fuerte que tiene MBH. Requiere máquina o servicio externo, costo extra, tiempo extra. Si puede, es bandera. Si no puede, hay que buscar otro diferencial.
+2. ~~**¿Puede ofrecer personalización con grabado láser?**~~ → **RESUELTA en Sesión 27.** SÍ, va a ofrecer láser propio. Plan documentado en `PLAN-PERSONALIZACION.md` v2.
 3. **¿Cuántas billeteras tiene en stock hoy?** Cambia la viabilidad del programa de primeros clientes (con 100 unidades sí, con 10 no).
 4. **¿Hay una historia real detrás de Founder?** ¿La creó solo o con socios? ¿Hay diseño propio o es modelo importado etiquetado? ¿Cara visible? El comprador uruguayo conecta con historias reales de uruguayos.
 5. **¿Founder es negocio principal o side-project?** Define tiempo, presupuesto, urgencia.
 6. **¿Cuánto presupuesto real para marca/marketing los próximos 3 meses?** $5.000, $50.000, $500.000 ARS — la estrategia es totalmente distinta.
 7. **¿Subir garantía de 60 días → 1 año?** Baleine ofrece 1 año, vos 60 días. Se ve mal en commodities premium. Decisión depende de si el producto la aguanta.
 
-### 📋 Mensaje listo para pegar al iniciar Sesión 27
+### 📋 Mensaje listo para pegar al iniciar Sesión 28
 
 Pegale a Claude este mensaje al arrancar:
 
-> Leé `ESTADO.md` y retomamos después de Sesión 26. La Sesión 26 cerró
-> con el combo A + C completo: ImprovMX para info@founder.uy + SEO
-> técnico universal (sitemap, robots, schema, meta tags, og-image) +
-> Google Search Console verificado e indexando. Quedaron pendientes
-> del menú original de Sesión 25 las opciones **B (reseñas reales)** y
-> **D (limpieza de deuda)**, y se sumaron 2 nuevas pequeñas:
-> **E (Gmail send-as)** y **F (analizar datos de Search Console
-> cuando haya)**.
+> Leé `ESTADO.md` y `PLAN-PERSONALIZACION.md`. Retomamos después de
+> Sesión 27. En Sesión 27 hicimos: (1) ajustes UX en carrito mobile
+> (ícono de bolsa + 85% de ancho), (2) resolvimos un incidente
+> crítico que tiraba el admin con 500 (`FUNCTION_INVOCATION_FAILED`
+> por incompatibilidad Node 20 + Supabase nuevo — fix: subir a Node
+> 22), (3) planificamos completo el feature de personalización
+> láser que va a ser el próximo gran bloque (ver
+> `PLAN-PERSONALIZACION.md` v2).
 >
-> Mi recomendación al cierre de Sesión 26 fue: si decidiste lanzar
-> el programa de primeros clientes, hacer **Opción B**. Si todavía no
-> decidiste, hacer **D + E combo** (1 hora total). Si pasaron 2+
-> semanas desde el envío del sitemap, considerar **Opción F**.
+> Mi recomendación al cierre de Sesión 27: si ya tenés el láser
+> físicamente y testeaste, arrancamos **Sesión A** del feature de
+> personalización (frontend visual + admin config global, ~2-2.5
+> hs). Si todavía no, hacemos cualquier de las opciones pendientes
+> de Sesión 26 (B reseñas reales / D limpieza / E Gmail send-as / F
+> Search Console).
 >
-> Pero la decisión final la voy a tomar yo al arrancar Sesión 27.
+> Pero la decisión final la voy a tomar yo al arrancar Sesión 28.
 
 ---
 
-### Pendientes secundarios para Sesión 27+ (no bloqueantes)
+### Pendientes secundarios para Sesión 28+ (no bloqueantes)
 
 - **Bug latente menor en `producto.html`:** el `og:image` se setea vía JS al cargar el producto, pero los crawlers (WhatsApp, Facebook, Google) no ejecutan JS antes de leer meta tags. Resultado: cuando alguien comparta el link de un producto específico, **NO** se ve la foto del producto, se ve el `og-image.jpg` genérico de Founder (que igual queda bien, pero perdemos la oportunidad de mostrar el producto exacto). Solución: SSR del meta tag o usar OG image dinámica vía endpoint. Tiempo estimado: 30-45 min. Prioridad: baja (la imagen genérica funciona bien como fallback).
 - **Foto stock en og-image.jpg:** la imagen actual usa una foto stock de billeteras generada por Canva, no productos reales de Founder. Si en algún momento se quiere reemplazar, regenerar en Canva con foto real del catálogo y resubir como `og-image.jpg` (mismo nombre, los HTMLs ya apuntan ahí).
 - **Schema.org address sin postalCode/streetAddress:** Google detecta esto como warning opcional. Si se monta local físico con dirección pública, agregar esos 2 campos al `address` PostalAddress en el JSON-LD del index.
+- **Pin de versiones de dependencias críticas:** `package.json` actualmente usa `"@supabase/supabase-js": "^2.45.4"`. El `^` permite versiones mayores que pueden romper en builds limpios futuros. Considerar cambiar a `~2.45.4` (solo patch updates) o pinning exacto. **Lección de Sesión 27 — incidente Node 20.** Tiempo: 5 min cuando se decida.
+- **Pendientes calibrables del feature personalización láser** (los 4 que dependen de prueba física): tipografías, threshold real de calidad, fotos de galería de ejemplos, tiempo real de preparación. Se atacan antes de Sesión A.
 
 ---
 
@@ -1683,15 +1865,14 @@ founder-web/
 
 ---
 
-## 📋 Pendientes para Sesión 27
+## 📋 Pendientes para Sesión 28
 
-> **⚠️ IMPORTANTE:** la prioridad #1 para Sesión 27 está en la sección
-> **"🎯 PRIORIDAD #1 PARA SESIÓN 27"** al inicio del documento (debajo
-> del bloque "🚀 Para iniciar el chat siguiente (Sesión 27)"). Es el
-> menú actualizado con las opciones B y D que quedaron pendientes del
-> menú original de Sesión 25, más las opciones nuevas E y F surgidas
-> en Sesión 26. **Lo de abajo son pendientes secundarios** que se
-> atacan después de elegir entre las opciones priorizadas.
+> **⚠️ IMPORTANTE:** la prioridad #1 para Sesión 28 está en la sección
+> **"🎯 PRIORIDAD #1 PARA SESIÓN 28"** al inicio del documento (debajo
+> del bloque "🚀 Para iniciar el chat siguiente (Sesión 28)"). Es el
+> feature de personalización láser (Sesión A del plan documentado en
+> `PLAN-PERSONALIZACION.md` v2). **Lo de abajo son pendientes
+> secundarios** que se atacan en cualquier sesión libre.
 
 ### ✅ Resueltos en Sesión 26 (ya no son pendientes)
 - ~~Resolver `info@founder.uy` (no es inbox real)~~ → resuelto con ImprovMX. Funcional bidireccional al 100%.
@@ -1728,6 +1909,11 @@ founder-web/
 ---
 
 ## 📜 Historial de incidentes resueltos
+
+### Sesión 27 (1 incidente CRÍTICO — admin caído)
+| # | Síntoma | Causa raíz | Fix |
+|---|---|---|---|
+| 1 | Admin caído con "Contraseña incorrecta" sin importar password. Consola: `FUNCTION_INVOCATION_FAILED` (500) | **Doble causa:** (a) archivo `meta-capi.js` duplicado en `api/` (suelto) y `api/_lib/` desde hacía 2 semanas, sin causar problema porque Vercel cacheaba builds anteriores. (b) `package.json` declaraba Node 20, pero Supabase publicó versiones 2.50+ que requieren WebSocket nativo (solo Node 22+). El `^2.45.4` permitía la actualización automática | Borrado el duplicado de `api/meta-capi.js`. Cambiado `"node": "20.x"` → `"node": "22.x"` en `package.json`. **Lección crítica: `^x.y.z` en deps puede explotar después de semanas cuando una nueva versión cambia requirements de runtime. Considerar pinning con `~` o exacto en deps críticas** |
 
 ### Sesión 25 (2 hallazgos sin incidente real)
 | # | Síntoma | Causa raíz | Fix |
@@ -1857,24 +2043,44 @@ founder-web/
   verificado vía TXT y sitemap enviado con estado "Correcto". Decisión
   arquitectural clave: **NO mover DNS a Cloudflare** (hubiera roto
   Resend/Meta/DMARC) — usar ImprovMX en Vercel actual. ← **Acá terminamos.**
-- **Sesión 27:** Decidir entre **Opción B** (sistema de reseñas reales,
-  1.5-2 hs) si el usuario decidió lanzar programa de primeros clientes,
-  **Opción D + E** (limpieza menor + Gmail send-as, ~1 hora) si no
-  decidió, o **Opción F** (analizar datos Search Console) si pasaron
-  2+ semanas. ← **Próxima.**
+- **Sesión 27 (UX carrito + incidente Node 20 + planificación personalización):**
+  Tres bloques. (1) **Ajustes UX en carrito mobile**: drawer al 85% en vez de
+  100% + botón "CARRITO" rectangular reemplazado por ícono SVG silueta de
+  bolsa de compras (8 archivos modificados, HTML del botón centralizado en
+  `header.js`). (2) **Incidente crítico**: admin caído con 500
+  `FUNCTION_INVOCATION_FAILED`. Doble causa diagnosticada: archivo
+  `meta-capi.js` duplicado en `api/` (suelto) Y `api/_lib/` desde hacía 2
+  semanas + Supabase nuevo (^2.45.4 → 2.50+) que requiere WebSocket nativo
+  (Node 22+). Vercel cacheaba builds viejos por eso recién explotó al hacer
+  build limpio. **Fix:** borrar duplicado + cambiar `package.json` `"node":
+  "20.x"` → `"node": "22.x"`. **Lección crítica:** `^x.y.z` en deps puede
+  explotar cuando una nueva versión cambia requirements de runtime. (3)
+  **Planificación completa de feature de personalización láser**: documento
+  `PLAN-PERSONALIZACION.md` v2 con 18 decisiones cerradas, arquitectura
+  técnica, plan en 4 sesiones (A: visual + admin / B: backend + galería /
+  C: limpieza + admin polish / D: emails + smoke test). Pendiente arrancar
+  **Sesión A** después de tener el láser físico operativo. ← **Acá terminamos.**
+- **Sesión 28:** Si el usuario tiene el láser físico y testeó → arrancar
+  **Sesión A** del feature de personalización (frontend visual + admin
+  config global, ~2-2.5 hs). Si no, alguna de las opciones pendientes de
+  Sesión 26 (B reseñas reales, D limpieza, E Gmail send-as, F Search
+  Console). ← **Próxima.**
 
 ---
 
-**FIN — Cierre Sesión 26.** Sesión muy productiva: combo A + C
-completo según el plan acordado al cierre de Sesión 25.
+**FIN — Cierre Sesión 27.** Sesión mixta con tres bloques: UX carrito,
+incidente crítico resuelto, y planificación profunda del feature de
+personalización láser.
 
-**Lo más relevante:** durante Sesión 26 se descubrió que el DNS de
-`founder.uy` NO está en Cloudflare como asumía el plan original, sino
-en Vercel. Por eso el plan se ajustó: en lugar de Cloudflare Email
-Routing se usó ImprovMX (gratis, sin tocar nameservers), y el resto
-del SEO técnico siguió igual.
+**Lo más relevante para recordar:** el incidente del admin reveló que
+el proyecto tenía un archivo duplicado dormido desde hacía 2 semanas
+y una incompatibilidad latente Node 20 + Supabase nuevo. Ambos
+estaban "funcionando por suerte" hasta que un build limpio los
+expuso. **Lección documentada:** versionar deps con `~` o pinning
+exacto en producción, y NUNCA asumir que "si funcionaba ayer, está
+bien".
 
-**Estado del sitio post-Sesión 26:**
+**Estado del sitio post-Sesión 27:**
 - ✅ Performance excelente (95-99 desktop, 85-90 mobile)
 - ✅ Email transaccional + bidireccional (`info@founder.uy` operativo)
 - ✅ Base SEO universal completa (sitemap, robots, schema, meta tags, og-image)
@@ -1882,14 +2088,16 @@ del SEO técnico siguió igual.
 - ✅ Tracking Meta funcional con CAPI deduplicado
 - ✅ Mercado Pago en producción real
 - ✅ Emails automáticos al cambiar estado del pedido
+- ✅ **Backend estabilizado** (Node 22 + sin archivos duplicados)
+- ✅ **UX del carrito mobile mejorada** (ícono + 85%)
+- 📋 **Plan completo de personalización láser documentado** (`PLAN-PERSONALIZACION.md` v2)
 
-**Nada técnico bloqueante queda pendiente.** Lo que sigue de acá en
-adelante son las **decisiones de negocio** que el usuario tiene que
-pensar entre sesiones (ver "🤔 Preguntas de negocio abiertas" al
-inicio del documento). Sin esas decisiones, agregar más código no
-mueve la aguja en ventas.
+**Próximo gran bloque:** feature de personalización láser. Pendiente
+de arrancar cuando el usuario tenga el láser físicamente y haya hecho
+1-2 pruebas con cuero descartable para calibrar valores tentativos.
+Estimación: 4 sesiones de trabajo (~7-9 hs total).
 
-Sesión 27 va a ser corta o larga según qué decida el usuario respecto
-a las preguntas de negocio. 🚀
+Sesión 28 va a ser corta o larga según qué decida el usuario y si
+ya tiene el láser disponible. 🚀
 
 
