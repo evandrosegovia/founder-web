@@ -56,9 +56,13 @@
 
     // Botón carrito: se incluye sólo si la página lo activa (default: sí).
     // Páginas que NO usan carrito (ej: seguimiento.html) declaran data-cart="false".
+    // Ícono: silueta de bolsa de compras (shopping bag) — minimalista, premium.
     const cartBtn = showCart ? `
   <button class="cart-btn" onclick="toggleCart()" aria-label="Abrir carrito">
-    Carrito
+    <svg class="cart-btn__icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M6 7h12l-1.2 12.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 7Z"/>
+      <path d="M9 10V6a3 3 0 0 1 6 0v4"/>
+    </svg>
     <span class="cart-count" id="cartCount" aria-label="Items en carrito">0</span>
   </button>` : '';
 
