@@ -43,6 +43,16 @@
 //     - get_upload_url           → genera URL firmada para subir foto al bucket
 //                                  (cliente sube la imagen DIRECTO a Supabase,
 //                                  evitando pasar el binario por Vercel)
+//
+//   PERSONALIZACIÓN LÁSER (Sesión 28 Bloque B)
+//     - get_personalizacion_signed_url        → URL firmada de LECTURA
+//                                               para imagen privada subida
+//                                               por un cliente (admin only)
+//     - list_personalizacion_examples         → lista la galería de ejemplos
+//     - save_personalizacion_example          → upsert de un ejemplo
+//     - delete_personalizacion_example        → borra un ejemplo
+//     - get_personalizacion_example_upload_url → URL firmada para subir
+//                                                foto de ejemplo al bucket público
 // ═════════════════════════════════════════════════════════════════
 
 import { supabase, createHandler, ok, fail, parseBody } from './_lib/supabase.js';
@@ -414,6 +424,8 @@ async function handleListProducts(body, res) {
       id, slug, nombre, precio, descripcion, especificaciones,
       capacidad, dimensiones, material, nota,
       lleva_billetes, lleva_monedas, banner_url,
+      permite_grabado_adelante, permite_grabado_interior,
+      permite_grabado_atras, permite_grabado_texto,
       orden, activo, created_at, updated_at,
       product_colors (
         id, nombre, estado, precio_oferta, stock_bajo, orden,
@@ -466,6 +478,12 @@ async function handleSaveProduct(body, res) {
     lleva_monedas:    p.lleva_monedas  === true || p.lleva_monedas  === 'si',
     orden:            parseInt(p.orden, 10) || 1,
     activo:           p.activo !== false,
+    // Personalización láser (Sesión 28 Bloque B) — 4 toggles independientes.
+    // Si no vienen en el payload, conservan FALSE como default seguro.
+    permite_grabado_adelante: p.permite_grabado_adelante === true,
+    permite_grabado_interior: p.permite_grabado_interior === true,
+    permite_grabado_atras:    p.permite_grabado_atras    === true,
+    permite_grabado_texto:    p.permite_grabado_texto    === true,
     // banner_url ya no se toca desde acá: vive en site_settings.hero_banner_url
     // y se gestiona vía las acciones get_setting / set_setting.
   };
@@ -624,6 +642,186 @@ async function handleGetUploadUrl(body, res) {
 }
 
 // ═════════════════════════════════════════════════════════════════
+// PERSONALIZACIÓN — handlers (Sesión 28 Bloque B)
+// ─────────────────────────────────────────────────────────────────
+// Tres grupos de handlers:
+//   A) Leer imágenes privadas que subieron clientes → URL firmada de
+//      lectura del bucket privado `personalizacion-uploads`.
+//   B) Galería de ejemplos: CRUD sobre `personalizacion_examples` +
+//      URL firmada para subir al bucket público
+//      `personalizacion-examples` (mismo patrón que get_upload_url).
+//   C) Toggles por producto: ya viven en columnas reales del schema
+//      (permite_grabado_*) y se persisten via handleSaveProduct.
+//      No hace falta handler dedicado.
+// ═════════════════════════════════════════════════════════════════
+
+const BUCKET_PERSONALIZ_UPLOADS  = 'personalizacion-uploads';
+const BUCKET_PERSONALIZ_EXAMPLES = 'personalizacion-examples';
+
+// ── A) Leer imagen privada del cliente ─────────────────────────
+/**
+ * Genera una URL firmada de LECTURA para una imagen subida por un
+ * cliente al bucket privado. Requerida por el admin cuando ve un
+ * pedido con personalización y necesita descargar/ver la imagen.
+ *
+ * Body: { action, password, path, expiresIn? }
+ *   - path:      ruta interna dentro del bucket (ej "202605/abc-foto.jpg")
+ *   - expiresIn: segundos de validez (default 3600 = 1 hora)
+ */
+async function handleGetPersonalizSignedUrl(body, res) {
+  if (!requireAuth(body, res)) return;
+
+  const path = String(body.path || '').trim();
+  if (!path) return fail(res, 400, 'path_required');
+
+  // Sanity check: que el path no escape el bucket (ataque de path traversal)
+  if (path.includes('..') || path.startsWith('/') || path.includes('://')) {
+    return fail(res, 400, 'invalid_path');
+  }
+
+  const expiresIn = parseInt(body.expiresIn, 10) || 3600;  // 1 hora por defecto
+
+  const { data, error } = await supabase
+    .storage
+    .from(BUCKET_PERSONALIZ_UPLOADS)
+    .createSignedUrl(path, expiresIn);
+
+  if (error) {
+    console.error('[admin] signed_url error:', error.message, { path });
+    return fail(res, 500, 'storage_error', error.message);
+  }
+
+  return ok(res, {
+    path,
+    signedUrl: data.signedUrl,
+    expiresIn,
+  });
+}
+
+// ── B) Galería de ejemplos: listar ─────────────────────────────
+async function handleListPersonalizExamples(body, res) {
+  if (!requireAuth(body, res)) return;
+
+  // Devolvemos TODO (incluye inactivos) para que el admin los gestione.
+  // El frontend público filtra activo=true.
+  const { data, error } = await supabase
+    .from('personalizacion_examples')
+    .select('id, tipo, url, descripcion, colores, orden, activo, created_at')
+    .order('orden', { ascending: true });
+
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res, { examples: data || [] });
+}
+
+// ── B) Galería de ejemplos: crear/actualizar ───────────────────
+/**
+ * Body: { action, password, example: { id?, tipo, url, descripcion, colores, orden, activo } }
+ *   - Si trae id → UPDATE.
+ *   - Si NO trae id → INSERT.
+ */
+async function handleSavePersonalizExample(body, res) {
+  if (!requireAuth(body, res)) return;
+
+  const ex = body.example || {};
+  const tipo = String(ex.tipo || '').trim();
+  const url  = String(ex.url  || '').trim();
+
+  if (!['adelante', 'interior', 'atras', 'texto'].includes(tipo)) {
+    return fail(res, 400, 'tipo_invalid');
+  }
+  if (!url) return fail(res, 400, 'url_required');
+
+  // Normalizar colores a array de strings limpios (puede venir array o coma-sep)
+  let colores = [];
+  if (Array.isArray(ex.colores)) {
+    colores = ex.colores.map(c => String(c || '').trim()).filter(Boolean);
+  } else if (typeof ex.colores === 'string') {
+    colores = ex.colores.split(',').map(c => c.trim()).filter(Boolean);
+  }
+
+  const row = {
+    tipo,
+    url,
+    descripcion: String(ex.descripcion || '').trim() || null,
+    colores,
+    orden:       parseInt(ex.orden, 10) || 0,
+    activo:      ex.activo !== false,
+  };
+
+  // Update si trae id, insert si no
+  if (ex.id) {
+    const { error } = await supabase
+      .from('personalizacion_examples')
+      .update(row)
+      .eq('id', String(ex.id).trim());
+    if (error) return fail(res, 500, 'db_error', error.message);
+    return ok(res, { id: ex.id });
+  } else {
+    const { data, error } = await supabase
+      .from('personalizacion_examples')
+      .insert(row)
+      .select('id')
+      .maybeSingle();
+    if (error) return fail(res, 500, 'db_error', error.message);
+    return ok(res, { id: data?.id });
+  }
+}
+
+// ── B) Galería de ejemplos: eliminar ───────────────────────────
+async function handleDeletePersonalizExample(body, res) {
+  if (!requireAuth(body, res)) return;
+  const id = String(body.id || '').trim();
+  if (!id) return fail(res, 400, 'id_required');
+
+  const { error } = await supabase
+    .from('personalizacion_examples')
+    .delete()
+    .eq('id', id);
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res);
+}
+
+// ── B) Galería de ejemplos: URL firmada para subir foto ────────
+/**
+ * Mismo patrón que handleGetUploadUrl pero apuntando al bucket
+ * público `personalizacion-examples`. La URL pública final se puede
+ * construir y guardar en personalizacion_examples.url.
+ */
+async function handleGetPersonalizExampleUploadUrl(body, res) {
+  if (!requireAuth(body, res)) return;
+
+  const filename = String(body.filename || '').trim();
+  if (!filename) return fail(res, 400, 'filename_required');
+
+  const safe = filename
+    .toLowerCase()
+    .replace(/[^a-z0-9.-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const ext = safe.includes('.') ? safe.split('.').pop() : 'jpg';
+  const base = safe.replace(/\.[^.]+$/, '') || 'ejemplo';
+  const path = `${base}-${Date.now()}.${ext}`;
+
+  const { data, error } = await supabase
+    .storage
+    .from(BUCKET_PERSONALIZ_EXAMPLES)
+    .createSignedUploadUrl(path);
+  if (error) return fail(res, 500, 'storage_error', error.message);
+
+  const { data: pubData } = supabase
+    .storage
+    .from(BUCKET_PERSONALIZ_EXAMPLES)
+    .getPublicUrl(path);
+
+  return ok(res, {
+    path,
+    uploadUrl: data.signedUrl,
+    token:     data.token,
+    publicUrl: pubData.publicUrl,
+  });
+}
+
+// ═════════════════════════════════════════════════════════════════
 // HANDLER PRINCIPAL — router por action
 // ═════════════════════════════════════════════════════════════════
 const ACTIONS = {
@@ -644,6 +842,12 @@ const ACTIONS = {
   get_setting:           handleGetSetting,
   set_setting:           handleSetSetting,
   get_upload_url:        handleGetUploadUrl,
+  // ── Personalización láser (Sesión 28 Bloque B) ──
+  get_personalizacion_signed_url:        handleGetPersonalizSignedUrl,
+  list_personalizacion_examples:         handleListPersonalizExamples,
+  save_personalizacion_example:          handleSavePersonalizExample,
+  delete_personalizacion_example:        handleDeletePersonalizExample,
+  get_personalizacion_example_upload_url: handleGetPersonalizExampleUploadUrl,
 };
 
 export default createHandler(async (req, res) => {

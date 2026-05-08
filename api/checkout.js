@@ -115,6 +115,16 @@ async function handleCreateOrder(body, res, req) {
   if (!order.numero) return fail(res, 400, 'numero_required');
   if (!order.email)  return fail(res, 400, 'email_required');
 
+  // Sesión 28 Bloque B: si el pedido contiene items con personalización,
+  // el cliente DEBE haber aceptado el aviso de no-devolución.
+  // Esta validación es defensiva — el frontend ya bloquea, pero protegemos
+  // contra clientes maliciosos que pegan al endpoint directo.
+  const hayPersonalizacion = items.some(it => it && it.personalizacion);
+  if (hayPersonalizacion && order.acepto_no_devolucion !== true) {
+    return fail(res, 400, 'no_devolucion_required',
+      'Para items con grabado láser, debés aceptar el aviso de no-devolución.');
+  }
+
   // Sanitización: los campos tipo string se trimean; los numéricos se castean.
   const cleanOrder = {
     numero:    String(order.numero).trim(),
@@ -133,14 +143,54 @@ async function handleCreateOrder(body, res, req) {
     pago:      String(order.pago   || '').trim(),
     estado:    String(order.estado || 'Pendiente confirmación').trim(),
     notas:     String(order.notas  || '').trim(),
+    // Sesión 28 Bloque B
+    personalizacion_extra: parseInt(order.personalizacion_extra, 10) || 0,
+    acepto_no_devolucion:  order.acepto_no_devolucion === true,
   };
 
-  const cleanItems = items.map(it => ({
-    product_name:    String(it.product_name || it.name || '').trim(),
-    color:           String(it.color || '').trim(),
-    cantidad:        parseInt(it.cantidad || it.qty, 10) || 1,
-    precio_unitario: parseInt(it.precio_unitario || it.price, 10) || 0,
-  }));
+  // Sanitización de items + extracción/limpieza de personalización.
+  const cleanItems = items.map(it => {
+    const base = {
+      product_name:    String(it.product_name || it.name || '').trim(),
+      color:           String(it.color || '').trim(),
+      cantidad:        parseInt(it.cantidad || it.qty, 10) || 1,
+      precio_unitario: parseInt(it.precio_unitario || it.price, 10) || 0,
+    };
+
+    // Si trae personalización válida, la pasamos a la SQL.
+    // Solo conservamos los campos esperados — defensa contra payloads inflados.
+    if (it.personalizacion && typeof it.personalizacion === 'object') {
+      const p = it.personalizacion;
+      const sanitized = {
+        extra: parseInt(p.extra, 10) || 0,
+      };
+      // Campos de imagen: solo aceptar si traen un path string válido.
+      ['adelante', 'interior', 'atras'].forEach(slot => {
+        if (p[slot] && typeof p[slot] === 'object' && typeof p[slot].path === 'string') {
+          sanitized[slot] = {
+            path:     String(p[slot].path).slice(0, 300),
+            filename: String(p[slot].filename || '').slice(0, 200),
+          };
+        } else {
+          sanitized[slot] = null;
+        }
+      });
+      // Texto e indicaciones: limites de longitud
+      sanitized.texto        = String(p.texto || '').slice(0, 200);
+      sanitized.indicaciones = String(p.indicaciones || '').slice(0, 500);
+
+      // Solo adjuntar si hay algo significativo (todos los slots null y
+      // texto/indicaciones vacíos → no lo pasamos para que en DB quede NULL).
+      const hayContenido =
+        sanitized.adelante || sanitized.interior || sanitized.atras ||
+        sanitized.texto || sanitized.indicaciones;
+      if (hayContenido) {
+        base.personalizacion = sanitized;
+      }
+    }
+
+    return base;
+  });
 
   // Llamar a la RPC atómica
   const { data, error } = await supabase.rpc('apply_coupon_and_create_order', {
