@@ -62,6 +62,9 @@
     colorRows: [],                   // [{ uid, nombre, estado, precio_oferta, photos:[5 urls] }]
     colorRowUid: 0,                  // contador para uid estable por fila
     pendingDeleteId: null,           // id del producto en el confirm modal
+    // Personalización láser — config global cargada desde site_settings (Sesión 28).
+    // null al inicio, se popula con loadPersonalizacion() al entrar al panel.
+    lpConfig: null,
   };
 
   // ── DOM HELPERS ──────────────────────────────────────────────
@@ -212,6 +215,7 @@
     if (page === 'pedidos')  loadOrders();
     if (page === 'cupones')  loadCoupons();
     if (page === 'banner')   loadBanner();
+    if (page === 'personalizacion') loadPersonalizacion();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1685,6 +1689,225 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // PERSONALIZACIÓN LÁSER (Sesión 28)
+  // ───────────────────────────────────────────────────────────────
+  // Sub-panel "Personalización" en Admin > Herramientas. Lee y
+  // escribe `site_settings.personalizacion_config` (JSON serializado
+  // como string en el campo `value`).
+  //
+  // Estado en memoria: `state.lpConfig` se completa al entrar al panel.
+  // Si la fila no existe en Supabase, arrancamos con defaults.
+  // ═══════════════════════════════════════════════════════════════
+  const LP_KEY = 'personalizacion_config';
+
+  // Defaults: misma forma que en supabase-client.js. Los duplicamos acá
+  // a propósito para que el admin sea autosuficiente y no dependa de
+  // que supabase-client.js esté cargado en admin.html (que no lo está).
+  const LP_DEFAULTS = Object.freeze({
+    enabled: false,
+    precio_por_elemento: 290,
+    tiempo_extra_horas: 24,
+    archivo: {
+      tipos_permitidos:    ['image/png', 'image/jpeg', 'image/svg+xml'],
+      peso_max_mb:         5,
+      dim_min_px:          500,
+      dim_recomendada_px:  800,
+    },
+    texto_max_caracteres: 40,
+    productos: {},
+    textos: {
+      aviso_no_devolucion:
+        'Los productos personalizados no admiten devolución. Mantienen garantía de fabricación de 60 días.',
+      aviso_tiempo_extra:
+        'La personalización agrega 24 hs hábiles al tiempo de preparación.',
+      disclaimer_copyright:
+        'Al subir imágenes confirmás que tenés los derechos para usarlas. Founder se reserva el derecho de cancelar y reembolsar pedidos con contenido que infrinja derechos.',
+    },
+  });
+
+  function lpCloneDefaults() { return JSON.parse(JSON.stringify(LP_DEFAULTS)); }
+
+  /** Combina los defaults con lo que vino del backend. Tolera campos
+   *  faltantes y preserva campos extra. Mismo patrón que en supabase-client.js. */
+  function lpMerge(incoming) {
+    const out = lpCloneDefaults();
+    if (!incoming || typeof incoming !== 'object') return out;
+    Object.keys(incoming).forEach(k => {
+      if (k === 'archivo' || k === 'textos' || k === 'productos') {
+        out[k] = { ...out[k], ...(incoming[k] || {}) };
+      } else {
+        out[k] = incoming[k];
+      }
+    });
+    return out;
+  }
+
+  /** Carga la config desde Supabase + refresca todo el panel.
+   *  Llamada al entrar a la página y desde el botón "Actualizar". */
+  async function loadPersonalizacion() {
+    const { ok, data } = await apiAdmin('get_setting', { key: LP_KEY });
+    if (!ok) {
+      toast('Error cargando configuración de personalización', true);
+      // Caemos a defaults para que el panel sea usable igual
+      state.lpConfig = lpCloneDefaults();
+    } else {
+      // data.value es string. Parsearlo defensivamente.
+      let parsed = null;
+      const raw = data?.value || '';
+      if (raw) {
+        try { parsed = JSON.parse(raw); }
+        catch (e) { console.warn('[lp] JSON corrupto, usando defaults:', e); }
+      }
+      state.lpConfig = lpMerge(parsed);
+    }
+
+    renderPersonalizacion();
+  }
+
+  /** Refresca TODOS los inputs del panel desde state.lpConfig.
+   *  Idempotente — se puede llamar las veces que haga falta. */
+  function renderPersonalizacion() {
+    const c = state.lpConfig;
+    if (!c) return;
+
+    // Master switch
+    const master = $('lpMaster');
+    if (master) master.classList.toggle('is-on', !!c.enabled);
+    const masterSub = $('lpMasterSub');
+    if (masterSub) {
+      masterSub.textContent = c.enabled
+        ? '✅ El feature está activo — los clientes lo ven en producto.html.'
+        : 'El feature está apagado — los clientes no lo ven.';
+    }
+
+    // Configuración general
+    setVal('lpPrecio',   c.precio_por_elemento);
+    setVal('lpHoras',    c.tiempo_extra_horas);
+    setVal('lpMaxChars', c.texto_max_caracteres);
+    setVal('lpMaxMb',    c.archivo?.peso_max_mb);
+    setVal('lpDimMin',   c.archivo?.dim_min_px);
+    setVal('lpDimRec',   c.archivo?.dim_recomendada_px);
+
+    // Textos
+    setVal('lpTxtNoDev',     c.textos?.aviso_no_devolucion);
+    setVal('lpTxtTiempo',    c.textos?.aviso_tiempo_extra);
+    setVal('lpTxtCopyright', c.textos?.disclaimer_copyright);
+
+    // Lista de productos con sus 4 toggles
+    renderLpProducts();
+  }
+
+  function setVal(id, v) {
+    const el = $(id);
+    if (el && v !== undefined && v !== null) el.value = v;
+  }
+
+  /** Renderiza una fila por cada producto activo del catálogo, con
+   *  4 checkboxes. Usa state.products que ya está cargado al entrar
+   *  al admin (lo carga loadProducts() en bootstrap). */
+  function renderLpProducts() {
+    const cont = $('lpProductsList');
+    if (!cont) return;
+
+    const productos = state.products || [];
+    if (productos.length === 0) {
+      cont.innerHTML = '<div class="laser-empty">No hay productos cargados todavía.</div>';
+      return;
+    }
+
+    const cfgProds = state.lpConfig.productos || {};
+    cont.innerHTML = productos.map(p => {
+      const perms = cfgProds[p.nombre] || {};
+      const tipos = [
+        { k: 'adelante', label: '🖼️ Adelante' },
+        { k: 'interior', label: '📐 Interior' },
+        { k: 'atras',    label: '🔖 Atrás'    },
+        { k: 'texto',    label: '✍️ Texto'    },
+      ];
+      const checks = tipos.map(t => {
+        const on = perms[t.k] === true;
+        return `
+          <button type="button"
+                  class="laser-check ${on ? 'is-on' : ''}"
+                  onclick="toggleLpProduct('${esc(p.nombre)}','${t.k}')">
+            <span class="laser-check__box">${on ? '✓' : ''}</span>
+            <span>${t.label}</span>
+          </button>`;
+      }).join('');
+      return `
+        <div class="laser-prod-row">
+          <div class="laser-prod-row__name">Founder ${esc(p.nombre)}</div>
+          <div class="laser-prod-row__checks">${checks}</div>
+        </div>`;
+    }).join('');
+  }
+
+  /** Toggle de un permiso por producto. Solo muta el estado local —
+   *  el guardado real va con el botón "Guardar configuración". */
+  function toggleLpProduct(nombre, tipoKey) {
+    if (!state.lpConfig) return;
+    if (!state.lpConfig.productos) state.lpConfig.productos = {};
+    if (!state.lpConfig.productos[nombre]) state.lpConfig.productos[nombre] = {};
+    const cur = state.lpConfig.productos[nombre][tipoKey] === true;
+    state.lpConfig.productos[nombre][tipoKey] = !cur;
+    renderLpProducts();
+  }
+
+  /** Toggle del master switch. Solo muta state, no guarda hasta el botón. */
+  function toggleLpMaster() {
+    if (!state.lpConfig) return;
+    state.lpConfig.enabled = !state.lpConfig.enabled;
+    renderPersonalizacion();
+  }
+
+  /** Recoge todos los inputs, valida números mínimos, y persiste el
+   *  JSON en site_settings.personalizacion_config. */
+  async function savePersonalizacion() {
+    if (!state.lpConfig) state.lpConfig = lpCloneDefaults();
+    const c = state.lpConfig;
+
+    // Valores numéricos: parsear con fallback a defaults si vienen vacíos
+    c.precio_por_elemento  = parseInt($('lpPrecio')?.value, 10)   || LP_DEFAULTS.precio_por_elemento;
+    c.tiempo_extra_horas   = parseInt($('lpHoras')?.value, 10)    || LP_DEFAULTS.tiempo_extra_horas;
+    c.texto_max_caracteres = parseInt($('lpMaxChars')?.value, 10) || LP_DEFAULTS.texto_max_caracteres;
+
+    if (!c.archivo) c.archivo = lpCloneDefaults().archivo;
+    c.archivo.peso_max_mb        = parseInt($('lpMaxMb')?.value, 10)  || LP_DEFAULTS.archivo.peso_max_mb;
+    c.archivo.dim_min_px         = parseInt($('lpDimMin')?.value, 10) || LP_DEFAULTS.archivo.dim_min_px;
+    c.archivo.dim_recomendada_px = parseInt($('lpDimRec')?.value, 10) || LP_DEFAULTS.archivo.dim_recomendada_px;
+
+    // Textos: trim, fallback a defaults si quedaron vacíos
+    if (!c.textos) c.textos = lpCloneDefaults().textos;
+    c.textos.aviso_no_devolucion  = ($('lpTxtNoDev')?.value     || '').trim() || LP_DEFAULTS.textos.aviso_no_devolucion;
+    c.textos.aviso_tiempo_extra   = ($('lpTxtTiempo')?.value    || '').trim() || LP_DEFAULTS.textos.aviso_tiempo_extra;
+    c.textos.disclaimer_copyright = ($('lpTxtCopyright')?.value || '').trim() || LP_DEFAULTS.textos.disclaimer_copyright;
+
+    // Validaciones suaves: si dim_recomendada_px < dim_min_px → corregir
+    if (c.archivo.dim_recomendada_px < c.archivo.dim_min_px) {
+      c.archivo.dim_recomendada_px = c.archivo.dim_min_px;
+    }
+    if (c.precio_por_elemento < 0)  c.precio_por_elemento = 0;
+    if (c.tiempo_extra_horas < 0)   c.tiempo_extra_horas = 0;
+    if (c.texto_max_caracteres < 1) c.texto_max_caracteres = 1;
+
+    const btn = $('lpSaveBtn');
+    if (btn) { btn.textContent = '⏳ Guardando...'; btn.disabled = true; }
+
+    const value = JSON.stringify(c);
+    const { ok, data } = await apiAdmin('set_setting', { key: LP_KEY, value });
+
+    if (btn) { btn.textContent = '💾 Guardar configuración'; btn.disabled = false; }
+
+    if (!ok) {
+      toast('Error guardando' + (data?.message ? ': ' + data.message : ''), true);
+      return;
+    }
+
+    toast('✅ Configuración de personalización guardada');
+    renderPersonalizacion();    // refresca para reflejar los valores normalizados
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // EXPONER FUNCIONES USADAS POR onclick INLINE DEL HTML
   // ───────────────────────────────────────────────────────────────
   // El HTML del admin usa atributos onclick="xxx()" por toda la
@@ -1741,6 +1964,12 @@
   window.saveBanner          = saveBanner;
   window.clearBanner         = clearBanner;
   window.pickBannerFile      = pickBannerFile;
+
+  // Personalización láser (Sesión 28)
+  window.loadPersonalizacion = loadPersonalizacion;
+  window.savePersonalizacion = savePersonalizacion;
+  window.toggleLpMaster      = toggleLpMaster;
+  window.toggleLpProduct     = toggleLpProduct;
 
   // ═══════════════════════════════════════════════════════════════
   // BOOT — decidir si mostrar login o entrar directo

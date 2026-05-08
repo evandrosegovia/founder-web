@@ -143,11 +143,125 @@
     return rows[0]?.value || null;
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // PERSONALIZACIÓN LÁSER — Configuración global (Sesión 28)
+  // ─────────────────────────────────────────────────────────────
+  // Toda la config del feature de personalización vive en
+  // `site_settings.personalizacion_config` como JSON serializado en
+  // el campo `value` (string). Esto permite agregar/sacar campos sin
+  // tocar el schema de Supabase.
+  //
+  // Mientras la columna real `permite_grabado_*` no exista en la tabla
+  // `products` (eso llega en Sesión B), usamos `productos: { ... }`
+  // dentro del JSON para guardar los toggles por producto. Migración
+  // posterior a columnas reales: trivial.
+  //
+  // DEFAULTS: si `site_settings.personalizacion_config` no existe o es
+  // inválido, devolvemos esta estructura. La regla más importante es
+  // `enabled: false` — el feature arranca APAGADO y solo se activa
+  // cuando el dueño guarda config desde el admin.
+
+  const PERSONALIZACION_DEFAULTS = Object.freeze({
+    // Master switch: si está en false, el bloque ni se renderiza en
+    // producto.html. Equivale a "feature está oculto del cliente".
+    enabled: false,
+
+    // Precio que se suma POR cada elemento elegido (adelante / interior /
+    // atrás / texto son acumulables). En UYU, redondeado.
+    precio_por_elemento: 290,
+
+    // Tiempo extra que se suma a la preparación cuando hay personalización.
+    tiempo_extra_horas: 24,
+
+    // Validaciones de imagen (se usan recién en Sesión B cuando el upload
+    // funciona, pero las dejamos definidas desde ya para UI consistente).
+    archivo: {
+      tipos_permitidos:    ['image/png', 'image/jpeg', 'image/svg+xml'],
+      peso_max_mb:         5,
+      dim_min_px:          500,    // bloqueo: por debajo no deja subir
+      dim_recomendada_px:  800,    // warning: avisa pero deja
+    },
+
+    // Texto: cuántos caracteres como máximo en el grabado de texto.
+    texto_max_caracteres: 40,
+
+    // Toggles por producto. Mapa { "NombreDelProducto": { adelante,
+    // interior, atras, texto } } — cualquier producto que no figure
+    // acá se asume "todo en false" (es decir, no acepta grabados).
+    productos: {},
+
+    // Textos legales que se muestran al cliente en el bloque de
+    // personalización. Editables desde el admin para no tocar código
+    // si cambia la política.
+    textos: {
+      aviso_no_devolucion:
+        'Los productos personalizados no admiten devolución. Mantienen garantía de fabricación de 60 días.',
+      aviso_tiempo_extra:
+        'La personalización agrega 24 hs hábiles al tiempo de preparación.',
+      disclaimer_copyright:
+        'Al subir imágenes confirmás que tenés los derechos para usarlas. Founder se reserva el derecho de cancelar y reembolsar pedidos con contenido que infrinja derechos.',
+    },
+  });
+
+  /** Devuelve la config de personalización desde Supabase, parseada y
+   *  fusionada con los defaults. SIEMPRE devuelve un objeto válido —
+   *  si la fila no existe o el JSON está roto, cae a los defaults.
+   *
+   *  Esto significa que `producto.html` y el admin pueden llamar a esta
+   *  función sin chequear errores: lo peor que pasa es "feature apagado
+   *  con valores por defecto", que es exactamente el estado inicial deseado.
+   */
+  async function fetchPersonalizacionConfig() {
+    try {
+      const path = '/site_settings?select=value&key=eq.personalizacion_config&limit=1';
+      const rows = await supaGet(path);
+      const raw  = rows[0]?.value;
+      if (!raw) return cloneDefaults();
+
+      const parsed = JSON.parse(raw);
+      // Merge superficial campo por campo para tolerar configs viejas
+      // a las que les faltan campos nuevos.
+      return mergeWithDefaults(parsed);
+    } catch (e) {
+      console.warn('[founderDB] No se pudo leer personalizacion_config — usando defaults:', e);
+      return cloneDefaults();
+    }
+  }
+
+  /** Clona profundo los defaults para que el caller pueda mutarlos sin
+   *  contaminar la fuente. JSON parse/stringify alcanza para esta forma
+   *  de objeto (sin funciones, sin Dates, sin refs circulares). */
+  function cloneDefaults() {
+    return JSON.parse(JSON.stringify(PERSONALIZACION_DEFAULTS));
+  }
+
+  /** Toma un objeto parseado de Supabase y lo fusiona contra los defaults,
+   *  garantizando que todas las keys esperadas existan. Si Supabase trae
+   *  campos extra que los defaults no conocen, los preservamos también
+   *  (forward-compatible). */
+  function mergeWithDefaults(incoming) {
+    const out = cloneDefaults();
+    if (!incoming || typeof incoming !== 'object') return out;
+
+    // Top-level: copiamos todo lo que venga, sobreescribiendo defaults.
+    Object.keys(incoming).forEach(k => {
+      if (k === 'archivo' || k === 'textos' || k === 'productos') {
+        // Sub-objetos: merge para no perder defaults internos.
+        out[k] = { ...out[k], ...(incoming[k] || {}) };
+      } else {
+        out[k] = incoming[k];
+      }
+    });
+    return out;
+  }
+
   // ── Exponer globalmente ──────────────────────────────────────
   window.founderDB = {
     fetchProducts,
     fetchPhotoMap,
     fetchBannerUrl,
+    fetchPersonalizacionConfig,
+    PERSONALIZACION_DEFAULTS,
     // Útiles para debugging en consola del navegador
     _url:  SUPABASE_URL,
     _api:  API,
