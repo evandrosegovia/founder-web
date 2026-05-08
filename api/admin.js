@@ -706,7 +706,7 @@ async function handleListPersonalizExamples(body, res) {
   // El frontend público filtra activo=true.
   const { data, error } = await supabase
     .from('personalizacion_examples')
-    .select('id, tipo, url, descripcion, colores, orden, activo, created_at')
+    .select('id, tipo, url, descripcion, colores, modelos, orden, activo, created_at')
     .order('orden', { ascending: true });
 
   if (error) return fail(res, 500, 'db_error', error.message);
@@ -739,11 +739,21 @@ async function handleSavePersonalizExample(body, res) {
     colores = ex.colores.split(',').map(c => c.trim()).filter(Boolean);
   }
 
+  // Igual para modelos (Sesión 28b / fix galería). Si el array viene vacío,
+  // significa "aplica a todos los modelos". Si tiene valores, restringe.
+  let modelos = [];
+  if (Array.isArray(ex.modelos)) {
+    modelos = ex.modelos.map(m => String(m || '').trim()).filter(Boolean);
+  } else if (typeof ex.modelos === 'string') {
+    modelos = ex.modelos.split(',').map(m => m.trim()).filter(Boolean);
+  }
+
   const row = {
     tipo,
     url,
     descripcion: String(ex.descripcion || '').trim() || null,
     colores,
+    modelos,
     orden:       parseInt(ex.orden, 10) || 0,
     activo:      ex.activo !== false,
   };
