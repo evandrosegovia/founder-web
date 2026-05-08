@@ -3008,19 +3008,33 @@ async function openLaserExamples(tipo) {
     return;
   }
 
-  // Filtrar por color elegido. Si no hay match exacto, mostramos todos
-  // los del tipo como fallback. Si no hay color elegido aún, mostramos todos.
+  // Filtrar por MODELO actual primero (Sesión 28b fix). Igual lógica que
+  // colores: si el ejemplo no tiene modelos marcados → vale para todos.
+  const modeloActual = state.product?.name;
+  let porModelo = ofTipo;
+  if (modeloActual) {
+    const exactosModelo = ofTipo.filter(ex => {
+      const mods = Array.isArray(ex.modelos) ? ex.modelos : [];
+      if (mods.length === 0) return true;
+      return mods.some(m => m && m.trim().toLowerCase() === modeloActual.toLowerCase());
+    });
+    if (exactosModelo.length > 0) porModelo = exactosModelo;
+    // Si no hay exactos por modelo, dejamos `porModelo = ofTipo` como fallback.
+  }
+
+  // Después filtrar por color elegido. Si no hay match exacto, mostramos
+  // todos los del modelo+tipo como fallback. Si no hay color elegido, mostramos todos.
   const colorActual = state.selectedColor?.name;
-  let filtered = ofTipo;
+  let filtered = porModelo;
   if (colorActual) {
-    const exactos = ofTipo.filter(ex => {
+    const exactos = porModelo.filter(ex => {
       const cols = Array.isArray(ex.colores) ? ex.colores : [];
       // Si el ejemplo no tiene colores marcados → vale para todos los colores
       if (cols.length === 0) return true;
       return cols.some(c => c && c.trim().toLowerCase() === colorActual.toLowerCase());
     });
     if (exactos.length > 0) filtered = exactos;
-    // Si no hay exactos, dejamos `filtered = ofTipo` (todos los del tipo).
+    // Si no hay exactos, dejamos `filtered = porModelo` (todos los del tipo+modelo).
   }
 
   bodyEl.innerHTML = `
