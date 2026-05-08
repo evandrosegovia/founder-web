@@ -417,6 +417,134 @@ textarea.fi{resize:vertical;min-height:70px}
   .laser-prod-row { grid-template-columns: 1fr; }
   .laser-prod-row__checks { width: 100%; }
 }
+
+/* ── Permite grabado por producto (modal de edición de producto) ──
+   4 checkboxes en un grid 2x2 (mobile) / 4x1 (desktop). Look "card"
+   tappable, mismo lenguaje visual que .laser-check del panel general
+   pero adaptado al estilo del modal.
+*/
+.perm-grabado-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+@media(min-width: 600px) {
+  .perm-grabado-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.perm-grabado-check {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: var(--mid);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all .2s;
+  text-align: center;
+}
+.perm-grabado-check:hover { border-color: var(--gold); }
+.perm-grabado-check input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.perm-grabado-check:has(input:checked) {
+  background: rgba(201,169,110,.12);
+  border-color: var(--gold);
+}
+.perm-grabado-check__icon { font-size: 18px; }
+.perm-grabado-check__name {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.perm-grabado-check:has(input:checked) .perm-grabado-check__name {
+  color: var(--gold);
+}
+
+/* ── Galería de ejemplos en admin (Sesión 28 Bloque B) ─────────── */
+.lp-ex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.lp-ex-card {
+  background: var(--mid);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color .2s;
+  position: relative;
+  overflow: hidden;
+}
+.lp-ex-card:hover { border-color: var(--gold); }
+.lp-ex-card__img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  background: var(--gray);
+}
+.lp-ex-card__info {
+  padding: 8px;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lp-ex-card__tipo {
+  color: var(--gold);
+  margin-bottom: 2px;
+}
+.lp-ex-card__inactive {
+  position: absolute;
+  top: 6px; right: 6px;
+  background: rgba(0,0,0,.7);
+  color: var(--muted);
+  padding: 2px 6px;
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Checkboxes de colores en el modal */
+.lp-ex-colores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 6px;
+}
+.lp-ex-colores label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: var(--mid);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--muted);
+  transition: all .2s;
+}
+.lp-ex-colores label:has(input:checked) {
+  background: rgba(201,169,110,.12);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.lp-ex-colores input[type="checkbox"] {
+  width: 14px; height: 14px;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+/* Preview de imagen en modal */
+#lpExImagePreview img {
+  max-width: 200px;
+  max-height: 200px;
+  display: block;
+  border: 1px solid var(--border);
+}
+#lpExImagePreview:empty { display: none; }
 </style>
 </head>
 <body>
@@ -813,6 +941,23 @@ textarea.fi{resize:vertical;min-height:70px}
           </div>
         </div>
 
+        <!-- Galería de ejemplos visuales (Sesión 28 Bloque B) -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-head">
+            <div class="card-title">Galería de ejemplos</div>
+            <button class="btn btn-primary btn-sm" onclick="openLpExampleNew()">+ Subir ejemplo</button>
+          </div>
+          <div class="card-body">
+            <div class="info-box" style="margin-bottom:14px">
+              Subí fotos de ejemplo para que los clientes vean cómo queda cada tipo de grabado en distintos colores.<br>
+              Las fotos aparecen en el modal "Ver ejemplo" del bloque de personalización en el sitio. Las fotos se filtran automáticamente por el color que el cliente eligió.
+            </div>
+            <div id="lpExamplesList">
+              <div class="laser-empty">Cargando ejemplos...</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Botón guardar -->
         <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-primary" id="lpSaveBtn" onclick="savePersonalizacion()">💾 Guardar configuración</button>
@@ -823,6 +968,61 @@ textarea.fi{resize:vertical;min-height:70px}
     </div><!-- /main-content -->
   </div><!-- /body-layout -->
 </div><!-- /adminPanel -->
+
+<!-- MODAL: Editar ejemplo de la galería (Sesión 28 Bloque B) -->
+<div class="modal-overlay" id="lpExampleModal">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-head">
+      <div class="modal-title" id="lpExampleModalTitle">Subir ejemplo</div>
+      <button class="modal-x" onclick="closeLpExampleModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="lpExId">
+      <div class="fg">
+        <div class="fl">Foto del ejemplo</div>
+        <div id="lpExImagePreview" style="margin-bottom:8px"></div>
+        <button class="btn btn-secondary" type="button" onclick="pickLpExampleFile()">📁 Elegir foto del equipo</button>
+        <input type="text" class="fi" id="lpExUrl" placeholder="o pegá una URL de imagen..." style="margin-top:8px">
+        <div class="fhint">Recomendado: foto cuadrada de 800×800 px o más, fondo neutro.</div>
+      </div>
+      <div class="fg" style="margin-top:14px">
+        <div class="fl">Tipo de grabado *</div>
+        <select class="fi" id="lpExTipo">
+          <option value="adelante">🖼️ Adelante</option>
+          <option value="interior">📐 Interior</option>
+          <option value="atras">🔖 Atrás</option>
+          <option value="texto">✍️ Texto</option>
+        </select>
+      </div>
+      <div class="fg" style="margin-top:14px">
+        <div class="fl">Colores en los que se ve este ejemplo</div>
+        <div id="lpExColoresChecks" class="lp-ex-colores"></div>
+        <div class="fhint">Marcá los colores en los que esta foto representa bien el grabado. Si no marcás ninguno, se muestra para todos los colores.</div>
+      </div>
+      <div class="fg" style="margin-top:14px">
+        <div class="fl">Descripción (opcional)</div>
+        <input type="text" class="fi" id="lpExDescripcion" maxlength="120" placeholder="Ej: Iniciales JC en cuero camel">
+      </div>
+      <div class="fg" style="margin-top:14px">
+        <div class="fl">Orden de visualización</div>
+        <input type="number" class="fi" id="lpExOrden" min="0" placeholder="0">
+        <div class="fhint">Número más bajo = aparece antes. Default: 0.</div>
+      </div>
+      <div class="fg" style="margin-top:14px">
+        <div class="fl">Estado</div>
+        <select class="fi" id="lpExActivo">
+          <option value="true">✅ Visible al cliente</option>
+          <option value="false">⏸️ Oculto</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="lpExDeleteBtn" onclick="deleteLpExample()">🗑️ Eliminar</button>
+      <button class="btn btn-secondary" onclick="closeLpExampleModal()">Cancelar</button>
+      <button class="btn btn-primary" id="lpExSaveBtn" onclick="saveLpExample()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ORDER DETAIL MODAL -->
 <div class="modal-overlay" id="orderDetailModal">
@@ -895,6 +1095,38 @@ textarea.fi{resize:vertical;min-height:70px}
             <input type="text" class="fi" id="editNota" placeholder="Ej: Edición limitada · Solo disponible en Negro y Camel">
             <div class="fhint">Se muestra como destacado en dorado en la página del producto (opcional)</div>
           </div>
+        </div>
+      </div>
+
+      <!-- ── Personalización láser por producto (Sesión 28 Bloque B) ──
+           4 toggles independientes que controlan qué tipos de grabado
+           acepta este producto. Se persiste en columnas products.permite_grabado_*.
+           Si TODOS están en false, el producto no muestra el bloque de
+           personalización en el sitio (aunque el feature global esté activo). -->
+      <div style="padding:16px;border:1px solid rgba(201,169,110,.25);background:rgba(201,169,110,.04);margin-bottom:4px">
+        <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">✦ Personalización láser</div>
+        <div class="fhint" style="margin-bottom:14px">Marcá qué tipos de grabado acepta este producto. Los precios y plazos generales se configuran desde Herramientas → Personalización láser.</div>
+        <div class="perm-grabado-grid">
+          <label class="perm-grabado-check">
+            <input type="checkbox" id="editPermAdelante">
+            <span class="perm-grabado-check__icon">🖼️</span>
+            <span class="perm-grabado-check__name">Adelante</span>
+          </label>
+          <label class="perm-grabado-check">
+            <input type="checkbox" id="editPermInterior">
+            <span class="perm-grabado-check__icon">📐</span>
+            <span class="perm-grabado-check__name">Interior</span>
+          </label>
+          <label class="perm-grabado-check">
+            <input type="checkbox" id="editPermAtras">
+            <span class="perm-grabado-check__icon">🔖</span>
+            <span class="perm-grabado-check__name">Atrás</span>
+          </label>
+          <label class="perm-grabado-check">
+            <input type="checkbox" id="editPermTexto">
+            <span class="perm-grabado-check__icon">✍️</span>
+            <span class="perm-grabado-check__name">Texto</span>
+          </label>
         </div>
       </div>
 

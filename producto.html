@@ -467,6 +467,292 @@ select:active,
   letter-spacing: 0.5px;
 }
 
+/* ── PRODUCTO — Modal "Ver ejemplo" de personalización (Sesión 28 Bloque B) ──
+   Modal premium que muestra fotos de la galería de ejemplos,
+   filtradas por el color que el cliente eligió en el producto.
+   Si no hay foto del color exacto, muestra todas las del tipo.
+*/
+.lp-example-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: var(--z-modal);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.lp-example-overlay.is-open { display: flex; }
+
+.lp-example-modal {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.lp-example-head {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  z-index: 1;
+}
+.lp-example-head__title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+.lp-example-head__sub {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-top: 4px;
+}
+.lp-example-head__close {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: border-color var(--transition-fast);
+}
+.lp-example-head__close:hover { border-color: var(--color-gold); color: var(--color-gold); }
+
+.lp-example-body { padding: 20px 24px 28px; }
+
+.lp-example-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  line-height: 1.7;
+}
+
+.lp-example-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+.lp-example-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+.lp-example-card__img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  background: var(--color-surface2);
+}
+.lp-example-card__info {
+  padding: 10px 12px;
+}
+.lp-example-card__desc {
+  font-size: 11px;
+  color: var(--color-muted);
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+}
+.lp-example-card__colores {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  margin-top: 6px;
+}
+
+/* Mobile: 2 columnas */
+@media (max-width: 480px) {
+  .lp-example-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .lp-example-modal { max-height: 95vh; }
+  .lp-example-head { padding: 14px 16px; }
+  .lp-example-body { padding: 14px 16px 20px; }
+}
+
+/* Botón "Ver ejemplo" en cada laser-option (link sutil arriba a la derecha) */
+.laser-option__see {
+  position: absolute;
+  bottom: 8px; right: 8px;
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 4px 6px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--transition-fast);
+}
+.laser-option__see:hover { color: var(--color-gold); }
+/* Cuando la opción está seleccionada, el check ocupa la esquina derecha;
+   movemos el "ver ejemplo" abajo a la izquierda */
+.laser-option.is-selected .laser-option__see {
+  right: auto;
+  left: 8px;
+}
+
+/* ── PRODUCTO — Personalización láser: uploads (Sesión 28 Bloque B) ─────
+   Por cada opción de imagen seleccionada (adelante/interior/atrás)
+   aparece un slot de upload con preview, nombre de archivo y botón
+   quitar. Estados: vacío / subiendo / listo / error.
+*/
+.laser-uploads { margin-top: 14px; }
+.laser-uploads:empty { display: none; }
+
+.laser-upload {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.laser-upload__thumb {
+  width: 56px; height: 56px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.laser-upload__thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.laser-upload__thumb-empty {
+  font-size: 18px;
+  color: var(--color-muted);
+  opacity: 0.5;
+}
+.laser-upload__info { min-width: 0; flex: 1; }
+.laser-upload__title {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--color-text);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.laser-upload__filename {
+  font-size: 11px;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.laser-upload__filename--placeholder { font-style: italic; }
+.laser-upload__filename--error { color: var(--color-danger); }
+
+.laser-upload__btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.laser-upload__btn:hover { border-color: var(--color-gold); color: var(--color-gold); }
+.laser-upload__btn--remove {
+  border-color: rgba(255,59,48,.4);
+  color: var(--color-danger);
+}
+.laser-upload__btn--remove:hover { border-color: var(--color-danger); }
+.laser-upload__btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+/* Spinner discreto cuando está subiendo */
+.laser-upload.is-uploading .laser-upload__thumb-empty::after {
+  content: '⏳';
+  display: block;
+  animation: laser-spin 1.4s linear infinite;
+}
+@keyframes laser-spin {
+  0%   { opacity: 0.3; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+/* Mobile: stack vertical */
+@media (max-width: 480px) {
+  .laser-upload {
+    grid-template-columns: 56px 1fr;
+    grid-template-rows: auto auto;
+  }
+  .laser-upload__btn {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+}
+
+/* ── PRODUCTO — Personalización láser: indicaciones libres ──────
+   Textarea opcional que aparece cuando hay alguna opción seleccionada.
+   Permite al cliente aclarar detalles que no son evidentes desde la imagen.
+*/
+.laser-instructions {
+  display: none;
+  margin-top: 14px;
+  padding: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+.laser-instructions.is-visible { display: block; }
+.laser-instructions__label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.laser-instructions__field {
+  width: 100%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 3px;
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  transition: border-color var(--transition-fast);
+}
+.laser-instructions__field:focus { border-color: var(--color-gold); }
+
 /* Resumen del precio agregado — pill dorado al final del bloque */
 .laser-summary {
   display: none;
@@ -1105,6 +1391,13 @@ body.cart-open .wa-bubble {
             <!-- Las opciones se renderizan desde JS, una por cada permite_grabado_* en true -->
           </div>
 
+          <!-- Uploads de imagen — se renderizan desde JS para cada opción de imagen
+               seleccionada (adelante/interior/atrás). Cada uno permite subir,
+               muestra preview con nombre de archivo y botón quitar. -->
+          <div class="laser-uploads" id="laserUploads">
+            <!-- Se llena dinámicamente desde JS -->
+          </div>
+
           <!-- Input de texto — visible solo si "TEXTO" está seleccionado -->
           <div class="laser-text-input" id="laserTextInput">
             <div class="laser-text-input__label">Texto a grabar</div>
@@ -1117,6 +1410,17 @@ body.cart-open .wa-bubble {
             <div class="laser-text-input__counter">
               <span id="laserTextCount">0</span> / <span id="laserTextMax">40</span> caracteres
             </div>
+          </div>
+
+          <!-- Indicaciones libres — visible cuando hay alguna opción seleccionada.
+               Permite al cliente aclarar detalles (centrar, tamaño, posición). -->
+          <div class="laser-instructions" id="laserInstructions">
+            <div class="laser-instructions__label">Indicaciones (opcional)</div>
+            <textarea class="laser-instructions__field"
+                      id="laserInstructionsField"
+                      placeholder="Ej: centrar lo más posible, tamaño grande, color del relleno..."
+                      maxlength="300"
+                      rows="2"></textarea>
           </div>
 
           <!-- Resumen del precio agregado -->
@@ -1133,6 +1437,10 @@ body.cart-open .wa-bubble {
             <div class="laser-warnings__item">
               <span class="laser-warnings__icon" aria-hidden="true">⚠</span>
               <span id="laserWarningReturn">Los productos personalizados no admiten devolución. Mantienen garantía de fabricación de 60 días.</span>
+            </div>
+            <div class="laser-warnings__item">
+              <span class="laser-warnings__icon" aria-hidden="true">©</span>
+              <span id="laserWarningCopyright">Al subir imágenes confirmás que tenés los derechos para usarlas.</span>
             </div>
           </div>
         </div>
@@ -1373,6 +1681,27 @@ body.cart-open .wa-bubble {
 
 </div><!-- /productContent -->
 
+<!-- ── MODAL "Ver ejemplo" — Personalización láser (Sesión 28 Bloque B) ──
+     Se abre con click en el link "ver ejemplo" de cada laser-option.
+     Muestra fotos de la galería filtradas por:
+       1) tipo de grabado (adelante/interior/atras/texto)
+       2) color elegido por el cliente — si hay fotos del color exacto,
+          solo muestra esas. Si no, muestra todas las del tipo. -->
+<div class="lp-example-overlay" id="lpExampleOverlay" onclick="if(event.target===this) closeLpExampleModal()">
+  <div class="lp-example-modal" role="dialog" aria-labelledby="lpExampleTitle">
+    <div class="lp-example-head">
+      <div>
+        <div class="lp-example-head__title" id="lpExampleTitle">Ejemplos de grabado</div>
+        <div class="lp-example-head__sub" id="lpExampleSub"></div>
+      </div>
+      <button class="lp-example-head__close" onclick="closeLpExampleModal()" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="lp-example-body" id="lpExampleBody">
+      <div class="lp-example-empty">Cargando...</div>
+    </div>
+  </div>
+</div>
+
 <!-- ── FOOTER + MODALES LEGALES + BURBUJA WA (componente compartido) ── -->
 <div id="site-footer"></div>
 <script src="components/footer.js"></script>
@@ -1474,13 +1803,24 @@ const state = {
   // de `config` está documentada en supabase-client.js (defaults).
   //
   // `selected` mantiene qué grabados eligió el cliente para ESTE producto.
-  // No se persiste en localStorage en Sesión A — eso llega en Sesión B
-  // junto con la persistencia en el carrito.
+  // Se persiste en el carrito (Sesión B) cuando el cliente confirma.
+  //
+  // `uploads` (Sesión B): { adelante: { path, filename, status }, ... }
+  //   - status: 'idle' | 'uploading' | 'ready' | 'error'
+  //   - Solo aplica a las opciones de imagen (adelante/interior/atras).
+  //
+  // `indicaciones`: texto libre opcional con detalles del grabado.
   laser: {
-    config:   null,
-    selected: { adelante: false, interior: false, atras: false, texto: false },
-    texto:    '',
-    isOpen:   false,
+    config:       null,
+    selected:     { adelante: false, interior: false, atras: false, texto: false },
+    texto:        '',
+    indicaciones: '',
+    uploads:      { adelante: null, interior: null, atras: null },
+    isOpen:       false,
+    // Galería de ejemplos (Sesión 28 Bloque B): se cargan una sola vez
+    // por carga de página y se cachean acá para que abrir el modal sea
+    // instantáneo. null = no cargado aún, [] = cargado pero sin ejemplos.
+    examples:     null,
   },
 };
 
@@ -2019,10 +2359,22 @@ async function initLaserSection() {
   // 2) Master switch global. Si está apagado → fin de la historia.
   if (!config.enabled) return;
 
-  // 3) Toggles por producto. Mientras la columna real no exista, leemos
-  //    de config.productos[<nombre>]. Si el producto no figura → todos
-  //    los grabados quedan en false → bloque oculto.
-  const perms = (config.productos && config.productos[state.product.name]) || {};
+  // 3) Toggles por producto. Sesión B: leemos las columnas reales del
+  //    producto (`permite_grabado_*`). Como fallback, si por algún motivo
+  //    el frontend lee un producto sin esas columnas (cache viejo o
+  //    deploy parcial), caemos al JSON `config.productos[nombre]` de
+  //    Sesión A. Esto garantiza migración sin downtime.
+  const p = state.product;
+  const fromDb = {
+    adelante: p.permite_grabado_adelante === true,
+    interior: p.permite_grabado_interior === true,
+    atras:    p.permite_grabado_atras    === true,
+    texto:    p.permite_grabado_texto    === true,
+  };
+  const algunoEnDb = Object.values(fromDb).some(Boolean);
+  const fromJson = (config.productos && config.productos[p.name]) || {};
+  const perms = algunoEnDb ? fromDb : fromJson;
+
   const tipos = [
     { key: 'adelante', icon: '🖼️', label: 'Adelante' },
     { key: 'interior', icon: '📐', label: 'Interior' },
@@ -2045,6 +2397,9 @@ async function initLaserSection() {
         <span class="laser-option__name">${t.label}</span>
         <span class="laser-option__price">+$${config.precio_por_elemento.toLocaleString('es-UY')} UYU</span>
         <span class="laser-option__check" aria-hidden="true">✓</span>
+        <span class="laser-option__see"
+              onclick="event.stopPropagation(); openLaserExamples('${t.key}')"
+              role="button" tabindex="0">ⓘ ver ejemplo</span>
       </button>
     `).join('');
   }
@@ -2059,6 +2414,8 @@ async function initLaserSection() {
   if (wTime && config.textos?.aviso_tiempo_extra) wTime.textContent = config.textos.aviso_tiempo_extra;
   const wReturn = $('laserWarningReturn');
   if (wReturn && config.textos?.aviso_no_devolucion) wReturn.textContent = config.textos.aviso_no_devolucion;
+  const wCopy = $('laserWarningCopyright');
+  if (wCopy && config.textos?.disclaimer_copyright) wCopy.textContent = config.textos.disclaimer_copyright;
 
   // 6) Configurar input de texto
   const maxChars = config.texto_max_caracteres || 40;
@@ -2093,6 +2450,12 @@ function bindLaserEvents() {
   if (fieldEl && !fieldEl.dataset.bound) {
     fieldEl.dataset.bound = '1';
     fieldEl.addEventListener('input', onLaserTextInput);
+  }
+
+  const indicEl = $('laserInstructionsField');
+  if (indicEl && !indicEl.dataset.bound) {
+    indicEl.dataset.bound = '1';
+    indicEl.addEventListener('input', onLaserInstructionsInput);
   }
 }
 
@@ -2135,6 +2498,15 @@ function toggleLaserOption(key) {
     }
   }
 
+  // Si destildaron una opción de imagen → limpiar su upload del state
+  if (key === 'adelante' || key === 'interior' || key === 'atras') {
+    if (!state.laser.selected[key]) {
+      state.laser.uploads[key] = null;
+    }
+  }
+
+  renderLaserUploads();
+  updateLaserInstructionsVisibility();
   updateLaserSummary();
   updateLaserCTA();
 }
@@ -2146,6 +2518,12 @@ function onLaserTextInput(e) {
   updateLaserTextCounter();
 }
 
+/** Listener del textarea de indicaciones. */
+function onLaserInstructionsInput(e) {
+  state.laser.indicaciones = (e.target.value || '').slice(0, 300);
+  e.target.value = state.laser.indicaciones;
+}
+
 function getLaserMaxChars() {
   return state.laser.config?.texto_max_caracteres || 40;
 }
@@ -2153,6 +2531,306 @@ function getLaserMaxChars() {
 function updateLaserTextCounter() {
   const countEl = $('laserTextCount');
   if (countEl) countEl.textContent = String(state.laser.texto.length);
+}
+
+/** Muestra/oculta el textarea de indicaciones según haya alguna opción seleccionada */
+function updateLaserInstructionsVisibility() {
+  const cont = $('laserInstructions');
+  if (!cont) return;
+  const hayAlguna = Object.values(state.laser.selected).some(Boolean);
+  cont.classList.toggle('is-visible', hayAlguna);
+  if (!hayAlguna) {
+    state.laser.indicaciones = '';
+    const f = $('laserInstructionsField');
+    if (f) f.value = '';
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════
+// PERSONALIZACIÓN — Uploads de imagen (Sesión 28 Bloque B)
+// ─────────────────────────────────────────────────────────────────
+// Para cada opción de imagen seleccionada (adelante/interior/atras)
+// se renderiza un slot de upload. El cliente toca "Subir imagen",
+// elige archivo, se valida, se sube a Supabase via /api/upload-personalizacion.
+// ═════════════════════════════════════════════════════════════════
+
+const LASER_OPTION_LABELS = {
+  adelante: 'Imagen adelante',
+  interior: 'Imagen interior',
+  atras:    'Imagen atrás',
+};
+
+/** Re-renderiza la sección de uploads. Se llama cada vez que el cliente
+ *  toggle una opción de imagen, sube/quita un archivo, etc. */
+function renderLaserUploads() {
+  const cont = $('laserUploads');
+  if (!cont) return;
+
+  const tipos = ['adelante', 'interior', 'atras'];
+  const visibles = tipos.filter(t => state.laser.selected[t]);
+
+  if (visibles.length === 0) {
+    cont.innerHTML = '';
+    return;
+  }
+
+  cont.innerHTML = visibles.map(t => {
+    const upload = state.laser.uploads[t];
+    return renderLaserUploadSlot(t, upload);
+  }).join('');
+}
+
+/** Renderiza UN slot. Estados:
+ *   - sin archivo (upload === null) → botón "Subir imagen"
+ *   - subiendo (status === 'uploading') → botón disabled
+ *   - listo (status === 'ready') → preview + botón "Quitar"
+ *   - error (status === 'error') → mensaje rojo + botón "Reintentar"
+ */
+function renderLaserUploadSlot(tipo, upload) {
+  const label = LASER_OPTION_LABELS[tipo] || tipo;
+
+  if (!upload) {
+    // Sin archivo subido → botón para elegir
+    return `
+      <div class="laser-upload" data-laser-tipo="${tipo}">
+        <div class="laser-upload__thumb">
+          <span class="laser-upload__thumb-empty" aria-hidden="true">📁</span>
+        </div>
+        <div class="laser-upload__info">
+          <div class="laser-upload__title">${label}</div>
+          <div class="laser-upload__filename laser-upload__filename--placeholder">
+            Aún sin imagen subida
+          </div>
+        </div>
+        <button type="button" class="laser-upload__btn"
+                onclick="pickLaserFile('${tipo}')">📁 Subir imagen</button>
+      </div>`;
+  }
+
+  if (upload.status === 'uploading') {
+    return `
+      <div class="laser-upload is-uploading" data-laser-tipo="${tipo}">
+        <div class="laser-upload__thumb">
+          <span class="laser-upload__thumb-empty" aria-hidden="true">⏳</span>
+        </div>
+        <div class="laser-upload__info">
+          <div class="laser-upload__title">${label}</div>
+          <div class="laser-upload__filename">Subiendo ${escapeHtml(upload.filename)}...</div>
+        </div>
+        <button type="button" class="laser-upload__btn" disabled>Subiendo</button>
+      </div>`;
+  }
+
+  if (upload.status === 'error') {
+    return `
+      <div class="laser-upload" data-laser-tipo="${tipo}">
+        <div class="laser-upload__thumb">
+          <span class="laser-upload__thumb-empty" aria-hidden="true">⚠</span>
+        </div>
+        <div class="laser-upload__info">
+          <div class="laser-upload__title">${label}</div>
+          <div class="laser-upload__filename laser-upload__filename--error">
+            ${escapeHtml(upload.error || 'Error al subir')}
+          </div>
+        </div>
+        <button type="button" class="laser-upload__btn"
+                onclick="pickLaserFile('${tipo}')">↻ Reintentar</button>
+      </div>`;
+  }
+
+  // Estado: ready
+  const previewSrc = upload.previewDataUrl || '';
+  return `
+    <div class="laser-upload" data-laser-tipo="${tipo}">
+      <div class="laser-upload__thumb">
+        ${previewSrc
+          ? `<img src="${previewSrc}" alt="">`
+          : `<span class="laser-upload__thumb-empty" aria-hidden="true">✓</span>`}
+      </div>
+      <div class="laser-upload__info">
+        <div class="laser-upload__title">${label}</div>
+        <div class="laser-upload__filename">${escapeHtml(upload.filename)}</div>
+      </div>
+      <button type="button" class="laser-upload__btn laser-upload__btn--remove"
+              onclick="removeLaserFile('${tipo}')">✕ Quitar</button>
+    </div>`;
+}
+
+/** Helper: escape HTML para evitar XSS en filenames */
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Abre el file picker para una opción dada y procesa el archivo elegido. */
+function pickLaserFile(tipo) {
+  const f = document.createElement('input');
+  f.type = 'file';
+  const allowed = state.laser.config?.archivo?.tipos_permitidos || ['image/png', 'image/jpeg', 'image/svg+xml'];
+  f.accept = allowed.join(',');
+  f.onchange = e => {
+    const file = e.target.files && e.target.files[0];
+    if (file) handleLaserFile(tipo, file);
+  };
+  f.click();
+}
+
+/** Quita la imagen subida de una opción (no la borra del bucket — eso es
+ *  trabajo del cron de limpieza en Sesión C, porque el archivo podría
+ *  estar en uso por otro item del carrito). */
+function removeLaserFile(tipo) {
+  state.laser.uploads[tipo] = null;
+  renderLaserUploads();
+  updateLaserCTA();
+}
+
+/** Procesa un archivo elegido por el cliente: valida, sube, actualiza estado. */
+async function handleLaserFile(tipo, file) {
+  const cfg = state.laser.config?.archivo || {};
+  const maxMb     = cfg.peso_max_mb || 5;
+  const dimMin    = cfg.dim_min_px || 500;
+  const allowed   = cfg.tipos_permitidos || ['image/png', 'image/jpeg', 'image/svg+xml'];
+
+  // ── 1) Validación de tipo ─────────────────────────────────────
+  if (!allowed.includes(file.type)) {
+    setLaserUploadError(tipo, file.name, 'Tipo no permitido. Usá PNG, JPG o SVG.');
+    return;
+  }
+
+  // ── 2) Validación de peso ─────────────────────────────────────
+  const sizeMb = file.size / (1024 * 1024);
+  if (sizeMb > maxMb) {
+    setLaserUploadError(tipo, file.name, `La imagen pesa ${sizeMb.toFixed(1)} MB. Máx: ${maxMb} MB.`);
+    return;
+  }
+
+  // ── 3) Validación de dimensiones (excepto SVG, que es vectorial) ─
+  if (file.type !== 'image/svg+xml') {
+    try {
+      const dims = await getImageDimensions(file);
+      if (dims.width < dimMin || dims.height < dimMin) {
+        setLaserUploadError(tipo, file.name,
+          `La imagen es muy chica (${dims.width}×${dims.height}). Mínimo: ${dimMin}×${dimMin} px.`);
+        return;
+      }
+      // Si es menor a la recomendada, mostrar warning (no bloquear).
+      const dimRec = cfg.dim_recomendada_px || 800;
+      if (dims.width < dimRec || dims.height < dimRec) {
+        // Subimos igual pero avisamos — silenciosamente con un toast suave.
+        showToast(`Imagen aceptada, pero recomendamos ${dimRec}×${dimRec} px o más para mejor calidad.`, 'info');
+      }
+    } catch (e) {
+      console.warn('[laser] no se pudieron leer dimensiones:', e);
+      // No bloqueamos por esto — el backend igual chequea peso/tipo.
+    }
+  }
+
+  // ── 4) Estado uploading + preview local instantáneo ───────────
+  const previewDataUrl = await fileToDataURL(file).catch(() => '');
+  state.laser.uploads[tipo] = {
+    filename: file.name,
+    status:   'uploading',
+    previewDataUrl,
+  };
+  renderLaserUploads();
+  updateLaserCTA();
+
+  // ── 5) Pedir URL firmada al backend ───────────────────────────
+  let signed;
+  try {
+    const resp = await fetch('/api/upload-personalizacion', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ filename: file.name, mime: file.type }),
+    });
+    signed = await resp.json();
+    if (!resp.ok || !signed.uploadUrl) {
+      throw new Error(signed?.message || 'No pudimos preparar la subida.');
+    }
+  } catch (e) {
+    console.error('[laser] error pidiendo signed url:', e);
+    setLaserUploadError(tipo, file.name, e.message || 'Error de conexión.');
+    return;
+  }
+
+  // ── 6) Subir el archivo a Supabase con el signed url ──────────
+  try {
+    const uploadResp = await fetch(signed.uploadUrl, {
+      method:  'PUT',
+      headers: { 'Content-Type': file.type, 'x-upsert': 'true' },
+      body:    file,
+    });
+    if (!uploadResp.ok) {
+      throw new Error('Falló la subida del archivo.');
+    }
+  } catch (e) {
+    console.error('[laser] error subiendo a supabase:', e);
+    setLaserUploadError(tipo, file.name, 'No pudimos subir el archivo. Reintentá.');
+    return;
+  }
+
+  // ── 7) Estado ready ───────────────────────────────────────────
+  state.laser.uploads[tipo] = {
+    filename: file.name,
+    path:     signed.path,
+    bucket:   signed.bucket || 'personalizacion-uploads',
+    status:   'ready',
+    previewDataUrl,
+  };
+  renderLaserUploads();
+  updateLaserCTA();
+}
+
+function setLaserUploadError(tipo, filename, msg) {
+  state.laser.uploads[tipo] = {
+    filename: filename || 'archivo',
+    status:   'error',
+    error:    msg,
+  };
+  renderLaserUploads();
+  updateLaserCTA();
+}
+
+/** Lee dimensiones de una imagen sin tener que parsear el archivo a mano. */
+function getImageDimensions(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('No se pudo leer la imagen.'));
+    };
+    img.src = url;
+  });
+}
+
+/** Lee un archivo a data URL para preview inmediato (sin esperar al upload). */
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload  = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+/** Devuelve true si todas las opciones de IMAGEN seleccionadas tienen archivo
+ *  subido en estado 'ready'. Si alguna está en idle/uploading/error → false. */
+function laserUploadsAreComplete() {
+  for (const tipo of ['adelante', 'interior', 'atras']) {
+    if (!state.laser.selected[tipo]) continue;       // no seleccionada → no requiere archivo
+    const u = state.laser.uploads[tipo];
+    if (!u || u.status !== 'ready') return false;
+  }
+  return true;
 }
 
 /** Suma cuántas opciones están seleccionadas y devuelve el extra total. */
@@ -2179,25 +2857,203 @@ function updateLaserSummary() {
 }
 
 /** Actualiza el texto de los botones "Agregar al carrito" (inline + sticky)
- *  para incluir el extra de personalización en el total mostrado. NO toca
- *  state.precioEfectivo (eso queda como precio del producto solo).
+ *  para incluir el extra de personalización en el total mostrado.
  *
- *  Esto se llama desde:
- *    - selectColor() después de calcular el precio efectivo del color.
- *    - toggleLaserOption() cuando el cliente cambia opciones. */
+ *  Sesión B: si hay opciones seleccionadas pero faltan uploads, deshabilita
+ *  el botón con mensaje claro. */
 function updateLaserCTA() {
   if (!state.precioEfectivo) return;          // sin color válido → no tocar
   const extra = getLaserExtraTotal();
   const total = state.precioEfectivo + extra;
-  const label = `Agregar al carrito — $${total.toLocaleString('es-UY')} UYU`;
 
   const addBtn    = $('addCartBtn');
   const stickyBtn = $('stickyAddBtn');
-  // Solo actualizamos el texto si el botón está habilitado (color elegido).
-  // Cuando está deshabilitado mantiene su mensaje de "Seleccioná un color...".
-  if (addBtn && !addBtn.disabled)    addBtn.textContent    = label;
-  if (stickyBtn && !stickyBtn.disabled) stickyBtn.textContent = label;
+
+  // Estado especial: faltan uploads — bloquear botón con mensaje claro.
+  const needsUploads = Object.values(state.laser.selected).some(Boolean) && !laserUploadsAreComplete();
+
+  if (needsUploads) {
+    const msg = 'Subí las imágenes para continuar';
+    [addBtn, stickyBtn].forEach(b => {
+      if (!b) return;
+      b.disabled = true;
+      b.textContent = msg;
+    });
+    return;
+  }
+
+  const label = `Agregar al carrito — $${total.toLocaleString('es-UY')} UYU`;
+  // Volver a habilitar y poner texto correcto. selectColor decide si el
+  // color en sí es válido (sin stock).
+  [addBtn, stickyBtn].forEach(b => {
+    if (!b) return;
+    b.disabled = false;
+    b.textContent = label;
+  });
 }
+
+/** Devuelve la personalización del item para guardar en el carrito.
+ *  Forma:
+ *    null              → si el feature no está activo o no hay nada elegido
+ *    { extra, adelante, interior, atras, texto, indicaciones } → si hay algo
+ *
+ *  Esta es la función que llama addToCart() para empacar el item. */
+function buildLaserPayload() {
+  if (!state.laser.config || !state.laser.config.enabled) return null;
+  const sel = state.laser.selected;
+  const hayAlguna = Object.values(sel).some(Boolean);
+  if (!hayAlguna) return null;
+
+  const ups = state.laser.uploads;
+  return {
+    extra:     getLaserExtraTotal(),
+    adelante:  sel.adelante && ups.adelante?.status === 'ready'
+                ? { path: ups.adelante.path, filename: ups.adelante.filename }
+                : null,
+    interior:  sel.interior && ups.interior?.status === 'ready'
+                ? { path: ups.interior.path, filename: ups.interior.filename }
+                : null,
+    atras:     sel.atras && ups.atras?.status === 'ready'
+                ? { path: ups.atras.path, filename: ups.atras.filename }
+                : null,
+    texto:        sel.texto ? state.laser.texto : '',
+    indicaciones: state.laser.indicaciones || '',
+  };
+}
+
+/** Resetea el estado de personalización post-agregado-al-carrito.
+ *  Llamado desde addToCart() cuando ya empacó el item. Esto deja la UI
+ *  limpia para que el cliente pueda agregar OTRO item con personalización
+ *  distinta sin re-seleccionar todo el bloque. */
+function resetLaserState() {
+  state.laser.selected     = { adelante: false, interior: false, atras: false, texto: false };
+  state.laser.texto        = '';
+  state.laser.indicaciones = '';
+  state.laser.uploads      = { adelante: null, interior: null, atras: null };
+  // Reflejar en UI: descheckear botones, limpiar campos
+  document.querySelectorAll('.laser-option.is-selected').forEach(b => {
+    b.classList.remove('is-selected');
+    b.setAttribute('aria-pressed', 'false');
+  });
+  const tf = $('laserTextField');
+  if (tf) tf.value = '';
+  const ti = $('laserInstructionsField');
+  if (ti) ti.value = '';
+  const tinp = $('laserTextInput');
+  if (tinp) tinp.classList.remove('is-visible');
+  updateLaserTextCounter();
+  updateLaserInstructionsVisibility();
+  renderLaserUploads();
+  updateLaserSummary();
+  updateLaserCTA();
+}
+
+// ═════════════════════════════════════════════════════════════════
+// PERSONALIZACIÓN — Modal "Ver ejemplo" (Sesión 28 Bloque B)
+// ─────────────────────────────────────────────────────────────────
+// Muestra fotos de personalizacion_examples filtradas por:
+//   1) Tipo de grabado (adelante/interior/atras/texto).
+//   2) Color elegido por el cliente. Si hay fotos del color exacto,
+//      solo muestra esas. Si no, muestra todas las del tipo (fallback).
+//
+// La galería se carga una sola vez por sesión y se cachea en
+// state.laser.examples. Abrir el modal por segunda vez es instantáneo.
+// ═════════════════════════════════════════════════════════════════
+
+const LASER_EXAMPLE_TIPO_LABELS = {
+  adelante: 'Grabado adelante',
+  interior: 'Grabado interior',
+  atras:    'Grabado atrás',
+  texto:    'Grabado de texto',
+};
+
+/** Abre el modal con ejemplos del tipo solicitado. */
+async function openLaserExamples(tipo) {
+  const overlay = $('lpExampleOverlay');
+  const titleEl = $('lpExampleTitle');
+  const subEl   = $('lpExampleSub');
+  const bodyEl  = $('lpExampleBody');
+  if (!overlay || !bodyEl) return;
+
+  // Header
+  if (titleEl) titleEl.textContent = LASER_EXAMPLE_TIPO_LABELS[tipo] || 'Ejemplos';
+  if (subEl) {
+    const colorActual = state.selectedColor?.name;
+    subEl.textContent = colorActual ? `En ${colorActual}` : '';
+  }
+
+  // Estado de carga
+  bodyEl.innerHTML = '<div class="lp-example-empty">Cargando...</div>';
+  overlay.classList.add('is-open');
+  document.body.style.overflow = 'hidden';
+
+  // Cargar lista (una sola vez por sesión)
+  if (state.laser.examples === null) {
+    try {
+      state.laser.examples = await window.founderDB.fetchPersonalizacionExamples();
+    } catch (e) {
+      console.warn('[laser] error cargando ejemplos:', e);
+      state.laser.examples = [];
+    }
+  }
+
+  // Filtrar por tipo
+  const ofTipo = (state.laser.examples || []).filter(ex => ex.tipo === tipo);
+  if (ofTipo.length === 0) {
+    bodyEl.innerHTML = `
+      <div class="lp-example-empty">
+        Pronto vamos a publicar fotos de ejemplo para este tipo de grabado.<br>
+        Mientras tanto, si tenés dudas escribinos por WhatsApp y te las despejamos.
+      </div>`;
+    return;
+  }
+
+  // Filtrar por color elegido. Si no hay match exacto, mostramos todos
+  // los del tipo como fallback. Si no hay color elegido aún, mostramos todos.
+  const colorActual = state.selectedColor?.name;
+  let filtered = ofTipo;
+  if (colorActual) {
+    const exactos = ofTipo.filter(ex => {
+      const cols = Array.isArray(ex.colores) ? ex.colores : [];
+      // Si el ejemplo no tiene colores marcados → vale para todos los colores
+      if (cols.length === 0) return true;
+      return cols.some(c => c && c.trim().toLowerCase() === colorActual.toLowerCase());
+    });
+    if (exactos.length > 0) filtered = exactos;
+    // Si no hay exactos, dejamos `filtered = ofTipo` (todos los del tipo).
+  }
+
+  bodyEl.innerHTML = `
+    <div class="lp-example-grid">
+      ${filtered.map(ex => {
+        const colsStr = (Array.isArray(ex.colores) && ex.colores.length > 0)
+          ? ex.colores.join(' · ')
+          : '';
+        return `
+          <div class="lp-example-card">
+            <img src="${ex.url}" class="lp-example-card__img" alt="${(ex.descripcion || 'Ejemplo de grabado')}" loading="lazy">
+            <div class="lp-example-card__info">
+              ${ex.descripcion ? `<div class="lp-example-card__desc">${escapeHtml(ex.descripcion)}</div>` : ''}
+              ${colsStr ? `<div class="lp-example-card__colores">${escapeHtml(colsStr)}</div>` : ''}
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function closeLpExampleModal() {
+  const overlay = $('lpExampleOverlay');
+  if (overlay) overlay.classList.remove('is-open');
+  document.body.style.overflow = '';
+}
+
+// Cerrar modal con Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const overlay = $('lpExampleOverlay');
+    if (overlay && overlay.classList.contains('is-open')) closeLpExampleModal();
+  }
+});
 
 // ── PRODUCTO — Galería de fotos ─────────────────────────────────
 function renderGallery() {
@@ -2752,12 +3608,55 @@ function addToCart() {
   // Usar precio efectivo (oferta o normal) — calculado en selectColor()
   const precio = state.precioEfectivo ?? p.price;
 
-  const ex = state.cart.find(i => i.name === p.name && i.color === color);
+  // Sesión B: empaquetar personalización si corresponde.
+  // Si el feature está apagado o el cliente no eligió nada → null.
+  const personalizacion = (typeof buildLaserPayload === 'function')
+    ? buildLaserPayload()
+    : null;
+
+  // Defensa: si hay personalización seleccionada pero faltan uploads,
+  // no agregamos el item (el botón debería estar disabled de todos modos).
+  if (personalizacion) {
+    const sel = state.laser.selected;
+    const ups = state.laser.uploads;
+    for (const t of ['adelante', 'interior', 'atras']) {
+      if (sel[t] && (!ups[t] || ups[t].status !== 'ready')) {
+        showToast('Subí todas las imágenes antes de agregar al carrito.', 'error');
+        return;
+      }
+    }
+  }
+
+  // Construir el item nuevo. Si no hay personalización, queda como antes.
+  const newItem = {
+    id:    p.name,
+    name:  p.name,
+    color,
+    price: precio,
+    qty:   1,
+    personalizacion,         // null o { extra, adelante, interior, atras, texto, indicaciones }
+  };
+
+  // Sesión B: la deduplicación ahora considera la personalización.
+  // Items con misma "huella" se combinan en qty; con huella distinta,
+  // quedan como items separados. Para items sin personalización, la
+  // huella es "" y el comportamiento es idéntico al anterior.
+  const newKey = window.founderCart?.itemKey
+    ? window.founderCart.itemKey(newItem)
+    : `${p.name}|${color}|`;
+
+  const ex = state.cart.find(i => {
+    const exKey = window.founderCart?.itemKey
+      ? window.founderCart.itemKey(i)
+      : `${i.name}|${i.color}|`;
+    return exKey === newKey;
+  });
+
   if (ex) {
     ex.qty++;
-    ex.price = precio; // actualizar precio por si cambió
+    ex.price = precio;
   } else {
-    state.cart.push({ id: p.name, name: p.name, color, price: precio, qty: 1 });
+    state.cart.push(newItem);
   }
 
   updateCart();
@@ -2765,7 +3664,18 @@ function addToCart() {
   pulseAddButtons(); // feedback visual en los botones (2s)
 
   // Meta Pixel — AddToCart
-  if (window.founderPixel) window.founderPixel.trackAddToCart(p.name, color, precio);
+  if (window.founderPixel) {
+    // Si hay personalización, sumamos el extra al value reportado.
+    const valueReported = precio + (personalizacion?.extra || 0);
+    window.founderPixel.trackAddToCart(p.name, color, valueReported);
+  }
+
+  // Sesión B: limpiar el bloque de personalización para que el cliente
+  // pueda agregar OTRO item (mismo o distinto producto) sin re-tildar
+  // las opciones que ya quedaron en el carrito.
+  if (personalizacion && typeof resetLaserState === 'function') {
+    resetLaserState();
+  }
 
   // Abrir carrito
   setTimeout(() => {
@@ -2816,7 +3726,13 @@ function shareOnWhatsApp() {
 function updateCart() {
   // Persistir en localStorage para sincronizar con index.html
   saveCartToStorage();
-  const total  = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  // Sesión B: el "precio efectivo del item" para el carrito incluye el
+  // extra de personalización. Eso afecta tanto el total como la línea
+  // de cada item.
+  const itemEffectivePrice = (i) => i.price + (i.personalizacion?.extra || 0);
+
+  const total  = state.cart.reduce((s, i) => s + itemEffectivePrice(i) * i.qty, 0);
   const count  = state.cart.reduce((s, i) => s + i.qty, 0);
   const badge  = $('cartCount');
   const footer = $('cartFooter');
@@ -2834,6 +3750,25 @@ function updateCart() {
   setHTML('cartItems', state.cart.map((item, idx) => {
     const photo = getPhotos(item.name, item.color)[0] || null;
     const inicial = (item.name || '?')[0].toUpperCase();
+    const lineTotal = itemEffectivePrice(item) * item.qty;
+
+    // Sesión B: si el item tiene personalización, mostrar etiquetas chiquitas
+    // debajo del color (Adelante / Texto / etc.) + linea con el extra.
+    let personalizHtml = '';
+    if (item.personalizacion) {
+      const tags = [];
+      if (item.personalizacion.adelante) tags.push('Adelante');
+      if (item.personalizacion.interior) tags.push('Interior');
+      if (item.personalizacion.atras)    tags.push('Atrás');
+      if (item.personalizacion.texto)    tags.push(`Texto: "${item.personalizacion.texto}"`);
+      if (tags.length > 0) {
+        personalizHtml = `
+          <div style="font-size:9px;color:var(--color-gold);letter-spacing:1px;margin-top:4px;text-transform:uppercase">
+            ✦ ${tags.join(' · ')}
+          </div>`;
+      }
+    }
+
     return `
       <div class="cart-item">
         ${photo
@@ -2843,6 +3778,7 @@ function updateCart() {
         <div class="cart-item__info">
           <div class="cart-item__name">Founder ${item.name}</div>
           <div class="cart-item__variant">${item.color}</div>
+          ${personalizHtml}
           <div class="cart-item__controls">
             <button class="qty-btn" onclick="changeQty(${idx},-1)" aria-label="Reducir">−</button>
             <span class="qty-val">${item.qty}</span>
@@ -2850,7 +3786,7 @@ function updateCart() {
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px">
-          <div class="cart-item__price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
+          <div class="cart-item__price">$${lineTotal.toLocaleString('es-UY')}</div>
           <button class="cart-item__remove" onclick="removeItem(${idx})" aria-label="Eliminar">✕</button>
         </div>
       </div>`;

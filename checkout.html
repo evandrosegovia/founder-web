@@ -167,6 +167,16 @@ select:active,
 .co-consent { display: flex; align-items: flex-start; gap: 10px; font-size: 10px; color: var(--color-muted); line-height: 1.7; }
 .co-consent a { color: var(--color-gold); cursor: pointer; }
 
+/* Checkbox especial para items personalizados — más destacado para
+   que el cliente lo lea conscientemente (Sesión 28 Bloque B). */
+.co-consent--laser {
+  background: rgba(201,169,110,.06);
+  border: 1px solid rgba(201,169,110,.3);
+  padding: 10px 14px;
+  border-radius: 3px;
+}
+.co-consent--laser strong { color: var(--color-text); }
+
 /* ── BOTÓN SUBMIT ────────────────────────────────────────────── */
 .co-submit-btn {
   width: 100%; background: var(--color-text); color: var(--color-bg);
@@ -492,6 +502,17 @@ a, button, [onclick], label, select, .co-toggle-btn { cursor: pointer; }
         <input type="checkbox" id="coConsent">
         <label for="coConsent">Acepto la <a onclick="showLegal('privacy')">Política de Privacidad</a> y los <a onclick="showLegal('terms')">Términos y Condiciones</a>.</label>
       </div>
+
+      <!-- Checkbox extra: aviso de no-devolución para items personalizados.
+           Visible SOLO si hay items con personalizacion en el carrito.
+           JS lo muestra/oculta + bloquea processOrder() si no está marcado. -->
+      <div class="co-consent co-consent--laser" id="coConsentLaser" style="margin-top:12px;display:none">
+        <input type="checkbox" id="coConsentNoDev">
+        <label for="coConsentNoDev">
+          <strong>Personalización láser:</strong> entiendo que los productos personalizados <strong>no admiten devolución</strong> y mantienen únicamente garantía de fabricación de 60 días.
+        </label>
+      </div>
+
       <button class="co-submit-btn" id="coSubmitBtn" onclick="processOrder()">
         Continuar al pago (Mercado Pago)
       </button>

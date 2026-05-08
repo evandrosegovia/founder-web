@@ -1674,7 +1674,11 @@ function addToCart(product, color, precio) {
 function updateCart() {
   // Persistir en localStorage para sincronizar con producto.html
   saveCartToStorage();
-  const total  = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  // Sesión 28 Bloque B: precio efectivo del item incluye extra de personalización
+  const itemEffectivePrice = (i) => i.price + (i.personalizacion?.extra || 0);
+
+  const total  = state.cart.reduce((s, i) => s + itemEffectivePrice(i) * i.qty, 0);
   const count  = state.cart.reduce((s, i) => s + i.qty, 0);
   const badge  = $('cartCount');
   const footer = $('cartFooter');
@@ -1692,6 +1696,24 @@ function updateCart() {
     // Busca foto directo en photoMap (funciona antes y después de cargar productos)
     const photo = getPhotos(item.name, item.color)[0] || null;
     const inicial = (item.name || '?')[0].toUpperCase();
+    const lineTotal = itemEffectivePrice(item) * item.qty;
+
+    // Sesión 28 Bloque B: tags chiquitos con las personalizaciones
+    let personalizHtml = '';
+    if (item.personalizacion) {
+      const tags = [];
+      if (item.personalizacion.adelante) tags.push('Adelante');
+      if (item.personalizacion.interior) tags.push('Interior');
+      if (item.personalizacion.atras)    tags.push('Atrás');
+      if (item.personalizacion.texto)    tags.push(`Texto: "${item.personalizacion.texto}"`);
+      if (tags.length > 0) {
+        personalizHtml = `
+          <div style="font-size:9px;color:var(--color-gold);letter-spacing:1px;margin-top:4px;text-transform:uppercase">
+            ✦ ${tags.join(' · ')}
+          </div>`;
+      }
+    }
+
     return `
       <div class="cart-item">
         ${photo
@@ -1701,6 +1723,7 @@ function updateCart() {
         <div class="cart-item__info">
           <div class="cart-item__name">Founder ${item.name}</div>
           <div class="cart-item__variant">${item.color}</div>
+          ${personalizHtml}
           <div class="cart-item__controls">
             <button class="qty-btn" onclick="changeQty(${idx},-1)" aria-label="Reducir cantidad">−</button>
             <span class="qty-val" aria-label="Cantidad">${item.qty}</span>
@@ -1708,7 +1731,7 @@ function updateCart() {
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px">
-          <div class="cart-item__price">$${(item.price * item.qty).toLocaleString('es-UY')}</div>
+          <div class="cart-item__price">$${lineTotal.toLocaleString('es-UY')}</div>
           <button class="cart-item__remove" onclick="removeItem(${idx})" aria-label="Eliminar producto">✕</button>
         </div>
       </div>`;
