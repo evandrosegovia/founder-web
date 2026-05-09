@@ -249,6 +249,88 @@ function blockItemsWithPhotos(items, total, envio, descuento, photoMap) {
 }
 
 /**
+ * Bloque condicional de personalización láser (Sesión 29 — Bloque D).
+ *
+ * Lee:
+ *   - order.personalizacion_extra → INT, monto extra cobrado por grabados
+ *   - items[].personalizacion → JSONB con datos del grabado por item
+ *
+ * Devuelve string vacío si no hay personalización (no rompe templates
+ * de pedidos sin grabado — regresión zero).
+ *
+ * Variantes:
+ *   variant === 'cliente' (default):
+ *     Tono informativo. Recordatorio del +24 hs hábiles. SIN links de
+ *     descarga (las imágenes son privadas, el cliente no las baja del email).
+ *
+ *   variant === 'admin':
+ *     Pensado para emails al taller. NO se usa hoy (no enviamos email
+ *     al admin; vos vas al panel). Lo dejamos preparado por si en el
+ *     futuro querés notificación al taller automática.
+ */
+function blockPersonalizacion(order, items, variant = 'cliente') {
+  const extra = Number(order?.personalizacion_extra || 0);
+  if (!extra && !(items || []).some(it => it && it.personalizacion)) return '';
+
+  // Detalle por item: solo los que tienen grabado
+  const itemRows = (items || []).map(it => {
+    const p = it && it.personalizacion;
+    if (!p || typeof p !== 'object') return '';
+
+    const tags = [];
+    if (p.adelante && p.adelante.path) tags.push('🖼️ Adelante');
+    if (p.interior && p.interior.path) tags.push('📐 Interior');
+    if (p.atras    && p.atras.path)    tags.push('🔖 Atrás');
+    if (p.texto)                       tags.push(`✍️ Texto: "${esc(String(p.texto).slice(0, 40))}"`);
+
+    if (!tags.length) return '';
+
+    const indicaciones = p.indicaciones
+      ? `<div style="font-size:10px;color:#9a9a9a;margin-top:4px;font-style:italic;">"${esc(String(p.indicaciones).slice(0, 200))}"</div>`
+      : '';
+
+    return `
+      <div style="padding:10px 0;border-bottom:1px solid #2e2e2e;">
+        <div style="font-size:11px;color:#f8f8f4;font-weight:600;margin-bottom:4px;">
+          Founder ${esc(it.product_name || '')} — ${esc(it.color || '')}
+        </div>
+        <div style="font-size:11px;color:#c9a96e;line-height:1.7;">
+          ${tags.join(' &nbsp;·&nbsp; ')}
+        </div>
+        ${indicaciones}
+      </div>`;
+  }).filter(Boolean).join('');
+
+  if (!itemRows) return '';
+
+  // Wrapper destacado dorado
+  const intro = variant === 'admin'
+    ? `<strong style="color:#c9a96e;">⚠️ ESTE PEDIDO TIENE PERSONALIZACIÓN LÁSER</strong><br>
+       <span style="font-size:10px;color:#9a9a9a;">Recordá: +24 hs hábiles antes de marcar "En preparación".</span>`
+    : `<strong style="color:#c9a96e;">✦ Personalización láser</strong><br>
+       <span style="font-size:10px;color:#9a9a9a;">Tu pedido incluye grabado láser. Suma +24 hs hábiles al tiempo de preparación.</span>`;
+
+  return `
+    <tr>
+      <td style="padding:0 32px 24px 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#1a1a1a;border:1px solid #c9a96e;">
+          <tr>
+            <td style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;">
+              <div style="font-size:12px;line-height:1.6;margin-bottom:14px;">
+                ${intro}
+              </div>
+              ${itemRows}
+              <div style="font-size:11px;color:#c9a96e;text-align:right;margin-top:12px;font-weight:600;">
+                Extra por grabado: $${fmtUYU(extra)} UYU
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+}
+
+/**
  * Bloque CTA para seguir el pedido. Se inserta justo antes del footer.
  * El link va a seguimiento.html con ?pedido y ?email pre-cargados, así
  * el cliente abre el detalle de su pedido sin tener que tipear nada
@@ -402,6 +484,8 @@ export function templateOrderTransfer(order, items) {
       </td>
     </tr>
 
+    ${blockPersonalizacion(order, items, 'cliente')}
+
     <tr>
       <td style="padding:0 32px 32px 32px;">
         <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;color:#9a9a9a;text-transform:uppercase;margin-bottom:18px;">
@@ -476,6 +560,8 @@ export function templateOrderMpApproved(order, items) {
         </p>
       </td>
     </tr>
+
+    ${blockPersonalizacion(order, items, 'cliente')}
 
     <tr>
       <td style="padding:0 32px 32px 32px;">
@@ -556,6 +642,8 @@ export function templateOrderMpPending(order, items) {
         </div>
       </td>
     </tr>
+
+    ${blockPersonalizacion(order, items, 'cliente')}
 
     <tr>
       <td style="padding:0 32px 32px 32px;">
@@ -770,6 +858,8 @@ export function templateOrderStatusUpdate(order, items, statusKey, photoMap) {
         </p>
       </td>
     </tr>
+
+    ${blockPersonalizacion(order, items, 'cliente')}
 
     <tr>
       <td style="padding:0 32px 32px 32px;">
