@@ -2,9 +2,7 @@
 
 **Última actualización:** Sesión 29 — Personalización láser COMPLETA (Bloques A + B + C + D-parcial). Feature listo end-to-end: panel admin con limpieza, descargas ZIP, badge en pedidos, sección detallada de personalización por pedido, bloque de grabado en los 4 emails transaccionales. Cron semanal de limpieza configurado. Master switch sigue apagado hasta tener láser físico (09/05/2026).
 **Próxima sesión:** 30 (post-láser) — smoke test end-to-end con pedido real cuando el láser esté operativo + escribir guía operativa de uso del admin con experiencia real. NO bloqueante, no requiere código nuevo.
-**Nota:** El archivo `PLAN-PERSONALIZACION.md` fue eliminado tras Sesión 29 (toda su info crítica está consolidada en este `ESTADO.md`, ver Sesión 29 abajo).
-
-**Nota:** El archivo `PLAN-PERSONALIZACION.md` fue eliminado tras Sesión 29 (toda su info crítica está consolidada en este `ESTADO.md`, ver Sesión 29 abajo).
+**Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
 
 ---
 
@@ -28,6 +26,7 @@
 - Devuelve base64 + filename + bytes en JSON; el frontend reconstruye Blob y dispara download.
 
 **3. SQL de migración (`cleanup_logs`):**
+
 ```sql
 CREATE TABLE cleanup_logs (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -90,9 +89,9 @@ GRANT ALL ON cleanup_logs TO service_role;
 
 ---
 
-## 🧠 INFO CRÍTICA DEL FEATURE PERSONALIZACIÓN LÁSER (consolidada de PLAN-PERSONALIZACION.md eliminado)
+## 🧠 INFO CRÍTICA DEL FEATURE PERSONALIZACIÓN LÁSER (consolidada de PLAN-PERSONALIZACION.md archivado)
 
-Esta sección reemplaza al archivo `PLAN-PERSONALIZACION.md` que fue eliminado al cierre de Sesión 29. Si en el futuro hay que modificar o expandir el feature, **leé esto primero**.
+Esta sección consolida lo más importante del archivo `PLAN-PERSONALIZACION.md` (movido a `docs/archive/` al cierre de Sesión 29). Si en el futuro hay que modificar o expandir el feature, **leé esto primero**. Para detalle histórico completo de decisiones y alternativas descartadas, consultar el archivo original en `docs/archive/`.
 
 ### 🎯 Resumen funcional del feature
 
@@ -115,6 +114,7 @@ Las opciones son **acumulables** (puede elegir las 4 → +$1.160). El feature ag
 ### 🗃️ Schema de base de datos del feature
 
 **Tabla `products` — 4 columnas:**
+
 ```sql
 permite_grabado_adelante BOOLEAN DEFAULT TRUE
 permite_grabado_interior BOOLEAN DEFAULT FALSE
@@ -123,6 +123,7 @@ permite_grabado_texto    BOOLEAN DEFAULT TRUE
 ```
 
 **Tabla `order_items` — columna `personalizacion JSONB`:**
+
 ```json
 {
   "extra": 580,
@@ -133,6 +134,7 @@ permite_grabado_texto    BOOLEAN DEFAULT TRUE
   "indicaciones": "centrar y achicar 20%, tipografía cursiva"
 }
 ```
+
 Todos los slots de imagen son `null` o `{path, filename}`. `texto` es string. `indicaciones` es string. `extra` es int (suma del extra de todos los slots elegidos en ESE item).
 
 **Tabla `orders` — 2 columnas:**
@@ -140,6 +142,7 @@ Todos los slots de imagen son `null` o `{path, filename}`. `texto` es string. `i
 - `acepto_no_devolucion BOOL DEFAULT FALSE` — el cliente debe aceptar checkbox al checkout si compra con grabado. Validación doble (frontend bloquea + backend re-valida en `api/checkout.js`).
 
 **Tabla `personalizacion_examples` — galería editorial del admin:**
+
 ```sql
 id          UUID PRIMARY KEY
 tipo        TEXT CHECK (tipo IN ('adelante', 'interior', 'atras', 'texto'))
@@ -150,6 +153,7 @@ modelos     TEXT[]   -- vacío = aplica a todos
 orden       INT
 activo      BOOL
 ```
+
 Pública por RLS para lectura. Admin sube fotos de ejemplo que se filtran en frontend cascada modelo → color → fallback (los clientes ven ejemplos relevantes a su billetera + color elegido).
 
 **Tabla `cleanup_logs` (Sesión 29):** ver SQL en bloque "🔵 Bloque C — Operación" arriba.
