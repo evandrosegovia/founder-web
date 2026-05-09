@@ -221,7 +221,10 @@
     if (page === 'pedidos')  loadOrders();
     if (page === 'cupones')  loadCoupons();
     if (page === 'banner')   loadBanner();
-    if (page === 'personalizacion') loadPersonalizacion();
+    if (page === 'personalizacion') {
+      loadPersonalizacion();
+      loadCleanupStatus();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -604,11 +607,20 @@
       return;
     }
 
-    // Filtro normal dentro de la vista 'active'
+   // Filtro normal dentro de la vista 'active'
     state.currentFilter = filter;
-    const list = filter === 'todos'
-      ? state.allOrders
-      : state.allOrders.filter(o => o.estado === filter);
+    let list;
+    if (filter === 'todos') {
+      list = state.allOrders;
+    } else if (filter === 'con_grabado') {
+      // Sesión 29 (C): pedidos con personalización láser
+      list = state.allOrders.filter(o =>
+        Number(o.personalizacion_extra || 0) > 0 ||
+        (o.order_items || []).some(it => it && it.personalizacion)
+      );
+    } else {
+      list = state.allOrders.filter(o => o.estado === filter);
+    }
     renderOrders(list);
   }
 
@@ -658,9 +670,16 @@
       // Botón eliminar (siempre, tanto en activos como en archivados)
       const deleteBtn = `<button class="btn btn-sm btn-danger" onclick="deleteOrder('${esc(o.id)}','${esc(numero)}')" title="Borrar definitivamente — no se puede deshacer">🗑 Eliminar</button>`;
 
+      // Sesión 29 (C): badge de personalización láser
+      const hasGrabado = Number(o.personalizacion_extra || 0) > 0 ||
+        (o.order_items || []).some(it => it && it.personalizacion);
+      const grabadoBadge = hasGrabado
+        ? ' <span title="Pedido con personalización láser" style="font-size:9px;letter-spacing:1px;color:var(--gold);padding:2px 6px;border:1px solid var(--gold);margin-left:6px">✦ GRABADO</span>'
+        : '';
+
       return `<div class="order-card">
         <div class="order-head">
-          <div class="order-id">#${esc(numero)}${isArchived ? ' <span style="font-size:8px;letter-spacing:2px;color:var(--muted);padding:2px 6px;border:1px solid var(--border);margin-left:6px">ARCHIVADO</span>' : ''}</div>
+          <div class="order-id">#${esc(numero)}${grabadoBadge}${isArchived ? ' <span style="font-size:8px;letter-spacing:2px;color:var(--muted);padding:2px 6px;border:1px solid var(--border);margin-left:6px">ARCHIVADO</span>' : ''}</div>
           <div class="order-status ${cls}">${esc(o.estado || '—')}</div>
         </div>
         <div class="order-body">
@@ -953,10 +972,12 @@
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:16px">
+     <div class="card" style="margin-bottom:16px">
         <div class="card-head"><div class="card-title">🛍️ Productos</div></div>
         <div class="card-body" style="font-size:13px;line-height:2;color:var(--muted)">${esc(prodsText)}</div>
       </div>
+
+      ${renderPersonalizacionSection(o)}
 
       <div class="card" style="margin-bottom:16px">
         <div class="card-head"><div class="card-title">💰 Resumen de pago</div></div>
@@ -986,7 +1007,367 @@
     const modal = $('orderDetailModal');
     if (modal) modal.classList.add('open');
   }
+// ═══════════════════════════════════════════════════════════════
+  // PERSONALIZACIÓN — vista admin de pedidos (Sesión 29 — Bloque C)
+  // ═══════════════════════════════════════════════════════════════
 
+  /**
+   * Renderiza la sección de personalización dentro del modal de detalle
+   * de pedido. Si el pedido no tiene personalización, devuelve '' (vacío).
+   *
+   * Para cada item con personalización:
+   *  - Muestra los slots usados (adelante / interior / atrás / texto)
+   *  - Botón "Ver/Descargar" por slot que pide signed_url al backend
+   *  - Texto e indicaciones del cliente
+   *
+   * Botón global: "Descargar todo del pedido en ZIP" para mandar al taller.
+   */
+  function renderPersonalizacionSection(o) {
+    const extra = Number(o.personalizacion_extra || 0);
+    const items = o.order_items || [];
+    const tienePersonaliz = extra > 0 || items.some(it => it && it.personalizacion);
+    if (!tienePersonaliz) return '';
+
+    const itemBlocks = items.map(it => {
+      const p = it.personalizacion;
+      if (!p || typeof p !== 'object') return '';
+
+      const slots = [];
+      ['adelante', 'interior', 'atras'].forEach(slot => {
+        const ref = p[slot];
+        if (ref && ref.path) {
+          const labelMap = { adelante: '🖼️ Adelante', interior: '📐 Interior', atras: '🔖 Atrás' };
+          const filename = ref.filename || slot + '.png';
+          slots.push(`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
+              <div style="font-size:12px;color:var(--white)">
+                <strong>${labelMap[slot]}</strong>
+                <span style="color:var(--muted);font-size:10px;margin-left:6px">${esc(filename)}</span>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-sm btn-secondary" onclick="viewPersonalizImage('${esc(ref.path)}')">👁 Ver</button>
+                <button class="btn btn-sm btn-secondary" onclick="downloadPersonalizImage('${esc(ref.path)}','${esc(filename)}')">⬇ Descargar</button>
+              </div>
+            </div>`);
+        }
+      });
+
+      if (p.texto) {
+        slots.push(`
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="font-size:12px;color:var(--white);margin-bottom:4px">
+              <strong>✍️ Texto a grabar</strong>
+            </div>
+            <div style="font-size:13px;color:var(--gold);font-style:italic;background:var(--mid);padding:8px 12px;border:1px solid var(--border)">
+              "${esc(p.texto)}"
+            </div>
+          </div>`);
+      }
+
+      if (p.indicaciones) {
+        slots.push(`
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="font-size:12px;color:var(--white);margin-bottom:4px">
+              <strong>📝 Indicaciones del cliente</strong>
+            </div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.6">
+              ${esc(p.indicaciones)}
+            </div>
+          </div>`);
+      }
+
+      if (!slots.length) return '';
+
+      return `
+        <div style="margin-bottom:12px;padding:12px;background:var(--mid);border:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--gold);margin-bottom:8px;letter-spacing:1px">
+            <strong>Founder ${esc(it.product_name || '')} — ${esc(it.color || '')}</strong>
+          </div>
+          ${slots.join('')}
+        </div>`;
+    }).filter(Boolean).join('');
+
+    return `
+      <div class="card" style="margin-bottom:16px;border-color:rgba(201,169,110,.4)">
+        <div class="card-head" style="background:rgba(201,169,110,.05)">
+          <div class="card-title" style="color:var(--gold)">✦ Personalización láser</div>
+          <button class="btn btn-primary btn-sm" onclick="downloadOrderZip('${esc(o.id)}','${esc(o.numero || o.id)}')">📦 Descargar ZIP completo</button>
+        </div>
+        <div class="card-body">
+          <div class="info-box" style="margin-bottom:14px;font-size:11px">
+            <strong>Para producción:</strong> descargá el ZIP completo y mandalo al taller del láser.<br>
+            Recordá que este pedido tiene <strong>+24 hs hábiles</strong> extra de preparación.
+          </div>
+          ${itemBlocks || '<div style="color:var(--muted);font-size:11px">Pedido marcado con grabado pero sin items detallados.</div>'}
+          ${extra > 0 ? `
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px">
+              <span style="color:var(--muted);letter-spacing:1px">EXTRA POR GRABADO</span>
+              <span style="color:var(--gold);font-weight:600;font-size:14px">$${fmtUYU(extra)} UYU</span>
+            </div>` : ''}
+          ${o.acepto_no_devolucion ? `
+            <div style="margin-top:8px;font-size:10px;color:var(--green);text-align:right">
+              ✓ Cliente aceptó política de no-devolución
+            </div>` : ''}
+        </div>
+      </div>`;
+  }
+
+  /**
+   * Pide signed_url para una imagen privada y la abre en nueva pestaña.
+   */
+  async function viewPersonalizImage(path) {
+    if (!path) return;
+    const { ok: okR, data } = await apiAdmin('get_personalizacion_signed_url', { path });
+    if (!okR || !data.signedUrl) {
+      toast('No se pudo abrir la imagen', true);
+      return;
+    }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+  }
+
+  /**
+   * Pide signed_url y descarga la imagen como archivo.
+   */
+  async function downloadPersonalizImage(path, filename) {
+    if (!path) return;
+    const { ok: okR, data } = await apiAdmin('get_personalizacion_signed_url', { path });
+    if (!okR || !data.signedUrl) {
+      toast('No se pudo descargar la imagen', true);
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = data.signedUrl;
+    a.download = filename || 'imagen-personalizacion';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  /**
+   * Descarga ZIP con todas las imágenes de un pedido.
+   * El backend devuelve base64; reconstruimos blob y disparamos download.
+   */
+  async function downloadOrderZip(orderId, numero) {
+    if (!orderId) return;
+    toast('Generando ZIP...');
+
+    try {
+      const pw = sessionStorage.getItem(CONFIG.PW_KEY) || '';
+      const resp = await fetch('/api/download-personalizacion-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'download_order_zip',
+          orderId,
+          password: pw,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.ok) {
+        toast('Error generando ZIP: ' + (data?.error || resp.status), true);
+        return;
+      }
+
+      const binary = atob(data.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/zip' });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename || `personalizacion-${numero}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast('✓ ZIP descargado');
+    } catch (err) {
+      console.error('[downloadOrderZip] error:', err);
+      toast('Error de red descargando ZIP', true);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PANEL DE LIMPIEZA (Sesión 29 — Bloque C)
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Carga el status del bucket y el historial de limpiezas.
+   */
+  async function loadCleanupStatus() {
+    const statusBox = $('cleanupStatusBox');
+    const zipBtn    = $('cleanupZipBtn');
+    const runBtn    = $('cleanupRunBtn');
+    if (!statusBox) return;
+
+    statusBox.textContent = 'Cargando estado del almacenamiento...';
+    if (zipBtn) zipBtn.disabled = true;
+    if (runBtn) runBtn.disabled = true;
+
+    const pw = sessionStorage.getItem(CONFIG.PW_KEY) || '';
+    let data = null;
+    try {
+      const resp = await fetch('/api/cleanup-personalizacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_cleanup_status', password: pw }),
+      });
+      data = await resp.json();
+      if (!resp.ok || !data?.ok) {
+        statusBox.innerHTML = `<span style="color:var(--red,#e57373)">Error cargando status: ${esc(data?.error || resp.status)}</span>`;
+        return;
+      }
+    } catch (err) {
+      statusBox.innerHTML = `<span style="color:var(--red,#e57373)">Error de red: ${esc(String(err?.message || err))}</span>`;
+      return;
+    }
+
+    const total       = data.total_imagenes || 0;
+    const totalMb     = data.total_mb       || 0;
+    const vivas       = data.vivas_count    || 0;
+    const borrables   = data.borrables_count || 0;
+    const borrablesMb = data.borrables_mb   || 0;
+
+    statusBox.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+        <div>
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase">Total imágenes</div>
+          <div style="font-size:16px;color:var(--white);margin-top:2px">${total} <span style="font-size:11px;color:var(--muted)">(${totalMb.toFixed(2)} MB)</span></div>
+        </div>
+        <div>
+          <div style="font-size:9px;letter-spacing:2px;color:var(--green);text-transform:uppercase">🟢 Vivas (en uso)</div>
+          <div style="font-size:16px;color:var(--white);margin-top:2px">${vivas}</div>
+        </div>
+        <div>
+          <div style="font-size:9px;letter-spacing:2px;color:var(--gold);text-transform:uppercase">🟡 Borrables</div>
+          <div style="font-size:16px;color:var(--gold);margin-top:2px">${borrables} <span style="font-size:11px;color:var(--muted)">(${borrablesMb.toFixed(2)} MB)</span></div>
+        </div>
+      </div>`;
+
+    if (zipBtn) zipBtn.disabled = borrables === 0;
+    if (runBtn) runBtn.disabled = borrables === 0;
+
+    loadCleanupLogs();
+  }
+
+  /**
+   * Carga el historial de limpiezas en la card de abajo.
+   */
+  async function loadCleanupLogs() {
+    const list = $('cleanupLogsList');
+    if (!list) return;
+
+    const pw = sessionStorage.getItem(CONFIG.PW_KEY) || '';
+    try {
+      const resp = await fetch('/api/cleanup-personalizacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'list_cleanup_logs', password: pw, limit: 10 }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.ok) {
+        list.innerHTML = '<div style="color:var(--muted)">Sin historial todavía.</div>';
+        return;
+      }
+      const logs = data.logs || [];
+      if (!logs.length) {
+        list.innerHTML = '<div style="color:var(--muted);font-size:11px">Todavía no se ejecutó ninguna limpieza.</div>';
+        return;
+      }
+      list.innerHTML = logs.map(l => {
+        const fecha = l.ejecutado_at
+          ? new Date(l.ejecutado_at).toLocaleString('es-UY')
+          : '—';
+        const triggerLabel = l.trigger === 'auto' ? '🤖 Automática' : '👤 Manual';
+        return `
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:11px;color:var(--white)">${triggerLabel}</div>
+              <div style="font-size:9px;color:var(--muted);letter-spacing:1px">${esc(fecha)}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:11px;color:var(--gold)">${l.borradas || 0} imágenes</div>
+              <div style="font-size:9px;color:var(--muted);letter-spacing:1px">${(l.liberados_mb || 0).toFixed(2)} MB liberados</div>
+            </div>
+          </div>`;
+      }).join('');
+    } catch (err) {
+      list.innerHTML = '<div style="color:var(--muted)">Error cargando historial.</div>';
+    }
+  }
+
+  /**
+   * Descarga ZIP de todas las imágenes borrables (backup previo).
+   */
+  async function downloadBorrablesZip() {
+    const btn = $('cleanupZipBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '📦 Generando...'; }
+
+    try {
+      const pw = sessionStorage.getItem(CONFIG.PW_KEY) || '';
+      const resp = await fetch('/api/download-personalizacion-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'download_borrables_zip', password: pw }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.ok) {
+        toast('Error generando ZIP: ' + (data?.error || resp.status), true);
+        return;
+      }
+
+      const binary = atob(data.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/zip' });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename || 'personalizacion-backup.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast('✓ Backup descargado');
+    } catch (err) {
+      toast('Error de red descargando ZIP', true);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '📦 Descargar borrables (.zip)'; }
+    }
+  }
+
+  /**
+   * Ejecuta limpieza manual con doble confirmación.
+   */
+  async function runCleanupManual() {
+    if (!confirm('¿Estás seguro? Esto borrará permanentemente las imágenes marcadas como "borrables".\n\n💡 Recomendación: descargá primero el ZIP de backup.')) return;
+    if (!confirm('Última confirmación: borrar imágenes ya no se puede deshacer. ¿Continuar?')) return;
+
+    const btn = $('cleanupRunBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '🗑 Borrando...'; }
+
+    const pw = sessionStorage.getItem(CONFIG.PW_KEY) || '';
+    try {
+      const resp = await fetch('/api/cleanup-personalizacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'run_cleanup_manual', password: pw }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.ok) {
+        toast('Error ejecutando limpieza: ' + (data?.error || resp.status), true);
+        return;
+      }
+      toast(`✓ Limpieza completada: ${data.borradas || 0} imágenes borradas (${(data.liberados_mb || 0).toFixed(2)} MB)`);
+      loadCleanupStatus();
+    } catch (err) {
+      toast('Error de red ejecutando limpieza', true);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🗑 Ejecutar limpieza ahora'; }
+    }
+  }
   function closeOrderDetail() {
     const modal = $('orderDetailModal');
     if (modal) modal.classList.remove('open');
@@ -2316,6 +2697,13 @@
   window.loadOrders          = loadOrders;
   window.filterOrders        = filterOrders;
   window.viewOrder           = viewOrder;
+   // Sesión 29 (C): personalización en pedidos + panel limpieza
+  window.viewPersonalizImage     = viewPersonalizImage;
+  window.downloadPersonalizImage = downloadPersonalizImage;
+  window.downloadOrderZip        = downloadOrderZip;
+  window.loadCleanupStatus       = loadCleanupStatus;
+  window.downloadBorrablesZip    = downloadBorrablesZip;
+  window.runCleanupManual        = runCleanupManual;
   window.closeOrderDetail    = closeOrderDetail;
   window.changeOrderStatus   = changeOrderStatus;
   window.archiveOrder        = archiveOrder;
