@@ -692,6 +692,7 @@ textarea.fi{resize:vertical;min-height:70px}
           <button class="filter-btn" onclick="filterOrders('Entregado',this)">Entregados</button>
           <button class="filter-btn" onclick="filterOrders('Pago rechazado',this)">Pago rechazado</button>
           <button class="filter-btn" onclick="filterOrders('Cancelado',this)">Cancelados</button>
+          <button class="filter-btn" onclick="filterOrders('con_grabado',this)" style="border-color:rgba(201,169,110,.4);color:var(--gold)" title="Ver solo pedidos con personalización láser">✦ Con grabado</button>
           <button class="filter-btn" onclick="filterOrders('archivados',this)" style="margin-left:auto;border-color:rgba(201,169,110,.2)" title="Ver pedidos archivados (ocultos de la lista principal)">📁 Archivados</button>
         </div>
         <div class="orders-grid" id="ordersGrid">
@@ -952,8 +953,50 @@ textarea.fi{resize:vertical;min-height:70px}
               Subí fotos de ejemplo para que los clientes vean cómo queda cada tipo de grabado en distintos colores.<br>
               Las fotos aparecen en el modal "Ver ejemplo" del bloque de personalización en el sitio. Las fotos se filtran automáticamente por el color que el cliente eligió.
             </div>
-            <div id="lpExamplesList">
+<div id="lpExamplesList">
               <div class="laser-empty">Cargando ejemplos...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Limpieza de imágenes (Sesión 29 — Bloque C) -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-head">
+            <div class="card-title">🧹 Limpieza de imágenes</div>
+            <button class="btn btn-secondary btn-sm" onclick="loadCleanupStatus()">↻ Actualizar</button>
+          </div>
+          <div class="card-body">
+            <div class="info-box" style="margin-bottom:14px">
+              <strong>¿Qué hace esto?</strong><br>
+              Las imágenes que suben los clientes se acumulan en el almacenamiento. Este panel las borra cuando ya no se necesitan:<br>
+              • <strong>Huérfanas</strong> (sin pedido asociado): se borran a los 10 días.<br>
+              • <strong>De pedidos entregados</strong>: se borran 60 días después de la entrega.<br>
+              • <strong>De pedidos activos</strong>: nunca se borran.<br><br>
+              La limpieza también corre <strong>automáticamente todos los domingos a las 3am</strong>. Este botón es para hacerlo manualmente cuando quieras.
+            </div>
+            <div id="cleanupStatusBox" style="font-size:12px;line-height:1.8;color:var(--muted);background:var(--mid);padding:14px;border:1px solid var(--border);margin-bottom:14px">
+              Cargando estado del almacenamiento...
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-secondary" id="cleanupZipBtn" onclick="downloadBorrablesZip()" disabled>
+                📦 Descargar borrables (.zip)
+              </button>
+              <button class="btn btn-danger" id="cleanupRunBtn" onclick="runCleanupManual()" disabled>
+                🗑 Ejecutar limpieza ahora
+              </button>
+            </div>
+            <div class="fhint" style="margin-top:8px">
+              💡 <strong>Recomendado:</strong> primero descargá el ZIP (backup local) y después ejecutá la limpieza.
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial de limpiezas -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-head"><div class="card-title">📋 Últimas limpiezas</div></div>
+          <div class="card-body">
+            <div id="cleanupLogsList" style="font-size:11px;color:var(--muted)">
+              Cargando historial...
             </div>
           </div>
         </div>
