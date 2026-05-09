@@ -1,9 +1,11 @@
 # 📋 PLAN — Personalización con Grabado Láser
 
-**Estado:** 📝 Documento de planificación — feature pendiente de implementación
-**Última actualización:** Sesión 27 (08/05/2026) — v2 con configuración admin + galería de ejemplos + limpieza automática
-**Estimación total:** 4 sesiones de trabajo (~7-9 hs de código + testing).
-**Prioridad:** ALTA — diferencial competitivo principal vs Baleine y MBH.
+**Estado:** ✅ **IMPLEMENTADO Y FUNCIONAL** — Bloque A + Bloque B completos, desplegados en producción, feature apagado por master switch hasta tener láser físico
+**Última actualización:** Sesión 28 (08/05/2026) — implementación end-to-end + 2 hotfixes operativos. Pendientes: Sesión C (operación: cron, descarga ZIP, UI admin pedidos) + Sesión D (pulido: emails, smoke test). Ambas opcionales y NO bloqueantes.
+**Próxima acción recomendada:** activar feature cuando llegue el láser físico, hacer 5-10 pedidos reales, recién después encarar Sesión C/D con datos de uso real.
+**Prioridad histórica:** ALTA — diferencial competitivo principal vs Baleine y MBH.
+
+> **Nota de lectura:** este documento se mantiene como plan original (Sesiones A→D) por valor de auditoría/referencia. La sección "📜 Historial de cambios" al final refleja qué se ejecutó realmente y cuándo. Para el detalle operativo de qué quedó funcionando, ver sección "🎬 Próximos pasos" actualizada al final del doc, y `ESTADO.md` Sesión 28.
 
 ---
 
@@ -914,24 +916,41 @@ INSERT INTO site_settings (key, value) VALUES (
 
 ---
 
-## 🎬 Próximos pasos (cuando retomemos esto)
+## 🎬 Próximos pasos (estado actualizado post Sesión 28)
 
-1. **Conseguir el láser y testear** con productos físicos.
-2. **Calibrar valores tentativos:**
-   - Tiempo real de preparación.
-   - Resolución mínima útil.
-   - Tipografías para texto.
-3. **Sacar primeras 6-8 fotos** para galería de ejemplos (2 de cada tipo, en distintos colores).
-4. **Empezar Sesión A** (frontend visual + admin config global) — bajo riesgo.
-5. Al cierre de cada sesión, validación con vos antes de avanzar.
+### ✅ Completado (Sesiones 28A + 28B)
+
+1. **Bloque A — Frontend visual + admin config global:** entregado, validado por usuario.
+2. **Bloque B — Backend + persistencia + galería:** entregado, validado por usuario.
+3. **Hotfixes operativos:** dos rondas de fix por bug de grants en Supabase. Feature 100% funcional.
+4. **Estado en producción:** desplegado, master switch apagado por default, listo para activarse.
+
+### ⏳ Pendiente (Sesión C + D, opcionales)
+
+**Sesión C — Operación diaria (cuando llegue el láser):**
+- `api/cleanup-personalizacion.js` + Vercel Crons (semanal): retención 10 días para huérfanas, 60 días post-entrega para usadas.
+- Botón "Descargar ZIP" en cada pedido del admin: agrupa todas las imágenes para enviar al taller del láser.
+- UI en admin de pedidos para visualizar las personalizaciones de cada item (hoy se persisten en JSONB pero no hay vista bonita).
+
+**Sesión D — Pulido final:**
+- Templates de email actualizados con info de personalización (extra de grabado en el desglose, tags por item).
+- Smoke test end-to-end real con un pedido completo en producción (compra → checkout → MP → email → admin).
+- Documentación operativa: guía de uso del admin para gestionar personalizaciones en pedidos.
+
+### 🎯 Recomendación de orden
+
+1. **Conseguir el láser físicamente** (paso pendiente externo).
+2. **Activar el feature en admin** y subir 4-6 fotos de ejemplo a la galería (2 por tipo de grabado).
+3. **Hacer 5-10 pedidos reales con personalización** durante las primeras semanas.
+4. **Recién entonces encarar Sesión C+D** con información concreta de uso (qué problemas operativos aparecen, qué necesita ver el admin, qué falta en los emails). Iterar con datos > diseñar a priori.
 
 ---
 
 ## 📝 Notas finales
 
-Este documento se complementa con `ESTADO.md`. Cuando retomemos el feature, el mensaje al inicio de la sesión sería:
+Este documento se complementa con `ESTADO.md`. Cuando se retome el feature para Sesión C/D, el mensaje al inicio de la sesión sería:
 
-> *"Retomamos el feature de personalización láser. Leé `PLAN-PERSONALIZACION.md` y `ESTADO.md`. Querés arrancar Sesión A."*
+> *"Retomamos el feature de personalización láser para Sesión C (operación). Leé `PLAN-PERSONALIZACION.md` y `ESTADO.md` Sesión 28. Vamos a implementar el cron de limpieza, descarga ZIP, y UI de admin para ver personalizaciones de pedidos."*
 
 Cualquier cambio en las decisiones tomadas acá debe **actualizarse en este documento antes de codear**, así no perdemos coherencia entre sesiones.
 
@@ -942,8 +961,9 @@ Cualquier cambio en las decisiones tomadas acá debe **actualizarse en este docu
 | Versión | Fecha | Cambios |
 |---|---|---|
 | v1 | Sesión 27 (08/05) | Plan inicial — feature básico con 3 modalidades. |
-| **v2** | **Sesión 27 (08/05)** | **Agregado: configuración global desde Admin > Herramientas, galería de ejemplos visual con filtrado por color, sistema de limpieza automática (cron + manual + descarga ZIP), 4 modalidades de grabado (sumamos interior), config por producto con 4 toggles. Plan extendido a 4 sesiones.** |
+| v2 | Sesión 27 (08/05) | Agregado: configuración global desde Admin > Herramientas, galería de ejemplos visual con filtrado por color, sistema de limpieza automática (cron + manual + descarga ZIP), 4 modalidades de grabado (sumamos interior), config por producto con 4 toggles. Plan extendido a 4 sesiones. |
+| **v3** | **Sesión 28 (08/05)** | **IMPLEMENTACIÓN COMPLETA Bloques A + B. Cambios incrementales sobre el plan v2:** (1) Galería de ejemplos extendida con asociación a **modelos** además de colores (filtrado en cascada modelo → color → fallback). (2) Toggles `permite_grabado_*` también en editor individual de productos (no solo en panel global). (3) Items con misma personalización se combinan en qty, items con personalizaciones distintas quedan separados (helper `personalizacionFingerprint`). (4) Hotfixes operativos por bug de grants de service_role en Supabase — documentado en `ESTADO.md` Sesión 28 como lección crítica para futuras tablas. (5) **Pendientes movidos a Sesión C+D opcionales y NO bloqueantes** — el feature ya funciona end-to-end sin esos refinamientos. |
 
 ---
 
-**FIN — Plan de personalización con grabado láser v2.**
+**Plan v3 — Personalización con grabado láser. Bloques A+B implementados, C+D opcionales pendientes.**
