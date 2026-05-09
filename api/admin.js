@@ -53,6 +53,11 @@
 //     - delete_personalizacion_example        → borra un ejemplo
 //     - get_personalizacion_example_upload_url → URL firmada para subir
 //                                                foto de ejemplo al bucket público
+//
+//   LIMPIEZA Y DESCARGA DE PERSONALIZACIONES (Sesión 29 Bloque C)
+//     Implementadas en endpoints separados (no en este archivo):
+//     - /api/cleanup-personalizacion          → status, run manual, cron auto
+//     - /api/download-personalizacion-bulk    → ZIP por pedido o backup
 // ═════════════════════════════════════════════════════════════════
 
 import { supabase, createHandler, ok, fail, parseBody } from './_lib/supabase.js';
@@ -113,8 +118,9 @@ async function handleListOrders(body, res) {
       pago, estado, notas, cupon_codigo,
       nro_seguimiento, url_seguimiento,
       archivado,
+      personalizacion_extra, acepto_no_devolucion,
       created_at, updated_at,
-      order_items ( id, product_name, color, cantidad, precio_unitario )
+      order_items ( id, product_name, color, cantidad, precio_unitario, personalizacion )
     `)
     .order('created_at', { ascending: false });
 
@@ -137,7 +143,7 @@ async function handleUpdateOrderStatus(body, res) {
   //    para detectar si esto es una transición real (no re-click), y
   //    los datos completos para componer el email si corresponde.
   //    Mismo set de columnas que list_orders + items embebidos.
-  const { data: prevOrder, error: readErr } = await supabase
+const { data: prevOrder, error: readErr } = await supabase
     .from('orders')
     .select(`
       id, numero, fecha, nombre, apellido, celular, email,
@@ -146,7 +152,8 @@ async function handleUpdateOrderStatus(body, res) {
       pago, estado, notas, cupon_codigo,
       nro_seguimiento, url_seguimiento,
       archivado,
-      order_items ( id, product_name, color, cantidad, precio_unitario )
+      personalizacion_extra, acepto_no_devolucion,
+      order_items ( id, product_name, color, cantidad, precio_unitario, personalizacion )
     `)
     .eq('id', id)
     .single();
