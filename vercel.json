@@ -1,15 +1,4 @@
 {
-  "functions": {
-    "api/*.js": {
-      "maxDuration": 15
-    },
-    "api/cleanup-personalizacion.js": {
-      "maxDuration": 60
-    },
-    "api/download-personalizacion-bulk.js": {
-      "maxDuration": 60
-    }
-  },
   "crons": [
     {
       "path": "/api/cleanup-personalizacion?trigger=auto",
