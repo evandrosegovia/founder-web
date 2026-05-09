@@ -1,7 +1,218 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 28 — Personalización láser implementada end-to-end (Bloque A + Bloque B + 2 hotfixes operativos). Feature 100% funcional listo para producción, queda apagado por master switch hasta tener láser físico (08/05/2026)
-**Próxima sesión:** 29 (opcional, post-láser) — Sesión C+D: cron de limpieza automática de imágenes huérfanas, descarga ZIP de imágenes por pedido, UI en admin de pedidos para visualizar personalizaciones, templates de email actualizados con info de grabado, smoke test end-to-end con pedido real. Ver `PLAN-PERSONALIZACION.md` para detalle completo. **No bloqueante:** el feature ya funciona sin Sesión C/D (estos son refinamientos operativos).
+**Última actualización:** Sesión 29 — Personalización láser COMPLETA (Bloques A + B + C + D-parcial). Feature listo end-to-end: panel admin con limpieza, descargas ZIP, badge en pedidos, sección detallada de personalización por pedido, bloque de grabado en los 4 emails transaccionales. Cron semanal de limpieza configurado. Master switch sigue apagado hasta tener láser físico (09/05/2026).
+**Próxima sesión:** 30 (post-láser) — smoke test end-to-end con pedido real cuando el láser esté operativo + escribir guía operativa de uso del admin con experiencia real. NO bloqueante, no requiere código nuevo.
+**Nota:** El archivo `PLAN-PERSONALIZACION.md` fue eliminado tras Sesión 29 (toda su info crítica está consolidada en este `ESTADO.md`, ver Sesión 29 abajo).
+
+**Nota:** El archivo `PLAN-PERSONALIZACION.md` fue eliminado tras Sesión 29 (toda su info crítica está consolidada en este `ESTADO.md`, ver Sesión 29 abajo).
+
+---
+
+## ✅ SESIÓN 29 — Personalización láser Bloques C + D (operación + emails) [09/05/2026]
+
+**Sesión de polish operativo del feature de personalización láser.** Completó los pendientes "no bloqueantes" que dejó Sesión 28 (cleanup automático, descargas ZIP, visibilidad en admin, bloque condicional de grabado en los 4 templates de email).
+
+**Resultado:** feature totalmente operacional para el día a día. Cuando llegue el láser físico, basta activar el master switch y todo el ciclo funciona sin retrabajo: cliente compra con grabado → pedido aparece marcado en admin → admin descarga ZIP → manda al taller → cambia estado → cliente recibe emails contextuales con bloque de grabado.
+
+### 🔵 Bloque C — Operación
+
+**1. Endpoint nuevo `api/cleanup-personalizacion.js`:**
+- 4 modos: `GET ?trigger=auto` (cron), `POST get_cleanup_status` (lectura), `POST run_cleanup_manual` (acción), `POST list_cleanup_logs` (historial).
+- Reglas de retención: huérfanas 10 días, post-entrega 60 días desde `orders.updated_at` con `estado='Entregado'` (no hay columna `fecha_entrega` explícita; se usa último cambio de estado como aproximación).
+- Tope `MAX_DELETE_PER_RUN = 500` por corrida (defensa anti-bug).
+- Validación `x-vercel-cron` header: `?trigger=auto` solo se acepta si viene del cron real, no de un curl externo.
+
+**2. Endpoint nuevo `api/download-personalizacion-bulk.js`:**
+- 2 modos: `download_order_zip` (todas las imágenes de un pedido + un TXT con texto/indicaciones por item) y `download_borrables_zip` (backup previo a la limpieza).
+- ZIP construido manualmente en memoria (formato STORED, sin compresión, sin dependencias externas). Cero deps nuevas en `package.json`.
+- Devuelve base64 + filename + bytes en JSON; el frontend reconstruye Blob y dispara download.
+
+**3. SQL de migración (`cleanup_logs`):**
+```sql
+CREATE TABLE cleanup_logs (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ejecutado_at  TIMESTAMP DEFAULT NOW(),
+  trigger       TEXT NOT NULL CHECK (trigger IN ('auto', 'manual')),
+  borradas      INT DEFAULT 0,
+  liberados_mb  NUMERIC(10,2) DEFAULT 0,
+  detalle       JSONB
+);
+CREATE INDEX cleanup_logs_ejecutado_at_idx ON cleanup_logs(ejecutado_at DESC);
+ALTER TABLE cleanup_logs ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON cleanup_logs TO service_role;
+```
+
+**4. `vercel.json` extendido:**
+- Bloque `crons` nuevo: `0 6 * * 0` (domingos 06:00 UTC = 03:00 hora UY).
+- ⚠️ **Lección de Sesión 29:** se intentó agregar `"functions": { "api/**/*.js": ... }` para extender `maxDuration` de los endpoints nuevos a 60s, pero Vercel rechazaba el deploy con `pattern doesn't match any Serverless Functions`. **Solución final:** sacar el bloque `functions` por completo. Vercel usa el default de 10s, suficiente para los volúmenes esperados. Si en futuro un cleanup tarda más, agregar el bloque `functions` con sintaxis exacta (sin globs).
+
+**5. `api/admin.js` extendido:**
+- `list_orders` y `update_order_status` ahora SELECTan `personalizacion_extra`, `acepto_no_devolucion` (a nivel orden) y `personalizacion` (a nivel item). Sin esto el admin no podía ver qué pidieron los clientes.
+
+**6. Frontend admin (`admin.html` + `founder-admin.js`):**
+- Filtro nuevo "✦ Con grabado" en barra de filtros de pedidos.
+- Badge dorado "✦ GRABADO" en cards de pedidos con personalización.
+- Sección "✦ Personalización láser" en modal de detalle de pedido: muestra slots usados, archivo asociado, texto/indicaciones, extra cobrado, aceptación de no-devolución. Botones "Ver / Descargar" por imagen + "Descargar ZIP completo".
+- Card nuevo "🧹 Limpieza de imágenes" en página Personalización: status del bucket (total / vivas / borrables), botones "Descargar borrables (.zip)" + "Ejecutar limpieza ahora" (con doble confirmación).
+- Card "📋 Últimas limpiezas": historial de las últimas 10 ejecuciones (auto + manual).
+- Auto-load del status al entrar al panel de Personalización.
+
+### 🟣 Bloque D — Emails (parcial: solo templates, smoke test queda para Sesión 30)
+
+**`api/_lib/email-templates.js` extendido:**
+- Función nueva `blockPersonalizacion(order, items, variant)` que devuelve un bloque HTML destacado en dorado si el pedido tiene grabado, o string vacío si no.
+- Renderiza por item: tags de slots usados (🖼️ Adelante / 📐 Interior / 🔖 Atrás / ✍️ Texto), indicaciones del cliente, total extra cobrado.
+- Variante `cliente` (default) con tono informativo + recordatorio del +24hs hábiles. Variante `admin` preparada para uso futuro.
+- Inyectado en los 4 templates: `templateOrderTransfer`, `templateOrderMpApproved`, `templateOrderMpPending`, `templateOrderStatusUpdate`.
+- Defensivo: si `personalizacion_extra=0` y ningún item tiene `personalizacion`, retorna '' y no afecta los emails sin grabado (regresión zero).
+
+### 🛡️ Lo que NO se tocó en Sesión 29
+
+- Frontend público (`producto.html`, `cart.js`, `checkout.html`, `checkout.js`).
+- Flujo de Mercado Pago, webhook, validaciones de checkout existentes.
+- Auth admin, RLS, columnas viejas de DB.
+- Comportamiento de templates de email para pedidos SIN grabado: idéntico al de Sesión 28 (regresión zero).
+
+### ⚠️ Pendientes documentados (Sesión 30, post-láser)
+
+- **Smoke test end-to-end real** con pedido completo en producción. Requiere láser físico. Pasos sugeridos:
+  1. Compra normal sin grabado → email igual a antes (sin bloque dorado).
+  2. Compra con 1 personalización (transfer) → email muestra bloque dorado con el slot usado + extra. Pedido en admin con badge ✦ GRABADO. Filtro "✦ Con grabado" lo muestra.
+  3. Compra con 4 personalizaciones (combinación máxima) → email muestra los 4 slots agrupados por item.
+  4. Detalle de pedido en admin → todas las imágenes con botones "Ver / Descargar" + ZIP completo.
+  5. ZIP descargado se abre en Windows/macOS sin errores.
+  6. Cambio de estado (En preparación → En camino) → email mantiene bloque de grabado.
+  7. Marcar "Entregado" → tras 60 días, las imágenes pasan a "borrables" en el panel.
+  8. Limpieza manual: descargar ZIP backup → ejecutar → log nuevo en historial.
+- **Documentación operativa para uso del admin** (manual de "qué hacer cuando llega un pedido con grabado"). Conviene escribirla con experiencia real, no a priori.
+- **Email cuando se carga `nro_seguimiento`** sigue sin disparar (decisión consciente, se evalúa unificar con cambio de estado en sesión futura si hace falta).
+- **Notificación email automática al admin/taller** NO está activada (la variante existe en código `blockPersonalizacion(..., 'admin')` pero no se llama). Decisión consciente: por ahora vas al panel manualmente.
+
+---
+
+## 🧠 INFO CRÍTICA DEL FEATURE PERSONALIZACIÓN LÁSER (consolidada de PLAN-PERSONALIZACION.md eliminado)
+
+Esta sección reemplaza al archivo `PLAN-PERSONALIZACION.md` que fue eliminado al cierre de Sesión 29. Si en el futuro hay que modificar o expandir el feature, **leé esto primero**.
+
+### 🎯 Resumen funcional del feature
+
+Founder ofrece grabado láser personalizado como add-on opcional sobre cualquier billetera con los toggles habilitados. El cliente puede elegir grabar:
+- **Imagen adelante** (logo, foto, ilustración) — +$290
+- **Imagen interior** — +$290
+- **Imagen atrás** (logo, foto, ilustración) — +$290
+- **Texto o frase** (nombre, palabra, fecha — máx 40 caracteres) — +$290
+
+Las opciones son **acumulables** (puede elegir las 4 → +$1.160). El feature agrega **24 hs hábiles** al tiempo de preparación. Los productos personalizados **no admiten devolución** (sí mantienen garantía de fabricación de 60 días).
+
+### 🏗️ Arquitectura del feature (3 capas)
+
+**CAPA 1 — Configuración global (admin):** vive en `site_settings.personalizacion_config` (JSONB). Editable desde Admin > Personalización láser. Contiene: precio por elemento, tiempo extra hs, peso máx imagen, dimensiones mín/recomendadas, caracteres máx texto, tipos archivo permitidos, textos legales (copyright, no-devolución).
+
+**CAPA 2 — Configuración por producto:** 4 columnas booleanas en `products`: `permite_grabado_adelante`, `permite_grabado_interior`, `permite_grabado_atras`, `permite_grabado_texto`. Si todos están en false, el bloque de personalización NO se muestra en ese producto.
+
+**CAPA 3 — Master switch:** flag `activo` dentro de `personalizacion_config`. Si está apagado, todo el feature queda invisible para los clientes (independiente de toggles por producto). **Default = false.**
+
+### 🗃️ Schema de base de datos del feature
+
+**Tabla `products` — 4 columnas:**
+```sql
+permite_grabado_adelante BOOLEAN DEFAULT TRUE
+permite_grabado_interior BOOLEAN DEFAULT FALSE
+permite_grabado_atras    BOOLEAN DEFAULT TRUE
+permite_grabado_texto    BOOLEAN DEFAULT TRUE
+```
+
+**Tabla `order_items` — columna `personalizacion JSONB`:**
+```json
+{
+  "extra": 580,
+  "adelante": { "path": "202605/abc-logo.png", "filename": "logo-empresa.png" },
+  "interior": null,
+  "atras": null,
+  "texto": "Founder",
+  "indicaciones": "centrar y achicar 20%, tipografía cursiva"
+}
+```
+Todos los slots de imagen son `null` o `{path, filename}`. `texto` es string. `indicaciones` es string. `extra` es int (suma del extra de todos los slots elegidos en ESE item).
+
+**Tabla `orders` — 2 columnas:**
+- `personalizacion_extra INT DEFAULT 0` — suma de todos los `extra` de items personalizados.
+- `acepto_no_devolucion BOOL DEFAULT FALSE` — el cliente debe aceptar checkbox al checkout si compra con grabado. Validación doble (frontend bloquea + backend re-valida en `api/checkout.js`).
+
+**Tabla `personalizacion_examples` — galería editorial del admin:**
+```sql
+id          UUID PRIMARY KEY
+tipo        TEXT CHECK (tipo IN ('adelante', 'interior', 'atras', 'texto'))
+url         TEXT
+descripcion TEXT
+colores     TEXT[]   -- vacío = aplica a todos
+modelos     TEXT[]   -- vacío = aplica a todos
+orden       INT
+activo      BOOL
+```
+Pública por RLS para lectura. Admin sube fotos de ejemplo que se filtran en frontend cascada modelo → color → fallback (los clientes ven ejemplos relevantes a su billetera + color elegido).
+
+**Tabla `cleanup_logs` (Sesión 29):** ver SQL en bloque "🔵 Bloque C — Operación" arriba.
+
+### 🪣 Buckets de Storage en Supabase
+
+- **`personalizacion-uploads`** (PRIVADO) — Imágenes que suben los clientes. Solo `service_role` accede. El admin las ve vía signed URLs generadas en `api/admin.js`. Convención de path: `yyyymm/UUID-slug.ext` (ej: `202605/a1b2c3d4-mi-logo.png`). El prefijo mensual facilita el cleanup cron.
+
+- **`personalizacion-examples`** (PÚBLICO) — Galería editorial del admin. Cualquiera puede leer (URLs públicas en frontend). Solo `service_role` puede escribir/borrar.
+
+### 🔁 Flujo de compra completo (end-to-end)
+
+1. Cliente entra a producto.html → activa toggle "Personalizá tu Founder".
+2. Elige uno o más slots (adelante/interior/atrás/texto).
+3. Para cada slot de imagen: sube archivo → `POST /api/upload-personalizacion` → backend genera signed URL del bucket privado → cliente hace PUT directo al bucket → recibe `path` interno → guarda en estado local.
+4. Cliente clickea "Agregar al carrito" → item se agrega con campo `personalizacion: {...}` en localStorage.
+5. Cliente va al checkout → si hay items con personalización, aparece checkbox "Acepto que productos personalizados no admiten devolución" (obligatorio).
+6. Cliente paga (Transfer o Mercado Pago) → `POST /api/checkout` → backend re-valida `acepto_no_devolucion=true` → función SQL `apply_coupon_and_create_order` persiste todo atómicamente.
+7. Email de confirmación al cliente con bloque dorado de personalización (Sesión 29).
+8. Admin entra a `/admin.html` → Pedidos → ve badge ✦ GRABADO + sección dorada con datos del grabado + botón "Descargar ZIP completo".
+9. Admin descarga ZIP → manda al taller del láser → graba.
+10. Admin cambia estado del pedido → emails de cambio de estado mantienen bloque dorado.
+11. Cliente recibe billetera personalizada.
+12. 60 días después de "Entregado", las imágenes pasan a "borrables" → cron semanal las elimina (o admin lo hace manual).
+
+### ⚙️ Activar el feature cuando llegue el láser (checklist operativo)
+
+1. **Smoke test técnico mínimo:** entrar al admin → Personalización láser → confirmar que el card de Limpieza muestra "Total: 0 / Vivas: 0 / Borrables: 0" (sin errores).
+2. **Configurar en admin** los textos legales y precios actualizados (si querés cambiar de $290).
+3. **Activar productos uno por uno** (toggles por modalidad). Sugerencia: empezar con un solo producto para validar.
+4. **Subir 4-6 fotos de ejemplo** a la galería (2 por tipo de grabado). Sin estas, los clientes no ven referencia visual.
+5. **Activar el master switch** → guardar.
+6. **Test de compra real propia** (transferencia, sin completar el pago para no llenar la DB de pruebas) para validar end-to-end.
+7. **Empezar a recibir pedidos reales.**
+
+### 📌 Pendientes que requieren prueba física con láser (Sesión 30+)
+
+1. **Tipografías para grabado de texto** — probar 5-6 en cuero descartable, quedarse con 2-3 y hardcodearlas (hoy el cliente solo escribe texto sin elegir tipografía).
+2. **Threshold real de calidad de imagen** — los valores actuales 500/800px son tentativos. Calibrar con muestras y ajustar desde admin.
+3. **Foto stock para galería de ejemplos** — hacer las primeras 6-8 fotos con láser real (no usar stock de Canva).
+4. **Tiempo real de preparación** — default 24 hs pero podría ser 48 hs según volumen. Ajustable desde admin.
+
+### 🎨 Decisiones de diseño cerradas (no re-discutir sin razón fuerte)
+
+- **NO hay editor visual de posicionamiento** — el cliente describe vía campo "Indicaciones" en texto plano. Decidido por simplicidad operativa.
+- **Items con misma personalización se combinan en qty.** Items con personalizaciones distintas son items separados (helper `personalizacionFingerprint` en cart.js).
+- **Tipos de archivo permitidos:** PNG, JPG/JPEG, SVG. Peso máx 5 MB por archivo.
+- **NO hay backup automático en cloud secundario.** El dueño descarga ZIP manualmente al ordenador antes de cleanups grandes (~1 vez al año).
+- **NO hay aprobación previa por WhatsApp obligatoria.** Si en algún caso el dueño quiere validar el diseño con el cliente antes de grabar, se hace ad-hoc por WhatsApp del lado del admin (no afecta el código).
+- **NO hay notificación email automática al admin** cuando llega pedido con grabado. El dueño consulta el panel manualmente. (Si en futuro cambia, la función `blockPersonalizacion(..., 'admin')` ya está implementada, solo falta llamarla desde un email-to-admin nuevo.)
+
+### 🔄 Plan de rollback del feature completo (si fuera necesario)
+
+| Pieza | Cómo deshacer |
+|---|---|
+| Master switch en admin | Toggle off → guardar. Frontend deja de mostrar todo. **Recomendado primero antes que tocar código.** |
+| Endpoints serverless nuevos | Borrar `api/cleanup-personalizacion.js`, `api/download-personalizacion-bulk.js`, `api/upload-personalizacion.js`. |
+| SQL columnas nuevas | `ALTER TABLE products DROP COLUMN permite_grabado_*` (×4); `ALTER TABLE order_items DROP COLUMN personalizacion`; `ALTER TABLE orders DROP COLUMN personalizacion_extra, DROP COLUMN acepto_no_devolucion`. |
+| Tabla `personalizacion_examples` | `DROP TABLE personalizacion_examples` (después de borrar buckets). |
+| Tabla `cleanup_logs` | `DROP TABLE cleanup_logs`. Es solo histórico, no afecta operación. |
+| Buckets Supabase | Vaciar y borrar `personalizacion-uploads` y `personalizacion-examples` (en ese orden). |
+| Cron semanal | Sacar bloque `crons` de `vercel.json`. |
+| Función SQL `apply_coupon_and_create_order` | Versión anterior está en historial de Supabase. Restaurar si rollback total. |
 
 ---
 
