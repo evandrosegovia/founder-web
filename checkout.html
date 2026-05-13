@@ -205,6 +205,33 @@ select:active,
 .co-summary__total-label { font-family: var(--font-serif); font-size: 18px; }
 .co-summary__total-value { font-family: var(--font-serif); font-size: 22px; color: var(--color-gold); }
 
+/* Sesión 36: tarjetas verdes de descuento (cupón o transferencia).
+   Diseño "Opción D": tarjeta con título + subtítulo + monto a la
+   derecha. Reemplaza la fila plana "Descuento" anterior. */
+.co-discount-card {
+  background: rgba(74,222,128,.05);
+  border: 1px solid rgba(74,222,128,.2);
+  border-left: 3px solid #4ade80;
+  padding: 10px 12px;
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.co-discount-card__info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.co-discount-card__title {
+  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: #4ade80; font-weight: 500;
+}
+.co-discount-card__sub {
+  font-size: 10px; color: var(--color-muted); line-height: 1.4;
+}
+.co-discount-card__amount {
+  color: #4ade80; font-size: 14px; font-weight: 500;
+  white-space: nowrap; flex-shrink: 0;
+}
+
 /* ── CARRITO VACÍO ───────────────────────────────────────────── */
 .empty-cart {
   display: flex; flex-direction: column; align-items: center;
