@@ -141,8 +141,12 @@ a:active,button:active,[onclick]:active,label:active{opacity:0.75;transition:opa
 .filter-btn.active{border-color:var(--gold);color:var(--gold)}
 .orders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
 .order-card{background:var(--gray);border:1px solid var(--border)}
-.order-head{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.order-id{font-size:9px;letter-spacing:2px;color:var(--muted)}
+.order-head{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.order-id{font-size:9px;letter-spacing:2px;color:var(--muted);display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* Sesión 35 — badge "GRABADO" como elemento independiente para que
+   no rompa la línea cuando hay poco espacio (mobile). */
+.order-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;letter-spacing:1px;padding:2px 6px;border:1px solid var(--gold);color:var(--gold);white-space:nowrap;line-height:1.4}
+.order-badge--archived{border-color:var(--border);color:var(--muted)}
 .order-status{font-size:8px;letter-spacing:2px;text-transform:uppercase;padding:3px 8px;border-radius:2px}
 .status-pendiente-pago{background:rgba(201,169,110,.12);color:var(--gold)}
 .status-pendiente-mp{background:rgba(100,100,200,.12);color:#8888ff}
@@ -570,6 +574,186 @@ textarea.fi{resize:vertical;min-height:70px}
   border: 1px solid var(--border);
 }
 #lpExImagePreview:empty { display: none; }
+
+/* ═════════════════════════════════════════════════════════════
+   SESIÓN 35 — MOBILE RESPONSIVE (admin usable desde celular)
+   ─────────────────────────────────────────────────────────────
+   Foco: prioridad B confirmada por el dueño = ver pedidos +
+   cambiar estados + cupones. El resto del admin sigue funcional
+   pero no está completamente optimizado a mobile (productos y
+   personalización láser quedan para una próxima sesión).
+   ═════════════════════════════════════════════════════════════ */
+
+/* Botón hamburguesa (oculto en desktop) */
+.topbar-menu-btn {
+  display: none;
+  width: 32px; height: 32px;
+  background: none;
+  border: 1px solid var(--border);
+  padding: 0;
+  cursor: pointer;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  transition: border-color .2s;
+}
+.topbar-menu-btn:hover { border-color: var(--gold); }
+.topbar-menu-btn span {
+  display: block;
+  width: 16px; height: 1.5px;
+  background: var(--white);
+  transition: transform .2s, opacity .2s;
+}
+.topbar-menu-btn.is-open span:nth-child(1) { transform: translateY(5.5px) rotate(45deg); }
+.topbar-menu-btn.is-open span:nth-child(2) { opacity: 0; }
+.topbar-menu-btn.is-open span:nth-child(3) { transform: translateY(-5.5px) rotate(-45deg); }
+
+/* Backdrop del sidebar (oculto por default) */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 60px 0 0 0;  /* debajo de la topbar */
+  background: rgba(0,0,0,.55);
+  z-index: 90;
+  opacity: 0;
+  transition: opacity .25s;
+}
+.sidebar-backdrop.is-open {
+  display: block;
+  opacity: 1;
+}
+
+/* ───── Breakpoint TABLET (≤900px) ───── */
+@media (max-width: 900px) {
+  .topbar { padding: 0 16px; }
+  .main-content { padding: 20px 16px; }
+  .ph-title { font-size: 24px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .orders-grid { grid-template-columns: 1fr; }
+}
+
+/* ───── Breakpoint MOBILE (≤768px) ───── */
+@media (max-width: 768px) {
+  /* Topbar: aparece el hamburguesa, se compacta */
+  .topbar { padding: 0 12px; height: 56px; }
+  .body-layout { height: calc(100vh - 56px); }
+  .topbar-menu-btn { display: inline-flex; }
+  .topbar-logo { font-size: 16px; letter-spacing: 4px; }
+  .topbar-badge { display: none; }
+  .topbar-right .tbtn { padding: 7px 10px; font-size: 8px; letter-spacing: 1.5px; }
+
+  /* El sidebar se vuelve un drawer que entra desde la izquierda */
+  .sidebar {
+    position: fixed;
+    top: 56px; left: 0;
+    height: calc(100vh - 56px);
+    width: 250px; min-width: 250px;
+    z-index: 95;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    box-shadow: 4px 0 16px rgba(0,0,0,.4);
+  }
+  .sidebar.is-open { transform: translateX(0); }
+  .nav-item { padding: 14px 18px; font-size: 13px; }
+  .nav-section { padding: 16px 18px 6px; }
+
+  /* Main ocupa todo el ancho */
+  .body-layout { display: block; height: auto; min-height: calc(100vh - 56px); }
+  .main-content { padding: 16px 12px; min-height: calc(100vh - 56px); }
+
+  /* Page-header en una sola columna, sin botón al lado */
+  .ph { flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 18px; }
+  .ph-title { font-size: 22px; }
+  .ph-sub { font-size: 10px; }
+
+  /* Stats del dashboard: 2 columnas */
+  .stats { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 18px; }
+  .stat-value { font-size: 24px; }
+  .stat-icon { font-size: 18px; }
+
+  /* Filtros de pedidos: scroll horizontal en mobile */
+  .filter-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-bottom: 14px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .filter-row::-webkit-scrollbar { height: 4px; }
+  .filter-row::-webkit-scrollbar-thumb { background: var(--border); }
+  .filter-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 8px 12px;
+    /* Anular el margin-left:auto de "Archivados" en mobile (no funciona en scroll horizontal) */
+    margin-left: 6px !important;
+  }
+  .filter-btn:first-child { margin-left: 0 !important; }
+
+  /* Cards de pedidos: stack vertical, botones más grandes y táctiles */
+  .order-head { padding: 12px 14px; }
+  .order-body { padding: 12px 14px; }
+  .order-foot { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .order-foot .btn { width: 100%; padding: 10px 12px; font-size: 11px; }
+
+  /* Modal "Ver detalle": ocupa casi toda la pantalla */
+  .modal-overlay { padding: 8px; }
+  .modal {
+    max-width: 100% !important;
+    max-height: calc(100vh - 16px);
+    margin: 0;
+  }
+  .modal-head { padding: 14px 16px; }
+  .modal-body { padding: 16px; gap: 14px; }
+
+  /* Form de pedido en modal: grids a 1 columna */
+  .modal-body > div[style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Barra de progreso de estados: scroll horizontal */
+  .od-progress-track {
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .od-step { min-width: 72px; }
+
+  /* Cupones: layout en una columna (ya estaba en 900px pero acentuar) */
+  .cupones-layout { grid-template-columns: 1fr; gap: 16px; }
+  .cupon-form-card { position: relative; top: 0; }
+  .cupones-table { font-size: 10px; }
+  .cupones-table th, .cupones-table td { padding: 8px 6px; }
+
+  /* Tabla de cupones: scroll horizontal interno */
+  #cuponesTableWrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Toasts: full-width abajo */
+  .toast {
+    left: 12px !important;
+    right: 12px !important;
+    max-width: none !important;
+  }
+
+  /* Form de campos en general: full width */
+  .ci, .fi { font-size: 13px; padding: 12px 12px; }  /* mejor tap target */
+  .btn { padding: 10px 16px; font-size: 11px; }
+  .btn-sm { padding: 8px 12px; font-size: 10px; }
+}
+
+/* ───── Breakpoint SMALL MOBILE (≤480px) ───── */
+@media (max-width: 480px) {
+  .stats { grid-template-columns: 1fr; }
+  .topbar-logo { font-size: 14px; }
+  .topbar-right .tbtn { padding: 6px 8px; }
+  .ph-title { font-size: 18px; }
+  /* Esconder el botón "Ver sitio" en pantallas muy chicas, solo dejar "Salir" */
+  .topbar-right a.tbtn { display: none; }
+}
 </style>
 </head>
 <body>
@@ -594,6 +778,10 @@ textarea.fi{resize:vertical;min-height:70px}
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-left">
+      <!-- Sesión 35: botón hamburguesa, solo visible en mobile -->
+      <button class="topbar-menu-btn" id="topbarMenuBtn" onclick="toggleSidebar()" aria-label="Abrir menú">
+        <span></span><span></span><span></span>
+      </button>
       <div class="topbar-logo">FOUNDER</div>
       <div class="topbar-badge">ADMIN</div>
     </div>
@@ -603,11 +791,14 @@ textarea.fi{resize:vertical;min-height:70px}
     </div>
   </div>
 
+  <!-- Sesión 35: backdrop oscuro que aparece detrás del sidebar en mobile -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+
   <!-- BODY -->
   <div class="body-layout">
 
     <!-- SIDEBAR -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
       <div class="nav-section">Principal</div>
       <div class="nav-item active" onclick="nav('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</div>
       <div class="nav-item" onclick="nav('pedidos',this)"><span class="nav-icon">📦</span>Pedidos</div>
