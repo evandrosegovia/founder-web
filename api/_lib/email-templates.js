@@ -87,6 +87,23 @@ function blockHeader() {
  * @param {string} [opts.pago] — método de pago (para detectar transferencia)
  */
 function blockItems(items, total, envio, descuento, opts) {
+  // Sesión 37: enriquecer opts con datos que renderDiscountLines necesita
+  // para calcular el split exacto cuando hay cupón + transferencia.
+  // subtotal = suma de (precio × cantidad), personalizExtra = suma de extras.
+  const subtotalCalc = (items || []).reduce((s, it) => {
+    return s + (Number(it.cantidad || 0) * Number(it.precio_unitario || 0));
+  }, 0);
+  const personalizExtraCalc = (items || []).reduce((s, it) => {
+    const extra = Number((it.personalizacion && it.personalizacion.extra) || 0);
+    return s + (extra * Number(it.cantidad || 0));
+  }, 0);
+  const optsFull = Object.assign({}, opts || {}, {
+    subtotal:        Number(opts && opts.subtotal)        || subtotalCalc,
+    personalizExtra: Number(opts && opts.personalizExtra) || personalizExtraCalc,
+    envio:           Number(envio) || 0,
+    total:           Number(total) || 0,
+  });
+
   const rows = (items || []).map(it => {
     const cantidad = Number(it.cantidad || 0);
     const precio   = Number(it.precio_unitario || 0);
@@ -112,8 +129,8 @@ function blockItems(items, total, envio, descuento, opts) {
       </tr>`;
   }).join('');
 
-  // Sesión 36: línea de descuento con atribución (cupón / transferencia / ambos)
-  const lineDescuento = renderDiscountLines(descuento, opts);
+  // Sesión 36/37: tarjetas verdes con atribución y split exacto
+  const lineDescuento = renderDiscountLines(descuento, optsFull);
 
   const lineEnvio = `<tr>
        <td style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;">Envío</td>
@@ -132,58 +149,94 @@ function blockItems(items, total, envio, descuento, opts) {
     </table>`;
 }
 
-// Sesión 36: helper compartido para renderizar líneas de descuento
-// con atribución correcta. Si hay cupón + transferencia, muestra 2
-// líneas con texto descriptivo; si hay solo uno, muestra 1 línea.
-// Sin contexto (opts vacío) cae al label "Descuento" genérico
-// para mantener compatibilidad con pedidos viejos.
+// Sesión 36/37: helper compartido para renderizar líneas/tarjetas de
+// descuento con atribución correcta. Si hay cupón + transferencia,
+// muestra 2 tarjetas con monto individual exacto (calculado matemáticamente).
+// Si hay solo una fuente, muestra 1 tarjeta. Sin contexto cae al
+// label "Descuento" genérico para compatibilidad con pedidos viejos.
+//
+// Las tarjetas en email se hacen con tabla anidada + border-left
+// (la única forma confiable que funciona en Outlook, Gmail, Apple Mail).
+// No usa CSS moderno (flexbox, variables) — todo inline HTML clásico.
 function renderDiscountLines(descuento, opts, colspan) {
   const descNum = Number(descuento) || 0;
   if (descNum <= 0) return '';
 
   const cuponCodigo = (opts && opts.cuponCodigo) ? String(opts.cuponCodigo).toUpperCase() : '';
   const pago        = (opts && opts.pago)        ? String(opts.pago) : '';
+  // Datos para calcular split exacto cuando hay 2 fuentes:
+  const subtotal         = Number((opts && opts.subtotal) || 0);
+  const personalizExtra  = Number((opts && opts.personalizExtra) || 0);
+  const envio            = Number((opts && opts.envio) || 0);
+  const total            = Number((opts && opts.total) || 0);
+
   const hayCupon          = !!cuponCodigo;
   const hayTransferencia  = /transfer/i.test(pago);
   const cs = colspan ? `colspan="${colspan}"` : '';
 
-  const greenStyle = 'padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#4caf82;text-align:right;';
-  const grayLabel  = 'padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;';
-
-  // Caso 1: cupón + transferencia (no podemos dividir el monto exacto, mostramos descripción)
+  // Caso 1: cupón + transferencia → split matemático exacto
+  // Despeje: total = (subtotal + personaliz - cupon) × 0.90 + envio
+  //          → cupon = subtotal + personaliz - ((total - envio) / 0.90)
   if (hayCupon && hayTransferencia) {
-    return `
-      <tr>
-        <td ${cs} style="${grayLabel}">Cupón ${esc(cuponCodigo)} aplicado</td>
-        <td style="${greenStyle}"></td>
-      </tr>
-      <tr>
-        <td ${cs} style="${grayLabel}">Pago por transferencia (10%)</td>
-        <td style="${greenStyle}"></td>
-      </tr>
-      <tr>
-        <td ${cs} style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;font-style:italic;">Total descontado</td>
-        <td style="${greenStyle}">-$${fmtUYU(descNum)}</td>
-      </tr>`;
+    const cuponAmount = Math.round(subtotal + personalizExtra - ((total - envio) / 0.90));
+    let transferAmount = descNum - cuponAmount;
+    // Sanity check: si por algún motivo el split da negativo o no cierra
+    // (datos incompletos), fallback a mostrar solo el total descontado.
+    if (cuponAmount < 0 || transferAmount < 0 || (cuponAmount + transferAmount !== descNum)) {
+      return renderCard(cs, '✓ Cupón ' + esc(cuponCodigo) + ' + Transferencia', 'Descuentos aplicados al pedido', descNum);
+    }
+    // Subtítulo del cupón: si es de personalización, decimos "grabados gratis"
+    // (heurística simple: si todo lo personalizado se cubrió, es personalización)
+    const subCupon = (personalizExtra > 0 && cuponAmount === personalizExtra)
+      ? 'Personalización gratis'
+      : 'Descuento aplicado';
+    return renderCard(cs, '✓ Cupón ' + esc(cuponCodigo) + ' aplicado', subCupon, cuponAmount)
+         + renderCard(cs, '✓ Pago por transferencia',                 '10% sobre productos + grabados', transferAmount);
   }
   // Caso 2: solo cupón
   if (hayCupon) {
-    return `<tr>
-      <td ${cs} style="${grayLabel}">Cupón ${esc(cuponCodigo)} aplicado</td>
-      <td style="${greenStyle}">-$${fmtUYU(descNum)}</td>
-    </tr>`;
+    const subCupon = (personalizExtra > 0 && descNum === personalizExtra)
+      ? 'Personalización gratis'
+      : 'Descuento aplicado';
+    return renderCard(cs, '✓ Cupón ' + esc(cuponCodigo) + ' aplicado', subCupon, descNum);
   }
   // Caso 3: solo transferencia
   if (hayTransferencia) {
-    return `<tr>
-      <td ${cs} style="${grayLabel}">Pago por transferencia (10%)</td>
-      <td style="${greenStyle}">-$${fmtUYU(descNum)}</td>
-    </tr>`;
+    return renderCard(cs, '✓ Pago por transferencia', '10% sobre productos + grabados', descNum);
   }
-  // Caso 4 (fallback): pedido viejo sin atribución
+  // Caso 4 (fallback): pedido viejo sin atribución → fila plana clásica
+  const greenStyle = 'padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#4caf82;text-align:right;';
+  const grayLabel  = 'padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;';
   return `<tr>
     <td ${cs} style="${grayLabel}">Descuento</td>
     <td style="${greenStyle}">-$${fmtUYU(descNum)}</td>
+  </tr>`;
+}
+
+// Sesión 37: helper para renderizar UNA tarjeta verde con borde izquierdo,
+// título + subtítulo + monto. Se hace con tabla anidada (compatible con
+// todos los clientes de email incluido Outlook). El colspan se aplica a
+// un <tr> wrapper para mantener la grilla del padre intacta.
+function renderCard(colspan, title, subtitle, amount) {
+  const fullColspan = colspan ? colspan.replace(/colspan="(\d+)"/, (_, n) => `colspan="${Number(n) + 1}"`) : 'colspan="2"';
+  return `<tr>
+    <td ${fullColspan} style="padding:6px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:rgba(76,175,130,0.08);border-left:3px solid #4caf82;">
+        <tr>
+          <td style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;">
+            <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#4caf82;font-weight:600;line-height:1.4;">
+              ${title}
+            </div>
+            <div style="font-size:10px;color:#9a9a9a;line-height:1.4;margin-top:2px;">
+              ${subtitle}
+            </div>
+          </td>
+          <td style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#4caf82;font-weight:600;text-align:right;white-space:nowrap;vertical-align:middle;">
+            -$${fmtUYU(amount)}
+          </td>
+        </tr>
+      </table>
+    </td>
   </tr>`;
 }
 
@@ -260,6 +313,21 @@ function blockItemsCompact(items, photoMap) {
 function blockItemsWithPhotos(items, total, envio, descuento, photoMap, opts) {
   const safeMap = photoMap || {};
 
+  // Sesión 37: enriquecer opts con datos para el split exacto (idem blockItems)
+  const subtotalCalc = (items || []).reduce((s, it) => {
+    return s + (Number(it.cantidad || 0) * Number(it.precio_unitario || 0));
+  }, 0);
+  const personalizExtraCalc = (items || []).reduce((s, it) => {
+    const extra = Number((it.personalizacion && it.personalizacion.extra) || 0);
+    return s + (extra * Number(it.cantidad || 0));
+  }, 0);
+  const optsFull = Object.assign({}, opts || {}, {
+    subtotal:        Number(opts && opts.subtotal)        || subtotalCalc,
+    personalizExtra: Number(opts && opts.personalizExtra) || personalizExtraCalc,
+    envio:           Number(envio) || 0,
+    total:           Number(total) || 0,
+  });
+
   const rows = (items || []).map(it => {
     const productName = String(it.product_name || '');
     const color       = String(it.color || '');
@@ -301,9 +369,9 @@ function blockItemsWithPhotos(items, total, envio, descuento, photoMap, opts) {
       </tr>`;
   }).join('');
 
-  // Sesión 36: línea de descuento con atribución (cupón / transferencia / ambos)
-  // Esta tabla usa 3 columnas (foto+info+precio) → colspan=2 en label
-  const lineDescuento = renderDiscountLines(descuento, opts, 2);
+  // Sesión 36/37: tarjetas verdes con atribución y split exacto.
+  // Tabla con 3 columnas (foto+info+precio) → colspan=2 en label.
+  const lineDescuento = renderDiscountLines(descuento, optsFull, 2);
 
   const lineEnvio = `<tr>
        <td colspan="2" style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;">Envío</td>
