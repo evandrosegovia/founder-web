@@ -77,7 +77,16 @@ function blockHeader() {
  * @param {number} envio — costo de envío (0 si gratis o retiro)
  * @param {number} descuento — descuento aplicado (0 si no hay)
  */
-function blockItems(items, total, envio, descuento) {
+/**
+ * @param {Array} items — array con {product_name, color, cantidad, precio_unitario}
+ * @param {number} total — total final del pedido
+ * @param {number} envio — costo de envío (0 si gratis o retiro)
+ * @param {number} descuento — descuento aplicado (0 si no hay) — suma total
+ * @param {Object} [opts] — Sesión 36: contexto para atribuir descuento
+ * @param {string} [opts.cuponCodigo] — código del cupón usado (si lo hay)
+ * @param {string} [opts.pago] — método de pago (para detectar transferencia)
+ */
+function blockItems(items, total, envio, descuento, opts) {
   const rows = (items || []).map(it => {
     const subtotal = Number(it.cantidad || 0) * Number(it.precio_unitario || 0);
     return `
@@ -92,13 +101,8 @@ function blockItems(items, total, envio, descuento) {
       </tr>`;
   }).join('');
 
-  // Líneas de descuento y envío solo si aplican
-  const lineDescuento = Number(descuento) > 0
-    ? `<tr>
-         <td style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;">Descuento</td>
-         <td style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#4caf82;text-align:right;">-$${fmtUYU(descuento)}</td>
-       </tr>`
-    : '';
+  // Sesión 36: línea de descuento con atribución (cupón / transferencia / ambos)
+  const lineDescuento = renderDiscountLines(descuento, opts);
 
   const lineEnvio = `<tr>
        <td style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;">Envío</td>
@@ -115,6 +119,61 @@ function blockItems(items, total, envio, descuento) {
         <td style="padding:18px 0 0 0;font-family:Georgia,serif;font-size:22px;color:#c9a96e;text-align:right;font-weight:600;">$${fmtUYU(total)} UYU</td>
       </tr>
     </table>`;
+}
+
+// Sesión 36: helper compartido para renderizar líneas de descuento
+// con atribución correcta. Si hay cupón + transferencia, muestra 2
+// líneas con texto descriptivo; si hay solo uno, muestra 1 línea.
+// Sin contexto (opts vacío) cae al label "Descuento" genérico
+// para mantener compatibilidad con pedidos viejos.
+function renderDiscountLines(descuento, opts, colspan) {
+  const descNum = Number(descuento) || 0;
+  if (descNum <= 0) return '';
+
+  const cuponCodigo = (opts && opts.cuponCodigo) ? String(opts.cuponCodigo).toUpperCase() : '';
+  const pago        = (opts && opts.pago)        ? String(opts.pago) : '';
+  const hayCupon          = !!cuponCodigo;
+  const hayTransferencia  = /transfer/i.test(pago);
+  const cs = colspan ? `colspan="${colspan}"` : '';
+
+  const greenStyle = 'padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#4caf82;text-align:right;';
+  const grayLabel  = 'padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;';
+
+  // Caso 1: cupón + transferencia (no podemos dividir el monto exacto, mostramos descripción)
+  if (hayCupon && hayTransferencia) {
+    return `
+      <tr>
+        <td ${cs} style="${grayLabel}">Cupón ${esc(cuponCodigo)} aplicado</td>
+        <td style="${greenStyle}"></td>
+      </tr>
+      <tr>
+        <td ${cs} style="${grayLabel}">Pago por transferencia (10%)</td>
+        <td style="${greenStyle}"></td>
+      </tr>
+      <tr>
+        <td ${cs} style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;font-style:italic;">Total descontado</td>
+        <td style="${greenStyle}">-$${fmtUYU(descNum)}</td>
+      </tr>`;
+  }
+  // Caso 2: solo cupón
+  if (hayCupon) {
+    return `<tr>
+      <td ${cs} style="${grayLabel}">Cupón ${esc(cuponCodigo)} aplicado</td>
+      <td style="${greenStyle}">-$${fmtUYU(descNum)}</td>
+    </tr>`;
+  }
+  // Caso 3: solo transferencia
+  if (hayTransferencia) {
+    return `<tr>
+      <td ${cs} style="${grayLabel}">Pago por transferencia (10%)</td>
+      <td style="${greenStyle}">-$${fmtUYU(descNum)}</td>
+    </tr>`;
+  }
+  // Caso 4 (fallback): pedido viejo sin atribución
+  return `<tr>
+    <td ${cs} style="${grayLabel}">Descuento</td>
+    <td style="${greenStyle}">-$${fmtUYU(descNum)}</td>
+  </tr>`;
 }
 
 /**
@@ -187,7 +246,7 @@ function blockItemsCompact(items, photoMap) {
  * @param {number} descuento descuento aplicado (0 si no hay)
  * @param {Object} photoMap  diccionario "ProductName||ColorName" → URL
  */
-function blockItemsWithPhotos(items, total, envio, descuento, photoMap) {
+function blockItemsWithPhotos(items, total, envio, descuento, photoMap, opts) {
   const safeMap = photoMap || {};
 
   const rows = (items || []).map(it => {
@@ -223,13 +282,9 @@ function blockItemsWithPhotos(items, total, envio, descuento, photoMap) {
       </tr>`;
   }).join('');
 
-  // Líneas de descuento y envío solo si aplican (mismo patrón que blockItems)
-  const lineDescuento = Number(descuento) > 0
-    ? `<tr>
-         <td colspan="2" style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;">Descuento</td>
-         <td style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#4caf82;text-align:right;">-$${fmtUYU(descuento)}</td>
-       </tr>`
-    : '';
+  // Sesión 36: línea de descuento con atribución (cupón / transferencia / ambos)
+  // Esta tabla usa 3 columnas (foto+info+precio) → colspan=2 en label
+  const lineDescuento = renderDiscountLines(descuento, opts, 2);
 
   const lineEnvio = `<tr>
        <td colspan="2" style="padding:8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;">Envío</td>
@@ -491,7 +546,7 @@ export function templateOrderTransfer(order, items) {
         <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;color:#9a9a9a;text-transform:uppercase;margin-bottom:18px;">
           Detalle del pedido
         </div>
-        ${blockItems(items, total, envio, descuento)}
+        ${blockItems(items, total, envio, descuento, { cuponCodigo: order.cupon_codigo, pago: order.pago })}
       </td>
     </tr>
 
@@ -568,7 +623,7 @@ export function templateOrderMpApproved(order, items) {
         <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;color:#9a9a9a;text-transform:uppercase;margin-bottom:18px;">
           Detalle del pedido
         </div>
-        ${blockItems(items, total, envio, descuento)}
+        ${blockItems(items, total, envio, descuento, { cuponCodigo: order.cupon_codigo, pago: order.pago })}
       </td>
     </tr>
 
@@ -650,7 +705,7 @@ export function templateOrderMpPending(order, items) {
         <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;color:#9a9a9a;text-transform:uppercase;margin-bottom:18px;">
           Detalle del pedido
         </div>
-        ${blockItems(items, total, envio, descuento)}
+        ${blockItems(items, total, envio, descuento, { cuponCodigo: order.cupon_codigo, pago: order.pago })}
       </td>
     </tr>
 
@@ -831,7 +886,7 @@ export function templateOrderStatusUpdate(order, items, statusKey, photoMap) {
   // detalle, hace click en "Ver estado del pedido" y entra al seguimiento.
   const showPrices = statusKey === 'Entregado';
   const itemsBlock = showPrices
-    ? blockItemsWithPhotos(items, total, envio, descuento, photoMap)
+    ? blockItemsWithPhotos(items, total, envio, descuento, photoMap, { cuponCodigo: order.cupon_codigo, pago: order.pago })
     : blockItemsCompact(items, photoMap);
 
   const inner = `
