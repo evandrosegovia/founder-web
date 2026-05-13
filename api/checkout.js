@@ -40,6 +40,7 @@ const COUPON_ERROR_MAP = {
   cupon_already_used:         { http: 400, msg: 'Este código ya fue utilizado' },
   cupon_already_used_by_email:{ http: 400, msg: 'Ya usaste este código anteriormente' },
   cupon_min_purchase:         { http: 400, msg: 'No alcanzás el mínimo de compra del cupón' },
+  cupon_solo_clientes_repetidos:{ http: 400, msg: 'Este código es exclusivo para clientes con compra previa (verificá que estés usando el mismo email de tu compra anterior).' },
   email_required:             { http: 400, msg: 'El email es obligatorio' },
 };
 
@@ -49,6 +50,36 @@ const COUPON_ERROR_MAP = {
 // Mejor opción a futuro: moverlas a site_settings y leerlas en ambos lados.
 const SHIPPING_FREE_THRESHOLD = 2000;  // ≥ este monto → envío gratis
 const SHIPPING_COST           = 250;   // costo fijo de envío a domicilio
+
+// ─────────────────────────────────────────────────────────────────
+// normalizeFecha
+// ─────────────────────────────────────────────────────────────────
+// Devuelve un timestamp ISO 8601 válido o null.
+// Defensa en profundidad: aunque el frontend ya manda ISO 8601 estándar
+// (new Date().toISOString()), si por alguna razón llega un string que
+// Postgres no entiende (ej: "12/5/2026, 22:35:14 p. m." con timezone
+// inválida "p.") este helper lo neutraliza devolviendo null.
+//
+// Cuando devolvemos null, la RPC apply_coupon_and_create_order usa
+// COALESCE(p_order->>'fecha', now()::text) — la fecha queda con el
+// timestamp del server. Nunca rompe el insert.
+//
+// Histórico: hasta Sesión 30, el frontend mandaba toLocaleString('es-UY')
+// que generaba strings con "p. m." sin embargo Postgres parseaba bien.
+// Cuando Chrome o Postgres actualizaron, "p." empezó a interpretarse
+// como abreviatura de timezone inválida. Fix: ISO 8601 en frontend +
+// validación defensiva acá.
+function normalizeFecha(raw) {
+  if (!raw) return null;
+  const str = String(raw).trim();
+  if (!str) return null;
+  // Postgres acepta ISO 8601: "2026-05-12T22:35:14.123Z" o variaciones.
+  // Validamos con Date.parse y descartamos cualquier otra cosa.
+  const ts = Date.parse(str);
+  if (Number.isNaN(ts)) return null;
+  // Re-serializamos a ISO 8601 puro para garantizar formato canónico.
+  return new Date(ts).toISOString();
+}
 
 // ─────────────────────────────────────────────────────────────────
 // validateItemsAgainstDB
@@ -209,7 +240,7 @@ async function handleValidateCoupon(body, res) {
 
   const { data, error } = await supabase
     .from('coupons')
-    .select('codigo, tipo, valor, uso, min_compra, activo, usos_count, emails_usados, desde, hasta')
+    .select('codigo, tipo, valor, uso, min_compra, activo, usos_count, emails_usados, desde, hasta, solo_clientes_repetidos')
     .eq('codigo', codigoRaw)
     .maybeSingle();
 
@@ -242,6 +273,31 @@ async function handleValidateCoupon(body, res) {
   if (data.min_compra && data.min_compra > 0 && subtotal < data.min_compra) {
     return fail(res, 400, 'cupon_min_purchase',
       `Compra mínima requerida: $${Number(data.min_compra).toLocaleString('es-UY')} UYU`);
+  }
+
+  // ── NUEVO Sesión 32: validar cliente repetido ────────────────
+  // Si el cupón está marcado como "solo para clientes con compra
+  // previa entregada", contamos órdenes 'Entregado' del mismo email.
+  // Esta validación se hace acá Y en la RPC SQL (defensa en
+  // profundidad: el frontend recibe el error inmediatamente al
+  // aplicar el cupón, sin tener que esperar a "Confirmar pedido").
+  if (data.solo_clientes_repetidos === true) {
+    if (!email) {
+      return fail(res, 400, 'email_required', 'Ingresá tu email antes de aplicar el cupón');
+    }
+    const { count, error: countErr } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .ilike('email', email)
+      .eq('estado', 'Entregado')
+      .or('archivado.is.null,archivado.eq.false');
+    if (countErr) {
+      return fail(res, 500, 'db_error', countErr.message);
+    }
+    if (!count || count < 1) {
+      return fail(res, 400, 'cupon_solo_clientes_repetidos',
+        'Este código es exclusivo para clientes con compra previa (verificá que estés usando el mismo email de tu compra anterior).');
+    }
   }
 
   // OK — devolver metadata normalizada al frontend (mismo shape que usaba la versión Sheet)
@@ -283,7 +339,7 @@ async function handleCreateOrder(body, res, req) {
   // Sanitización: los campos tipo string se trimean; los numéricos se castean.
   const cleanOrder = {
     numero:    String(order.numero).trim(),
-    fecha:     order.fecha || null,  // la RPC usa now() si viene null/inválido
+    fecha:     normalizeFecha(order.fecha),  // ISO 8601 válido o null (RPC usa now())
     nombre:    String(order.nombre    || '').trim(),
     apellido:  String(order.apellido  || '').trim(),
     celular:   String(order.celular   || '').trim(),

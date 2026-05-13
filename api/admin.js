@@ -405,6 +405,7 @@ async function handleCreateCoupon(body, res, req) {
     emails_usados: [],
     desde:      c.desde || null,   // formato YYYY-MM-DD
     hasta:      c.hasta || null,
+    solo_clientes_repetidos: c.solo_clientes_repetidos === true,  // Sesión 32
   };
 
   const { data, error } = await supabase
@@ -427,7 +428,7 @@ async function handleUpdateCoupon(body, res, req) {
   if (!id) return fail(res, 400, 'id_required');
 
   // Solo campos whitelisted se pueden actualizar
-  const allowed = ['codigo', 'tipo', 'valor', 'uso', 'min_compra', 'activo', 'desde', 'hasta'];
+  const allowed = ['codigo', 'tipo', 'valor', 'uso', 'min_compra', 'activo', 'desde', 'hasta', 'solo_clientes_repetidos'];
   const patch = {};
   for (const k of allowed) {
     if (body.patch && Object.prototype.hasOwnProperty.call(body.patch, k)) {
