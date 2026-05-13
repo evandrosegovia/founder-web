@@ -284,6 +284,29 @@
       loadPersonalizacion();
       loadCleanupStatus();
     }
+
+    // Sesión 35: en mobile, al navegar, cerrar el sidebar drawer
+    if (window.innerWidth <= 768) closeSidebar();
+  }
+
+  // Sesión 35: toggle del sidebar mobile (botón hamburguesa)
+  function toggleSidebar() {
+    const sb = $('sidebar');
+    const bd = $('sidebarBackdrop');
+    const btn = $('topbarMenuBtn');
+    if (!sb) return;
+    const willOpen = !sb.classList.contains('is-open');
+    sb.classList.toggle('is-open', willOpen);
+    if (bd)  bd.classList.toggle('is-open', willOpen);
+    if (btn) btn.classList.toggle('is-open', willOpen);
+  }
+  function closeSidebar() {
+    const sb = $('sidebar');
+    const bd = $('sidebarBackdrop');
+    const btn = $('topbarMenuBtn');
+    if (sb)  sb.classList.remove('is-open');
+    if (bd)  bd.classList.remove('is-open');
+    if (btn) btn.classList.remove('is-open');
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -730,15 +753,20 @@
       const deleteBtn = `<button class="btn btn-sm btn-danger" onclick="deleteOrder('${esc(o.id)}','${esc(numero)}')" title="Borrar definitivamente — no se puede deshacer">🗑 Eliminar</button>`;
 
       // Sesión 29 (C): badge de personalización láser
+      // Sesión 35: usa clase .order-badge con flex-wrap del .order-head
+      // para que no rompa la línea en mobile.
       const hasGrabado = Number(o.personalizacion_extra || 0) > 0 ||
         (o.order_items || []).some(it => it && it.personalizacion);
       const grabadoBadge = hasGrabado
-        ? ' <span title="Pedido con personalización láser" style="font-size:9px;letter-spacing:1px;color:var(--gold);padding:2px 6px;border:1px solid var(--gold);margin-left:6px">✦ GRABADO</span>'
+        ? '<span class="order-badge" title="Pedido con personalización láser">✦ GRABADO</span>'
+        : '';
+      const archivadoBadge = isArchived
+        ? '<span class="order-badge order-badge--archived" title="Pedido archivado">ARCHIVADO</span>'
         : '';
 
       return `<div class="order-card">
         <div class="order-head">
-          <div class="order-id">#${esc(numero)}${grabadoBadge}${isArchived ? ' <span style="font-size:8px;letter-spacing:2px;color:var(--muted);padding:2px 6px;border:1px solid var(--border);margin-left:6px">ARCHIVADO</span>' : ''}</div>
+          <div class="order-id">#${esc(numero)}${grabadoBadge}${archivadoBadge}</div>
           <div class="order-status ${cls}">${esc(o.estado || '—')}</div>
         </div>
         <div class="order-body">
@@ -2853,6 +2881,9 @@
   window.login               = login;
   window.logout              = logout;
   window.nav                 = nav;
+  // Sesión 35: mobile drawer
+  window.toggleSidebar       = toggleSidebar;
+  window.closeSidebar        = closeSidebar;
 
   // Pedidos
   window.loadOrders          = loadOrders;

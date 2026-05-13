@@ -195,6 +195,25 @@
       setTimeout(() => showRemovedNotice(state.removedOnLoad), 300);
     }
 
+    // Sesión 35: cuando el cliente marca "Acepto Política de Privacidad",
+    // también marcamos automáticamente el checkbox de "No devolución" si
+    // está visible (carrito con personalización). Unidireccional: solo
+    // marca, nunca desmarca. El cliente puede desmarcarlo manualmente si
+    // cambia de opinión sobre la personalización.
+    const consentPriv = $('coConsent');
+    if (consentPriv && !consentPriv.dataset.s35Linked) {
+      consentPriv.addEventListener('change', () => {
+        if (!consentPriv.checked) return;  // solo cuando se MARCA
+        const wrap   = $('coConsentLaser');
+        const target = $('coConsentNoDev');
+        // Solo si el bloque de no-devolución está visible (hay items grabados)
+        if (wrap && wrap.style.display !== 'none' && target && !target.checked) {
+          target.checked = true;
+        }
+      });
+      consentPriv.dataset.s35Linked = '1';
+    }
+
     // Meta Pixel — InitiateCheckout (carrito con items, checkout abierto)
     if (window.founderPixel) {
       const { total } = calculateOrderTotals();
@@ -663,7 +682,7 @@
       let descLabel;
       if (state.coupon.descuentaPersonalizacion) {
         const slots = state.coupon.personalizacionSlotsCubiertos;
-        descLabel = `${slots} slot${slots === 1 ? '' : 's'} de personalización gratis`;
+        descLabel = `${slots} grabado${slots === 1 ? '' : 's'} personalizado${slots === 1 ? '' : 's'} gratis`;
       } else if (state.coupon.tipo === 'porcentaje') {
         descLabel = `${state.coupon.valor}% de descuento`;
       } else {
