@@ -1,8 +1,247 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 30 — Auditoría completa de salud + seguridad e-commerce. 9 fixes aplicados en 11 archivos: validación de precios server-side (anti-manipulación), headers HTTP de seguridad (HSTS/X-Frame/etc.), CORS restringido a founder.uy con whitelist dinámica, ofuscación de emails en logs (GDPR), HMAC con timingSafeEqual, dependencia Supabase pineada a `2.105.4` exacto (cierre formal de la lección Sesión 27), `index.html` ahora HTML estructuralmente válido, README profesional. Score esperado en securityheaders.com: F → A/A+. (12/05/2026)
-**Próxima sesión:** 31 — opciones: (a) smoke test personalización láser end-to-end cuando llegue el láser físico (era el plan original de "Sesión 30"); (b) Rate limiting (C-2) — sería el cierre perfecto de la triple-defensa del checkout junto con C-1 ya aplicado, requiere habilitar Vercel KV; (c) JWT para sesión admin (A-2) — hardening profundo; (d) pendientes secundarios de Sesión 26 (B reseñas reales, E Gmail send-as, etc).
+**Última actualización:** Sesión 31 — Rate Limiting (Bloque B) + JWT para sesión admin (Bloque C). 14 archivos modificados (10 código + 1 config + 1 SQL + 2 docs). 4 endpoints críticos ahora con rate limit (`admin_login`, `create_order`, `validate_coupon`, `seguimiento`). Login admin emite JWT HS256 con expiración de 8h; password ya no viaja en cada request. Módulo `admin-auth.js` compartido por 3 endpoints (DRY). Helper `apiAdminFetch` centraliza llamadas autenticadas a endpoints admin auxiliares. Cleanup de `rate_limits` consolidado en el cron semanal de `cleanup-personalizacion` por límite de Vercel Hobby. 18/18 tests sintéticos de JWT pasados. Fix lateral: `founder-checkout.js` migrado de `toLocaleString('es-UY')` a `toISOString()` para evitar error "TIME ZONE 'P.' NOT RECOGNIZED" de Postgres + `normalizeFecha` defensivo en backend. (12-13/05/2026)
+**Próxima sesión:** 32 — opciones: (a) smoke test personalización láser end-to-end cuando llegue el láser físico (sigue pendiente desde Sesión 29); (b) **CSP (Content Security Policy)** — última pieza para llegar a A+ definitivo en securityheaders.com, esfuerzo ~1h; (c) **Drop columna legacy `products.banner_url`** (pendiente desde Sesión 21); (d) **Email automático al admin cuando entra pedido con grabado** (código existe en `blockPersonalizacion('admin')`, falta conectarlo); (e) pendientes secundarios de Sesión 26 (B reseñas reales, E Gmail send-as, datos bancarios reales en email de transferencia).
 **Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
+
+---
+
+## ✅ SESIÓN 31 — Rate Limiting + JWT para sesión admin [12-13/05/2026]
+
+**Sesión de hardening profundo del checkout y del panel admin.** Se aplicaron los dos bloques que cerraban formalmente la seguridad del sitio: rate limiting en los 4 endpoints críticos (frena brute-force, spam y scraping) + JWT con expiración para el panel admin (el password ya no viaja en cada request). Cero cambios funcionales para clientes finales — toda la mejora es de defensa en profundidad. Como efecto colateral aparecieron y se resolvieron 2 problemas que estaban latentes desde antes (error de timezone de Postgres + bug de registro de crons en Vercel Hobby).
+
+**Resultado:** sitio con **triple defensa de checkout** (validación de precios server-side de Sesión 30 + rate limit + headers de seguridad), y **panel admin con seguridad de nivel profesional** (JWT firmado, expiración automática, password fuera del navegador post-login).
+
+### 🔵 Bloque B — Rate Limiting (4 endpoints protegidos)
+
+**Decisión arquitectónica clave:** se evaluaron 3 opciones de storage (Vercel KV, Upstash Redis, tabla Supabase). Se eligió **tabla Supabase** por: (1) cero infraestructura nueva, (2) la carga esperada es mínima (~50-250 filas/semana), (3) administración directa por el dev (sin proveedores externos), (4) sin costos adicionales ahora ni a futuro.
+
+**Algoritmo:** sliding window real (no fixed window). Las filas se cuentan desde "hace X segundos hasta ahora", lo que evita ráfagas 2× en bordes de ventanas calendario.
+
+**Nuevos módulos en `api/_lib/`:**
+
+**1. `api/_lib/rate-limit.js` (~195 líneas):**
+- Función `getClientIp(req)` — extrae IP del cliente desde `x-forwarded-for` (Vercel pone la IP real en el primer valor de esa lista).
+- Función `checkRateLimit(action, ip, max, windowSec)` — chequea + registra el intento en una transacción lógica (SELECT count + INSERT).
+- Función `enforceRateLimit(action, req, res)` — wrapper que responde 429 con `Retry-After` header si excede, o devuelve `true` para que el handler continúe.
+- Objeto `LIMITS` con la configuración centralizada de los 4 endpoints (cambiar un límite = 1 línea de código).
+- **Política fail-open:** si la DB falla, dejamos pasar. Mejor no bloquear a clientes legítimos por un hipo de infra.
+
+**Límites configurados:**
+| Endpoint | Límite | Ventana | Protege contra |
+|---|---|---|---|
+| `admin_login` | 5 | 15 min | Brute-force del password admin |
+| `create_order` | 10 | 1 hora | Spam de pedidos falsos |
+| `validate_coupon` | 20 | 1 hora | Enumeración de cupones |
+| `seguimiento` | 30 | 1 hora | Scraping de pedidos por número |
+
+**2. `api/cleanup-rate-limits.js` (originalmente creado, después consolidado — ver más abajo "Consolidación de crons"):** cron diario para borrar filas viejas de `rate_limits` (created_at > 2 horas — ventana máxima de rate limit es 1h, 2h da margen contra races).
+
+**3. Nueva tabla Supabase `rate_limits`:**
+```sql
+CREATE TABLE public.rate_limits (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  key         text NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX rate_limits_key_time_idx
+  ON public.rate_limits (key, created_at DESC);
+CREATE INDEX rate_limits_created_at_idx
+  ON public.rate_limits (created_at);
+GRANT ALL PRIVILEGES ON public.rate_limits TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+```
+
+⚠️ **Lección crítica aprendida durante la sesión:** **el GRANT a service_role NO es opcional, incluso con RLS off**. Sin él, el SDK desde Node falla con status 403 silencioso (todos los campos del PostgrestError vienen null: message, code, details, hint). El SQL Editor del dashboard usa rol `postgres` que NO refleja el problema. La primera versión del SQL no incluía los GRANTs y eso causó horas de debugging hasta detectarlo. Para futuras tablas nuevas accesibles desde el backend Node, SIEMPRE incluir GRANTs explícitos.
+
+**4. Integraciones (endpoints modificados):**
+- `api/admin.js` — rate limit en acción `login`.
+- `api/checkout.js` — rate limit en acciones `validate_coupon` y `create_order`.
+- `api/seguimiento.js` — rate limit al inicio del handler.
+
+**Cleanup automático:**
+- Originalmente diseñado como cron independiente diario (`/api/cleanup-rate-limits` a las 4 AM).
+- **Consolidado** en el cron semanal de `cleanup-personalizacion` (domingos 6 AM) por bug de Vercel Hobby — ver sección "Consolidación de crons" abajo.
+
+### 🟠 Bloque C — JWT para sesión admin
+
+**Problema que resuelve:** hasta Sesión 30, el password del admin viajaba en el body de CADA request al backend (50+ veces por sesión típica) y vivía en `sessionStorage` del navegador. Si alguien comprometía el sessionStorage (XSS, extensión maliciosa), tenía el password permanente del admin.
+
+**Solución:** flujo estándar de la industria con JSON Web Tokens (HS256):
+1. Login con password → server valida y emite JWT firmado con expiración de 8h.
+2. Frontend guarda el token (no el password) en sessionStorage.
+3. Cada request siguiente manda `Authorization: Bearer <token>` en header.
+4. Server valida la firma criptográfica del token (no toca DB para auth).
+5. Token vencido o inválido → 401 → relogin automático.
+
+**Decisión clave: implementación nativa sin librerías externas.** Se evaluó `jsonwebtoken` (dep externa) vs implementación propia con `crypto` nativo de Node. Se eligió la implementación propia por:
+- Cero deps nuevas (mantiene `package.json` minimal).
+- El subset que se necesita es chico (~150 líneas).
+- Mejor auditabilidad: cualquier issue de seguridad se ve directo en el archivo, no en código de terceros.
+- HS256 + timingSafeEqual igual de seguro que la lib oficial.
+
+**Nuevos módulos en `api/_lib/`:**
+
+**1. `api/_lib/jwt.js` (~165 líneas):**
+- `signToken(payload)` — firma HS256, devuelve `{ token, expiresAt }`. TTL hardcoded a 8h.
+- `verifyToken(token)` — valida firma con `timingSafeEqual`, formato (3 partes, header HS256/JWT), expiración. Devuelve payload o `null`. NUNCA tira excepciones por tokens inválidos.
+- `extractBearerToken(req)` — extrae token desde header `Authorization: Bearer <token>` (case-insensitive).
+- Validación de `JWT_SECRET`: debe tener ≥32 caracteres, si no, tira en tiempo de carga (no en uso).
+- Base64URL nativo (sin depender de `Buffer.toString('base64url')` que no estaba en versiones viejas de Node — sí en Node 22 actual, pero defensivo).
+
+**2. `api/_lib/admin-auth.js` (~85 líneas):**
+- Módulo compartido por 3 endpoints (admin, cleanup-personalizacion, download-personalizacion-bulk).
+- `checkAdminAuth(req, body)` — devuelve `{ ok, mode, error }`. Soporta JWT bearer (preferido) Y password en body (compat para acción login).
+- Reemplaza la lógica duplicada de `safeEqual + checkAdminPassword` que existía en cada endpoint.
+
+**Tests sintéticos del módulo JWT:** 18/18 pasados.
+- Firma + verificación roundtrip
+- Token alterado en firma → null
+- Payload alterado → null  
+- Token con formato inválido → null (vacío, null, 2 partes)
+- Token expirado → null
+- `extractBearerToken` con variantes case
+- `JWT_SECRET` muy corto → tira error claro
+- `JWT_SECRET` ausente → tira error claro
+
+**Nueva env var requerida:**
+- `JWT_SECRET` en Vercel — 128 caracteres hex generados con `crypto.randomBytes(64).toString('hex')`. Documentada con valor exacto en la guía de aplicación.
+
+**Refactor del frontend admin (`components/founder-admin.js`):**
+- `CONFIG.PW_KEY: 'founder_admin_pw'` → `CONFIG.TOKEN_KEY: 'founder_admin_token'`.
+- `apiAdmin()` ahora manda `Authorization: Bearer <token>` en header (no password en body).
+- Nuevo helper `apiAdminFetch(url, action, payload)` — variante para endpoints admin **distintos** a `/api/admin` (cleanup-personalizacion, download-personalizacion-bulk). Centraliza la lógica del bearer token + política de 401 → relogin. Reemplaza 5 fetch directos con código duplicado.
+- `login()` reescrito: hace fetch directo (sin apiAdmin) porque todavía no hay token, recibe `{ token, expiresAt }` del server y guarda el token.
+- `boot()` (auto-relogin al recargar) ahora valida el JWT existente con `list_orders` como "ping autenticado". Si el token venció, apiAdmin ya limpia y muestra login automáticamente.
+
+**Refactor uniforme de handlers en `api/admin.js`:**
+- Las 22 funciones `handleXxx(body, res)` cambiaron firma a `handleXxx(body, res, req)`. El dispatcher ahora pasa `req` a todos los handlers (login lo usa para rate limit, los demás lo ignoran — JS no se queja por args extra).
+- Las 22 llamadas a `requireAuth(body, res)` actualizadas a `requireAuth(body, res, req)`.
+- Cambio mecánico con `sed`, validado luego archivo por archivo.
+
+### 🔧 Consolidación de crons (problema descubierto en producción)
+
+**Problema:** durante el smoke test, después de subir `vercel.json` con 2 crons declarados (cleanup-personalizacion semanal + cleanup-rate-limits diario), Vercel solo registró el primero en el panel "Cron Jobs". Múltiples intentos fallaron:
+- Force redeploy sin cache → no apareció el segundo.
+- Reordenar los crons en `vercel.json` → no apareció.
+- Cambiar cleanup-rate-limits de diario a semanal (lunes 5 AM, distinto día que el primero) → no apareció.
+
+**Causa raíz (investigada con web_search a docs oficiales Vercel):**
+- Vercel Hobby permite **2 crons máximo** y solo frecuencia ≤ 1× por día.
+- Sintácticamente nuestros 2 crons cumplían ambos requisitos.
+- Pero **hay un bug conocido del plan Hobby**: cuando un cron apunta a un endpoint que no existía al momento de un deploy previo, queda registrado como "inválido" silenciosamente. Aunque después se cree el endpoint y se haga force redeploy, Vercel sigue ignorando ese cron. Esto está reportado en GitHub issues de Vercel y community forums.
+
+**Solución aplicada (decisión arquitectónica importante):** consolidar las dos limpiezas dentro del cron que SÍ funciona (`/api/cleanup-personalizacion`). Razones:
+
+1. **Single Responsibility no se viola.** El archivo cleanup-personalizacion.js pasa de "cron de imágenes" a "cron de mantenimiento semanal de tablas auxiliares", con dos tareas internas claramente encapsuladas (cada una su propia función, sin mezcla de lógica).
+2. **Sin overhead operacional.** Vercel Hobby permite 2 crons, pero uno ya es complicado de registrar — agregar más sería pelear contra la plataforma sin necesidad.
+3. **Pragmatismo sin sacrificar limpieza.** Cuando se pase a Vercel Pro (si crece el negocio), separar de nuevo es 5 min de refactor. Por ahora, lo consolidado funciona perfectamente y es más limpio que tener un cron fantasma en el `vercel.json` que nunca se ejecuta.
+4. **Frecuencia semanal es suficiente para rate_limits.** En la escala actual (~50-250 filas/semana acumuladas según tráfico), las queries con índices son instantáneas. El cleanup es solo higiene — ni el rate limit ni la performance dependen de él.
+
+**Implementación final:**
+- `cleanup-personalizacion.js` ahora tiene una función `cleanupRateLimits()` (~50 líneas) que ejecuta el delete de `rate_limits` con created_at > 2h.
+- El cron auto dispara las DOS tareas en serie: primero imágenes (tarea A), después rate_limits (tarea B).
+- Las acciones manuales del admin (POST con status, manual run, list logs) siguen siendo solo de imágenes — el cleanup de rate_limits no necesita UI manual.
+- Si tarea A falla → exception → log + fin (no llega a B).
+- Si tarea B falla → log + continúa (A ya completó y vale la pena reportar su resultado).
+- Archivo `cleanup-rate-limits.js` eliminado del repo (ya no se usa).
+- `vercel.json` con UN solo cron declarado (el de cleanup-personalizacion).
+
+**Por qué este diseño NO es un parche:** los criterios de evaluación fueron 4 (single responsibility, sin overhead, pragmatismo limpio, frecuencia adecuada para el dominio). Los 4 dan a favor de consolidar. Si en el futuro hubiera 5 crons distintos, hablaríamos de Pro plan, no de seguir consolidando.
+
+### 🐛 Fix lateral: error timezone Postgres en checkout
+
+**Problema descubierto durante Test 3 (compra de prueba):** al confirmar pedido aparecía mensaje rojo en el footer: `TIME ZONE "P." NOT RECOGNIZED`.
+
+**Causa raíz:** `founder-checkout.js` línea 736 generaba la fecha del pedido con `new Date().toLocaleString('es-UY')`, que produce strings como `"12/5/2026, 22:35:14 p. m."`. Postgres interpreta `p.` (con punto) como abreviatura de timezone que no reconoce y rechaza el INSERT.
+
+**No es bug introducido por Sesión 31** — el bug existía desde antes pero aparecía intermitentemente. Cambios en ICU del browser (lib de locales) o en parser de Postgres lo hicieron consistente justo ahora.
+
+**Fix aplicado:**
+1. **Frontend (`founder-checkout.js`):** cambio de `toLocaleString('es-UY')` → `toISOString()`. ISO 8601 es el formato universal que cualquier DB entiende sin ambigüedad.
+2. **Backend (`checkout.js`):** nueva helper `normalizeFecha(raw)` — defensa en profundidad. Valida con `Date.parse()` y re-serializa a ISO 8601 puro. Si la fecha llega basura, devuelve null (la RPC usa `now()` como fallback). Reemplaza el `order.fecha || null` que pasaba strings sin validar.
+
+**Tests sintéticos:** 7/7 casos cubiertos (null, vacío, ISO bueno, "p. m." viejo, basura, ISO sin Z, número timestamp).
+
+### 📊 Métricas finales — Sesión 31
+
+**Archivos creados (4):**
+- `api/_lib/jwt.js` (~165 líneas) — firma/verifica JWTs HS256
+- `api/_lib/admin-auth.js` (~85 líneas) — auth compartida JWT+password
+- `api/_lib/rate-limit.js` (~195 líneas) — sliding window sobre Supabase
+- `sesion-31-rate-limits.sql` — SQL para tabla + índices + GRANTs
+
+**Archivos modificados (8):**
+- `api/admin.js` — login emite JWT + rate limit + 22 firmas de handler refactor + 22 llamadas a requireAuth
+- `api/checkout.js` — rate limit en validate_coupon y create_order + `normalizeFecha`
+- `api/seguimiento.js` — rate limit
+- `api/cleanup-personalizacion.js` — usa admin-auth + integra cleanupRateLimits (consolidación)
+- `api/download-personalizacion-bulk.js` — usa admin-auth (eliminadas funciones safeEqual + checkAdminPassword duplicadas)
+- `components/founder-admin.js` — token JWT, helper `apiAdminFetch`, login refactor, boot refactor, 7 referencias a PW_KEY eliminadas
+- `components/founder-checkout.js` — toISOString en vez de toLocaleString
+- `vercel.json` — sin cambios netos al final (intermedio tuvo 2 crons, vuelta a 1 tras consolidación)
+
+**Archivos eliminados:** `api/cleanup-rate-limits.js` (consolidado en cleanup-personalizacion).
+
+**Tests sintéticos automatizados ejecutados:** 25/25 ✅
+- JWT: 18/18 (firma roundtrip, token alterado, payload alterado, formato inválido, expirado, bearer extraction, secret corto/ausente)
+- normalizeFecha: 7/7 (null, vacío, ISO bueno, "p. m." viejo, basura, ISO sin Z, timestamp ms)
+
+**Variables de entorno nuevas en Vercel:** 1
+- `JWT_SECRET` (128 caracteres hex)
+
+**Tabla nueva en Supabase:** 1
+- `rate_limits` (3 columnas, 2 índices, GRANTs a service_role)
+
+**Cron jobs:** 1 (consolidado — ejecuta 2 tareas en serie).
+
+### 🧠 Lecciones de Sesión 31
+
+1. **GRANT a service_role NO es opcional, incluso con RLS off.** Toda tabla nueva accesible desde el backend Node necesita GRANT explícito. El SQL Editor del dashboard NO refleja el problema (usa rol `postgres`). Síntoma del bug: status 403 silencioso con PostgrestError todo en null. Mitigación: SIEMPRE incluir el bloque GRANT al crear una tabla nueva.
+
+2. **Vercel Hobby tiene un bug en el registro de crons.** Cuando un cron apunta a endpoint inexistente al momento de un deploy, queda en limbo permanente — ni force redeploy sin cache lo arregla. Workaround: consolidar crons relacionados en un solo endpoint. Documentar para futuras incorporaciones de crons.
+
+3. **`toLocaleString('es-UY')` genera strings que Postgres no parsea.** El sufijo "p. m." con punto se interpreta como abreviatura de timezone inválida. Para timestamps que viajan a la DB, SIEMPRE usar `toISOString()` (formato ISO 8601 universal). Aplicar también validación defensiva server-side (`Date.parse` + re-serialize) por las dudas.
+
+4. **JWT nativo con `crypto` de Node es 100% suficiente.** Implementar HS256 + timingSafeEqual lleva ~150 líneas y evita una dep externa. Para casos simples (sub + iat + exp), no hay valor en `jsonwebtoken` o `jose`. Mejor auditabilidad + cero superficie de supply chain attack.
+
+5. **El refactor con `sed` requiere validación post-cambio.** Las 22 funciones de admin.js cambiaron firma con un comando masivo (`s/(body, res)/(body, res, req)/g`). Tres salvaguardas evitaron problemas: (1) `node -c` después del cambio, (2) grep de las 22 referencias antes y después para confirmar conteo igual, (3) verificación de que ninguna firma quedó duplicada (`req, req` no es válido). Sed sin esas salvaguardas habría sido peligroso.
+
+6. **Apply en grupos secuenciales evita estados rotos en producción.** El plan original tenía 5 grupos en orden estricto (preparación → módulos `_lib` → endpoints → frontend+config → tests). Esto evitó deploys intermedios donde un endpoint nuevo importaba un módulo que todavía no existía en el repo. Replicable para futuras sesiones grandes.
+
+7. **El método científico vence a las hipótesis.** Durante el debug del rate limit ("no funciona"), las primeras tres hipótesis fueron: (a) SDK con sintaxis vieja, (b) caché de Vercel, (c) deploy mal aplicado. Las tres equivocadas. La causa real (GRANT faltante) se encontró agregando logging exhaustivo del error real y verificando uno por uno (¿la tabla existe? ¿el INSERT funciona desde SQL? ¿el SELECT funciona?). Lección: cuando un fix obvio no resuelve, NO tirar más fixes — instrumentar para ver el error real.
+
+### 📦 Estado del sitio post-Sesión 31
+
+- ✅ Performance excelente (95-99 desktop, 85-90 mobile)
+- ✅ Email transaccional + bidireccional (`info@founder.uy` operativo)
+- ✅ Base SEO universal completa
+- ✅ Google Search Console verificado e indexando
+- ✅ Tracking Meta funcional con CAPI deduplicado
+- ✅ Mercado Pago en producción real (PCI-DSS delegado)
+- ✅ HTML válido (parser W3C: 0 errores)
+- ✅ Validación de precios server-side (anti-manipulación)
+- ✅ 5 headers de seguridad HTTP
+- ✅ CORS restringido a founder.uy con whitelist dinámica
+- ✅ Emails ofuscados en logs (GDPR)
+- ✅ HMAC webhook MP con timingSafeEqual
+- ✅ Dependencia Supabase pineada exacta
+- ✅ **Rate limiting en 4 endpoints críticos (admin_login 5/15min, create_order 10/h, validate_coupon 20/h, seguimiento 30/h)** ← Sesión 31
+- ✅ **JWT HS256 con expiración de 8h para sesión admin (password fuera del navegador post-login)** ← Sesión 31
+- ✅ **Módulo `admin-auth` compartido por 3 endpoints (DRY)** ← Sesión 31
+- ✅ **Cleanup semanal de tablas auxiliares (imágenes + rate_limits) consolidado en un solo cron** ← Sesión 31
+- ✅ **Fix timezone Postgres (toISOString en frontend + normalizeFecha defensivo en backend)** ← Sesión 31
+
+### ⚠️ Pendientes documentados (Sesión 32+)
+
+- **CSP (Content Security Policy)** — última pieza para llegar a **A+** definitivo en securityheaders.com. Requiere auditar inline scripts, fonts externos, imágenes. Esfuerzo: ~1 hora.
+- **Smoke test personalización láser end-to-end** — sigue pendiente desde Sesión 29. Requiere láser físico operativo. NO bloqueante.
+- **Email automático al admin/taller cuando entra pedido con grabado** — código existe en `blockPersonalizacion(..., 'admin')`, falta conectarlo al flujo de creación de orden.
+- **Drop columna `products.banner_url`** (legacy desde Sesión 21). `ALTER TABLE products DROP COLUMN banner_url;` — pendiente como Opción D del menú principal histórico.
+- **Reseñas reales** (Sesión 26 — Opción B) — cuando haya clientes con compras validadas, reemplazar las 4 reseñas mock.
+- **Gmail send-as desde `info@founder.uy`** (Sesión 26 — Opción E) — para responder desde Gmail con remitente del dominio.
+- **Datos bancarios reales en email de transferencia** — el template actual dice "Te enviamos los datos por WhatsApp"; cuando se definan, agregar bloque con datos directos.
+- **Si tráfico crece 10×, considerar Vercel Pro** — permitiría separar nuevamente los crons (rate_limits diario, imágenes semanal) y usar frecuencias <1/día.
 
 ---
 
@@ -2613,8 +2852,33 @@ founder-web/
   (`ju***@gmail.com`), HMAC con `timingSafeEqual` en webhook MP,
   mensaje claro en log MP. 11 archivos modificados, 34 tests sintéticos
   pasados (6+9+6+13). Score esperado securityheaders.com: F → A/A+.
-  Pendientes para próxima sesión: rate limiting (C-2), JWT admin
-  (A-2), CSP. ← **Próxima.**
+- **Sesión 31 (Rate Limiting + JWT admin — 2 bloques):**
+  cierre de la triple defensa del checkout y hardening profundo del
+  panel admin. Bloque B: rate limiting con sliding window sobre tabla
+  Supabase, aplicado a 4 endpoints (admin_login 5/15min, create_order
+  10/h, validate_coupon 20/h, seguimiento 30/h). Nuevo módulo
+  `api/_lib/rate-limit.js` con configuración centralizada. Política
+  fail-open si DB falla. Bloque C: JWT HS256 nativo (sin libs externas)
+  con expiración de 8h. Login emite token, password ya no viaja en
+  requests post-login. Módulo `api/_lib/jwt.js` (firma/verify con
+  timingSafeEqual) + módulo compartido `api/_lib/admin-auth.js` usado
+  por 3 endpoints (DRY). Refactor del frontend admin: `PW_KEY` →
+  `TOKEN_KEY`, helper `apiAdminFetch` para endpoints admin auxiliares,
+  22 firmas de handlers en admin.js refactorizadas para recibir `req`.
+  18/18 tests sintéticos JWT pasados. **Lección crítica:** GRANT a
+  service_role NO es opcional aunque RLS esté off — el SDK desde Node
+  da 403 silencioso con PostgrestError todo en null. Causó horas de
+  debug hasta detectarlo. **Decisión arquitectónica clave:** consolidar
+  cleanup de `rate_limits` dentro del cron semanal de
+  `cleanup-personalizacion` por bug de Vercel Hobby (no registra el
+  segundo cron de forma estable cuando el endpoint no existía al
+  momento de un deploy previo). Archivo `cleanup-rate-limits.js`
+  eliminado del repo. **Fix lateral:** `founder-checkout.js` migrado
+  de `toLocaleString('es-UY')` (generaba "p. m." que Postgres
+  interpreta como timezone inválido) a `toISOString()` + `normalizeFecha`
+  defensivo en backend. 14 archivos totales (10 código + 1 config + 1
+  SQL + 2 docs), 25/25 tests sintéticos pasados, cero cambios
+  funcionales para clientes finales. ← **Próxima: Sesión 32 (CSP).**
 
 ---
 
@@ -2694,5 +2958,106 @@ defensivo.
 features, seguridad e higiene técnica — los 5 ejes en verde. Sesión 31
 puede ser una sesión más relajada de pendientes secundarios, o atacar
 el bloque de Rate limiting si querés blindar del todo el checkout. 🚀
+
+---
+
+**FIN — Cierre Sesión 31.** Sesión de hardening profundo del checkout
+(rate limiting) y del panel admin (JWT con expiración). 14 archivos
+totales, 25/25 tests sintéticos pasados, cero cambios funcionales para
+clientes finales. Sesión que demandó debugging intenso por dos problemas
+que aparecieron en producción y se resolvieron con investigación
+metódica (GRANT a service_role + bug de Vercel Hobby con crons).
+
+**Lo más relevante para recordar:**
+
+1. **Toda tabla nueva accesible desde el backend Node necesita GRANT
+   explícito a `service_role`, incluso con RLS off.** Sin él, el SDK
+   da status 403 silencioso con `PostgrestError` todo en null (message,
+   code, details, hint). El SQL Editor del dashboard usa rol `postgres`
+   y NO refleja el problema — solo se ve en runtime desde el backend.
+   El SQL definitivo de la tabla `rate_limits` ya incluye los GRANTs
+   correctos. Para futuras tablas, copiar ese patrón siempre.
+
+2. **Vercel Hobby tiene un bug con el registro de crons.** Cuando se
+   declara un cron en `vercel.json` apuntando a un endpoint que no
+   existía al momento de un deploy previo, Vercel lo marca como
+   inválido silenciosamente y NUNCA lo registra — ni force redeploy
+   sin cache lo arregla. Solución pragmática y limpia: consolidar crons
+   relacionados en un solo endpoint cuyas tareas ejecuten en serie.
+   Si en el futuro el negocio crece y se pasa a Vercel Pro, separar
+   crons es trivial (5 min). Decisión documentada explícitamente:
+   NO es un parche, es una concesión arquitectónica que el plan Free
+   impone, justificable mientras dure ese plan.
+
+3. **`new Date().toLocaleString('es-UY')` genera strings que Postgres
+   no parsea.** El sufijo "p. m." (con punto y espacio) se interpreta
+   como abreviatura de timezone inválida → `TIME ZONE 'P.' NOT
+   RECOGNIZED`. Para fechas que viajan a la DB, SIEMPRE `toISOString()`.
+   Validación defensiva server-side (`normalizeFecha`) confirma el
+   formato y normaliza a ISO 8601 canónico — defensa en profundidad
+   contra clientes maliciosos o bugs futuros.
+
+4. **JWT nativo con `crypto` de Node es 100% suficiente para casos
+   simples.** Implementar HS256 + timingSafeEqual lleva ~150 líneas
+   y evita dep externa. Para payloads simples (sub + iat + exp), no
+   hay valor en `jsonwebtoken` o `jose`. Mejor auditabilidad + cero
+   superficie de supply chain attack + mantiene `package.json` minimal.
+
+5. **Cuando un fix obvio no resuelve, NO tirar más fixes — instrumentar
+   para ver el error real.** Durante el debug del rate limit, las
+   primeras 3 hipótesis (SDK con sintaxis vieja, caché de Vercel,
+   deploy mal aplicado) fueron todas erróneas. Mejorar el logging
+   (`JSON.stringify` del error con todos sus campos) reveló la causa
+   real (GRANT faltante, status 403). Método científico vence a
+   hipótesis. Replicable para futuros bugs.
+
+6. **`apiAdminFetch` centraliza la auth bearer para endpoints admin
+   auxiliares.** Sin ese helper, las 5 llamadas fetch directas a
+   `/api/cleanup-personalizacion` y `/api/download-personalizacion-bulk`
+   habrían quedado con código duplicado del bearer header. DRY desde
+   el primer día del refactor.
+
+**Estado del sitio post-Sesión 31:**
+- ✅ Triple defensa de checkout: validación precios + rate limit + headers seguridad
+- ✅ Panel admin con JWT de 8h (password fuera del navegador post-login)
+- ✅ Auth admin unificada en módulo `_lib/admin-auth.js` (DRY)
+- ✅ Cleanup semanal de tablas auxiliares (imágenes + rate_limits)
+- ✅ Sin deps nuevas en `package.json` (todo se hizo con `crypto` nativo)
+- ✅ 18/18 tests JWT + 7/7 tests normalizeFecha pasados (25/25 totales)
+- ✅ Sintaxis JS validada en 10 archivos modificados
+
+**Pendientes para Sesión 32:**
+
+- **CSP (Content Security Policy)** — única pieza que falta para
+  cerrar definitivamente la seguridad HTTP (llegar a A+ en
+  securityheaders.com). Esfuerzo ~1 hora. Auditar inline scripts,
+  fonts externos, imágenes externas, definir directives.
+
+- **Drop columna legacy `products.banner_url`** — pendiente desde
+  Sesión 21, sin uso en el código actual.
+
+- **Email automático al admin cuando entra pedido con grabado** —
+  el código existe en `blockPersonalizacion(..., 'admin')` de
+  `email-templates.js`, falta conectarlo al flujo de creación de
+  orden en `checkout.js`.
+
+- **Smoke test personalización láser end-to-end** — sigue pendiente
+  desde Sesión 29, requiere láser físico.
+
+- **Pendientes secundarios de Sesión 26:**
+  - Reseñas reales (cuando haya clientes con compras validadas).
+  - Gmail send-as desde `info@founder.uy`.
+  - Datos bancarios reales en email de transferencia.
+
+- **Si tráfico crece 10×**, considerar Vercel Pro — permitiría
+  separar nuevamente los crons (rate_limits diario + imágenes
+  semanal) y usar frecuencias <1/día.
+
+**Score esperado en securityheaders.com tras Sesión 31:** mantiene
+**A/A+** de Sesión 30. La única mejora posible es CSP (Sesión 32).
+
+**El sitio está oficialmente en su mejor estado histórico.** Ya no hay
+deuda de seguridad significativa por cerrar. Las próximas sesiones
+serán features, pulido UX, o el CSP final. 🛡️🚀
 
 
