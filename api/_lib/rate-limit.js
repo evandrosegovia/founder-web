@@ -81,23 +81,42 @@ export async function checkRateLimit(action, ip, max, windowSec) {
   const windowStart = new Date(Date.now() - windowSec * 1000).toISOString();
 
   try {
-    // 1) Contar intentos en la ventana
-    const { count, error: countErr } = await supabase
+    // 1) Contar intentos en la ventana.
+    //
+    // Sintaxis: select('*', { count: 'exact', head: true }) es el patrón
+    // oficial de Supabase para "solo count, sin data". El comportamiento
+    // de head:true varía entre versiones del SDK — si en algún momento
+    // dejara de funcionar, este try/catch + logging detallado lo detecta.
+    //
+    // Importante: cuando head:true está activo y la consulta es válida,
+    // `data` viene null y `count` trae el número. El error solo aparece
+    // si la tabla/columna/sintaxis es inválida.
+    const countResult = await supabase
       .from('rate_limits')
-      .select('id', { count: 'exact', head: true })
+      .select('*', { count: 'exact', head: true })
       .eq('key', key)
       .gte('created_at', windowStart);
 
-    if (countErr) {
-      console.error('[rate-limit] count error:', countErr.message);
+    if (countResult.error) {
+      // Logueamos TODO el error para diagnóstico — no solo .message,
+      // porque algunos errores de Supabase vienen con .code, .details
+      // o .hint y .message vacío.
+      console.error('[rate-limit] count error:',
+        JSON.stringify({
+          message: countResult.error.message || null,
+          code:    countResult.error.code    || null,
+          details: countResult.error.details || null,
+          hint:    countResult.error.hint    || null,
+          status:  countResult.status        || null,
+        }));
       return { allowed: true, count: 0, retryAfter: 0 }; // fail-open
     }
 
-    const currentCount = count || 0;
+    const currentCount = countResult.count || 0;
 
     // 2) Si ya está al límite, calcular retryAfter mirando el más viejo
     if (currentCount >= max) {
-      const { data: oldest } = await supabase
+      const oldestResult = await supabase
         .from('rate_limits')
         .select('created_at')
         .eq('key', key)
@@ -107,8 +126,8 @@ export async function checkRateLimit(action, ip, max, windowSec) {
         .maybeSingle();
 
       let retryAfter = windowSec; // fallback conservador
-      if (oldest?.created_at) {
-        const oldestTime = new Date(oldest.created_at).getTime();
+      if (oldestResult.data?.created_at) {
+        const oldestTime = new Date(oldestResult.data.created_at).getTime();
         const expiresAt  = oldestTime + windowSec * 1000;
         retryAfter = Math.max(1, Math.ceil((expiresAt - Date.now()) / 1000));
       }
@@ -117,20 +136,26 @@ export async function checkRateLimit(action, ip, max, windowSec) {
     }
 
     // 3) Está bajo el límite — registrar el intento y dejar pasar
-    const { error: insErr } = await supabase
+    const insResult = await supabase
       .from('rate_limits')
       .insert({ key });
 
-    if (insErr) {
+    if (insResult.error) {
       // Si el insert falla, igual dejamos pasar (no penalizamos al usuario
-      // por un problema de infra). Sí lo loggeamos.
-      console.error('[rate-limit] insert error:', insErr.message);
+      // por un problema de infra). Sí lo loggeamos con detalle completo.
+      console.error('[rate-limit] insert error:',
+        JSON.stringify({
+          message: insResult.error.message || null,
+          code:    insResult.error.code    || null,
+          details: insResult.error.details || null,
+          hint:    insResult.error.hint    || null,
+        }));
     }
 
     return { allowed: true, count: currentCount + 1, retryAfter: 0 };
 
   } catch (err) {
-    console.error('[rate-limit] unexpected error:', err?.message || err);
+    console.error('[rate-limit] unexpected error:', err?.message || String(err));
     return { allowed: true, count: 0, retryAfter: 0 }; // fail-open
   }
 }
