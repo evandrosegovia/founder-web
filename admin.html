@@ -288,6 +288,12 @@ textarea.fi{resize:vertical;min-height:70px}
 .cupon-flag__name{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--white)}
 .cupon-flag:has(input:checked) .cupon-flag__name{color:var(--gold)}
 .cupon-flag__hint{font-size:10px;color:var(--muted);line-height:1.5}
+/* Sesión 33 — Selector condicional de slots dentro del cupón de personalización */
+.cupon-flag__inner{display:none;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.cupon-flag:has(input:checked) .cupon-flag__inner{display:flex}
+.cupon-flag__inner-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
+.cupon-flag__inner select{background:var(--gray);border:1px solid var(--border);color:var(--white);padding:8px 10px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;cursor:pointer}
+.cupon-flag__inner select:focus{border-color:var(--gold)}
 .cf{display:flex;flex-direction:column;gap:6px}
 .cl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
 .ci{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:10px 12px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;width:100%;transition:border-color .2s}
@@ -844,6 +850,31 @@ textarea.fi{resize:vertical;min-height:70px}
                 <div class="cupon-flag__text">
                   <span class="cupon-flag__name">🔄 Solo clientes con compra previa</span>
                   <span class="cupon-flag__hint">Si está marcado, el código solo funciona si el email del comprador ya tiene una compra con estado <strong>Entregado</strong>. Ideal para códigos de fidelización tipo FOUNDER20 que entregás con el primer pedido. Combinable con "Único uso por comprador".</span>
+                </div>
+              </label>
+              <!-- Sesión 33 — Cupón exclusivo para nuevos clientes -->
+              <label class="cupon-flag">
+                <input type="checkbox" id="cpSoloNuevos">
+                <div class="cupon-flag__text">
+                  <span class="cupon-flag__name">✨ Solo nuevos clientes</span>
+                  <span class="cupon-flag__hint">Si está marcado, el código solo funciona si el email del comprador <strong>NO</strong> tiene ninguna compra Entregado anterior. Ideal para códigos de bienvenida tipo BIENVENIDA10. <strong>No combinable</strong> con "Solo clientes con compra previa".</span>
+                </div>
+              </label>
+              <!-- Sesión 33 — Cupón de personalización gratis -->
+              <label class="cupon-flag">
+                <input type="checkbox" id="cpDescuentaPers">
+                <div class="cupon-flag__text">
+                  <span class="cupon-flag__name">🎨 Cupón de personalización gratis</span>
+                  <span class="cupon-flag__hint">Cuando está marcado, este cupón descuenta el costo del grabado láser en lugar del precio del producto. Los campos <strong>Tipo de descuento</strong>, <strong>Valor</strong> y <strong>Mínimo de compra</strong> se ignoran. El descuento se calcula por cada producto con grabado del pedido.</span>
+                  <div class="cupon-flag__inner">
+                    <span class="cupon-flag__inner-label">¿Cuántos slots cubre por producto personalizado?</span>
+                    <select id="cpSlotsCubiertos">
+                      <option value="1">1 slot ($290 por producto con grabado)</option>
+                      <option value="2">2 slots ($580 por producto con grabado)</option>
+                      <option value="3">3 slots ($870 por producto con grabado)</option>
+                      <option value="4">4 slots (todo el grabado, hasta $1.160 por producto)</option>
+                    </select>
+                  </div>
                 </div>
               </label>
               <button class="btn btn-primary" id="cpSaveBtn" onclick="saveCupon()" style="margin-top:4px">Crear cupón</button>
