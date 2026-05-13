@@ -25,7 +25,7 @@
   // ── CONFIG — única fuente de verdad ──────────────────────────
   const CONFIG = Object.freeze({
     API_ADMIN:  '/api/admin',
-    PW_KEY:     'founder_admin_pw',   // sessionStorage key
+    TOKEN_KEY:  'founder_admin_token',   // sessionStorage: JWT (post-login)
     SITE_URL:   'https://www.founder.uy',
     WA_NUMBER:  '598098550096',
   });
@@ -101,40 +101,81 @@
     return '$' + (Number(n) || 0).toLocaleString('es-UY');
   }
 
-  // ── API helper: POST JSON a /api/admin con password ──────────
+  // ── API helper: POST JSON a /api/admin con token JWT ─────────
   /**
    * Hace POST a /api/admin con `action` y el resto del payload.
-   * El password se adjunta automáticamente desde sessionStorage.
+   * El JWT se adjunta automáticamente en header Authorization desde
+   * sessionStorage.
    *
    * Devuelve siempre un objeto { ok, status, data } — nunca tira,
    * así cada caller decide cómo manejar el error mirando .ok/.data.error.
    *
    * Si el servidor responde 401 (unauthorized), se fuerza logout
-   * para que el admin vuelva a escribir el password.
+   * para que el admin vuelva a escribir el password (token vencido
+   * o inválido).
+   *
+   * Sesión 31 Bloque C: refactor de password→JWT. El password ya no
+   * viaja en cada request — solo en el login inicial.
    */
   async function apiAdmin(action, payload = {}) {
-    const pw = sessionStorage.getItem(CONFIG.PW_KEY) || '';
+    const token = sessionStorage.getItem(CONFIG.TOKEN_KEY) || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     let res, data = null;
     try {
       res = await fetch(CONFIG.API_ADMIN, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, password: pw, ...payload }),
+        headers,
+        body: JSON.stringify({ action, ...payload }),
       });
       try { data = await res.json(); } catch { /* body no es JSON */ }
     } catch (netErr) {
       return { ok: false, status: 0, data: { error: 'network_error', message: String(netErr) } };
     }
 
-    // Si la clave quedó inválida (pasó mucho tiempo, cambiaron el pw,
-    // etc.), cerramos sesión para evitar spam de errores.
+    // Si la clave quedó inválida (token expirado, etc.), cerramos sesión.
     if (res.status === 401) {
-      sessionStorage.removeItem(CONFIG.PW_KEY);
+      sessionStorage.removeItem(CONFIG.TOKEN_KEY);
       showLoginScreen();
       toast('Sesión expirada — ingresá la contraseña de nuevo', true);
     }
 
     return { ok: res.ok, status: res.status, data: data || {} };
+  }
+
+  /**
+   * Variante de apiAdmin para endpoints admin DISTINTOS a /api/admin.
+   * Usa los mismos headers (incluyendo Authorization: Bearer JWT) y la
+   * misma política de 401 → relogin.
+   *
+   * Usado por:
+   *   - /api/cleanup-personalizacion (status, logs, run, etc.)
+   *   - /api/download-personalizacion-bulk (ZIPs)
+   *
+   * El response se devuelve crudo (response object) porque algunos
+   * callers necesitan acceso a binarios via .arrayBuffer() o similar,
+   * no JSON.
+   */
+  async function apiAdminFetch(url, action, payload = {}) {
+    const token = sessionStorage.getItem(CONFIG.TOKEN_KEY) || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ action, ...payload }),
+    });
+
+    // Política consistente: 401 → forzar relogin
+    if (res.status === 401) {
+      sessionStorage.removeItem(CONFIG.TOKEN_KEY);
+      showLoginScreen();
+      toast('Sesión expirada — ingresá la contraseña de nuevo', true);
+    }
+
+    return res;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -154,9 +195,11 @@
   }
 
   /**
-   * Valida el password contra /api/admin. Si es correcto, lo guarda
-   * en sessionStorage y arranca la carga de datos. Si no, muestra
-   * el error debajo del input.
+   * Valida el password contra /api/admin. Si es correcto, el server
+   * devuelve un JWT que guardamos en sessionStorage. Después de eso,
+   * todas las requests usan el JWT (el password ya no viaja).
+   *
+   * Sesión 31 Bloque C: refactor de password persistente → JWT.
    */
   async function login() {
     const input = $('passwordInput');
@@ -166,25 +209,41 @@
     const pw = (input?.value || '').trim();
     if (!pw) { if (errEl) errEl.style.display = 'block'; return; }
 
-    // Guardamos el pw en sessionStorage ANTES de pegarle a /api/admin
-    // porque apiAdmin() lo toma de ahí.
-    sessionStorage.setItem(CONFIG.PW_KEY, pw);
-
     if (btn)   { btn.disabled = true; btn.textContent = 'Ingresando...'; }
     if (errEl) errEl.style.display = 'none';
 
-    const { ok } = await apiAdmin('login');
-
-    if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
-
-    if (!ok) {
-      sessionStorage.removeItem(CONFIG.PW_KEY);
+    // Llamada directa SIN apiAdmin() porque apiAdmin manda token (que
+    // aún no tenemos). El login es la única request que viaja con password.
+    let res, data = null;
+    try {
+      res = await fetch(CONFIG.API_ADMIN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', password: pw }),
+      });
+      try { data = await res.json(); } catch { /* body no es JSON */ }
+    } catch (netErr) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
       if (errEl) errEl.style.display = 'block';
-      if (input) input.value = '';
+      console.error('[admin/login] network error:', netErr);
       return;
     }
 
-    // Login OK — entramos al panel y cargamos todo.
+    if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
+
+    if (!res.ok || !data?.ok || !data?.token) {
+      if (errEl) errEl.style.display = 'block';
+      if (input) input.value = '';
+      // Si el server respondió 429 (rate limit), avisamos con el mensaje.
+      if (res.status === 429 && data?.detail) {
+        toast(data.detail, true);
+      }
+      return;
+    }
+
+    // Login OK — guardamos el JWT (no el password) en sessionStorage.
+    sessionStorage.setItem(CONFIG.TOKEN_KEY, data.token);
+
     showAdminPanel();
     if (input) input.value = '';
     if (errEl) errEl.style.display = 'none';
@@ -193,9 +252,9 @@
     bootstrap();
   }
 
-  /** Cierra sesión — borra password y vuelve al login. */
+  /** Cierra sesión — borra token y vuelve al login. */
   function logout() {
-    sessionStorage.removeItem(CONFIG.PW_KEY);
+    sessionStorage.removeItem(CONFIG.TOKEN_KEY);
     state.products = []; state.allOrders = []; state.coupons = [];
     showLoginScreen();
     const input = $('passwordInput'); if (input) input.value = '';
@@ -1152,16 +1211,7 @@
     toast('Generando ZIP...');
 
     try {
-      const pw = sessionStorage.getItem(CONFIG.PW_KEY) || '';
-      const resp = await fetch('/api/download-personalizacion-bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'download_order_zip',
-          orderId,
-          password: pw,
-        }),
-      });
+      const resp = await apiAdminFetch('/api/download-personalizacion-bulk', 'download_order_zip', { orderId });
       const data = await resp.json();
       if (!resp.ok || !data?.ok) {
         toast('Error generando ZIP: ' + (data?.error || resp.status), true);
@@ -1205,14 +1255,9 @@
     if (zipBtn) zipBtn.disabled = true;
     if (runBtn) runBtn.disabled = true;
 
-    const pw = sessionStorage.getItem(CONFIG.PW_KEY) || '';
     let data = null;
     try {
-      const resp = await fetch('/api/cleanup-personalizacion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get_cleanup_status', password: pw }),
-      });
+      const resp = await apiAdminFetch('/api/cleanup-personalizacion', 'get_cleanup_status');
       data = await resp.json();
       if (!resp.ok || !data?.ok) {
         statusBox.innerHTML = `<span style="color:var(--red,#e57373)">Error cargando status: ${esc(data?.error || resp.status)}</span>`;
@@ -1258,13 +1303,8 @@
     const list = $('cleanupLogsList');
     if (!list) return;
 
-    const pw = sessionStorage.getItem(CONFIG.PW_KEY) || '';
     try {
-      const resp = await fetch('/api/cleanup-personalizacion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'list_cleanup_logs', password: pw, limit: 10 }),
-      });
+      const resp = await apiAdminFetch('/api/cleanup-personalizacion', 'list_cleanup_logs', { limit: 10 });
       const data = await resp.json();
       if (!resp.ok || !data?.ok) {
         list.innerHTML = '<div style="color:var(--muted)">Sin historial todavía.</div>';
@@ -1305,12 +1345,7 @@
     if (btn) { btn.disabled = true; btn.textContent = '📦 Generando...'; }
 
     try {
-      const pw = sessionStorage.getItem(CONFIG.PW_KEY) || '';
-      const resp = await fetch('/api/download-personalizacion-bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'download_borrables_zip', password: pw }),
-      });
+      const resp = await apiAdminFetch('/api/download-personalizacion-bulk', 'download_borrables_zip');
       const data = await resp.json();
       if (!resp.ok || !data?.ok) {
         toast('Error generando ZIP: ' + (data?.error || resp.status), true);
@@ -1348,13 +1383,8 @@
     const btn = $('cleanupRunBtn');
     if (btn) { btn.disabled = true; btn.textContent = '🗑 Borrando...'; }
 
-    const pw = sessionStorage.getItem(CONFIG.PW_KEY) || '';
     try {
-      const resp = await fetch('/api/cleanup-personalizacion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'run_cleanup_manual', password: pw }),
-      });
+      const resp = await apiAdminFetch('/api/cleanup-personalizacion', 'run_cleanup_manual');
       const data = await resp.json();
       if (!resp.ok || !data?.ok) {
         toast('Error ejecutando limpieza: ' + (data?.error || resp.status), true);
@@ -2765,21 +2795,28 @@
   // BOOT — decidir si mostrar login o entrar directo
   // ═══════════════════════════════════════════════════════════════
   /**
-   * Si ya hay un password en sessionStorage de una sesión previa,
-   * intentamos entrar directamente (validando contra el server).
-   * Si falla, mostramos el login.
+   * Si ya hay un JWT en sessionStorage de una sesión previa, intentamos
+   * entrar directamente. apiAdmin('list_orders') es una request liviana
+   * que sirve como "ping autenticado" — si el token es válido, OK; si
+   * está expirado, el server responde 401 y apiAdmin ya limpia + muestra
+   * login automáticamente.
+   *
+   * Sesión 31 Bloque C: cambio de password→JWT. Ya no hay re-login con
+   * password persistente; el JWT vence en 8h y obliga a re-autenticar.
    */
   async function boot() {
-    const pw = sessionStorage.getItem(CONFIG.PW_KEY);
-    if (!pw) { showLoginScreen(); return; }
+    const token = sessionStorage.getItem(CONFIG.TOKEN_KEY);
+    if (!token) { showLoginScreen(); return; }
 
-    const { ok } = await apiAdmin('login');
+    // Probamos el token con una request real liviana
+    const { ok } = await apiAdmin('list_orders', { include_archived: 'all' });
     if (ok) {
       showAdminPanel();
       bootstrap();
     } else {
-      // El 401 ya limpió el pw y mostró login, pero por las dudas:
-      sessionStorage.removeItem(CONFIG.PW_KEY);
+      // apiAdmin ya limpió el token y mostró login en caso de 401.
+      // Si fue otro tipo de error (red, server caído), igual mostramos login.
+      sessionStorage.removeItem(CONFIG.TOKEN_KEY);
       showLoginScreen();
     }
   }
