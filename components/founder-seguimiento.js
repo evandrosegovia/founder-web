@@ -314,6 +314,13 @@
     document.getElementById('resultado').classList.add('visible');
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Sesión 38: bloque de reseñas (solo se muestra si estado === 'Entregado')
+    // Lo llamamos fire-and-forget — el bloque arranca oculto y se muestra
+    // por sí solo cuando termina su fetch.
+    if (typeof window.renderReviewBlock === 'function') {
+      window.renderReviewBlock(p);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -542,6 +549,12 @@
     const dc = document.getElementById('dot-camino');
     if (lc) lc.textContent = 'En camino';
     if (dc) dc.textContent = '🚚';
+    // Sesión 38: limpiar bloque de reseñas
+    const reviewBlock = document.getElementById('reviewBlockContainer');
+    if (reviewBlock) {
+      reviewBlock.innerHTML = '';
+      reviewBlock.style.display = 'none';
+    }
     ocultarError();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }

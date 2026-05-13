@@ -284,6 +284,10 @@
       loadPersonalizacion();
       loadCleanupStatus();
     }
+    // Sesión 38: cargar reseñas al entrar a la sección
+    if (page === 'resenas' && typeof window.loadReviews === 'function') {
+      window.loadReviews();
+    }
 
     // Sesión 35: en mobile, al navegar, cerrar el sidebar drawer
     if (window.innerWidth <= 768) closeSidebar();
@@ -2039,10 +2043,12 @@
       // Badges visuales junto al código (acompañan al texto, no lo reemplazan).
       // Sesión 32: 🔄 si es solo para clientes con compra previa.
       // Sesión 33: ✨ si es solo nuevos clientes; 🎨 si descuenta personalización.
+      // Sesión 38: ⭐ si es el cupón de recompensa por reseña.
       const badges = [];
       if (c.solo_clientes_repetidos)     badges.push('<span title="Solo clientes con compra previa entregada" style="margin-left:4px;font-size:10px">🔄</span>');
       if (c.solo_clientes_nuevos)        badges.push('<span title="Solo nuevos clientes (sin compras previas)" style="margin-left:4px;font-size:10px">✨</span>');
       if (c.descuenta_personalizacion)   badges.push('<span title="Descuenta el costo de personalización" style="margin-left:4px;font-size:10px">🎨</span>');
+      if (c.es_recompensa_resena)        badges.push('<span title="Cupón de recompensa por reseña" style="margin-left:4px;font-size:10px">⭐</span>');
       const badgesHtml = badges.join('');
       return `<tr>
         <td><div class="cupon-code">${esc(c.codigo)}${badgesHtml}</div></td>
@@ -2080,6 +2086,7 @@
     const solo_clientes_repetidos       = !!($('cpSoloRepetidos')?.checked);   // Sesión 32
     const solo_clientes_nuevos          = !!($('cpSoloNuevos')?.checked);      // Sesión 33
     const descuenta_personalizacion     = !!($('cpDescuentaPers')?.checked);   // Sesión 33
+    const es_recompensa_resena          = !!($('cpEsRecompensaResena')?.checked); // Sesión 38
     const personalizacion_slots_cubiertos =
       descuenta_personalizacion ? (parseInt($('cpSlotsCubiertos')?.value, 10) || 1) : 0;
 
@@ -2122,6 +2129,7 @@
         solo_clientes_repetidos,                                                  // Sesión 32
         solo_clientes_nuevos, descuenta_personalizacion,                          // Sesión 33
         personalizacion_slots_cubiertos,                                          // Sesión 33
+        es_recompensa_resena,                                                     // Sesión 38
       },
     });
 
@@ -2149,7 +2157,7 @@
     // Limpiar inputs (incluidos los 3 checkboxes + selector de slots)
     ['cpCodigo', 'cpValor', 'cpMinCompra', 'cpDesde', 'cpHasta']
       .forEach(id => { const el = $(id); if (el) el.value = ''; });
-    ['cpSoloRepetidos', 'cpSoloNuevos', 'cpDescuentaPers']
+    ['cpSoloRepetidos', 'cpSoloNuevos', 'cpDescuentaPers', 'cpEsRecompensaResena']
       .forEach(id => { const el = $(id); if (el) el.checked = false; });
     const slotsSel = $('cpSlotsCubiertos'); if (slotsSel) slotsSel.value = '1';
 
@@ -2952,6 +2960,13 @@
   window.pickLpExampleFile   = pickLpExampleFile;
   window.saveLpExample       = saveLpExample;
   window.deleteLpExample     = deleteLpExample;
+
+  // Sesión 38: expuestos para que components/founder-admin-reviews.js
+  // pueda invocarlos. Estos eran privados al IIFE; ahora son accesibles
+  // desde otros components que necesiten autenticar contra /api/admin
+  // o mostrar toasts con el mismo estilo del panel.
+  window.apiAdmin = apiAdmin;
+  window.toast    = toast;
 
   // ═══════════════════════════════════════════════════════════════
   // BOOT — decidir si mostrar login o entrar directo
