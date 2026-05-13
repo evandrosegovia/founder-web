@@ -327,20 +327,23 @@ async function handleValidateCoupon(body, res) {
 
   // ── NUEVO Sesión 33: validar requiere personalización ────────
   // Si el cupón descuenta personalización, validamos que el carrito
-  // tenga al menos un item personalizado. El subtotal acá no nos
-  // dice si hay personalización, así que recibimos un flag opcional
-  // `hasPersonalizacion` del frontend. Si no viene (compat antiguo),
-  // omitimos la validación acá y la RPC SQL la hará al crear orden.
+  // tenga al menos un item personalizado. El frontend nos manda un
+  // flag `hasPersonalizacion` (boolean) que indica si el carrito
+  // tiene algún item con personalización.
+  //
+  // FIX Sesión 34: la lógica anterior rechazaba siempre cuando el
+  // flag no venía. Ahora solo rechazamos si viene EXPLÍCITAMENTE en
+  // false. Si no viene (compat antiguo o frontend custom), dejamos
+  // pasar y la RPC SQL valida con los items reales al crear orden.
   if (data.descuenta_personalizacion === true) {
-    const hasPersonalizacion = body.hasPersonalizacion === true;
-    if (hasPersonalizacion === false) {
-      // El frontend nos dice explícitamente que no hay personalización
+    if (body.hasPersonalizacion === false) {
+      // El frontend nos confirma explícitamente que no hay personalización
       // → rechazamos inmediatamente para evitar confusión al cliente.
       return fail(res, 400, 'cupon_requiere_personalizacion',
         'Este código requiere productos personalizados en el pedido.');
     }
-    // Si hasPersonalizacion es true o el flag no viene, dejamos
-    // pasar y la RPC SQL hace la validación final con los items reales.
+    // Si hasPersonalizacion es true o no viene el flag, dejamos pasar.
+    // La RPC SQL hace la validación final con los items reales del pedido.
   }
 
   // OK — devolver metadata normalizada al frontend (mismo shape que usaba la versión Sheet)
