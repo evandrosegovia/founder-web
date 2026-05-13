@@ -574,6 +574,16 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
 - **Gmail send-as desde `info@founder.uy`** (Sesión 26 — Opción E) — para responder desde Gmail con remitente del dominio.
 - **Datos bancarios reales en email de transferencia** — el template actual dice "Te enviamos los datos por WhatsApp"; cuando se definan, agregar bloque con datos directos.
 - **Si tráfico crece 10×, considerar Vercel Pro** — permitiría separar nuevamente los crons (rate_limits diario, imágenes semanal) y usar frecuencias <1/día.
+- **🆕 Supabase Data API: GRANT explícito obligatorio en tablas nuevas** (anuncio recibido por email el 13/05/2026, asunto *"Data API access changes May 30 for all new projects"*). A partir del **30 de octubre de 2026**, Supabase desactiva la exposición automática del schema `public` al Data API en TODOS los proyectos existentes (incluido `qedwqbxuyhieznrqryhb`). **Las 7 tablas actuales conservan sus grants** (no se rompe nada el 30/10) — pero **cualquier tabla nueva que creemos a partir de esa fecha** necesita el bloque GRANT explícito o `supabase-js` devolverá error `42501`. Plantilla a incluir SIEMPRE al crear tabla nueva:
+  ```sql
+  -- Reemplazar `nueva_tabla` por el nombre real
+  GRANT SELECT ON public.nueva_tabla TO anon;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON public.nueva_tabla TO authenticated;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON public.nueva_tabla TO service_role;
+  ALTER TABLE public.nueva_tabla ENABLE ROW LEVEL SECURITY;
+  -- + policies según el caso (ver patrón de tablas existentes)
+  ```
+  Ajustar los roles según el uso real (ej: `orders` solo da acceso a `service_role`). Si en una sesión futura entra error `42501` desde el sitio tras crear tabla, ese es el síntoma — el propio mensaje de Postgres indica el GRANT faltante. NO bloqueante. NO requiere acción hoy. Solo recordar al diseñar schema nuevo.
 
 ---
 
