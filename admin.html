@@ -294,6 +294,16 @@ textarea.fi{resize:vertical;min-height:70px}
 .cupon-flag__inner-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
 .cupon-flag__inner select{background:var(--gray);border:1px solid var(--border);color:var(--white);padding:8px 10px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;cursor:pointer}
 .cupon-flag__inner select:focus{border-color:var(--gold)}
+/* Sesión 34 — Cuando se marca cupón de personalización, los campos
+   clásicos (Tipo/Valor/Mínimo de compra) se opacan y deshabilitan
+   visualmente para dejar claro que no se usan. La opacidad la
+   controlamos por clase (toggle desde JS) para soporte universal. */
+.cupon-classic-fields{display:flex;flex-direction:column;gap:14px;transition:opacity .2s}
+.cupon-classic-fields.is-disabled{opacity:.4;pointer-events:none}
+.cupon-classic-fields.is-disabled::after{
+  content:'⚠ Estos campos no se usan en cupones de personalización gratis';
+  display:block;font-size:9px;letter-spacing:1px;color:var(--gold);text-align:center;margin-top:4px;text-transform:uppercase;
+}
 .cf{display:flex;flex-direction:column;gap:6px}
 .cl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
 .ci{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:10px 12px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;width:100%;transition:border-color .2s}
@@ -802,17 +812,26 @@ textarea.fi{resize:vertical;min-height:70px}
                 <div class="cl">Código *</div>
                 <input type="text" class="ci" id="cpCodigo" placeholder="Ej: PROMO20" maxlength="30" oninput="this.value=this.value.toUpperCase()">
               </div>
-              <div class="cupon-row2">
-                <div class="cf">
-                  <div class="cl">Tipo de descuento</div>
-                  <select class="ci" id="cpTipo">
-                    <option value="porcentaje">Porcentaje (%)</option>
-                    <option value="fijo">Monto fijo ($)</option>
-                  </select>
+              <!-- Sesión 34: campos clásicos agrupados para poder
+                   deshabilitarlos cuando se marca el cupón de
+                   personalización (donde no aplican). -->
+              <div id="cuponClassicFields" class="cupon-classic-fields">
+                <div class="cupon-row2">
+                  <div class="cf">
+                    <div class="cl">Tipo de descuento</div>
+                    <select class="ci" id="cpTipo">
+                      <option value="porcentaje">Porcentaje (%)</option>
+                      <option value="fijo">Monto fijo ($)</option>
+                    </select>
+                  </div>
+                  <div class="cf">
+                    <div class="cl">Valor *</div>
+                    <input type="number" class="ci" id="cpValor" placeholder="Ej: 20" min="1">
+                  </div>
                 </div>
                 <div class="cf">
-                  <div class="cl">Valor *</div>
-                  <input type="number" class="ci" id="cpValor" placeholder="Ej: 20" min="1">
+                  <div class="cl">Mínimo de compra (UYU)</div>
+                  <input type="number" class="ci" id="cpMinCompra" placeholder="0 = sin mínimo" min="0">
                 </div>
               </div>
               <div class="cf">
@@ -822,10 +841,6 @@ textarea.fi{resize:vertical;min-height:70px}
                   <option value="unico">Único uso (se desactiva al usarse)</option>
                   <option value="por-email">Único uso por comprador (por email)</option>
                 </select>
-              </div>
-              <div class="cf">
-                <div class="cl">Mínimo de compra (UYU)</div>
-                <input type="number" class="ci" id="cpMinCompra" placeholder="0 = sin mínimo" min="0">
               </div>
               <div class="cupon-row2">
                 <div class="cf">
