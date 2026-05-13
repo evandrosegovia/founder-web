@@ -1982,15 +1982,22 @@
 
     const rowsHtml = state.coupons.map(c => {
       const usoLabel = { multiuso: 'Multiuso', unico: 'Único uso', 'por-email': 'Por comprador' }[c.uso] || c.uso;
-      const descLabel = c.tipo === 'porcentaje' ? `${c.valor}%` : fmtUYU(c.valor);
+      // Sesión 33: si el cupón descuenta personalización, la columna
+      // "Descuento" muestra cuántos slots cubre en vez del valor clásico.
+      const descLabel = c.descuenta_personalizacion
+        ? `${c.personalizacion_slots_cubiertos || 0} slot${(c.personalizacion_slots_cubiertos || 0) === 1 ? '' : 's'}`
+        : (c.tipo === 'porcentaje' ? `${c.valor}%` : fmtUYU(c.valor));
       const minLabel  = (Number(c.min_compra) > 0) ? fmtUYU(c.min_compra) : '—';
-      // Sesión 32 — badge visual junto al código si el cupón es solo
-      // para clientes con compra previa (acompaña al texto, no lo reemplaza)
-      const repetidoBadge = c.solo_clientes_repetidos
-        ? `<span title="Solo para clientes con compra previa entregada" style="margin-left:4px;font-size:10px">🔄</span>`
-        : '';
+      // Badges visuales junto al código (acompañan al texto, no lo reemplazan).
+      // Sesión 32: 🔄 si es solo para clientes con compra previa.
+      // Sesión 33: ✨ si es solo nuevos clientes; 🎨 si descuenta personalización.
+      const badges = [];
+      if (c.solo_clientes_repetidos)     badges.push('<span title="Solo clientes con compra previa entregada" style="margin-left:4px;font-size:10px">🔄</span>');
+      if (c.solo_clientes_nuevos)        badges.push('<span title="Solo nuevos clientes (sin compras previas)" style="margin-left:4px;font-size:10px">✨</span>');
+      if (c.descuenta_personalizacion)   badges.push('<span title="Descuenta el costo de personalización" style="margin-left:4px;font-size:10px">🎨</span>');
+      const badgesHtml = badges.join('');
       return `<tr>
-        <td><div class="cupon-code">${esc(c.codigo)}${repetidoBadge}</div></td>
+        <td><div class="cupon-code">${esc(c.codigo)}${badgesHtml}</div></td>
         <td>${descLabel}</td>
         <td style="font-size:10px;color:var(--muted)">${esc(usoLabel)}</td>
         <td style="font-size:10px;color:var(--muted)">${minLabel}</td>
@@ -2025,10 +2032,27 @@
     const desde  = $('cpDesde')?.value || '';  // YYYY-MM-DD
     const hasta  = $('cpHasta')?.value || '';
     const activo = ($('cpActivo')?.value === 'true');
-    const solo_clientes_repetidos = !!($('cpSoloRepetidos')?.checked);  // Sesión 32
+    const solo_clientes_repetidos       = !!($('cpSoloRepetidos')?.checked);   // Sesión 32
+    const solo_clientes_nuevos          = !!($('cpSoloNuevos')?.checked);      // Sesión 33
+    const descuenta_personalizacion     = !!($('cpDescuentaPers')?.checked);   // Sesión 33
+    const personalizacion_slots_cubiertos =
+      descuenta_personalizacion ? (parseInt($('cpSlotsCubiertos')?.value, 10) || 1) : 0;
 
-    if (!codigo)       { toast('El código es obligatorio', true); return; }
-    if (!valor || valor <= 0) { toast('El valor debe ser mayor a 0', true); return; }
+    // Validaciones locales (UX rápido — el backend re-valida igual)
+    if (!codigo) { toast('El código es obligatorio', true); return; }
+
+    // Sesión 33: combinación excluyente nuevos vs repetidos
+    if (solo_clientes_repetidos && solo_clientes_nuevos) {
+      toast('No podés marcar "Solo nuevos" y "Solo con compra previa" al mismo tiempo', true);
+      return;
+    }
+
+    // En modo "descuenta personalización" los campos clásicos no aplican
+    // → no exigimos valor > 0. En modo clásico, sí.
+    if (!descuenta_personalizacion) {
+      if (!valor || valor <= 0) { toast('El valor debe ser mayor a 0', true); return; }
+    }
+
     if (state.coupons.some(c => c.codigo === codigo)) {
       toast('Ya existe un cupón con ese código', true); return;
     }
@@ -2037,23 +2061,42 @@
     if (btn) { btn.textContent = '⏳ Guardando...'; btn.disabled = true; }
 
     const { ok, data } = await apiAdmin('create_coupon', {
-      coupon: { codigo, tipo, valor, uso, min_compra, desde: desde || null, hasta: hasta || null, activo, solo_clientes_repetidos },
+      coupon: {
+        codigo, tipo, valor, uso, min_compra,
+        desde: desde || null, hasta: hasta || null, activo,
+        solo_clientes_repetidos,                                                  // Sesión 32
+        solo_clientes_nuevos, descuenta_personalizacion,                          // Sesión 33
+        personalizacion_slots_cubiertos,                                          // Sesión 33
+      },
     });
 
     if (btn) { btn.textContent = 'Crear cupón'; btn.disabled = false; }
 
     if (!ok) {
-      const msg = data?.error === 'codigo_duplicate'
-        ? 'Ya existe un cupón con ese código'
-        : 'Error al guardar el cupón' + (data?.message ? ': ' + data.message : '');
+      // Mapeo de errores específicos a mensajes amigables
+      const errCode = data?.error;
+      let msg;
+      if (errCode === 'codigo_duplicate') {
+        msg = 'Ya existe un cupón con ese código';
+      } else if (errCode === 'cupon_combinacion_invalida') {
+        msg = 'No podés marcar "Solo nuevos" y "Solo con compra previa" al mismo tiempo';
+      } else if (errCode === 'slots_invalidos') {
+        msg = 'Cuando el cupón descuenta personalización, debés indicar entre 1 y 4 slots';
+      } else if (errCode === 'valor_required') {
+        msg = 'El valor del descuento es obligatorio';
+      } else {
+        msg = 'Error al guardar el cupón' + (data?.message ? ': ' + data.message : '');
+      }
       toast(msg, true);
       return;
     }
 
-    // Limpiar inputs (incluido el checkbox de cliente repetido)
+    // Limpiar inputs (incluidos los 3 checkboxes + selector de slots)
     ['cpCodigo', 'cpValor', 'cpMinCompra', 'cpDesde', 'cpHasta']
       .forEach(id => { const el = $(id); if (el) el.value = ''; });
-    const chk = $('cpSoloRepetidos'); if (chk) chk.checked = false;
+    ['cpSoloRepetidos', 'cpSoloNuevos', 'cpDescuentaPers']
+      .forEach(id => { const el = $(id); if (el) el.checked = false; });
+    const slotsSel = $('cpSlotsCubiertos'); if (slotsSel) slotsSel.value = '1';
 
     toast(`✅ Cupón ${codigo} creado`);
     await loadCoupons();
