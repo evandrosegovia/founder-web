@@ -1,18 +1,41 @@
 // ═════════════════════════════════════════════════════════════════
-// FOUNDER — /api/cleanup-personalizacion (Sesión 29 — Bloque C)
+// FOUNDER — /api/cleanup-personalizacion (Sesión 29 + Sesión 31)
 // ─────────────────────────────────────────────────────────────────
-// Limpia imágenes obsoletas del bucket privado `personalizacion-uploads`.
+// Cron de mantenimiento semanal — encapsula DOS tareas independientes:
+//
+//   A) Limpieza de imágenes obsoletas del bucket privado
+//      `personalizacion-uploads` (Sesión 29 — Bloque C).
+//
+//   B) Limpieza de filas viejas de `rate_limits` (Sesión 31 — Bloque B).
+//
+// Por qué las dos tareas en un mismo cron:
+//   Vercel Hobby permite 2 crons máximo y el segundo cron NO se
+//   registra de forma estable en el panel (bug conocido del plan
+//   gratuito — el deploy se hace, pero el cron no aparece). Solución:
+//   un solo cron que ejecuta múltiples tareas en serie.
+//   Cuando se pase a Vercel Pro en el futuro, separar de nuevo es
+//   trivial (5 min de refactor).
 //
 // Modos de invocación:
-//   1) GET  ?trigger=auto       → cron automático (Vercel Cron, sin password)
-//   2) POST { action: "get_cleanup_status",  password } → solo lee
-//   3) POST { action: "run_cleanup_manual",  password } → borra
-//   4) POST { action: "list_cleanup_logs",   password } → historial
+//   1) GET  ?trigger=auto       → cron automático (corre A + B en serie)
+//   2) POST { action: "get_cleanup_status",  ... }  → solo A (lectura)
+//   3) POST { action: "run_cleanup_manual",  ... }  → solo A (manual)
+//   4) POST { action: "list_cleanup_logs",   ... }  → solo A (historial)
 //
-// Reglas de retención:
+// El admin solo tiene UI para gestionar manualmente A (imágenes).
+// La limpieza B (rate_limits) NO requiere intervención manual — el
+// cron semanal es suficiente, y si la tabla creciera mucho podría
+// vaciarse manualmente por SQL.
+//
+// Reglas de retención de IMÁGENES (tarea A):
 //   🟡 Huérfanas (uploads sin orden): borrar a los 10 días
 //   🟢 De pedidos activos: nunca se borran
 //   🔵 De pedidos entregados: borrar a los 60 días desde la entrega
+//
+// Reglas de retención de RATE_LIMITS (tarea B):
+//   🔵 Filas con created_at > 2 horas: se borran
+//      (las ventanas más largas de rate limit son de 1 hora;
+//       2h da margen contra races con requests en curso)
 //
 // "Hace más de 60 días": como NO hay columna `fecha_entrega` explícita,
 //   usamos `orders.updated_at` cuando estado = 'Entregado'. Si el admin
@@ -22,9 +45,11 @@
 // Seguridad:
 //   - GET ?trigger=auto solo se acepta si hay header "x-vercel-cron: 1"
 //     que Vercel agrega automáticamente. Curl externo → 403.
-//   - POST requiere password admin.
+//   - POST requiere auth admin (JWT bearer o password).
 //
-// Tope: MAX_DELETE_PER_RUN = 500.
+// Tope: MAX_DELETE_PER_RUN = 500 (solo aplica a imágenes; el delete
+// de rate_limits es masivo en una sola query, sin tope, porque cada
+// fila es trivialmente chica).
 // ═════════════════════════════════════════════════════════════════
 
 import { supabase, ok, fail, parseBody, buildCorsHeaders } from './_lib/supabase.js';
@@ -218,6 +243,54 @@ async function executeCleanup(trigger) {
   };
 }
 
+// ═════════════════════════════════════════════════════════════════
+// TAREA B — Cleanup de rate_limits (Sesión 31 Bloque B)
+// ─────────────────────────────────────────────────────────────────
+// Borra filas de `rate_limits` cuyo created_at sea más viejo que
+// 2 horas. Esas filas ya no afectan ningún chequeo de rate limit
+// (la ventana máxima es de 1 hora).
+//
+// Se ejecuta como parte del cron auto, después de la limpieza de
+// imágenes. Si falla, NO interrumpe la función — loggea y sigue
+// (el cron de imágenes ya completó su trabajo, no queremos perder
+// ese resultado por un error secundario).
+//
+// No tiene endpoint público manual: la limpieza es automática y
+// suficiente al ritmo semanal del cron.
+// ═════════════════════════════════════════════════════════════════
+const RATE_LIMITS_RETENCION_HORAS = 2;
+
+async function cleanupRateLimits() {
+  const cutoff = new Date(
+    Date.now() - RATE_LIMITS_RETENCION_HORAS * 60 * 60 * 1000
+  ).toISOString();
+
+  try {
+    const { error } = await supabase
+      .from('rate_limits')
+      .delete()
+      .lt('created_at', cutoff);
+
+    if (error) {
+      console.error('[cleanup-rate-limits] error:',
+        JSON.stringify({
+          message: error.message || null,
+          code:    error.code    || null,
+          details: error.details || null,
+          hint:    error.hint    || null,
+        }));
+      return { ok: false, cutoff, error: error.message };
+    }
+
+    console.log(`[cleanup-rate-limits] OK — filas anteriores a ${cutoff} eliminadas`);
+    return { ok: true, cutoff };
+
+  } catch (err) {
+    console.error('[cleanup-rate-limits] excepción:', err?.message || String(err));
+    return { ok: false, cutoff, error: String(err?.message || err) };
+  }
+}
+
 export default async function handler(req, res) {
   // CORS dinámico — siempre aplicar antes de cualquier respuesta
   const cors = buildCorsHeaders(req);
@@ -244,9 +317,22 @@ export default async function handler(req, res) {
           return fail(res, 403, 'forbidden',
             'Solo Vercel Cron puede disparar trigger=auto');
         }
-        const result = await executeCleanup('auto');
-        console.log('[cleanup] auto-run completed:', result);
-        return ok(res, result);
+
+        // Ejecutamos las dos tareas en serie. Si la primera falla
+        // tira excepción y va al catch — no llegamos a la segunda.
+        // Si la segunda falla, queda loggeada pero NO rompe la
+        // respuesta del cron (la primera ya quedó persistida en
+        // cleanup_logs y vale la pena reportarla).
+        const cleanupImagesResult     = await executeCleanup('auto');
+        console.log('[cleanup-images] auto-run completed:', cleanupImagesResult);
+
+        const cleanupRateLimitsResult = await cleanupRateLimits();
+        console.log('[cleanup-rate-limits] auto-run completed:', cleanupRateLimitsResult);
+
+        return ok(res, {
+          images:      cleanupImagesResult,
+          rate_limits: cleanupRateLimitsResult,
+        });
       }
 
       return fail(res, 400, 'unknown_mode',
