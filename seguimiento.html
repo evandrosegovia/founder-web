@@ -46,6 +46,7 @@
       --color-gold:         #c9a96e;
       --color-gold-dim:     rgba(201,169,110,0.12);
       --color-gold-border:  rgba(201,169,110,0.25);
+      --color-success:      #4caf82;
       --color-border:       rgba(255,255,255,0.07);
       --color-border-solid: #242424;
       --font-serif:     'Cormorant Garamond', serif;
@@ -1078,6 +1079,235 @@
       .progress-track::before { top: 15px; }
       .progress-fill { top: 15px; }
     }
+
+    /* ═══════════════════════════════════════════════════════════
+       BLOQUE DE RESEÑAS — Sesión 38
+       Solo visible cuando el pedido está "Entregado".
+       Dos variantes: formulario (sin reseña) y card "ya enviada".
+       ═══════════════════════════════════════════════════════════ */
+    .review-block {
+      margin-top: 32px;
+      padding: 32px 28px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-gold-border);
+      border-radius: 4px;
+    }
+
+    /* ── Formulario (cuando no hay reseña) ───────────────────── */
+    .review-form__head { text-align: center; margin-bottom: 32px; }
+    .review-form__eyebrow {
+      font-size: 9px; letter-spacing: 5px; text-transform: uppercase;
+      color: var(--color-gold); margin-bottom: 10px;
+    }
+    .review-form__title {
+      font-family: var(--font-serif);
+      font-size: 26px; font-weight: 300; color: var(--color-text);
+      margin-bottom: 12px; line-height: 1.3;
+    }
+    .review-form__subtitle {
+      font-size: var(--text-body-md); color: var(--color-muted);
+      line-height: 1.7; max-width: 520px; margin: 0 auto;
+    }
+    .review-form__field { margin-bottom: 24px; }
+    .review-form__label {
+      display: block; font-size: 10px; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--color-text);
+      margin-bottom: 10px; font-weight: 500;
+    }
+    .review-form__optional {
+      font-weight: 400; color: var(--color-muted);
+      letter-spacing: 1px; text-transform: none;
+    }
+    .review-form__textarea,
+    .review-form__input {
+      width: 100%; box-sizing: border-box;
+      padding: 14px 16px;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+      font-family: inherit; font-size: 14px;
+      border-radius: 3px;
+      transition: border-color var(--transition-fast);
+      resize: vertical;
+    }
+    .review-form__textarea:focus,
+    .review-form__input:focus {
+      outline: none;
+      border-color: var(--color-gold);
+    }
+    .review-form__textarea { min-height: 120px; line-height: 1.65; }
+    .review-form__counter {
+      font-size: 11px; color: var(--color-muted);
+      text-align: right; margin-top: 6px;
+    }
+    .review-form__hint {
+      font-size: 11px; color: var(--color-muted);
+      margin-top: 8px; line-height: 1.6;
+    }
+
+    /* ── Estrellas ─────────────────────────────────────────── */
+    .review-stars {
+      display: flex; gap: 8px; justify-content: center;
+      padding: 14px 0;
+    }
+    .review-star {
+      background: none; border: none; cursor: pointer;
+      font-size: 36px; line-height: 1;
+      color: var(--color-border-solid);
+      transition: color 0.15s ease, transform 0.15s ease;
+      padding: 4px;
+    }
+    .review-star:hover { transform: scale(1.1); }
+    .review-star.is-active { color: var(--color-gold); }
+    .review-star:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+
+    /* ── Fotos ─────────────────────────────────────────────── */
+    .review-photos { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+    .review-photos__grid { display: flex; gap: 12px; flex-wrap: wrap; }
+    .review-photo-thumb {
+      position: relative;
+      width: 84px; height: 84px;
+      border-radius: 3px; overflow: hidden;
+      border: 1px solid var(--color-border);
+      flex-shrink: 0;
+    }
+    .review-photo-thumb img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .review-photo-thumb.is-loading img { opacity: 0.4; }
+    .review-photo-thumb__loader {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(20,20,20,0.5);
+      font-size: 10px; color: var(--color-gold);
+      letter-spacing: 1px;
+    }
+    .review-photo-thumb__remove {
+      position: absolute; top: 4px; right: 4px;
+      width: 22px; height: 22px;
+      background: rgba(20,20,20,0.85);
+      color: var(--color-text);
+      border: 1px solid var(--color-border-solid);
+      border-radius: 50%; cursor: pointer;
+      font-size: 11px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--transition-fast);
+    }
+    .review-photo-thumb__remove:hover { background: rgba(0,0,0,0.95); border-color: var(--color-gold); }
+    .review-photos__btn {
+      width: 84px; height: 84px;
+      border: 1px dashed var(--color-gold-border);
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--color-muted);
+      font-size: 11px; letter-spacing: 1px;
+      text-align: center; padding: 8px;
+      transition: border-color var(--transition-fast), color var(--transition-fast);
+    }
+    .review-photos__btn:hover { border-color: var(--color-gold); color: var(--color-gold); }
+
+    /* ── Submit ────────────────────────────────────────────── */
+    .review-form__submit {
+      width: 100%;
+      padding: 16px 24px;
+      background: var(--color-gold);
+      color: var(--color-bg);
+      border: none; border-radius: 3px;
+      font-family: inherit;
+      font-size: 11px; letter-spacing: 3px;
+      text-transform: uppercase; font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition-fast), transform var(--transition-fast);
+      margin-top: 8px;
+    }
+    .review-form__submit:hover:not(:disabled) {
+      background: #d9b885; transform: translateY(-1px);
+    }
+    .review-form__submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .review-form__terms {
+      font-size: 10px; color: var(--color-muted);
+      text-align: center; margin-top: 14px;
+      line-height: 1.7; letter-spacing: 0.5px;
+    }
+    .review-form__terms a { color: var(--color-gold); text-decoration: underline; }
+
+    /* ── Card "ya enviada" ───────────────────────────────────── */
+    .review-card-done { text-align: center; }
+    .review-card-done__head { margin-bottom: 20px; }
+    .review-card-done__eyebrow {
+      font-size: 9px; letter-spacing: 4px; text-transform: uppercase;
+      color: var(--color-success); margin-bottom: 10px;
+    }
+    .review-card-done__title {
+      font-family: var(--font-serif);
+      font-size: 24px; font-weight: 300; color: var(--color-text);
+    }
+    .review-card-done__stars {
+      font-size: 26px; letter-spacing: 6px;
+      color: var(--color-gold); margin-bottom: 16px;
+    }
+    .review-card-done__text {
+      font-size: var(--text-body-md); color: var(--color-text);
+      font-style: italic; line-height: 1.75;
+      max-width: 540px; margin: 0 auto 14px;
+    }
+    .review-card-done__hint {
+      font-size: 11px; color: var(--color-muted);
+      max-width: 480px; margin: 0 auto;
+      line-height: 1.6; padding-bottom: 8px;
+    }
+
+    /* ── Bloque del cupón de recompensa ───────────────────── */
+    .review-card-reward {
+      margin-top: 24px;
+      padding: 24px 20px;
+      background: rgba(201,169,110,0.08);
+      border: 1px solid var(--color-gold-border);
+      border-radius: 4px;
+    }
+    .review-card-reward__label {
+      font-size: 9px; letter-spacing: 4px; text-transform: uppercase;
+      color: var(--color-gold); margin-bottom: 10px;
+    }
+    .review-card-reward__code {
+      font-family: 'Courier New', monospace;
+      font-size: 22px; letter-spacing: 4px;
+      color: var(--color-gold);
+      background: var(--color-bg);
+      border: 1px dashed var(--color-gold);
+      padding: 12px 18px;
+      display: inline-block;
+      margin-bottom: 14px; font-weight: 700;
+    }
+    .review-card-reward__btn {
+      display: inline-block;
+      padding: 8px 18px;
+      background: transparent;
+      color: var(--color-gold);
+      border: 1px solid var(--color-gold);
+      font-family: inherit;
+      font-size: 10px; letter-spacing: 2px;
+      text-transform: uppercase; font-weight: 500;
+      cursor: pointer; border-radius: 2px;
+      transition: background var(--transition-fast), color var(--transition-fast);
+    }
+    .review-card-reward__btn:hover {
+      background: var(--color-gold); color: var(--color-bg);
+    }
+    .review-card-reward__hint {
+      font-size: 11px; color: var(--color-muted);
+      margin-top: 12px; line-height: 1.6;
+    }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .review-block { padding: 24px 20px; }
+      .review-form__title { font-size: 22px; }
+      .review-star { font-size: 32px; }
+      .review-form__textarea { font-size: 13px; }
+      .review-card-reward__code { font-size: 18px; letter-spacing: 3px; padding: 10px 14px; }
+    }
   </style>
 </head>
 <body>
@@ -1236,6 +1466,11 @@
         <div id="rTotales"></div>
       </div>
 
+      <!-- Bloque de reseña — visible solo cuando estado === "Entregado".
+           Lo controla components/founder-reviews.js (renderReviewBlock).
+           Sesión 38. -->
+      <div class="review-block" id="reviewBlockContainer" style="display:none"></div>
+
       <!-- Volver -->
       <button class="btn-volver" onclick="resetear()">← Nueva consulta</button>
 
@@ -1375,6 +1610,7 @@ window.founderCart.bootPage(updateCartUI);
 window.addEventListener('founder-cart-photos-ready', updateCartUI);
 </script>
 
+<script src="components/founder-reviews.js"></script>
 <script src="components/founder-seguimiento.js"></script>
 </body>
 </html>

@@ -1021,6 +1021,18 @@ select:active,
 .review-card__name { font-size: 12px; color: var(--color-text); font-weight: 500; letter-spacing: 0.3px; }
 .review-card__location { font-size: 10px; color: var(--color-muted); letter-spacing: 1px; text-transform: uppercase; }
 
+/* Sesión 38: fotos dentro de la review card (reseñas reales con fotos) */
+.review-card__photos { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+.review-card__photo {
+  width: 56px; height: 56px;
+  border-radius: 3px; overflow: hidden;
+  border: 1px solid var(--color-border);
+  display: block; flex-shrink: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.review-card__photo:hover { transform: scale(1.05); border-color: var(--color-gold); }
+.review-card__photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
 /* Carrusel — wrapper, flechas, dots. En desktop (default) las flechas y dots
  * están ocultos: la grilla muestra las 4 cards a la vez. En mobile se activan
  * vía media query y se muestra 1 card por vez. */
@@ -1668,7 +1680,10 @@ body.cart-open .wa-bubble {
   </section>
 
   <!-- REVIEWS — Lo que dicen nuestros clientes -->
-  <section class="reviews-section reveal-up" aria-labelledby="reviewsTitle">
+  <!-- Sesión 38: arranca oculta. La muestra reviewsLoader si hay reseñas
+       aprobadas para este producto. Si no hay → se queda oculta. -->
+  <section class="reviews-section reveal-up" aria-labelledby="reviewsTitle"
+    id="reviewsSection" style="display:none">
     <div class="reviews-section__eyebrow">Lo que dicen nuestros clientes</div>
     <h2 class="reviews-section__title" id="reviewsTitle">Confianza ganada con cada compra</h2>
 
@@ -1676,50 +1691,12 @@ body.cart-open .wa-bubble {
       <button class="reviews-carousel__arrow reviews-carousel__arrow--prev" type="button" aria-label="Reseña anterior" id="reviewsPrev">‹</button>
       <button class="reviews-carousel__arrow reviews-carousel__arrow--next" type="button" aria-label="Reseña siguiente" id="reviewsNext">›</button>
 
-      <div class="reviews-grid" id="reviewsGrid">
-        <article class="review-card is-active">
-          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-          <p class="review-card__text">"Llevo 3 meses usándola todos los días. Increíble lo cómoda que es, no te das cuenta que la tenés. La protección RFID me da tranquilidad cuando uso el bondi."</p>
-          <div class="review-card__author">
-            <span class="review-card__name">Martín Rodríguez</span>
-            <span class="review-card__location">Montevideo</span>
-          </div>
-        </article>
+      <!-- Las cards se renderizan dinámicamente desde Supabase
+           via components/founder-reviews-loader.js -->
+      <div class="reviews-grid" id="reviewsGrid"></div>
 
-        <article class="review-card">
-          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-          <p class="review-card__text">"La compré para mi marido y la terminé usando yo. El cuero es de excelente calidad y el diseño es elegante. Muy recomendable."</p>
-          <div class="review-card__author">
-            <span class="review-card__name">Lucía Fernández</span>
-            <span class="review-card__location">Punta del Este</span>
-          </div>
-        </article>
-
-        <article class="review-card">
-          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-          <p class="review-card__text">"Buscaba algo que entrara en el bolsillo del jean sin hacer bulto y la encontré. El botón para sacar las tarjetas es genial, súper práctico."</p>
-          <div class="review-card__author">
-            <span class="review-card__name">Diego Pereira</span>
-            <span class="review-card__location">Salto</span>
-          </div>
-        </article>
-
-        <article class="review-card">
-          <div class="review-card__stars" aria-label="5 de 5 estrellas">★★★★★</div>
-          <p class="review-card__text">"La atención por WhatsApp fue impecable, me ayudaron a elegir el color y llegó al día siguiente a Maldonado. La calidad superó mis expectativas."</p>
-          <div class="review-card__author">
-            <span class="review-card__name">Sofía Méndez</span>
-            <span class="review-card__location">Maldonado</span>
-          </div>
-        </article>
-      </div>
-
-      <div class="reviews-carousel__dots" id="reviewsDots" role="tablist" aria-label="Reseñas">
-        <button class="reviews-carousel__dot is-active" type="button" aria-label="Reseña 1" data-idx="0"></button>
-        <button class="reviews-carousel__dot" type="button" aria-label="Reseña 2" data-idx="1"></button>
-        <button class="reviews-carousel__dot" type="button" aria-label="Reseña 3" data-idx="2"></button>
-        <button class="reviews-carousel__dot" type="button" aria-label="Reseña 4" data-idx="3"></button>
-      </div>
+      <!-- Los dots se generan dinámicamente según cantidad real de reseñas -->
+      <div class="reviews-carousel__dots" id="reviewsDots" role="tablist" aria-label="Reseñas"></div>
     </div>
   </section>
 
@@ -1764,6 +1741,8 @@ body.cart-open .wa-bubble {
 <script src="components/cart.js"></script>
 <script src="components/scroll-reveal.js" defer></script>
 <script src="components/meta-pixel.js"></script>
+<!-- Sesión 38: loader de reseñas reales (reemplaza las 4 mock) -->
+<script src="components/founder-reviews-loader.js"></script>
 
 
 
@@ -2001,6 +1980,12 @@ async function init() {
     // Inyectar SEO: Schema.org Product (JSON-LD) + Open Graph dinámico.
     // Esto mejora Google rich results y vista previa al compartir el link.
     injectSEOMetadata(state.product);
+    // Sesión 38: cargar reseñas reales (reemplazan las 4 mock).
+    // Es async — si tarda o falla, la sección queda oculta (estado seguro).
+    // También actualiza el Schema.org con aggregateRating cuando hay datos.
+    if (typeof window.loadProductReviews === 'function') {
+      window.loadProductReviews(state.product);
+    }
     // Carrusel de reseñas (autoplay 4s en mobile, oculto en desktop).
     bindReviewsCarousel();
     // Personalización láser (Sesión 28). Es async — corre en background.
@@ -3569,23 +3554,26 @@ function stopReviewsAutoplay() {
 /** Engancha listeners del carrusel de reseñas UNA sola vez por carga.
  *  - Click en flechas / dots → cambio manual con pausa de 12s.
  *  - Visibility change → pausa cuando la tab está oculta.
- *  - Resize → si pasa a desktop, parar autoplay; si pasa a mobile, arrancar. */
+ *  - Resize → si pasa a desktop, parar autoplay; si pasa a mobile, arrancar.
+ *
+ *  Sesión 38: separamos los listeners que se ejecutan UNA vez (flechas,
+ *  visibility, resize, evento founder-reviews-loaded) de los que se
+ *  rebindean CADA vez que cambia el set de reseñas (dots — el HTML se
+ *  regenera cuando llegan reseñas reales desde Supabase).
+ */
 function bindReviewsCarousel() {
   if (state.reviewsEventsBound) return;
   state.reviewsEventsBound = true;
 
+  // Listeners de flechas (se bindean una sola vez — los botones no cambian)
   const prev = document.getElementById('reviewsPrev');
   const next = document.getElementById('reviewsNext');
-  const dots = document.querySelectorAll('.reviews-carousel__dot');
-
   if (prev) prev.addEventListener('click', goToPrevReview);
   if (next) next.addEventListener('click', goToNextReview);
-  dots.forEach(d => {
-    d.addEventListener('click', () => {
-      const idx = parseInt(d.dataset.idx, 10);
-      if (Number.isFinite(idx)) setActiveReview(idx, true);
-    });
-  });
+
+  // Listeners de dots — se bindean ahora con lo que haya, y se vuelven a
+  // bindear cuando llega el evento founder-reviews-loaded (reseñas reales).
+  rebindReviewsDots();
 
   // Page Visibility: pausar/reanudar
   document.addEventListener('visibilitychange', () => {
@@ -3604,8 +3592,33 @@ function bindReviewsCarousel() {
     }, 200);
   });
 
+  // Sesión 38: cuando llegan las reseñas reales de Supabase, rebindeamos
+  // los dots (el HTML de #reviewsDots se reescribió dinámicamente) y
+  // re-arrancamos el autoplay desde 0 con la nueva cantidad de reseñas.
+  window.addEventListener('founder-reviews-loaded', () => {
+    state.reviewIndex = 0;
+    state.reviewsAutoplayCycles = 0;
+    rebindReviewsDots();
+    stopReviewsAutoplay();
+    startReviewsAutoplay();
+  });
+
   // Arrancar si estamos en mobile
   startReviewsAutoplay();
+}
+
+/** Bindea los listeners de los dots del carrusel. Se llama tanto en la
+ *  inicialización como cuando llegan reseñas reales desde Supabase
+ *  (el HTML de #reviewsDots se regenera y los listeners viejos quedan
+ *  apuntando a nodos que ya no están). */
+function rebindReviewsDots() {
+  const dots = document.querySelectorAll('.reviews-carousel__dot');
+  dots.forEach(d => {
+    d.addEventListener('click', () => {
+      const idx = parseInt(d.dataset.idx, 10);
+      if (Number.isFinite(idx)) setActiveReview(idx, true);
+    });
+  });
 }
 
 // ── PRODUCTO — Tabs de detalles ─────────────────────────────────

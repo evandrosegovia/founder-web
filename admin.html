@@ -754,6 +754,86 @@ textarea.fi{resize:vertical;min-height:70px}
   /* Esconder el botón "Ver sitio" en pantallas muy chicas, solo dejar "Salir" */
   .topbar-right a.tbtn { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   RESEÑAS — Sesión 38
+   ═══════════════════════════════════════════════════════════ */
+.review-filter-btn { font-size: 10px; letter-spacing: 1.5px; }
+.review-filter-btn.is-active {
+  background: rgba(201,169,110,.15);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.review-filter-btn .badge {
+  display: inline-block; margin-left: 6px;
+  padding: 1px 6px; background: var(--mid);
+  border-radius: 10px; font-size: 9px;
+  color: var(--white); min-width: 14px; text-align: center;
+}
+
+.review-admin-card {
+  background: var(--card); border: 1px solid var(--border);
+  padding: 18px; margin-bottom: 12px;
+  display: grid; grid-template-columns: 1fr auto; gap: 12px;
+  align-items: start;
+}
+.review-admin-card__main { min-width: 0; }
+.review-admin-card__head {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; margin-bottom: 8px;
+}
+.review-admin-card__stars { color: var(--gold); font-size: 14px; letter-spacing: 2px; }
+.review-admin-card__badge {
+  display: inline-block; padding: 3px 10px;
+  font-size: 9px; letter-spacing: 1.5px;
+  text-transform: uppercase; border-radius: 2px;
+}
+.review-admin-card__badge--pendiente { background: rgba(201,169,110,.15); color: var(--gold); border: 1px solid rgba(201,169,110,.3); }
+.review-admin-card__badge--aprobada  { background: rgba(76,175,130,.15);  color: #4caf82;     border: 1px solid rgba(76,175,130,.3); }
+.review-admin-card__badge--oculta    { background: rgba(154,154,154,.15); color: var(--muted); border: 1px solid var(--border); }
+
+.review-admin-card__author { font-size: 12px; color: var(--white); font-weight: 500; }
+.review-admin-card__meta {
+  font-size: 10px; color: var(--muted);
+  letter-spacing: 0.5px; margin-bottom: 8px;
+}
+.review-admin-card__text {
+  font-size: 12px; color: var(--text);
+  line-height: 1.7; font-style: italic;
+  margin: 6px 0 10px;
+  white-space: pre-wrap; word-wrap: break-word;
+}
+.review-admin-card__photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.review-admin-card__photo {
+  width: 60px; height: 60px; border-radius: 3px;
+  overflow: hidden; border: 1px solid var(--border);
+  cursor: pointer; transition: border-color .2s;
+}
+.review-admin-card__photo:hover { border-color: var(--gold); }
+.review-admin-card__photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.review-admin-card__actions {
+  display: flex; flex-direction: column; gap: 6px;
+  min-width: 120px; align-items: stretch;
+}
+.review-admin-card__actions .btn { padding: 7px 10px; font-size: 9px; letter-spacing: 1px; }
+
+@media (max-width: 700px) {
+  .review-admin-card { grid-template-columns: 1fr; }
+  .review-admin-card__actions { flex-direction: row; flex-wrap: wrap; }
+  .review-admin-card__actions .btn { flex: 1; min-width: 100px; }
+}
+
+/* Modal detalle de reseña — fotos en grande */
+.review-detail-photos {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px; margin-top: 10px;
+}
+.review-detail-photos a {
+  display: block; border-radius: 3px; overflow: hidden;
+  border: 1px solid var(--border);
+}
+.review-detail-photos img { width: 100%; height: 140px; object-fit: cover; display: block; }
 </style>
 </head>
 <body>
@@ -805,6 +885,7 @@ textarea.fi{resize:vertical;min-height:70px}
       <div class="nav-item" onclick="nav('productos',this)"><span class="nav-icon">👜</span>Productos</div>
       <div class="nav-section">Herramientas</div>
       <div class="nav-item" onclick="nav('cupones',this)"><span class="nav-icon">🏷️</span>Cupones</div>
+      <div class="nav-item" onclick="nav('resenas',this)"><span class="nav-icon">⭐</span>Reseñas</div>
       <div class="nav-item" onclick="nav('banner',this)"><span class="nav-icon">🖼️</span>Banner inicio</div>
       <div class="nav-item" onclick="nav('personalizacion',this)"><span class="nav-icon">✦</span>Personalización láser</div>
       <div class="nav-section">Accesos</div>
@@ -1083,6 +1164,14 @@ textarea.fi{resize:vertical;min-height:70px}
                   </div>
                 </div>
               </label>
+              <!-- Sesión 38 — Cupón de recompensa por reseña -->
+              <label class="cupon-flag">
+                <input type="checkbox" id="cpEsRecompensaResena">
+                <div class="cupon-flag__text">
+                  <span class="cupon-flag__name">⭐ Cupón de recompensa por reseña</span>
+                  <span class="cupon-flag__hint">Cuando está marcado, este cupón se entrega <strong>automáticamente</strong> a los clientes que dejan una reseña en seguimiento. Solo el email autorizado puede usarlo. <strong>Solo puede haber UN cupón activo</strong> con esta marca a la vez — si activás este, se desactiva el anterior. Ideal para combinar con "por-email" + "Único uso".</span>
+                </div>
+              </label>
               <button class="btn btn-primary" id="cpSaveBtn" onclick="saveCupon()" style="margin-top:4px">Crear cupón</button>
             </div>
           </div>
@@ -1262,6 +1351,69 @@ textarea.fi{resize:vertical;min-height:70px}
         </div>
       </div>
 
+      <!-- ═══════════════════════════════════════════════════════════
+           PÁGINA RESEÑAS (Sesión 38)
+           Moderar reseñas dejadas por clientes en la página de seguimiento.
+           Estados: pendiente / aprobada / oculta.
+           ═══════════════════════════════════════════════════════════ -->
+      <div class="page" id="page-resenas">
+        <div class="ph">
+          <div class="pt">⭐ Reseñas</div>
+          <div class="psub">Moderá las reseñas que dejan tus clientes después de recibir el pedido</div>
+        </div>
+
+        <!-- Tarjeta superior: configuración del cupón de recompensa -->
+        <div class="card" style="margin-bottom:18px">
+          <div class="card-head">
+            <div class="card-title">✨ Cupón de recompensa</div>
+            <div style="font-size:8px;color:var(--muted);letter-spacing:1px">
+              El cupón que se entrega automáticamente al cliente al dejar reseña
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="rewardCouponInfo" style="font-size:13px;color:var(--text);line-height:1.7">
+              <span style="color:var(--muted)">Cargando…</span>
+            </div>
+            <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.6">
+              💡 <strong>Cómo configurarlo:</strong> creá un cupón en la sección
+              <a href="#" onclick="nav('cupones',document.querySelector('.nav-item[onclick*=cupones]'));return false;"
+                 style="color:var(--gold);text-decoration:underline">Cupones</a>
+              y marcá la opción <em>"⭐ Cupón de recompensa por reseña"</em>.
+              Solo puede haber UN cupón con esta marca activo a la vez.
+              Cuando un cliente deje una reseña, el sistema le habilita ESE
+              cupón automáticamente para su próxima compra.
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtros por estado -->
+        <div class="filters-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn btn-secondary review-filter-btn is-active"
+            data-filter="all" onclick="filterReviews('all', this)">
+            Todas
+          </button>
+          <button class="btn btn-secondary review-filter-btn"
+            data-filter="pendiente" onclick="filterReviews('pendiente', this)">
+            ⏳ Pendientes <span class="badge" id="reviewCountPendientes">0</span>
+          </button>
+          <button class="btn btn-secondary review-filter-btn"
+            data-filter="aprobada" onclick="filterReviews('aprobada', this)">
+            ✓ Aprobadas <span class="badge" id="reviewCountAprobadas">0</span>
+          </button>
+          <button class="btn btn-secondary review-filter-btn"
+            data-filter="oculta" onclick="filterReviews('oculta', this)">
+            ◌ Ocultas <span class="badge" id="reviewCountOcultas">0</span>
+          </button>
+        </div>
+
+        <!-- Listado de reseñas (se renderiza dinámicamente) -->
+        <div id="reviewsListContainer">
+          <div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">
+            Cargando reseñas…
+          </div>
+        </div>
+      </div>
+
     </div><!-- /main-content -->
   </div><!-- /body-layout -->
 </div><!-- /adminPanel -->
@@ -1322,6 +1474,19 @@ textarea.fi{resize:vertical;min-height:70px}
       <button class="btn btn-danger" id="lpExDeleteBtn" onclick="deleteLpExample()">🗑️ Eliminar</button>
       <button class="btn btn-secondary" onclick="closeLpExampleModal()">Cancelar</button>
       <button class="btn btn-primary" id="lpExSaveBtn" onclick="saveLpExample()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Detalle de reseña (Sesión 38) -->
+<div class="modal-overlay" id="reviewDetailModal">
+  <div class="modal" style="max-width:620px;display:block;padding:0">
+    <div class="modal-head">
+      <div class="modal-title">Detalle de la reseña</div>
+      <button class="modal-x" onclick="closeReviewDetail()">✕</button>
+    </div>
+    <div class="modal-body" id="reviewDetailContent" style="max-height:80vh;overflow-y:auto">
+      <!-- Se llena dinámicamente desde renderReviewDetail() -->
     </div>
   </div>
 </div>
@@ -1468,6 +1633,8 @@ textarea.fi{resize:vertical;min-height:70px}
 <!-- Toda la funcionalidad vive en components/founder-admin.js,
      que habla con /api/admin (Vercel Serverless) + Supabase. -->
 <script src="components/founder-admin.js"></script>
+<!-- Sesión 38: panel de moderación de reseñas (separado para no inflar founder-admin.js) -->
+<script src="components/founder-admin-reviews.js"></script>
 
 </body>
 </html>

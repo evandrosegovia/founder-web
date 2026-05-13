@@ -1,8 +1,9 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 37 — UX de descuentos completa en los 3 momentos del flujo de compra. Esta sesión cierra un arco de 6 sesiones (32-37) iniciado como "feature de cupones para clientes repetidos" que terminó refactorizando toda la lógica de descuentos del e-commerce. **Sesión 32:** atributo `solo_clientes_repetidos` en `coupons` + fix de constraints viejos sincronizados con el frontend (bug latente desde Sesión 14). **Sesión 33:** 2 tipos de cupón nuevos (✨ solo nuevos clientes + 🎨 personalización gratis con N slots cubiertos). **Sesión 34:** UX del slot de imagen subida (verde "Subido" + link "Eliminar imagen") + fixes críticos del cupón de personalización (frontend no enviaba `hasPersonalizacion`, cálculo del descuento mal aplicado al subtotal en vez de la personalización). **Sesión 35:** 4 ajustes UX (badge GRABADO no se rompe en mobile, auto-marca checkbox no-devolución cuando se marca privacidad, texto "X grabados personalizados gratis", admin mobile responsive opción B = pedidos/cupones/estados). **Sesión 36:** rediseño completo de la fórmula de descuentos — transferencia 10% ahora siempre es acumulable con cupones, se aplica sobre `(subtotal − cupón_subtotal) + (personalización − cupón_personalización)` sin tocar envío. Tarjetas verdes (Opción D) en checkout + seguimiento. Bug raíz arreglado: el campo `cupon_codigo` ya existía en DB desde sesiones anteriores pero ningún endpoint lo estaba leyendo (3 lugares: `api/checkout.js`, `mp-webhook.js`, `api/seguimiento.js`). **Sesión 37:** tarjetas verdes en emails con split exacto del descuento (cupón vs transferencia) usando despeje matemático sin queries extra a DB. Stack tocado: 6 archivos código JS frontend, 5 archivos código JS backend serverless, 3 archivos HTML, 2 archivos SQL en Supabase. 22/22 tests sintéticos pasados en distintos puntos del arco. Todas las sesiones deployed y validadas en producción por el dueño (Evandro). Ver `DETALLE-SESIONES-32-37.md` para contexto técnico extendido. (13/05/2026)
-**Próxima sesión:** 38 — opciones disponibles, en orden sugerido de prioridad:
-- (a) **Agregar columnas `descuento_cupon` y `descuento_transferencia` a `orders`** — hoy guardamos solo el descuento total, el split en email/seguimiento se calcula por despeje matemático (funciona pero frágil si cambia la lógica). Con columnas dedicadas, todo el flujo se simplifica y los reportes financieros del admin pueden separar facilmente "ventas brutas vs ahorros por cupones". Esfuerzo: 30-45 min.
+**Última actualización:** Sesión 38 — **Sistema completo de reseñas con recompensa por cupón.** Feature nueva end-to-end: clientes con pedido `Entregado` pueden dejar reseña (1-5 estrellas + texto + hasta 3 fotos opcionales) desde la página de seguimiento; el sistema autoriza automáticamente su email para usar un cupón configurable (`GRACIAS10` por default) en su próxima compra; admin tiene panel de moderación con filtros por estado (pendiente/aprobada/oculta) + opción mostrar/ocultar/eliminar sin posibilidad de editar el contenido. Las reseñas aprobadas reemplazan las 4 mock históricas de Sesión 20 en `producto.html` con render dinámico desde Supabase + Schema.org `aggregateRating` para Google rich results (estrellitas en búsquedas). **Arquitectura:** tabla nueva `reviews` + tabla auxiliar `coupon_authorized_emails` + flag `es_recompensa_resena` en `coupons` + función SQL helper `get_review_reward_coupon()` + bucket público nuevo `reviews-photos`. **Endpoint nuevo `/api/reviews`** con 4 actions (get/get_upload_url/create/list_public). Stack tocado: 6 archivos backend, 6 archivos frontend, 3 archivos componente nuevos. Email transaccional nuevo de agradecimiento con el cupón ganado en tarjeta dorada. **Cierre del pendiente "Opción B reseñas reales" abierto desde Sesión 26.** (13/05/2026)
+
+**Próxima sesión:** 39 — opciones disponibles, en orden sugerido de prioridad:
+- (a) **Agregar columnas `descuento_cupon` y `descuento_transferencia` a `orders`** — hoy guardamos solo el descuento total, el split en email/seguimiento se calcula por despeje matemático (funciona pero frágil si cambia la lógica). Con columnas dedicadas, todo el flujo se simplifica y los reportes financieros del admin pueden separar fácilmente "ventas brutas vs ahorros por cupones". Esfuerzo: 30-45 min.
 - (b) **Edición de cupones post-creación** — hoy el admin solo permite Pausar/Activar/Eliminar. Para cambiar `valor`, `min_compra`, flags, hay que recrear. Esfuerzo: 1 hora.
 - (c) **Email automático con FOUNDER20 a los 10 días post-entrega** — idea propuesta por el usuario en Sesión 32. Requiere cron + flag de dedup. Esfuerzo: 2 horas.
 - (d) **Email automático al admin cuando entra pedido con grabado** — el código `blockPersonalizacion('admin')` ya existe, falta conectarlo. Esfuerzo: 30 min.
@@ -10,7 +11,128 @@
 - (f) **CSP (Content Security Policy)** — la última pieza para A+ definitivo en securityheaders.com. Esfuerzo: 1 hora.
 - (g) **Auditoría general de constraints CHECK en TODAS las tablas** — Sesión 32 reveló que `coupons_uso_check` y `coupons_tipo_check` estaban desincronizados con el código desde hacía 18 sesiones. Hay que repasar `orders`, `products`, `product_colors`, etc. Esfuerzo: 30 min.
 - (h) **Drop columna legacy `products.banner_url`** — pendiente desde Sesión 21.
+- (i) **Cleanup automático de fotos de reseñas eliminadas** — hoy `delete_review` borra las fotos del bucket en línea, pero si el storage falla las fotos quedan huérfanas. Agregar cron semanal que liste paths del bucket y compare con `reviews.fotos_urls`. Esfuerzo: 1 hora.
+
 **Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
+
+---
+
+## ✅ SESIÓN 38 — Sistema completo de reseñas con recompensa por cupón [13/05/2026]
+
+**Feature grande end-to-end que cierra el pendiente "Opción B reseñas reales" abierto desde Sesión 26.** Las 4 reseñas mock históricas de `producto.html` (Sesión 20) por fin se reemplazan por reseñas reales de clientes con compra `Entregado`, con sistema de moderación previa por admin y un loop de fidelización: cada reseña dejada otorga automáticamente un cupón de descuento al email del cliente para su próxima compra.
+
+### 🏗️ Arquitectura del feature (4 bloques)
+
+**Bloque A — Schema + Storage:**
+- Tabla nueva `reviews` (15 campos): vinculada a `orders.id` con UNIQUE constraint para garantizar 1 reseña por pedido. Estados: `pendiente` (default) / `aprobada` / `oculta`. Producto reseñado denormalizado (id + name + color) para sobrevivir borrados de catálogo. 3 índices optimizados: lookup por producto+aprobada (público), por estado+fecha (admin), por LOWER(email) (validación de duplicados).
+- Tabla auxiliar `coupon_authorized_emails`: lista emails autorizados a usar un cupón ANTES de que lo usen. Resuelve el problema de "habilitar cupón por email" sin romper la lógica histórica de `emails_usados[]` (que sigue significando "ya lo usaron"). FK con `ON DELETE SET NULL` hacia `reviews` para que borrar una reseña no revoque el cupón ya entregado.
+- Columna nueva `coupons.es_recompensa_resena` (BOOLEAN). Índice único parcial `coupons_only_one_review_reward_active` que impide tener 2 cupones con la flag activos simultáneamente (a nivel DB).
+- Función SQL `get_review_reward_coupon()` (STABLE): devuelve el cupón activo marcado como recompensa o NULL. Usada por el endpoint cuando se crea una reseña.
+- Bucket nuevo `reviews-photos` (PÚBLICO, 5 MB, JPG/PNG/WEBP). Diferente de `personalizacion-uploads` (privado) porque las fotos de reseñas están pensadas para mostrarse junto a la reseña aprobada.
+- SQL idempotente con verificación final (5 chequeos en TRUE) para confirmar que todo quedó OK.
+
+**Bloque B — Backend:**
+- Endpoint público nuevo `/api/reviews.js` con 4 actions:
+  - `get` — consulta si un pedido tiene reseña (devuelve también `order_estado` para que el frontend sepa si mostrar formulario).
+  - `get_upload_url` — genera signed URL para subir UNA foto al bucket público. Path estructurado `yyyymm/uuid-slug.ext`.
+  - `create` — crea la reseña con validaciones triples (frontend + backend + DB constraints): rating 1-5, texto 10-1000 chars, max 3 fotos cuyas URLs deben pertenecer al bucket esperado, pedido debe pertenecer al email Y estar Entregado, no debe existir reseña previa para ese order_id. Después de insertar, llama a `get_review_reward_coupon()` y autoriza al email vía INSERT en `coupon_authorized_emails`. Persiste el código del cupón en `reviews.reward_coupon_codigo` para mostrarlo al cliente. Si no hay cupón configurado o falla algo, la reseña se crea igual y `reward_coupon: null` (NO bloquea al cliente).
+  - `list_public` — endpoint read-only sin auth que devuelve reseñas `aprobada` filtradas por `product_id` o `product_name`. Solo campos SAFE (sin email, sin order_id, sin código de cupón). Usado por `producto.html`.
+- 4 handlers nuevos en `api/admin.js` (protegidos por JWT):
+  - `list_reviews` (filtro opcional por estado, incluye JOIN con orders para mostrar nro de pedido).
+  - `update_review_status` (pendiente↔aprobada↔oculta).
+  - `delete_review` (irreversible, requiere `confirm: true`, borra también las fotos del storage extrayéndolas de las URLs).
+  - `set_coupon_review_reward` (no usado por el admin actualmente — se hace inline desde saveCupon, pero queda disponible para uso futuro).
+- Modificaciones en `api/checkout.js`: SELECT extendido para incluir `es_recompensa_resena` + bloque nuevo en `handleValidateCoupon` y `handleCreateOrder` que valida que el email esté autorizado en `coupon_authorized_emails` cuando el cupón tiene la flag. Mensaje al cliente: *"Este cupón es exclusivo para clientes que dejaron una reseña."*
+- Modificaciones en `api/admin.js` (handleCreateCoupon): si el cupón nuevo tiene `es_recompensa_resena=true` Y `activo=true`, primero desactiva la flag en cualquier otro cupón activo (defensa en profundidad junto al índice único parcial).
+- Rate limiting: agregado `create_review: 5/hora` a la config centralizada de `rate-limit.js`.
+- Email transaccional nuevo: `sendReviewThankYou(order, review)` + template HTML con estrellas en dorado + bloque destacado del cupón (código en monoespaciada con borde discontinuo dorado, mismo lenguaje visual de los emails post-checkout).
+
+**Bloque C — Frontend público:**
+- Componente nuevo `components/founder-reviews.js` (~430 líneas): bloque inline en seguimiento.html. Punto de entrada `renderReviewBlock(pedido)` decide qué mostrar: nada si estado≠`Entregado`, formulario si no hay reseña, card "ya enviada" si ya hay. Maneja: estrellas (click + hover preview), contador de caracteres en vivo, validación de tipo+peso por foto, subida vía URL firmada con preview local con `URL.createObjectURL`, estado `uploading/ready`, submit con UI de loading, mapeo de errores del backend a mensajes amigables, copiar código de cupón al clipboard con fallback a execCommand.
+- Componente nuevo `components/founder-reviews-loader.js` (~180 líneas): reemplaza las 4 reseñas mock en producto.html. Punto de entrada `loadProductReviews(product)`. Si no hay reseñas aprobadas → oculta la sección entera (mejor mostrar nada que reseñas falsas). Si hay → genera HTML dinámico de las cards (incluyendo fotos si tienen) + dots según cantidad real + actualiza el JSON-LD del producto con `aggregateRating` (promedio + count) + array `review` con las 4 mejores reseñas (Google rich results: estrellitas en SERP). Dispatch del evento `founder-reviews-loaded` para que el carrusel se rebindee.
+- Modificaciones en `seguimiento.html`: CSS completo del bloque (~190 líneas) con dos variantes (formulario + card ya-enviada), variable `--color-success` agregada al `:root`, contenedor `#reviewBlockContainer` insertado antes del botón "Nueva consulta", script `founder-reviews.js` cargado antes de `founder-seguimiento.js`.
+- Modificaciones en `seguimiento.js` (`mostrarResultado`): llamada a `renderReviewBlock(p)` después de mostrar el resultado. Limpieza del bloque en `resetear()`.
+- Modificaciones en `producto.html`: 4 cards mock eliminadas (contenedor `#reviewsGrid` ahora arranca vacío + `#reviewsSection` con `display:none` inicial), CSS nuevo para `.review-card__photos` (fotos en thumbnails 56×56), `bindReviewsCarousel` refactorizado: separación entre listeners únicos (flechas + visibility + resize) y dots rebindeables (rebindReviewsDots), nuevo listener `founder-reviews-loaded` que resetea `state.reviewIndex` y re-arranca autoplay con la cantidad real de reseñas. `loadProductReviews(state.product)` llamado después de `injectSEOMetadata`.
+
+**Bloque D — Frontend admin:**
+- Componente nuevo `components/founder-admin-reviews.js` (~290 líneas): panel completo de moderación. Punto de entrada `loadReviews()`. Filtros por estado con contadores en badges (Todas / Pendientes N / Aprobadas N / Ocultas N). Cards con estrellas + badge de estado + datos del autor + fecha del pedido + texto completo + grilla de fotos thumbs (click abre en nueva pestaña). Acciones según estado: pendiente→[Aprobar, Ocultar, Eliminar], aprobada→[Ocultar, Eliminar], oculta→[Re-aprobar, Eliminar]. Confirmación nativa antes de eliminar con aclaración "el cupón ya entregado NO se revoca".
+- Modificaciones en `admin.html`: nav item nuevo "⭐ Reseñas" en sidebar (sección Herramientas, entre Cupones y Banner). Página `#page-resenas` con tarjeta superior de info del cupón actual + barra de filtros + listado dinámico. Modal `#reviewDetailModal` (reservado para fase futura — hoy se usa el listado inline). CSS nuevo (~95 líneas) con `.review-admin-card`, `.review-admin-card__badge` con variantes pendiente/aprobada/oculta, grilla responsive (2 columnas desktop, 1 columna en <700px).
+- Modificación al formulario de cupones en `admin.html`: nuevo cupon-flag "⭐ Cupón de recompensa por reseña" en el mismo estilo que los 3 existentes (solo-repetidos, solo-nuevos, descuenta-personalización).
+- Modificación en `components/founder-admin.js`: hook `nav('resenas')` → `loadReviews()`. saveCupon lee el flag nuevo `cpEsRecompensaResena`. Whitelist de update extendida con `es_recompensa_resena`. Reset del checkbox al limpiar formulario. Badge ⭐ en `renderCouponsTable`. **Exposición al window de `apiAdmin` y `toast`** para que el componente separado pueda invocarlos sin tener que re-implementarlos.
+
+### 🔑 Decisiones arquitectónicas clave
+
+**1. Una reseña por pedido (no por email).** Si un cliente compra 3 veces, puede dejar 3 reseñas (UNIQUE en `order_id`). Razón: experiencias múltiples enriquecen el contenido y la repetición de compra es señal positiva.
+
+**2. Moderación previa.** Las reseñas arrancan en `pendiente` y solo aparecen en `producto.html` cuando el admin las aprueba. **PERO el cupón se entrega al instante**, sin depender de aprobación. Razón: no decepcionar al cliente con espera de moderación.
+
+**3. Cupón por-email, no genérico.** Solo el email que dejó la reseña puede usarlo. Implementado vía tabla nueva `coupon_authorized_emails`. Razón: respeta la lógica "tu recompensa por tu reseña" + evita compartir/abuso.
+
+**4. Fotos en bucket público.** Las fotos viven en `reviews-photos` (PUBLIC) y se muestran junto a la reseña aprobada. Aviso legal en el formulario: "Al subir aceptás que se muestren públicamente". Razón: máxima conversión + fricción mínima en moderación.
+
+**5. Nunca permitir editar el contenido de una reseña.** Admin solo puede aprobar/ocultar/eliminar. Razón: integridad. Una reseña "Buena" no puede ser convertida en "Excelente" por el admin sin consentimiento del cliente.
+
+**6. Schema.org aggregateRating dinámico.** Solo se inyecta si hay ≥1 reseña aprobada. Google requiere mínimo 1 review válido. Las 4 mejores van como `review` en el JSON-LD para habilitar estrellitas en SERP.
+
+**7. Bucket aparte vs reusar personalizacion-uploads.** Decisión: bucket nuevo. Razones: (a) MIME types distintos (fotos reales → WEBP en vez de SVG), (b) políticas de retención distintas (las fotos de reseñas son permanentes, las de personalización son borrables a 60 días post-entrega), (c) auditoría más limpia.
+
+**8. apiAdmin expuesto al window.** Histórico: `apiAdmin` era privado al IIFE de `founder-admin.js`. Para que `founder-admin-reviews.js` (componente nuevo separado) lo use sin re-implementar JWT handling, lo exponemos al window. Patrón consistente con `nav` que ya estaba expuesto.
+
+### 🧪 Validación
+
+**Sintaxis JS:** 11/11 archivos pasan `node --check` (reviews.js, admin.js, checkout.js, email.js, email-templates.js, rate-limit.js, founder-reviews.js, founder-reviews-loader.js, founder-admin-reviews.js, founder-seguimiento.js, founder-admin.js).
+
+**Balance HTML:** 3/3 archivos con tags balanceados (seguimiento.html +1 div esperado del contenedor de reseñas, admin.html +21 divs esperados de la página nueva + filtros + modal + card de info, producto.html -8 divs esperados por eliminación de 4 cards mock que tenían 2 divs cada una).
+
+**Decisiones técnicas testeables (no producción aún):**
+- Si dos clientes intentan reseñar el mismo pedido (race condition) → segundo recibe error `already_reviewed`. El UNIQUE constraint protege a nivel DB.
+- Si se sube foto con MIME falso (ej `image/png` declarado pero el archivo es `.exe`) → bucket lo rechaza por validación interna (whitelist server-side `MIME_TO_EXT`).
+- Si se intenta usar `GRACIAS10` sin reseña previa → backend devuelve `cupon_review_reward_only`.
+- Si admin marca un cupón nuevo con la flag mientras hay otro activo → backend desactiva el anterior antes del INSERT (no error por índice único parcial).
+
+**Validación final en producción:** pendiente. El usuario subirá los 12 archivos a GitHub, Vercel deployará, y testeará el flow end-to-end con un pedido propio marcado como Entregado.
+
+### 📜 Archivos modificados/creados
+
+| Tipo | Archivo | Sección |
+|---|---|---|
+| 🆕 Nuevo | `api/reviews.js` | Endpoint público (4 actions) |
+| 🆕 Nuevo | `components/founder-reviews.js` | Formulario en seguimiento |
+| 🆕 Nuevo | `components/founder-reviews-loader.js` | Reseñas reales en producto |
+| 🆕 Nuevo | `components/founder-admin-reviews.js` | Panel moderación admin |
+| ✏️ Edit | `api/admin.js` | +4 handlers (list/update_status/delete/set_reward) + INSERT con flag |
+| ✏️ Edit | `api/checkout.js` | Validación de email autorizado al aplicar/crear |
+| ✏️ Edit | `api/_lib/email.js` | `sendReviewThankYou()` |
+| ✏️ Edit | `api/_lib/email-templates.js` | `templateReviewThankYou()` |
+| ✏️ Edit | `api/_lib/rate-limit.js` | `create_review: 5/hora` |
+| ✏️ Edit | `seguimiento.html` | CSS + contenedor + carga del componente |
+| ✏️ Edit | `producto.html` | 4 mock eliminadas + CSS fotos + loader + carrusel refactorizado |
+| ✏️ Edit | `admin.html` | Nav + página + modal + checkbox cupón + CSS |
+| ✏️ Edit | `components/founder-seguimiento.js` | Llamada a renderReviewBlock + cleanup |
+| ✏️ Edit | `components/founder-admin.js` | Hook nav + saveCupon + whitelist + badge + exposición |
+| 🗄️ SQL | Supabase | Tabla reviews + tabla coupon_authorized_emails + columna + función + bucket |
+
+### ⚠️ Pendientes específicos de Sesión 38 (próximas sesiones)
+
+- **Cleanup automático de fotos huérfanas.** Hoy `delete_review` borra las fotos del bucket inline. Si el storage falla, las fotos quedan huérfanas. Solución: cron semanal que liste paths del bucket y compare con `reviews.fotos_urls` actuales. Reusa el patrón del cron de `cleanup-personalizacion.js`.
+- **Email automático recordatorio post-entrega.** A los 5-7 días de marcar el pedido como Entregado, mandar email "¿Qué te pareció? Dejá tu reseña y ganá GRACIAS10". Requiere cron + tabla flag de dedup. Combina con la idea (c) del menú principal.
+- **Filtro por producto en panel admin.** Hoy se filtra solo por estado. Agregar dropdown "Producto" sería útil cuando haya catálogo más grande.
+- **Edición de reseñas por el cliente.** Decidir si permitir editar dentro de los primeros X días (con re-moderación obligatoria). Hoy: solo se puede dejar una vez y queda inmutable.
+- **Respuesta del admin a una reseña** (modelo "Respondido por Founder"). Podría aumentar engagement. Requiere columna nueva `admin_reply` + UI en producto.
+
+### 🧠 Lecciones de Sesión 38
+
+1. **Reusar infraestructura existente vs crear nueva.** El sistema `por-email` ya existía (Sesión 32-33). Resistí la tentación de hacer un sistema paralelo de "cupones para reseñas" y en su lugar agregué una flag + tabla auxiliar. Resultado: cero código duplicado, una sola lógica de validación, una sola RPC SQL.
+
+2. **Bucket público vs privado: pensar en flujo, no en privacidad por default.** El primer instinto fue "privado hasta moderación, después público" — pero eso complica el render. Como las fotos sin URL pública no se ven en producto.html ni aprobadas, y la URL es opaca (UUID), público desde el inicio es más simple y la moderación opera sobre `estado=aprobada` que es lo que controla la visibilidad.
+
+3. **Componente separado vs inflar archivo grande.** `founder-admin.js` ya tiene 2994 líneas. Agregar 300 líneas más de moderación lo hubiera llevado a 3300. En su lugar, creé `founder-admin-reviews.js` independiente y solo expuse las 2 funciones que necesita (`apiAdmin`, `toast`) al window. Resultado: separación de concerns + facilidad para diagnosticar bugs por archivo.
+
+4. **Decisiones de UX explicitadas en preguntas múltiples ANTES de codear.** Antes de tocar una línea, presenté 6 decisiones de arquitectura con recomendaciones. El usuario aprobó todas con "vamos con las recomendadas". Si una sola hubiera sido distinta (ej "una reseña por email" en vez de "por pedido"), el schema entero cambiaba. Lección: cuanto más grande la feature, más vale la pena el upfront de elicitar decisiones.
+
+5. **Re-bindeo de listeners cuando el HTML cambia async.** El carrusel original de reseñas asumía 4 cards estáticas en el HTML al cargar. Con reseñas async desde Supabase, los listeners de dots quedaban en nodos eliminados. Solución limpia: separar listeners únicos (flechas) de rebindeables (dots) + evento custom `founder-reviews-loaded` que reactiva el rebindeo. Patrón replicable para cualquier widget que cambie su DOM dinámicamente.
+
+6. **Defensa en profundidad para validaciones cross-table.** Para validar "este email está autorizado para este cupón", el chequeo vive en 3 lugares: frontend (`founder-reviews.js` muestra mensaje), backend `validate_coupon` (rechaza al aplicar), backend `create_order` (rechaza antes de la RPC). La RPC SQL queda intacta — no la tocamos porque es atómica y delicada. Patrón: capa exterior valida, capa interior asume válido.
 
 ---
 
@@ -2653,7 +2775,7 @@ soft delete reversible + hard delete con doble confirmación).
 | Anon key | En `components/supabase-client.js` (pública por diseño) |
 | Service role key | En Vercel env `SUPABASE_SERVICE_ROLE_KEY` — NUNCA al frontend |
 
-### Tablas (7)
+### Tablas (9)
 
 1. **`products`** — id, slug, nombre, precio, descripcion, especificaciones,
    capacidad, dimensiones, material, nota, lleva_billetes, lleva_monedas,
@@ -2672,18 +2794,45 @@ soft delete reversible + hard delete con doble confirmación).
 5. **`order_items`** — id, order_id (FK cascade), product_name, color,
    cantidad, precio_unitario.
 6. **`coupons`** — id, codigo (unique), tipo, valor, uso, min_compra, activo,
-   usos_count, emails_usados (text[]), desde, hasta, created_at.
+   usos_count, emails_usados (text[]), desde, hasta, created_at,
+   `solo_clientes_repetidos` (Sesión 32), `solo_clientes_nuevos` (Sesión 33),
+   `descuenta_personalizacion` (Sesión 33), `personalizacion_slots_cubiertos` (Sesión 33),
+   **`es_recompensa_resena`** (Sesión 38).
 7. **`site_settings`** — key (PK), value, updated_at.
    Keys actuales: `hero_banner_url` (Sesión 21).
+8. **`reviews`** (Sesión 38) — id (uuid), order_id (FK unique con `ON DELETE CASCADE`),
+   product_id, product_name, product_color, author_email, author_name, author_location,
+   rating (1-5), texto (10-1000 chars), fotos_urls (text[] max 3),
+   estado (`pendiente`/`aprobada`/`oculta`), reward_coupon_codigo, created_at, updated_at.
+9. **`coupon_authorized_emails`** (Sesión 38) — id, coupon_id (FK cascade),
+   email, reason (`review_reward`/`manual`/`campaign`), review_id (FK SET NULL), created_at.
+   UNIQUE (coupon_id, email).
 
 ### Constraints CHECK en `orders`
 - `orders_entrega_check` → `entrega IN ('Envío','Retiro')`
 - `orders_pago_check` → `pago IN ('Mercado Pago','Transferencia')`
 - `orders_estado_check` → `estado IN ('Pendiente pago','Pendiente confirmación','Confirmado','En preparación','En camino','Listo para retirar','Entregado','Cancelado','Pago rechazado')` ← actualizado en Sesión 22
 
+### Constraints CHECK en `reviews` (Sesión 38)
+- `rating BETWEEN 1 AND 5`
+- `LENGTH(texto) BETWEEN 10 AND 1000`
+- `array_length(fotos_urls, 1) IS NULL OR array_length(fotos_urls, 1) <= 3`
+- `estado IN ('pendiente', 'aprobada', 'oculta')`
+- UNIQUE `(order_id)` → garantiza 1 reseña por pedido
+
 ### Índices nuevos en Sesión 22
 - `orders_mp_payment_id_idx` (parcial: `WHERE mp_payment_id IS NOT NULL`)
 - `orders_mp_preference_id_idx` (parcial: `WHERE mp_preference_id IS NOT NULL`)
+
+### Índices nuevos en Sesión 38
+- `reviews_product_estado_idx` (parcial: `WHERE estado = 'aprobada'`) — consulta producto.html
+- `reviews_estado_created_idx` (estado, created_at DESC) — listado admin
+- `reviews_author_email_idx` (LOWER(author_email)) — detección de duplicados
+- `coupon_authorized_email_lookup_idx` (LOWER(email), coupon_id) — validación cupón
+- `coupons_only_one_review_reward_active` (UNIQUE parcial sobre `(1)` WHERE flag activa) — máximo 1 cupón recompensa
+
+### Función SQL nueva en Sesión 38
+- `get_review_reward_coupon()` (STABLE) — devuelve el cupón activo con `es_recompensa_resena=true` o NULL.
 
 ### Permisos
 | Tabla | anon | authenticated | service_role |
