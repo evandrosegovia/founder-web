@@ -693,6 +693,51 @@ select:active,
   cursor: progress;
 }
 
+/* Sesión 34 — badge "Subido" + link "Eliminar imagen" para estado ready.
+   El badge es visualmente igual al botón anterior pero en verde, sin
+   ser interactivo (no es un boton real, no tiene hover de cursor). El link
+   debajo, en rojo subrayado, es lo que el usuario hace clic. */
+.laser-upload__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.laser-upload__status {
+  background: transparent;
+  border: 1px solid rgba(74,222,128,.4);
+  color: #4ade80;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  border-radius: 3px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.laser-upload__status::before {
+  content: '✓';
+  font-size: 12px;
+  line-height: 1;
+}
+.laser-upload__remove-link {
+  font-size: 11px;
+  color: var(--color-danger);
+  text-decoration: underline;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-sans);
+  transition: opacity var(--transition-fast);
+}
+.laser-upload__remove-link:hover { opacity: 0.7; }
+
 /* Spinner discreto cuando está subiendo */
 .laser-upload.is-uploading .laser-upload__thumb-empty::after {
   content: '⏳';
@@ -714,6 +759,12 @@ select:active,
   .laser-upload__btn {
     grid-column: 1 / -1;
     justify-self: stretch;
+  }
+  /* Sesión 34 — el grupo "Subido + Eliminar imagen" también se estira
+     en mobile y se centra para mantener la jerarquía visual. */
+  .laser-upload__actions {
+    grid-column: 1 / -1;
+    align-items: center;
   }
 }
 
@@ -2651,8 +2702,11 @@ function renderLaserUploadSlot(tipo, upload) {
         <div class="laser-upload__title">${label}</div>
         <div class="laser-upload__filename">${escapeHtml(upload.filename)}</div>
       </div>
-      <button type="button" class="laser-upload__btn laser-upload__btn--remove"
-              onclick="removeLaserFile('${tipo}')">✕ Quitar</button>
+      <div class="laser-upload__actions">
+        <span class="laser-upload__status" aria-label="Imagen subida correctamente">Subido</span>
+        <button type="button" class="laser-upload__remove-link"
+                onclick="removeLaserFile('${tipo}')">Eliminar imagen</button>
+      </div>
     </div>`;
 }
 
