@@ -3,10 +3,6 @@
     {
       "path": "/api/cleanup-personalizacion?trigger=auto",
       "schedule": "0 6 * * 0"
-    },
-    {
-      "path": "/api/cleanup-rate-limits?trigger=auto",
-      "schedule": "0 5 * * 1"
     }
   ],
   "headers": [
