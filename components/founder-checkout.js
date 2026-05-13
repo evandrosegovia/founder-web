@@ -733,7 +733,11 @@
     // Mantener el formato de ID actual (F + últimos 6 dígitos de timestamp).
     // Es compatible con lo que admin/seguimiento ya esperan.
     const orderId = 'F' + Date.now().toString().slice(-6);
-    const fecha   = new Date().toLocaleString('es-UY');
+    // ISO 8601 (formato estándar internacional). NO usar toLocaleString
+    // porque genera strings como "12/5/2026, 22:35:14 p. m." que Postgres
+    // interpreta el "p." como abreviatura de timezone inválida y rechaza
+    // el insert con "TIME ZONE 'P.' NOT RECOGNIZED".
+    const fecha   = new Date().toISOString();
     const pagoStr = state.pagoMode === 'mercadopago' ? 'Mercado Pago' : 'Transferencia';
     // Ambos métodos arrancan como 'Pendiente pago':
     //  - Transferencia: el cliente todavía tiene que hacer la transfer manual.
