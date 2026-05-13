@@ -392,7 +392,33 @@ async function handleCreateCoupon(body, res, req) {
   // Validaciones mínimas
   const codigo = String(c.codigo || '').trim().toUpperCase();
   if (!codigo) return fail(res, 400, 'codigo_required');
-  if (!c.valor || Number(c.valor) <= 0) return fail(res, 400, 'valor_required');
+
+  // ── Sesión 33: detectar modo "descuenta personalización" ──
+  // En ese modo, los campos tipo/valor/min_compra se ignoran
+  // (el descuento se calcula por slots × items grabados).
+  // Validamos que slots_cubiertos esté entre 1 y 4.
+  const descuentaPers = c.descuenta_personalizacion === true;
+  const slotsCub      = Number(c.personalizacion_slots_cubiertos) || 0;
+
+  if (descuentaPers) {
+    if (slotsCub < 1 || slotsCub > 4) {
+      return fail(res, 400, 'slots_invalidos',
+        'Cuando el cupón descuenta personalización, debés indicar entre 1 y 4 slots.');
+    }
+  } else {
+    // Modo clásico: valor obligatorio > 0
+    if (!c.valor || Number(c.valor) <= 0) return fail(res, 400, 'valor_required');
+  }
+
+  // ── Sesión 33: combinación excluyente nuevos vs repetidos ──
+  // Un email no puede ser nuevo Y recurrente al mismo tiempo,
+  // así que un cupón con ambas flags nunca aplicaría a nadie.
+  // Bloqueamos a nivel API (defensa en profundidad junto al CHECK
+  // constraint que ya creamos en Supabase).
+  if (c.solo_clientes_nuevos === true && c.solo_clientes_repetidos === true) {
+    return fail(res, 400, 'cupon_combinacion_invalida',
+      'No podés marcar "solo nuevos" y "solo clientes recurrentes" al mismo tiempo.');
+  }
 
   const row = {
     codigo,
@@ -405,7 +431,10 @@ async function handleCreateCoupon(body, res, req) {
     emails_usados: [],
     desde:      c.desde || null,   // formato YYYY-MM-DD
     hasta:      c.hasta || null,
-    solo_clientes_repetidos: c.solo_clientes_repetidos === true,  // Sesión 32
+    solo_clientes_repetidos:         c.solo_clientes_repetidos === true,  // Sesión 32
+    solo_clientes_nuevos:            c.solo_clientes_nuevos === true,     // Sesión 33
+    descuenta_personalizacion:       descuentaPers,                       // Sesión 33
+    personalizacion_slots_cubiertos: descuentaPers ? slotsCub : 0,        // Sesión 33
   };
 
   const { data, error } = await supabase
@@ -428,7 +457,12 @@ async function handleUpdateCoupon(body, res, req) {
   if (!id) return fail(res, 400, 'id_required');
 
   // Solo campos whitelisted se pueden actualizar
-  const allowed = ['codigo', 'tipo', 'valor', 'uso', 'min_compra', 'activo', 'desde', 'hasta', 'solo_clientes_repetidos'];
+  const allowed = [
+    'codigo', 'tipo', 'valor', 'uso', 'min_compra', 'activo', 'desde', 'hasta',
+    'solo_clientes_repetidos',                                                  // Sesión 32
+    'solo_clientes_nuevos', 'descuenta_personalizacion',                        // Sesión 33
+    'personalizacion_slots_cubiertos',                                          // Sesión 33
+  ];
   const patch = {};
   for (const k of allowed) {
     if (body.patch && Object.prototype.hasOwnProperty.call(body.patch, k)) {

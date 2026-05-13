@@ -41,6 +41,8 @@ const COUPON_ERROR_MAP = {
   cupon_already_used_by_email:{ http: 400, msg: 'Ya usaste este código anteriormente' },
   cupon_min_purchase:         { http: 400, msg: 'No alcanzás el mínimo de compra del cupón' },
   cupon_solo_clientes_repetidos:{ http: 400, msg: 'Este código es exclusivo para clientes con compra previa (verificá que estés usando el mismo email de tu compra anterior).' },
+  cupon_solo_clientes_nuevos: { http: 400, msg: 'Este código es exclusivo para nuevos clientes.' },
+  cupon_requiere_personalizacion:{ http: 400, msg: 'Este código requiere productos personalizados en el pedido.' },
   email_required:             { http: 400, msg: 'El email es obligatorio' },
 };
 
@@ -240,7 +242,7 @@ async function handleValidateCoupon(body, res) {
 
   const { data, error } = await supabase
     .from('coupons')
-    .select('codigo, tipo, valor, uso, min_compra, activo, usos_count, emails_usados, desde, hasta, solo_clientes_repetidos')
+    .select('codigo, tipo, valor, uso, min_compra, activo, usos_count, emails_usados, desde, hasta, solo_clientes_repetidos, solo_clientes_nuevos, descuenta_personalizacion, personalizacion_slots_cubiertos')
     .eq('codigo', codigoRaw)
     .maybeSingle();
 
@@ -300,14 +302,59 @@ async function handleValidateCoupon(body, res) {
     }
   }
 
+  // ── NUEVO Sesión 33: validar cliente nuevo ───────────────────
+  // Espejo opuesto del check anterior. Si el cupón es solo para
+  // clientes nuevos, el email NO debe tener compras 'Entregado'.
+  // Si tiene al menos una, rechazamos.
+  if (data.solo_clientes_nuevos === true) {
+    if (!email) {
+      return fail(res, 400, 'email_required', 'Ingresá tu email antes de aplicar el cupón');
+    }
+    const { count, error: countErr } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .ilike('email', email)
+      .eq('estado', 'Entregado')
+      .or('archivado.is.null,archivado.eq.false');
+    if (countErr) {
+      return fail(res, 500, 'db_error', countErr.message);
+    }
+    if (count && count > 0) {
+      return fail(res, 400, 'cupon_solo_clientes_nuevos',
+        'Este código es exclusivo para nuevos clientes.');
+    }
+  }
+
+  // ── NUEVO Sesión 33: validar requiere personalización ────────
+  // Si el cupón descuenta personalización, validamos que el carrito
+  // tenga al menos un item personalizado. El subtotal acá no nos
+  // dice si hay personalización, así que recibimos un flag opcional
+  // `hasPersonalizacion` del frontend. Si no viene (compat antiguo),
+  // omitimos la validación acá y la RPC SQL la hará al crear orden.
+  if (data.descuenta_personalizacion === true) {
+    const hasPersonalizacion = body.hasPersonalizacion === true;
+    if (hasPersonalizacion === false) {
+      // El frontend nos dice explícitamente que no hay personalización
+      // → rechazamos inmediatamente para evitar confusión al cliente.
+      return fail(res, 400, 'cupon_requiere_personalizacion',
+        'Este código requiere productos personalizados en el pedido.');
+    }
+    // Si hasPersonalizacion es true o el flag no viene, dejamos
+    // pasar y la RPC SQL hace la validación final con los items reales.
+  }
+
   // OK — devolver metadata normalizada al frontend (mismo shape que usaba la versión Sheet)
   return ok(res, {
     cupon: {
-      codigo:     data.codigo,
-      tipo:       data.tipo,              // 'fijo' | 'porcentaje'
-      valor:      Number(data.valor) || 0,
-      uso:        data.uso,               // 'multiuso' | 'unico' | 'por-email'
-      minCompra:  Number(data.min_compra) || 0,
+      codigo:    data.codigo,
+      tipo:      data.tipo,              // 'fijo' | 'porcentaje'
+      valor:     Number(data.valor) || 0,
+      uso:       data.uso,               // 'multiuso' | 'unico' | 'por-email'
+      minCompra: Number(data.min_compra) || 0,
+      // Sesión 33: flags para que el frontend pueda renderizar el
+      // descuento correcto en el resumen (subtotal vs personalización).
+      descuentaPersonalizacion:        data.descuenta_personalizacion === true,
+      personalizacionSlotsCubiertos:   Number(data.personalizacion_slots_cubiertos) || 0,
     },
   });
 }
