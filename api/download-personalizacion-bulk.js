@@ -32,24 +32,11 @@
 // ═════════════════════════════════════════════════════════════════
 
 import { supabase, ok, fail, parseBody, buildCorsHeaders } from './_lib/supabase.js';
+import { checkAdminAuth } from './_lib/admin-auth.js';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 
 const BUCKET = 'personalizacion-uploads';
-
-// ── Auth ─────────────────────────────────────────────────────────
-function safeEqual(a, b) {
-  const bufA = Buffer.from(String(a || ''), 'utf8');
-  const bufB = Buffer.from(String(b || ''), 'utf8');
-  if (bufA.length !== bufB.length) return false;
-  return crypto.timingSafeEqual(bufA, bufB);
-}
-
-function checkAdminPassword(provided) {
-  const expected = process.env.ADMIN_PASSWORD || '';
-  if (!expected) return false;
-  return safeEqual(provided, expected);
-}
 
 // ── ZIP builder en memoria (formato STORED, sin compresión) ───────
 // Spec: https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT
@@ -341,8 +328,13 @@ export default async function handler(req, res) {
     const body   = parseBody(req);
     const action = String(body.action || '').trim();
 
-    if (!checkAdminPassword(body.password)) {
-      return fail(res, 401, 'unauthorized', 'Contraseña incorrecta');
+    // Sesión 31 Bloque C: auth compartida (JWT bearer o password)
+    const auth = checkAdminAuth(req, body);
+    if (!auth.ok) {
+      const msg = auth.error === 'invalid_token'
+        ? 'Token inválido o expirado'
+        : 'Contraseña incorrecta';
+      return fail(res, 401, 'unauthorized', msg);
     }
 
     let result;

@@ -27,6 +27,7 @@ import { supabase, createHandler, ok, fail, parseBody } from './_lib/supabase.js
 import { sendPurchaseEvent } from './_lib/meta-capi.js';
 import { createPreference } from './_lib/mercadopago.js';
 import { sendOrderConfirmationTransfer } from './_lib/email.js';
+import { enforceRateLimit } from './_lib/rate-limit.js';
 
 // ── Mapa de errores SQL → código HTTP + mensaje amigable ──────
 // La función SQL lanza excepciones con mensajes específicos; acá
@@ -481,14 +482,23 @@ async function handleCreateOrder(body, res, req) {
 // ═════════════════════════════════════════════════════════════════
 // HANDLER PRINCIPAL — router por action
 // ═════════════════════════════════════════════════════════════════
+// Rate limits (Sesión 31):
+//   - validate_coupon: 20 / hora — frena enumeración de cupones
+//   - create_order:    10 / hora — frena spam de pedidos falsos
+// Aplican por IP del cliente (header x-forwarded-for de Vercel).
 export default createHandler(async (req, res) => {
   const body   = parseBody(req);
   const action = String(body.action || '').trim();
 
   switch (action) {
-    case 'validate_coupon': return handleValidateCoupon(body, res);
-    case 'create_order':    return handleCreateOrder(body, res, req);
-    default:                return fail(res, 400, 'unknown_action',
-                                        'action debe ser "validate_coupon" o "create_order"');
+    case 'validate_coupon':
+      if (!(await enforceRateLimit('validate_coupon', req, res))) return;
+      return handleValidateCoupon(body, res);
+    case 'create_order':
+      if (!(await enforceRateLimit('create_order', req, res))) return;
+      return handleCreateOrder(body, res, req);
+    default:
+      return fail(res, 400, 'unknown_action',
+                  'action debe ser "validate_coupon" o "create_order"');
   }
 });

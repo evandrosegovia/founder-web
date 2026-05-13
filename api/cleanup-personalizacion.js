@@ -28,26 +28,13 @@
 // ═════════════════════════════════════════════════════════════════
 
 import { supabase, ok, fail, parseBody, buildCorsHeaders } from './_lib/supabase.js';
-import crypto from 'node:crypto';
+import { checkAdminAuth } from './_lib/admin-auth.js';
 
 const BUCKET = 'personalizacion-uploads';
 
 const HUERFANA_DIAS      = 10;
 const POST_ENTREGA_DIAS  = 60;
 const MAX_DELETE_PER_RUN = 500;
-
-function safeEqual(a, b) {
-  const bufA = Buffer.from(String(a || ''), 'utf8');
-  const bufB = Buffer.from(String(b || ''), 'utf8');
-  if (bufA.length !== bufB.length) return false;
-  return crypto.timingSafeEqual(bufA, bufB);
-}
-
-function checkAdminPassword(provided) {
-  const expected = process.env.ADMIN_PASSWORD || '';
-  if (!expected) return false;
-  return safeEqual(provided, expected);
-}
 
 async function listAllFiles() {
   const all = [];
@@ -270,8 +257,13 @@ export default async function handler(req, res) {
       const body   = parseBody(req);
       const action = String(body.action || '').trim();
 
-      if (!checkAdminPassword(body.password)) {
-        return fail(res, 401, 'unauthorized', 'Contraseña incorrecta');
+      // Sesión 31 Bloque C: auth compartida (JWT bearer o password)
+      const auth = checkAdminAuth(req, body);
+      if (!auth.ok) {
+        const msg = auth.error === 'invalid_token'
+          ? 'Token inválido o expirado'
+          : 'Contraseña incorrecta';
+        return fail(res, 401, 'unauthorized', msg);
       }
 
       if (action === 'get_cleanup_status') {

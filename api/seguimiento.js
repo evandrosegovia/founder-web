@@ -25,6 +25,7 @@
 // ═════════════════════════════════════════════════════════════════
 
 import { supabase, createHandler, ok, fail, parseBody } from './_lib/supabase.js';
+import { enforceRateLimit } from './_lib/rate-limit.js';
 
 function normalizarNumero(raw) {
   // Ej: "FND-0042" → "42", "F123456" queda igual, "42" queda "42"
@@ -33,6 +34,10 @@ function normalizarNumero(raw) {
 }
 
 export default createHandler(async (req, res) => {
+  // Rate limit (Sesión 31): 30 consultas / hora por IP.
+  // Frena scraping de pedidos por fuerza bruta (probar muchos números).
+  if (!(await enforceRateLimit('seguimiento', req, res))) return;
+
   const body = parseBody(req);
 
   const numeroRaw = String(body.numero || '').trim();

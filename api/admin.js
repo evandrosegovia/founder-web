@@ -62,46 +62,78 @@
 
 import { supabase, createHandler, ok, fail, parseBody } from './_lib/supabase.js';
 import { sendOrderStatusUpdate } from './_lib/email.js';
-import crypto from 'node:crypto';
+import { enforceRateLimit } from './_lib/rate-limit.js';
+import { signToken } from './_lib/jwt.js';
+import { checkAdminAuth } from './_lib/admin-auth.js';
 
 const BUCKET_PHOTOS = 'product-photos';
 
 // ── Autenticación ─────────────────────────────────────────────
-/** Compara en tiempo constante para no filtrar info vía timing. */
-function safeEqual(a, b) {
-  const bufA = Buffer.from(String(a || ''), 'utf8');
-  const bufB = Buffer.from(String(b || ''), 'utf8');
-  if (bufA.length !== bufB.length) return false;
-  return crypto.timingSafeEqual(bufA, bufB);
-}
+/**
+ * Valida que la request esté autenticada como admin.
+ * Delega en el módulo compartido `admin-auth.js` (Sesión 31 Bloque C).
+ *
+ * Si la auth falla, responde 401 con un mensaje apropiado al modo
+ * que intentó (token vencido vs password incorrecto vs server mal
+ * configurado).
+ *
+ * @returns {boolean} true si OK, false si ya respondió 401.
+ */
+function requireAuth(body, res, req) {
+  const result = checkAdminAuth(req, body);
+  if (result.ok) return true;
 
-function requireAuth(body, res) {
-  const expected = process.env.ADMIN_PASSWORD || '';
-  if (!expected) {
+  // Mensajes específicos por tipo de fallo
+  if (result.error === 'server_misconfigured') {
     fail(res, 500, 'server_misconfigured', 'ADMIN_PASSWORD no configurada en Vercel.');
     return false;
   }
-  const provided = body.password || '';
-  if (!safeEqual(provided, expected)) {
-    fail(res, 401, 'unauthorized', 'Contraseña incorrecta');
+  if (result.error === 'jwt_misconfigured') {
+    fail(res, 500, 'server_misconfigured', 'JWT_SECRET no configurada en Vercel.');
     return false;
   }
-  return true;
+  if (result.error === 'invalid_token') {
+    fail(res, 401, 'unauthorized', 'Token inválido o expirado');
+    return false;
+  }
+  // wrong_password, no_credentials
+  fail(res, 401, 'unauthorized', 'Contraseña incorrecta');
+  return false;
 }
 
 // ═════════════════════════════════════════════════════════════════
 // LOGIN
 // ═════════════════════════════════════════════════════════════════
-async function handleLogin(body, res) {
-  if (!requireAuth(body, res)) return;
-  return ok(res);
+// Rate limit (Sesión 31): 5 intentos / 15 min por IP. Protege contra
+// brute-force del password. El chequeo va ANTES de validar el password
+// para que cada intento fallido cuente, incluso si la IP no sabe el pw.
+//
+// Si el password es correcto, emitimos un JWT de 8h. El frontend lo
+// guarda y lo manda en todas las requests siguientes vía header
+// Authorization: Bearer <token>. El password nunca más viaja en
+// requests post-login.
+async function handleLogin(body, res, req) {
+  if (!(await enforceRateLimit('admin_login', req, res))) return;
+  if (!requireAuth(body, res, req)) return;
+
+  try {
+    const { token, expiresAt } = signToken({ sub: 'admin' });
+    return ok(res, { token, expiresAt });
+  } catch (err) {
+    // Si JWT_SECRET no está configurada o es muy corta, fallamos
+    // con un mensaje específico. NO devolvemos ok() — el admin no
+    // puede entrar sin JWT (es el nuevo método estándar).
+    console.error('[admin/login] JWT sign error:', err?.message || err);
+    return fail(res, 500, 'jwt_misconfigured',
+      'JWT_SECRET no configurada en Vercel. Configurala con al menos 32 caracteres.');
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════
 // PEDIDOS
 // ═════════════════════════════════════════════════════════════════
-async function handleListOrders(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleListOrders(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
 
   // include_archived controla qué subconjunto traer:
   //   'only' → solo archivados          (vista "Archivados")
@@ -132,8 +164,8 @@ async function handleListOrders(body, res) {
   return ok(res, { orders: data || [] });
 }
 
-async function handleUpdateOrderStatus(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleUpdateOrderStatus(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const id     = String(body.id || '').trim();
   const estado = String(body.estado || '').trim();
   if (!id)     return fail(res, 400, 'id_required');
@@ -268,8 +300,8 @@ const { data: prevOrder, error: readErr } = await supabase
   return ok(res);
 }
 
-async function handleUpdateOrderTracking(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleUpdateOrderTracking(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const id = String(body.id || '').trim();
   if (!id) return fail(res, 400, 'id_required');
 
@@ -293,8 +325,8 @@ async function handleUpdateOrderTracking(body, res) {
  * Los archivados se ocultan de la lista principal pero no se pierden datos.
  * Reversible con unarchive_order.
  */
-async function handleArchiveOrder(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleArchiveOrder(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const id = String(body.id || '').trim();
   if (!id) return fail(res, 400, 'id_required');
 
@@ -307,8 +339,8 @@ async function handleArchiveOrder(body, res) {
 }
 
 /** Desarchivar un pedido — lo vuelve a mostrar en la lista principal. */
-async function handleUnarchiveOrder(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleUnarchiveOrder(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const id = String(body.id || '').trim();
   if (!id) return fail(res, 400, 'id_required');
 
@@ -326,8 +358,8 @@ async function handleUnarchiveOrder(body, res) {
  * - Requiere body.confirm === true para mitigar requests accidentales
  *   (defensa en profundidad; la confirmación primaria la hace el frontend).
  */
-async function handleDeleteOrder(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleDeleteOrder(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const id = String(body.id || '').trim();
   if (!id) return fail(res, 400, 'id_required');
   if (body.confirm !== true) return fail(res, 400, 'confirm_required');
@@ -343,8 +375,8 @@ async function handleDeleteOrder(body, res) {
 // ═════════════════════════════════════════════════════════════════
 // CUPONES
 // ═════════════════════════════════════════════════════════════════
-async function handleListCoupons(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleListCoupons(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const { data, error } = await supabase
     .from('coupons')
     .select('*')
@@ -353,8 +385,8 @@ async function handleListCoupons(body, res) {
   return ok(res, { coupons: data || [] });
 }
 
-async function handleCreateCoupon(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleCreateCoupon(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const c = body.coupon || {};
 
   // Validaciones mínimas
@@ -389,8 +421,8 @@ async function handleCreateCoupon(body, res) {
   return ok(res, { coupon: data });
 }
 
-async function handleUpdateCoupon(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleUpdateCoupon(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const id = String(body.id || '').trim();
   if (!id) return fail(res, 400, 'id_required');
 
@@ -410,8 +442,8 @@ async function handleUpdateCoupon(body, res) {
   return ok(res);
 }
 
-async function handleDeleteCoupon(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleDeleteCoupon(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const id = String(body.id || '').trim();
   if (!id) return fail(res, 400, 'id_required');
   const { error } = await supabase.from('coupons').delete().eq('id', id);
@@ -422,8 +454,8 @@ async function handleDeleteCoupon(body, res) {
 // ═════════════════════════════════════════════════════════════════
 // PRODUCTOS
 // ═════════════════════════════════════════════════════════════════
-async function handleListProducts(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleListProducts(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   // Traemos TODO (incluso inactivos), con colores y fotos embebidas.
   const { data, error } = await supabase
     .from('products')
@@ -456,8 +488,8 @@ async function handleListProducts(body, res) {
  * Es atómico desde el punto de vista del cliente: si el paso 2 falla, no hay
  * cambios; si el paso 3 falla a la mitad, el admin puede reintentar.
  */
-async function handleSaveProduct(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleSaveProduct(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const p = body.product || {};
   const colors = Array.isArray(body.colors) ? body.colors : [];
 
@@ -558,8 +590,8 @@ async function handleSaveProduct(body, res) {
   return ok(res, { id: productId });
 }
 
-async function handleDeleteProduct(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleDeleteProduct(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const id = String(body.id || '').trim();
   if (!id) return fail(res, 400, 'id_required');
   // La FK de product_colors tiene ON DELETE CASCADE → elimina todo en cadena.
@@ -571,8 +603,8 @@ async function handleDeleteProduct(body, res) {
 // ═════════════════════════════════════════════════════════════════
 // SITE SETTINGS (banner y futuras configs)
 // ═════════════════════════════════════════════════════════════════
-async function handleGetSetting(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleGetSetting(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const key = String(body.key || '').trim();
   if (!key) return fail(res, 400, 'key_required');
   const { data, error } = await supabase
@@ -584,8 +616,8 @@ async function handleGetSetting(body, res) {
   return ok(res, { value: data?.value ?? '' });
 }
 
-async function handleSetSetting(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleSetSetting(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const key = String(body.key || '').trim();
   if (!key) return fail(res, 400, 'key_required');
   const value = String(body.value ?? '');
@@ -610,8 +642,8 @@ async function handleSetSetting(body, res) {
  *
  * Esto evita que el binario pase por Vercel (ahorra tiempo + límites).
  */
-async function handleGetUploadUrl(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleGetUploadUrl(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
 
   const filename = String(body.filename || '').trim();
   if (!filename) return fail(res, 400, 'filename_required');
@@ -675,8 +707,8 @@ const BUCKET_PERSONALIZ_EXAMPLES = 'personalizacion-examples';
  *   - path:      ruta interna dentro del bucket (ej "202605/abc-foto.jpg")
  *   - expiresIn: segundos de validez (default 3600 = 1 hora)
  */
-async function handleGetPersonalizSignedUrl(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleGetPersonalizSignedUrl(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
 
   const path = String(body.path || '').trim();
   if (!path) return fail(res, 400, 'path_required');
@@ -706,8 +738,8 @@ async function handleGetPersonalizSignedUrl(body, res) {
 }
 
 // ── B) Galería de ejemplos: listar ─────────────────────────────
-async function handleListPersonalizExamples(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleListPersonalizExamples(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
 
   // Devolvemos TODO (incluye inactivos) para que el admin los gestione.
   // El frontend público filtra activo=true.
@@ -726,8 +758,8 @@ async function handleListPersonalizExamples(body, res) {
  *   - Si trae id → UPDATE.
  *   - Si NO trae id → INSERT.
  */
-async function handleSavePersonalizExample(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleSavePersonalizExample(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
 
   const ex = body.example || {};
   const tipo = String(ex.tipo || '').trim();
@@ -785,8 +817,8 @@ async function handleSavePersonalizExample(body, res) {
 }
 
 // ── B) Galería de ejemplos: eliminar ───────────────────────────
-async function handleDeletePersonalizExample(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleDeletePersonalizExample(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
   const id = String(body.id || '').trim();
   if (!id) return fail(res, 400, 'id_required');
 
@@ -804,8 +836,8 @@ async function handleDeletePersonalizExample(body, res) {
  * público `personalizacion-examples`. La URL pública final se puede
  * construir y guardar en personalizacion_examples.url.
  */
-async function handleGetPersonalizExampleUploadUrl(body, res) {
-  if (!requireAuth(body, res)) return;
+async function handleGetPersonalizExampleUploadUrl(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
 
   const filename = String(body.filename || '').trim();
   if (!filename) return fail(res, 400, 'filename_required');
@@ -872,5 +904,8 @@ export default createHandler(async (req, res) => {
   const action = String(body.action || '').trim();
   const fn = ACTIONS[action];
   if (!fn) return fail(res, 400, 'unknown_action', `action desconocida: "${action}"`);
-  return fn(body, res);
+  // Pasamos req a todos los handlers — los que no lo necesitan lo ignoran.
+  // Login lo usa para rate limit (IP del cliente). En Bloque C lo usará
+  // también para validar el header Authorization con JWT.
+  return fn(body, res, req);
 });
