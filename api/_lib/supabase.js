@@ -32,16 +32,54 @@ export const supabase = (SUPABASE_URL && SUPABASE_KEY)
   : null;
 
 // ── Helpers de respuesta HTTP ──────────────────────────────────
+// Lista blanca de orígenes permitidos para CORS.
+// Solo se permite el dominio oficial del sitio (con y sin www).
+// Cualquier otro origen recibe Access-Control-Allow-Origin: null.
+//
+// Importante: CORS protege contra requests cross-origin de NAVEGADORES.
+// Los webhooks (server-to-server, como Mercado Pago) no envían header
+// Origin → no son afectados por CORS. Esta whitelist no rompe webhooks.
+const ALLOWED_ORIGINS = new Set([
+  'https://www.founder.uy',
+  'https://founder.uy',
+]);
+
+/** Devuelve el Origin si está permitido, sino 'null' (string literal). */
+function resolveAllowOrigin(req) {
+  const origin = req?.headers?.origin || '';
+  return ALLOWED_ORIGINS.has(origin) ? origin : 'null';
+}
+
+/** Construye el set de headers CORS dinámico según Origin de la request.
+ *  Exportado para uso en endpoints que no usan createHandler. */
+export function buildCorsHeaders(req) {
+  return {
+    'Access-Control-Allow-Origin':  resolveAllowOrigin(req),
+    'Vary':                         'Origin',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age':       '86400',
+  };
+}
+
+// Compatibilidad con código viejo: algunos endpoints importaban CORS_HEADERS.
+// Mantengo un objeto estático mínimo (sin Allow-Origin, que se setea dinámico)
+// por si algún endpoint hace `Object.entries(CORS_HEADERS).forEach(...)`.
+// Los endpoints nuevos deberían usar buildCorsHeaders(req) directamente.
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-/** Responde con JSON + status code. Siempre incluye CORS. */
-export function json(res, status, payload) {
+/** Responde con JSON + status code. Siempre incluye CORS dinámico si hay req. */
+export function json(res, status, payload, req) {
   res.status(status);
-  Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
+  if (req) {
+    const cors = buildCorsHeaders(req);
+    Object.entries(cors).forEach(([k, v]) => res.setHeader(k, v));
+  } else {
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
+  }
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(payload));
 }
@@ -63,12 +101,16 @@ export function ok(res, payload = {}) {
  *   - Validar método HTTP permitido (por defecto POST).
  *   - Capturar cualquier excepción y devolver 500 JSON.
  *   - Validar que el cliente Supabase esté inicializado.
+ *   - Setear CORS dinámico (whitelist) según Origin de la request.
  */
 export function createHandler(handler, { method = 'POST' } = {}) {
   return async (req, res) => {
+    // CORS dinámico — siempre aplicar antes de cualquier respuesta
+    const cors = buildCorsHeaders(req);
+    Object.entries(cors).forEach(([k, v]) => res.setHeader(k, v));
+
     // Preflight CORS
     if (req.method === 'OPTIONS') {
-      Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
       res.status(204).end();
       return;
     }

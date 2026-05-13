@@ -59,6 +59,27 @@ const RESEND_TIMEOUT_MS = 5000;
 // ── HELPER PRIVADO ───────────────────────────────────────────────
 
 /**
+ * Ofusca un email para logs: deja visibles primeros 2 chars del local
+ * y el dominio completo. Ejemplo:
+ *   "juan.perez@gmail.com"  →  "ju***@gmail.com"
+ *   "a@b.com"               →  "a***@b.com"
+ *   ""  o no-string         →  "(sin email)"
+ *
+ * Cumplimiento GDPR/LGPD: los logs no deberían contener PII completa.
+ * Esta función nos permite seguir auditando "qué email recibió el aviso"
+ * sin guardar el email completo en logs de Vercel.
+ */
+function maskEmail(email) {
+  if (!email || typeof email !== 'string') return '(sin email)';
+  const at = email.indexOf('@');
+  if (at < 1) return '(email-mal-formado)';
+  const local  = email.slice(0, at);
+  const domain = email.slice(at); // incluye la @
+  const head   = local.slice(0, Math.min(2, local.length));
+  return `${head}***${domain}`;
+}
+
+/**
  * Wrapper de fetch a Resend con timeout. Devuelve { ok, error, data }.
  * Nunca tira — si algo falla, lo logueamos y devolvemos un objeto.
  */
@@ -134,7 +155,7 @@ async function sendEmail({ to, subject, html, type }) {
   }
 
   console.log(`[email] ${type} enviado OK`,
-    { to, message_id: result.data?.id });
+    { to: maskEmail(to), message_id: result.data?.id });
   return { ok: true, message_id: result.data?.id };
 }
 

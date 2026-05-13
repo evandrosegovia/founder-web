@@ -32,7 +32,7 @@
 // error claro pero NO tira excepción — el caller decide qué hacer.
 // ═════════════════════════════════════════════════════════════════
 
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 // ── CONFIG ───────────────────────────────────────────────────────
 const MP_API_BASE = 'https://api.mercadopago.com';
@@ -356,9 +356,10 @@ export async function getPayment(paymentId) {
 export function verifyWebhookSignature(headers, dataId) {
   const SECRET = process.env.MP_WEBHOOK_SECRET;
   if (!SECRET) {
-    console.warn('[mp] MP_WEBHOOK_SECRET no configurado — saltando validación de firma');
     // Defensa en profundidad: si no hay secret en env, RECHAZAMOS por
     // defecto. Mejor perder un webhook real que aceptar uno falso.
+    // El mensaje refleja el comportamiento real (rechazar, no "saltar").
+    console.warn('[mp] MP_WEBHOOK_SECRET no configurado — RECHAZANDO webhook (modo cerrado por defecto)');
     return false;
   }
 
@@ -394,10 +395,23 @@ export function verifyWebhookSignature(headers, dataId) {
 
   const expected = createHmac('sha256', SECRET).update(manifest).digest('hex');
 
-  // Comparación directa — los hex strings son del mismo largo siempre
-  // (64 chars para SHA-256). No hace falta timingSafeEqual acá porque
-  // la entropía del secret + ts protege contra timing attacks prácticos.
-  const isValid = expected === v1;
+  // Comparación timing-safe: ambos hex strings deben tener mismo largo
+  // (64 chars para SHA-256). Si por algún motivo no coinciden en largo,
+  // timingSafeEqual tira → lo manejamos como firma inválida sin filtrar
+  // info por timing. Es defensa en profundidad: MP es target de alto
+  // valor, vale la pena el costo trivial de la comparación constante.
+  let isValid = false;
+  try {
+    const bufExpected = Buffer.from(expected, 'utf8');
+    const bufReceived = Buffer.from(String(v1), 'utf8');
+    if (bufExpected.length === bufReceived.length) {
+      isValid = timingSafeEqual(bufExpected, bufReceived);
+    }
+  } catch (err) {
+    // Si algo raro pasa al comparar, tratar como firma inválida.
+    console.warn('[mp] error comparando firma (tratando como inválida):', err?.message || err);
+    isValid = false;
+  }
 
   if (!isValid) {
     // Logging detallado — sin filtrar el SECRET, pero con los inputs
