@@ -435,7 +435,24 @@ async function handleCreateCoupon(body, res, req) {
     solo_clientes_nuevos:            c.solo_clientes_nuevos === true,     // Sesión 33
     descuenta_personalizacion:       descuentaPers,                       // Sesión 33
     personalizacion_slots_cubiertos: descuentaPers ? slotsCub : 0,        // Sesión 33
+    es_recompensa_resena:            c.es_recompensa_resena === true,    // Sesión 38
   };
+
+  // Sesión 38: si el nuevo cupón es recompensa Y queda activo, hay que
+  // desactivar la flag en cualquier otro cupón activo que la tenga (el
+  // índice único parcial coupons_only_one_review_reward_active bloquea
+  // tener 2 al mismo tiempo). Hacemos esto ANTES del insert.
+  if (row.es_recompensa_resena && row.activo) {
+    const { error: clearErr } = await supabase
+      .from('coupons')
+      .update({ es_recompensa_resena: false })
+      .eq('es_recompensa_resena', true)
+      .eq('activo', true);
+    if (clearErr) {
+      console.error('[admin/create_coupon] clear reward error:', clearErr.message);
+      return fail(res, 500, 'db_error', clearErr.message);
+    }
+  }
 
   const { data, error } = await supabase
     .from('coupons')
@@ -462,6 +479,7 @@ async function handleUpdateCoupon(body, res, req) {
     'solo_clientes_repetidos',                                                  // Sesión 32
     'solo_clientes_nuevos', 'descuenta_personalizacion',                        // Sesión 33
     'personalizacion_slots_cubiertos',                                          // Sesión 33
+    'es_recompensa_resena',                                                     // Sesión 38
   ];
   const patch = {};
   for (const k of allowed) {
@@ -906,6 +924,196 @@ async function handleGetPersonalizExampleUploadUrl(body, res, req) {
 }
 
 // ═════════════════════════════════════════════════════════════════
+// RESEÑAS (Sesión 38)
+// ─────────────────────────────────────────────────────────────────
+// Moderación de reseñas dejadas por clientes en la página de seguimiento.
+// Los 4 handlers requieren JWT (panel admin).
+//
+//   list_reviews              → listado con filtro opcional por estado
+//   update_review_status      → cambiar visibilidad (aprobada / oculta / pendiente)
+//   delete_review             → borrado físico + cleanup de fotos en storage
+//   set_coupon_review_reward  → marcar UN cupón como recompensa (auto-desactiva el anterior)
+// ═════════════════════════════════════════════════════════════════
+
+const BUCKET_REVIEWS_PHOTOS = 'reviews-photos';
+
+/**
+ * Lista todas las reseñas. Acepta filtro opcional body.estado para
+ * traer solo "pendiente", "aprobada" u "oculta".
+ *
+ * Por default trae TODAS, ordenadas por fecha descendente. Devuelve
+ * también el número de pedido y nombre del cliente para mostrar en
+ * la tabla del admin (denormalizado vía JOIN con orders).
+ */
+async function handleListReviews(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
+
+  const estado = String(body.estado || '').trim();
+
+  let q = supabase
+    .from('reviews')
+    .select(`
+      id, order_id, product_id, product_name, product_color,
+      author_email, author_name, author_location,
+      rating, texto, fotos_urls,
+      estado, reward_coupon_codigo,
+      created_at, updated_at,
+      orders ( numero, fecha, total )
+    `)
+    .order('created_at', { ascending: false });
+
+  if (estado && ['pendiente', 'aprobada', 'oculta'].includes(estado)) {
+    q = q.eq('estado', estado);
+  }
+
+  const { data, error } = await q;
+  if (error) return fail(res, 500, 'db_error', error.message);
+
+  return ok(res, { reviews: data || [] });
+}
+
+/**
+ * Cambia el estado de una reseña.
+ * Body: { action, id, estado }
+ * estado válido: 'pendiente' | 'aprobada' | 'oculta'
+ *
+ * Permite tanto aprobar como ocultar como des-aprobar.
+ */
+async function handleUpdateReviewStatus(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
+
+  const id     = String(body.id || '').trim();
+  const estado = String(body.estado || '').trim();
+
+  if (!id) return fail(res, 400, 'id_required');
+  if (!['pendiente', 'aprobada', 'oculta'].includes(estado)) {
+    return fail(res, 400, 'estado_invalid',
+      'estado debe ser "pendiente", "aprobada" u "oculta".');
+  }
+
+  const { error } = await supabase
+    .from('reviews')
+    .update({ estado })
+    .eq('id', id);
+
+  if (error) return fail(res, 500, 'db_error', error.message);
+  return ok(res, { id, estado });
+}
+
+/**
+ * Borra una reseña completamente + limpia las fotos asociadas del bucket.
+ * Body: { action, id, confirm: true }
+ *
+ * Irreversible. Defensa en profundidad: requiere confirm=true.
+ *
+ * Si el borrado de las fotos falla, igual se borra la reseña (las
+ * fotos quedarían huérfanas pero la tabla queda consistente — son
+ * cleanables después por inspección manual).
+ */
+async function handleDeleteReview(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
+
+  const id = String(body.id || '').trim();
+  if (!id) return fail(res, 400, 'id_required');
+  if (body.confirm !== true) return fail(res, 400, 'confirm_required');
+
+  // 1) Leer la reseña para conocer las fotos a borrar
+  const { data: review, error: readErr } = await supabase
+    .from('reviews')
+    .select('id, fotos_urls')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (readErr) return fail(res, 500, 'db_error', readErr.message);
+  if (!review) return fail(res, 404, 'review_not_found');
+
+  // 2) Extraer paths internos del bucket desde las URLs públicas
+  //    Formato esperado: https://<host>/storage/v1/object/public/<bucket>/<path>
+  const fotosToDelete = (review.fotos_urls || [])
+    .map(url => {
+      const marker = `/storage/v1/object/public/${BUCKET_REVIEWS_PHOTOS}/`;
+      const idx = String(url || '').indexOf(marker);
+      if (idx === -1) return null;
+      return String(url).slice(idx + marker.length);
+    })
+    .filter(Boolean);
+
+  // 3) Borrar fotos del bucket (si las hay)
+  if (fotosToDelete.length > 0) {
+    const { error: stErr } = await supabase
+      .storage
+      .from(BUCKET_REVIEWS_PHOTOS)
+      .remove(fotosToDelete);
+
+    if (stErr) {
+      // No bloqueamos el borrado de la reseña por esto — solo loggeamos.
+      console.error('[admin/delete_review] storage cleanup error:',
+        stErr.message, { fotosToDelete });
+    }
+  }
+
+  // 4) Borrar la reseña
+  //    Nota: coupon_authorized_emails.review_id tiene ON DELETE SET NULL,
+  //    así que la autorización del cupón sobrevive (decisión: si el admin
+  //    borra una reseña abusiva, el cliente NO pierde el cupón ya entregado).
+  const { error: delErr } = await supabase
+    .from('reviews')
+    .delete()
+    .eq('id', id);
+
+  if (delErr) return fail(res, 500, 'db_error', delErr.message);
+
+  return ok(res, { id, deleted_photos: fotosToDelete.length });
+}
+
+/**
+ * Marca un cupón como recompensa por reseña. Solo puede haber UN cupón
+ * activo con esta flag a la vez (índice único parcial en DB).
+ *
+ * Lógica:
+ *   - Si body.activate === true: desactiva el cupón anterior (si existe)
+ *     y marca este con la flag.
+ *   - Si body.activate === false: desmarca este cupón.
+ *
+ * Body: { action, coupon_id, activate }
+ */
+async function handleSetCouponReviewReward(body, res, req) {
+  if (!requireAuth(body, res, req)) return;
+
+  const couponId = String(body.coupon_id || '').trim();
+  const activate = body.activate === true;
+
+  if (!couponId) return fail(res, 400, 'coupon_id_required');
+
+  // Si activate=true, primero quitar la flag de otros cupones que la tengan
+  // (el índice único parcial impide tener 2 cupones activos con la flag,
+  // pero igual los limpiamos para ser explícitos)
+  if (activate) {
+    const { error: clearErr } = await supabase
+      .from('coupons')
+      .update({ es_recompensa_resena: false })
+      .eq('es_recompensa_resena', true)
+      .neq('id', couponId);
+
+    if (clearErr) {
+      console.error('[admin/set_reward] clear error:', clearErr.message);
+      return fail(res, 500, 'db_error', clearErr.message);
+    }
+  }
+
+  // Setear/quitar la flag en el cupón target
+  const { error: updErr } = await supabase
+    .from('coupons')
+    .update({ es_recompensa_resena: activate })
+    .eq('id', couponId);
+
+  if (updErr) return fail(res, 500, 'db_error', updErr.message);
+
+  return ok(res, { coupon_id: couponId, activated: activate });
+}
+
+
+// ═════════════════════════════════════════════════════════════════
 // HANDLER PRINCIPAL — router por action
 // ═════════════════════════════════════════════════════════════════
 const ACTIONS = {
@@ -932,6 +1140,11 @@ const ACTIONS = {
   save_personalizacion_example:          handleSavePersonalizExample,
   delete_personalizacion_example:        handleDeletePersonalizExample,
   get_personalizacion_example_upload_url: handleGetPersonalizExampleUploadUrl,
+  // ── Reseñas (Sesión 38) ──
+  list_reviews:             handleListReviews,
+  update_review_status:     handleUpdateReviewStatus,
+  delete_review:            handleDeleteReview,
+  set_coupon_review_reward: handleSetCouponReviewReward,
 };
 
 export default createHandler(async (req, res) => {

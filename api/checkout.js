@@ -239,7 +239,7 @@ async function handleValidateCoupon(body, res) {
 
   const { data, error } = await supabase
     .from('coupons')
-    .select('codigo, tipo, valor, uso, min_compra, activo, usos_count, emails_usados, desde, hasta')
+    .select('id, codigo, tipo, valor, uso, min_compra, activo, usos_count, emails_usados, desde, hasta, es_recompensa_resena')
     .eq('codigo', codigoRaw)
     .maybeSingle();
 
@@ -265,6 +265,26 @@ async function handleValidateCoupon(body, res) {
     const used = Array.isArray(data.emails_usados) ? data.emails_usados : [];
     if (used.includes(email)) {
       return fail(res, 400, 'cupon_already_used_by_email', 'Ya usaste este código anteriormente');
+    }
+  }
+
+  // ── Sesión 38: validar cupón de recompensa por reseña ─────────
+  // Si el cupón está marcado como recompensa, SOLO los emails con
+  // autorización previa (que dejaron reseña) pueden usarlo.
+  if (data.es_recompensa_resena) {
+    if (!email) return fail(res, 400, 'email_required',
+      'Ingresá tu email antes de aplicar este cupón');
+
+    const { data: authRow } = await supabase
+      .from('coupon_authorized_emails')
+      .select('id')
+      .eq('coupon_id', data.id)
+      .ilike('email', email)
+      .maybeSingle();
+
+    if (!authRow) {
+      return fail(res, 400, 'cupon_review_reward_only',
+        'Este cupón es exclusivo para clientes que dejaron una reseña.');
     }
   }
 
@@ -331,11 +351,6 @@ async function handleCreateOrder(body, res, req) {
     // Sesión 28 Bloque B
     personalizacion_extra: parseInt(order.personalizacion_extra, 10) || 0,
     acepto_no_devolucion:  order.acepto_no_devolucion === true,
-    // Sesión 36: el cupón viene en un parámetro separado (body.cupon),
-    // pero el email lo necesita en el objeto order para atribuir el
-    // descuento correctamente. Lo agregamos acá para que llegue al
-    // template y para que mp-webhook lo persista en `cupon_codigo`.
-    cupon_codigo: cupon ? String(cupon).trim().toUpperCase() : null,
   };
 
   // Sanitización de items + extracción/limpieza de personalización.
@@ -407,6 +422,34 @@ async function handleCreateOrder(body, res, req) {
       console.warn('[checkout] totals validation failed:', totalsCheck.code, totalsCheck.detail);
     }
     return fail(res, totalsCheck.http, totalsCheck.code, totalsCheck.msg);
+  }
+
+  // ── Sesión 38: si se aplicó un cupón, revalidar autorización ──
+  // La RPC `apply_coupon_and_create_order` NO conoce coupon_authorized_emails.
+  // Para no tocarla (es delicada + atómica), validamos acá ANTES de invocarla.
+  // Defensa en profundidad: aunque el frontend ya validó al aplicar, el
+  // cliente podría haber pegado al endpoint directo.
+  if (cupon) {
+    const cupCode = String(cupon).trim().toUpperCase();
+    const { data: cupRow } = await supabase
+      .from('coupons')
+      .select('id, es_recompensa_resena')
+      .eq('codigo', cupCode)
+      .maybeSingle();
+
+    if (cupRow?.es_recompensa_resena) {
+      const { data: authRow } = await supabase
+        .from('coupon_authorized_emails')
+        .select('id')
+        .eq('coupon_id', cupRow.id)
+        .ilike('email', cleanOrder.email)
+        .maybeSingle();
+
+      if (!authRow) {
+        return fail(res, 400, 'cupon_review_reward_only',
+          'Este cupón es exclusivo para clientes que dejaron una reseña.');
+      }
+    }
   }
 
   // Llamar a la RPC atómica
