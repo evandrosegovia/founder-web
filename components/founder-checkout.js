@@ -548,6 +548,12 @@
     // Subtotal actual para validar mínimo de compra en el servidor
     const { subtotal } = calculateOrderTotals();
 
+    // Sesión 34 fix: indicarle al backend si el carrito tiene
+    // personalización. Sin este flag, los cupones marcados como
+    // "Descuenta personalización" se rechazaban siempre porque el
+    // backend recibía `undefined` y lo trataba como "sin grabado".
+    const hasPersonalizacion = state.cart.some(i => i && i.personalizacion);
+
     btn.disabled    = true;
     btn.textContent = '...';
     showFeedback('', false);
@@ -558,6 +564,7 @@
         codigo,
         email,
         subtotal,
+        hasPersonalizacion,
       });
 
       if (!ok) {
