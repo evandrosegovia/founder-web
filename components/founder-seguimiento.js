@@ -185,6 +185,9 @@
     const estado         = str(p.estado);
     const nroSeguimiento = str(p.nro_seguimiento);
     const urlSeguimiento = str(p.url_seguimiento);
+    // Sesión 36: campos para mostrar tarjetas verdes de descuento
+    const cuponCodigo       = str(p.cupon_codigo);
+    const personalizExtra   = parseInt(p.personalizacion_extra ?? 0, 10) || 0;
 
     // ID formateado para mostrar al usuario (mantiene compat con formato viejo)
     const pedidoIdFormateado = id.toUpperCase().startsWith('FND')
@@ -272,7 +275,7 @@
     renderProductos(orderItems, productosStr);
 
     // Totales
-    renderTotales(subtotal, descuento, envio, total, pago);
+    renderTotales(subtotal, descuento, envio, total, pago, cuponCodigo, personalizExtra);
 
     // ── Panel de tracking/retiro ──
     const seccion       = document.getElementById('trackingSection');
@@ -457,16 +460,49 @@
     return '$' + num.toLocaleString('es-UY');
   }
 
-  function renderTotales(subtotal, descuento, envio, total, pago) {
+  function renderTotales(subtotal, descuento, envio, total, pago, cuponCodigo, personalizExtra) {
     const container = document.getElementById('rTotales');
     let html = '';
 
     if (subtotal) html += `<div class="total-row"><span>Subtotal</span><span>${formatPesos(subtotal)}</span></div>`;
 
-    const desc = parseFloat((descuento+'').replace(/[^0-9.-]/g,''));
-    if (desc > 0) html += `<div class="total-row"><span>Descuento</span><span class="descuento-val">−${formatPesos(descuento)}</span></div>`;
+    // Línea de personalización si hay
+    const personaliz = parseInt(personalizExtra || 0, 10) || 0;
+    if (personaliz > 0) {
+      html += `<div class="total-row"><span>Personalización láser</span><span style="color:var(--color-gold)">+${formatPesos(personaliz)}</span></div>`;
+    }
 
-    const env = parseFloat((envio+'').replace(/[^0-9.-]/g,''));
+    // Sesión 36: tarjetas verdes para descuentos.
+    // Como en la DB solo guardamos el monto TOTAL del descuento
+    // (sin desglosar cupón vs transferencia), usamos heurística:
+    //  - Si hay cupon_codigo Y pago contiene "transferencia" → 2 fuentes
+    //  - Si solo cupon_codigo → solo cupón
+    //  - Si solo transferencia detectada → solo transferencia
+    //  - Si no se puede atribuir → fallback a fila plana "Descuento"
+    const descNum = parseFloat(String(descuento).replace(/[^0-9.-]/g, '')) || 0;
+    const hayCupon = !!(cuponCodigo && cuponCodigo.trim());
+    const hayTransferencia = /transfer/i.test(pago || '');
+
+    if (descNum > 0) {
+      if (hayCupon && hayTransferencia) {
+        // 2 tarjetas: cupón + transferencia. Como no tenemos el split
+        // exacto guardado en la DB, mostramos textos descriptivos sin
+        // monto individual (el monto total ya está en el sumario).
+        html += renderDiscountCard(`✓ Cupón ${cuponCodigo.toUpperCase()} aplicado`, 'Descuento aplicado al pedido', null);
+        html += renderDiscountCard('✓ Pago por transferencia', '10% sobre productos + grabados', null);
+        // Total descontado para que se entienda la suma
+        html += `<div class="total-row"><span style="color:var(--color-muted);font-size:0.78rem">Total descontado</span><span class="descuento-val">−${formatPesos(descuento)}</span></div>`;
+      } else if (hayCupon) {
+        html += renderDiscountCard(`✓ Cupón ${cuponCodigo.toUpperCase()} aplicado`, 'Descuento aplicado a tu pedido', descNum);
+      } else if (hayTransferencia) {
+        html += renderDiscountCard('✓ Pago por transferencia', '10% sobre productos + grabados', descNum);
+      } else {
+        // Fallback: pedido viejo sin atribución
+        html += `<div class="total-row"><span>Descuento</span><span class="descuento-val">−${formatPesos(descuento)}</span></div>`;
+      }
+    }
+
+    const env = parseFloat((envio + '').replace(/[^0-9.-]/g, ''));
     if (!isNaN(env)) {
       html += `<div class="total-row"><span>Envío</span><span>${env === 0 ? '🎁 Gratis' : formatPesos(envio)}</span></div>`;
     }
@@ -474,6 +510,21 @@
     if (total) html += `<div class="total-row final"><span>Total</span><span>${formatPesos(total)}</span></div>`;
 
     container.innerHTML = html || '<p style="color:var(--color-muted);font-size:0.82rem;">Sin detalle de totales.</p>';
+  }
+
+  // Sesión 36: helper para renderizar una tarjeta verde de descuento.
+  // Si amount es null o 0, no muestra el monto (caso 2 fuentes mezcladas).
+  function renderDiscountCard(title, subtitle, amount) {
+    const amountHtml = (amount && amount > 0)
+      ? `<span class="discount-card__amount">−${formatPesos(amount)}</span>`
+      : '';
+    return `<div class="discount-card">
+      <div class="discount-card__info">
+        <span class="discount-card__title">${title}</span>
+        <span class="discount-card__sub">${subtitle}</span>
+      </div>
+      ${amountHtml}
+    </div>`;
   }
 
   // ═══════════════════════════════════════════════════════════

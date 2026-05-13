@@ -446,25 +446,23 @@
       return s + e * i.qty;
     }, 0);
 
-    const transferDisc = state.pagoMode === 'transfer' ? 0.10 : 0;
-
-    // Descuento del cupón. Hay 2 modos posibles:
+    // Sesión 36: nueva fórmula de descuentos.
     //
-    //  A) Cupón clásico (descuento sobre subtotal de productos):
-    //     se aplica sobre el SUBTOTAL DE PRODUCTOS, no sobre la
-    //     personalización. Compite con el 10% de transferencia
-    //     (se usa el mayor).
-    //
-    //  B) Cupón de personalización (Sesión 33):
-    //     descuenta del costo de PERSONALIZACIÓN, no del subtotal.
-    //     Cálculo: slots × items_grabados × precio_unit_slot,
-    //     topeado al 100% del personalizExtra real. NO compite con
-    //     el 10% de transferencia — son descuentos independientes.
-    let couponAmountSubtotal      = 0;  // descuento sobre subtotal de productos
-    let couponAmountPersonalizado = 0;  // descuento sobre personalización
+    // Reglas confirmadas:
+    //  1. CUPÓN clásico → descuenta del subtotal del producto.
+    //  2. CUPÓN de personalización → descuenta del costo de grabado.
+    //  3. TRANSFERENCIA 10% → se aplica al final, sobre
+    //     (subtotal − cuponSubtotal) + (personaliz − cuponPersonaliz),
+    //     SIN incluir el envío.
+    //  4. Los 3 descuentos son ACUMULABLES (cambia la regla vieja
+    //     que aplicaba "el mayor entre cupón y transferencia").
+    //  5. Razón de negocio: incentivar transferencia para ahorrar
+    //     comisiones de Mercado Pago.
+    let couponAmountSubtotal      = 0;
+    let couponAmountPersonalizado = 0;
     if (state.coupon) {
       if (state.coupon.descuentaPersonalizacion === true) {
-        // Modo B: contar items con grabado (sumando cantidad).
+        // Cupón B: descuento sobre personalización
         const itemsGrabados = state.cart.reduce((s, i) => {
           const p = i.personalizacion;
           const tieneSlot = p && (p.adelante || p.interior || p.atras || (p.texto && p.texto.length));
@@ -474,43 +472,64 @@
         if (calc > personalizExtra) calc = personalizExtra; // tope al 100%
         couponAmountPersonalizado = calc;
       } else if (state.coupon.tipo === 'porcentaje') {
-        // Modo A — porcentaje
+        // Cupón A: porcentaje sobre subtotal
         couponAmountSubtotal = Math.round(subtotal * state.coupon.valor / 100);
       } else {
-        // Modo A — fijo
+        // Cupón A: monto fijo, topeado al subtotal
         couponAmountSubtotal = Math.min(state.coupon.valor, subtotal);
       }
     }
 
-    // El descuento del cupón clásico (modo A) compite con el de
-    // transferencia (se usa el mayor). El cupón de personalización
-    // (modo B) NO compite — siempre se aplica además.
-    const transferAmount = Math.round(subtotal * transferDisc);
-    const subtotalDiscount = Math.max(couponAmountSubtotal, transferAmount);
-    const discountSource =
-      couponAmountSubtotal >= transferAmount && couponAmountSubtotal > 0 ? 'cupon'
-      : (transferAmount > 0 ? 'transfer' : 'none');
+    // Base para el descuento de transferencia = lo que queda después
+    // de aplicar los cupones, SIN incluir envío.
+    const baseTransferencia = (subtotal - couponAmountSubtotal)
+                              + (personalizExtra - couponAmountPersonalizado);
 
-    // discountAmount es el monto total de descuento (lo que se
-    // resta del subtotal del pedido). Suma el descuento clásico
-    // + el descuento de personalización.
-    const discountAmount = subtotalDiscount + couponAmountPersonalizado;
+    // Descuento transferencia: 10% sobre esa base. Solo si el
+    // cliente seleccionó "transferencia" como método de pago.
+    const transferAmount = state.pagoMode === 'transfer'
+      ? Math.round(baseTransferencia * 0.10)
+      : 0;
 
-    const subtotalConDesc = subtotal - subtotalDiscount + (personalizExtra - couponAmountPersonalizado);
+    // Envío: se calcula sobre la base ANTES del descuento de
+    // transferencia (la transferencia no debe afectar la calificación
+    // a envío gratis — si gastaste >$2.000 en productos+grabados ya
+    // te ganaste el envío gratis, no importa qué descuento extra venga).
     const shipping = state.entregaMode === 'retiro' ? 0
-      : (subtotalConDesc >= CONFIG.FREE_SHIPPING ? 0 : CONFIG.SHIPPING_COST);
-    const total = subtotalConDesc + shipping;
+      : (baseTransferencia >= CONFIG.FREE_SHIPPING ? 0 : CONFIG.SHIPPING_COST);
+
+    // Total final
+    const total = baseTransferencia - transferAmount + shipping;
+
+    // discountAmount = suma de todos los descuentos visibles
+    // (para compatibilidad con render y email).
+    const discountAmount = couponAmountSubtotal + couponAmountPersonalizado + transferAmount;
 
     return {
       subtotal,
       personalizExtra,
-      discountAmount,                       // total (compat con renderOrderSummary)
-      discountSource,                       // 'cupon' | 'transfer' | 'none'
-      couponAmountSubtotal,                 // Sesión 34: descuento sobre subtotal
-      couponAmountPersonalizado,            // Sesión 34: descuento sobre personalización
+      discountAmount,                       // suma total de descuentos
+      couponAmountSubtotal,                 // descuento sobre subtotal del producto
+      couponAmountPersonalizado,            // descuento sobre personalización
+      transferAmount,                       // Sesión 36: descuento transferencia (acumulable)
+      baseTransferencia,                    // Sesión 36: base sobre la que se calculó 10%
       shipping,
       total,
     };
+  }
+
+  // Sesión 36: helper para renderizar una tarjeta de descuento
+  // verde con título, subtítulo y monto. Se usa para cupones y
+  // descuento por transferencia. Garantiza consistencia visual
+  // entre los distintos tipos de descuento.
+  function renderDiscountCard(title, subtitle, amount) {
+    return `<div class="co-discount-card">
+      <div class="co-discount-card__info">
+        <span class="co-discount-card__title">${title}</span>
+        <span class="co-discount-card__sub">${subtitle}</span>
+      </div>
+      <span class="co-discount-card__amount">−$${amount.toLocaleString('es-UY')}</span>
+    </div>`;
   }
 
   // ── RESUMEN DEL PEDIDO ───────────────────────────────────────
@@ -553,19 +572,16 @@
     }).join('');
 
     const {
-      subtotal, personalizExtra, discountAmount, discountSource,
-      couponAmountSubtotal, couponAmountPersonalizado,
+      subtotal, personalizExtra,
+      couponAmountSubtotal, couponAmountPersonalizado, transferAmount,
       shipping, total
     } = calculateOrderTotals();
 
     // Línea de personalización. Si hay descuento de cupón de
-    // personalización (Sesión 33/34), mostramos el monto neto
-    // (extra - descuento) con el descuento entre paréntesis abajo
-    // para que el cliente entienda de dónde sale el ahorro.
+    // personalización, mostramos el monto original tachado + el neto.
     if (personalizExtra > 0) {
       const personalizNeto = personalizExtra - couponAmountPersonalizado;
       if (couponAmountPersonalizado > 0) {
-        // Muestra el extra original tachado + el neto en dorado + indicador del cupón.
         html += `<div class="co-summary__item">
           <span>Personalización láser</span>
           <span style="color:var(--color-gold)">
@@ -573,25 +589,36 @@
             ${personalizNeto > 0 ? '+$' + personalizNeto.toLocaleString('es-UY') : 'Gratis 🎁'}
           </span>
         </div>`;
-        html += `<div class="co-summary__item" style="font-size:.85em;color:var(--color-success)">
-          <span>↳ Cupón ${state.coupon.codigo}</span>
-          <span>-$${couponAmountPersonalizado.toLocaleString('es-UY')}</span>
-        </div>`;
       } else {
         html += `<div class="co-summary__item"><span>Personalización láser</span><span style="color:var(--color-gold)">+$${personalizExtra.toLocaleString('es-UY')}</span></div>`;
       }
     }
 
-    // Descuento del subtotal (cupón clásico o transferencia). Solo se
-    // muestra si hay descuento que aplica al subtotal de productos —
-    // el descuento de personalización ya se mostró arriba.
-    const subtotalDiscount = Math.max(couponAmountSubtotal, state.pagoMode === 'transfer' ? Math.round(subtotal * 0.10) : 0);
-    if (subtotalDiscount > 0) {
-      const label = discountSource === 'cupon'
-        ? `Cupón ${state.coupon.codigo}`
-        : 'Descuento transferencia 10%';
-      html += `<div class="co-summary__item"><span>${label}</span><span style="color:var(--color-success)">-$${subtotalDiscount.toLocaleString('es-UY')}</span></div>`;
+    // Sesión 36: tarjetas verdes para cada descuento.
+    // Cada descuento es una tarjeta con su título, subtítulo y monto.
+    // El cupón clásico/personalización aparece primero, después la
+    // transferencia (que se aplica al final sobre la base ya descontada).
+
+    if (couponAmountSubtotal > 0) {
+      // Cupón clásico (porcentaje o fijo)
+      const tipoSub = state.coupon.tipo === 'porcentaje'
+        ? `${state.coupon.valor}% de descuento del producto`
+        : `$${state.coupon.valor.toLocaleString('es-UY')} de descuento`;
+      html += renderDiscountCard(`✓ Cupón ${state.coupon.codigo} aplicado`, tipoSub, couponAmountSubtotal);
     }
+
+    if (couponAmountPersonalizado > 0) {
+      // Cupón de personalización
+      const slots = state.coupon.personalizacionSlotsCubiertos;
+      const sub = `${slots} grabado${slots === 1 ? '' : 's'} personalizado${slots === 1 ? '' : 's'} gratis`;
+      html += renderDiscountCard(`✓ Cupón ${state.coupon.codigo} aplicado`, sub, couponAmountPersonalizado);
+    }
+
+    if (transferAmount > 0) {
+      // Descuento transferencia (acumulable con cupones)
+      html += renderDiscountCard('✓ Pago por transferencia', '10% sobre productos + grabados', transferAmount);
+    }
+
     html += `<div class="co-summary__item"><span>Envío</span><span>${shipping === 0 ? 'Gratis 🎁' : '$' + shipping.toLocaleString('es-UY')}</span></div>`;
     html += `<div class="co-summary__total"><span class="co-summary__total-label">Total</span><span class="co-summary__total-value">$${total.toLocaleString('es-UY')} UYU</span></div>`;
 
