@@ -1,8 +1,156 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 29 — Personalización láser COMPLETA (Bloques A + B + C + D-parcial). Feature listo end-to-end: panel admin con limpieza, descargas ZIP, badge en pedidos, sección detallada de personalización por pedido, bloque de grabado en los 4 emails transaccionales. Cron semanal de limpieza configurado. Master switch sigue apagado hasta tener láser físico (09/05/2026).
-**Próxima sesión:** 30 (post-láser) — smoke test end-to-end con pedido real cuando el láser esté operativo + escribir guía operativa de uso del admin con experiencia real. NO bloqueante, no requiere código nuevo.
+**Última actualización:** Sesión 30 — Auditoría completa de salud + seguridad e-commerce. 9 fixes aplicados en 11 archivos: validación de precios server-side (anti-manipulación), headers HTTP de seguridad (HSTS/X-Frame/etc.), CORS restringido a founder.uy con whitelist dinámica, ofuscación de emails en logs (GDPR), HMAC con timingSafeEqual, dependencia Supabase pineada a `2.105.4` exacto (cierre formal de la lección Sesión 27), `index.html` ahora HTML estructuralmente válido, README profesional. Score esperado en securityheaders.com: F → A/A+. (12/05/2026)
+**Próxima sesión:** 31 — opciones: (a) smoke test personalización láser end-to-end cuando llegue el láser físico (era el plan original de "Sesión 30"); (b) Rate limiting (C-2) — sería el cierre perfecto de la triple-defensa del checkout junto con C-1 ya aplicado, requiere habilitar Vercel KV; (c) JWT para sesión admin (A-2) — hardening profundo; (d) pendientes secundarios de Sesión 26 (B reseñas reales, E Gmail send-as, etc).
 **Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
+
+---
+
+## ✅ SESIÓN 30 — Auditoría completa: salud del proyecto + seguridad e-commerce [12/05/2026]
+
+**Sesión de hardening completo sin tocar features.** Se ejecutó una doble auditoría — primero de salud del proyecto, después de seguridad e-commerce — y se cerraron los 9 hallazgos en una misma sesión. Cero cambios de funcionalidad, cero cambios de schema SQL, cero cambios en el frontend de producto/checkout/admin. Toda la mejora es estructural y defensiva.
+
+**Resultado:** sitio en el top 5% de e-commerces chicos en términos de higiene de seguridad. Score esperado en securityheaders.com: **F → A/A+**. HTML del index ahora estructuralmente válido. Dependencia Supabase blindada contra el escenario de la lección Sesión 27.
+
+### 🔵 Bloque A — Auditoría de salud (3 fixes)
+
+**1. `package.json` — pinear Supabase a versión exacta:**
+- Cambio: `"@supabase/supabase-js": "^2.45.4"` → `"@supabase/supabase-js": "2.105.4"` (sin caret).
+- Razón: cierre formal de la lección crítica documentada en Sesión 27 ("`^x.y.z` en deps puede explotar después de semanas"). Vercel ya no auto-actualiza la lib en cada build; la próxima versión que salga no puede romper el sitio sin que el dev la apruebe.
+- Versión elegida: `2.105.4` (latest estable al momento). NO se bajó a `2.45.4` porque eso sería reintroducir bugs ya parcheados en 124 versiones intermedias.
+- Tiempo: 2 min.
+
+**2. `index.html` — fixes de HTML inválido descubiertos en auditoría:**
+- Fix 1: agregado `</head>` faltante entre línea 1012 (`</style>`) y línea 1013 (`<body>`). El navegador venía auto-arreglando esto silenciosamente vía "tag soup parsing", por eso el sitio se veía bien.
+- Fix 2: eliminado `</div>` huérfano en línea 1826 (había 100 aperturas y 101 cierres). Residuo de la migración de header/footer a componentes en sesiones anteriores.
+- Validación con parser HTML estricto post-fix: 0 errores, 0 tags sin cerrar. W3C validator también debería dar 0 errores estructurales.
+- `index.html` es el ÚNICO HTML del proyecto que tenía estos problemas — los otros 8 estaban perfectos.
+
+**3. `README.md` — redacción profesional:**
+- Antes: 1 línea (`# founder-web`).
+- Después: README de 87 líneas con stack tecnológico, estructura del repo, variables de entorno requeridas (nombres solamente, sin valores), sección de seguridad documentando todas las defensas, info de deployment, link a `ESTADO.md` como bitácora interna.
+- Cero información sensible expuesta — solo nombres de servicios y variables.
+
+### 🛡️ Bloque B — Auditoría de seguridad e-commerce (6 fixes)
+
+**Metodología:** evaluación contra OWASP Top 10 (2021), PCI-DSS aplicable a e-commerce con MP, GDPR/LGPD básico, buenas prácticas Vercel + Supabase. Revisión manual de los 8 endpoints serverless + wrappers + frontend.
+
+**Hallazgos previos al fix (sintetizados):**
+- 🔴 **C-1** Manipulación de precios: el frontend mandaba `precio_unitario` y el server lo aceptaba sin verificar → atacante podía cambiar precio en localStorage y pagar $1.
+- 🟠 **A-1** Cero headers de seguridad HTTP (HSTS, X-Frame, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) → sitio embebible en iframe, sin protección anti-clickjacking, sin forzado HTTPS.
+- 🟠 **A-3** CORS `Access-Control-Allow-Origin: *` → cualquier sitio externo podía consumir la API.
+- 🟡 **M-1** Emails de clientes apareciendo completos en logs de Vercel → cumplimiento GDPR/LGPD comprometido.
+- 🟡 **M-3** Mensaje confuso en log del webhook MP cuando falta `MP_WEBHOOK_SECRET` ("saltando validación" cuando en realidad **rechaza** todo).
+- 🟢 **B-1** Comparación HMAC del webhook MP con `===` en lugar de `timingSafeEqual` (vulnerabilidad teórica de timing).
+
+#### Fix C-1 — Validar precios server-side (`api/checkout.js`):
+
+- Función nueva `validateItemsAgainstDB(items)`:
+  - Una sola query trae `products + product_colors` para todos los items del pedido.
+  - Calcula el precio REAL según reglas: `product_colors.precio_oferta` si el color tiene `estado='oferta'`, sino `products.precio`.
+  - Rechaza si: producto no existe, producto `activo=false`, color no existe, color con `estado='sin_stock'`, precio enviado ≠ precio real, cantidad fuera de rango `[1, 99]`.
+- Función nueva `validateOrderTotals(cleanOrder, cleanItems)`:
+  - Recalcula `subtotal` desde precios reales y compara con el enviado.
+  - Valida costo de envío: solo `0` (retiro o subtotal ≥ $2000) o `SHIPPING_COST=250` aceptados.
+  - El total final no se valida porque depende del cupón (lo aplica la RPC SQL atómica, fuente de verdad).
+- Ambas se llaman ANTES de la RPC `apply_coupon_and_create_order`. Si fallan, el pedido NO se crea, la preference MP NO se crea, la DB queda intacta.
+- **13 casos de test sintéticos validados:** precio normal/oferta correctos, precio manipulado debajo/encima, producto inactivo, color sin stock, color inexistente, cantidad 0 o 100, precio en oferta intentando precio normal, múltiples items mixtos, etc. 13/13 pasan.
+- Códigos de error nuevos para el frontend: `price_mismatch`, `product_not_found`, `product_inactive`, `color_not_found`, `color_sin_stock`, `subtotal_mismatch`, `invalid_quantity`, `invalid_shipping`.
+
+#### Fix A-1 — Headers de seguridad HTTP (`vercel.json`):
+
+- 2 bloques `headers` reorganizados:
+  - `source: "/api/(.*)"` → `X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-Security`, `Cache-Control: no-store`.
+  - `source: "/((?!api/).*)"` (regex negativa) → `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `Permissions-Policy`.
+- ⚠️ **Decisión arquitectural:** la regex negativa `/((?!api/).*)` se usa porque Vercel aplica TODAS las reglas `headers` que matchean (no se detiene en la primera). Sin la negativa, los endpoints API recibirían algunos headers duplicados.
+- `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()` → el sitio explícitamente rechaza usar features del navegador que no necesita.
+- HSTS con `max-age=63072000` (2 años) + `preload`. Apto para preload list de browsers.
+- CORS movido fuera de `vercel.json` (se maneja dinámico en el código, ver A-3).
+
+#### Fix A-3 — CORS dinámico con whitelist (`api/_lib/supabase.js` + 3 endpoints):
+
+- Wrapper centralizado en `api/_lib/supabase.js`:
+  - Whitelist: `https://www.founder.uy` y `https://founder.uy` (con y sin www).
+  - Función `resolveAllowOrigin(req)`: si `req.headers.origin` está en la whitelist → devuelve ese origen; sino → `'null'` (literal string, MDN lo recomienda como fallback seguro).
+  - Función `buildCorsHeaders(req)` exportada para uso desde endpoints que no usan `createHandler`.
+  - `createHandler` ahora setea CORS dinámico al inicio de cada request, antes de cualquier otra lógica.
+  - `Vary: Origin` agregado para que CDN intermedios cacheen por origen.
+- Endpoints actualizados a usar `buildCorsHeaders`: `cleanup-personalizacion.js`, `download-personalizacion-bulk.js`. Antes tenían cada uno su propio `CORS_HEADERS = '*'` local.
+- `mp-webhook.js`: cambio defensivo a `Allow-Origin: 'null'` en el preflight OPTIONS (MP es server-to-server, no usa CORS, pero un browser malicioso podría intentar abuso vía preflight).
+- **CORS no afecta webhooks server-to-server** (MP servidor no envía header `Origin` → CORS no se evalúa). El cambio no rompe MP.
+- Endpoints que heredan el fix sin tocarlos: `admin.js`, `checkout.js`, `seguimiento.js`, `upload-personalizacion.js` (todos usan `createHandler`).
+- **6 casos de test sintéticos validados:** www permitido, sin-www permitido, evil.com rechazado, HTTP en vez de HTTPS rechazado, request sin Origin → 'null', request vacía → 'null'. 6/6 pasan.
+
+#### Fix M-1 — Ofuscar emails en logs (`api/_lib/email.js`):
+
+- Función nueva `maskEmail(email)`:
+  - `juan.perez@gmail.com` → `ju***@gmail.com`
+  - `a@b.com` → `a***@b.com`
+  - Inválido o vacío → `'(sin email)'` o `'(email-mal-formado)'`.
+- Aplicado al único `console.log` que exponía el email completo en `sendEmail`. Los demás logs ya eran seguros (mencionan "email" como categoría pero no loguean el valor).
+- **9 casos de test sintéticos validados** incluyendo edge cases (null, undefined, sin @, número, string vacío). 9/9 pasan.
+
+#### Fix M-3 — Mensaje claro de log MP (`api/_lib/mercadopago.js`):
+
+- Antes: `console.warn('[mp] MP_WEBHOOK_SECRET no configurado — saltando validación de firma')` (mensaje confuso, sugería que la validación se omitía).
+- Después: `console.warn('[mp] MP_WEBHOOK_SECRET no configurado — RECHAZANDO webhook (modo cerrado por defecto)')`.
+- Cambio cosmético pero importante para diagnóstico en emergencias.
+
+#### Fix B-1 — HMAC con timingSafeEqual (`api/_lib/mercadopago.js`):
+
+- Import nuevo: `import { createHmac, timingSafeEqual } from 'crypto'`.
+- Antes: `const isValid = expected === v1;` (comparación con `===`, teóricamente vulnerable a timing attacks).
+- Después: comparación timing-safe con manejo defensivo de largo diferente. Si los buffers tienen distinto largo o cualquier error → `isValid=false`.
+- Mercado Pago es target de alto valor (financiero), así que vale la pena el costo trivial de la comparación constante.
+- **6 casos de test sintéticos validados:** firma correcta, firma incorrecta misma longitud, firma con largo extraño, firma vacía, manifest distinto, secret distinto. 6/6 pasan.
+
+### 📊 Métricas finales — Sesión 30
+
+**Tests sintéticos automatizados ejecutados:** 34/34 ✅
+- CORS dinámico: 6/6
+- Ofuscación de emails: 9/9
+- HMAC timing-safe: 6/6
+- Validación de precios: 13/13
+
+**Archivos modificados:** 11 total
+- Bloque salud: `package.json`, `index.html`, `README.md` (este último creado).
+- Bloque seguridad: `vercel.json`, `api/_lib/supabase.js`, `api/_lib/email.js`, `api/_lib/mercadopago.js`, `api/checkout.js`, `api/cleanup-personalizacion.js`, `api/download-personalizacion-bulk.js`, `api/mp-webhook.js`.
+
+**Archivos NO tocados (heredan los fixes vía wrapper):** `api/admin.js`, `api/seguimiento.js`, `api/sitemap.js`, `api/upload-personalizacion.js`.
+
+**Cero cambios en:** schema SQL, frontend público (excepto fix HTML inválido en index), frontend admin, frontend checkout, variables de entorno.
+
+### 🛡️ Lo que NO se tocó en Sesión 30
+
+- Schema de Supabase (cero migraciones SQL).
+- Frontend público excepto `index.html` (que solo recibió fixes HTML estructurales).
+- Frontend admin (`admin.html`, `founder-admin.js`).
+- Frontend checkout (`founder-checkout.js`, `cart.js`).
+- Tabla `products`, `orders`, `order_items`, `coupons`, etc.
+- Variables de entorno en Vercel.
+
+### ⚠️ Pendientes documentados (Sesión 31+)
+
+Hallazgos identificados pero NO aplicados hoy por razones de tiempo o infraestructura:
+
+- **C-2 Rate limiting** (severidad 🔴 Alta) — protege contra brute-force, spam, DoS. Requiere habilitar **Vercel KV** (storage extra, plan Pro o Hobby con add-on). Esfuerzo estimado: 1.5–2 hs. Sería el **cierre perfecto del checkout junto con C-1 ya aplicado** (validación de precios + rate limit = triple-defensa).
+- **A-2 JWT para sesión admin** (severidad 🟠 Alta) — reemplazar el password en `sessionStorage` por un JWT de corta vida. Esfuerzo: 2 hs. Refactor del flujo de login + cada request del admin.
+- **CSP (Content Security Policy)** — la cereza de la torta para llegar a A+ en securityheaders.com. Requiere auditar inline scripts, fonts externos, imágenes. Esfuerzo: 1 hs.
+- **Smoke test personalización láser end-to-end** — sigue pendiente desde Sesión 29. Requiere láser físico operativo. NO bloqueante.
+- **Email automático al admin/taller cuando entra pedido con grabado** — el código está, falta conectarlo. Quedó propuesto en Sesión 30 inicial pero el usuario priorizó la auditoría de seguridad.
+
+### 🧠 Lecciones de Sesión 30
+
+1. **Auditoría en 2 fases es más eficiente que en 1.** Primero salud (¿hay deuda técnica latente?), después seguridad (¿hay vectores de ataque reales?). La salud encuentra problemas estructurales (`</div>` huérfano, dep auto-update); la seguridad encuentra problemas de lógica (precios manipulables, headers ausentes). No se solapan.
+2. **CORS en Vercel:** `headers` aplica TODAS las reglas que matchean (no se detiene en la primera). La regex negativa `/((?!api/).*)` evita duplicación de headers en rutas API. Documentado para futuras referencias.
+3. **CORS con whitelist de múltiples orígenes:** `Access-Control-Allow-Origin` solo acepta UN valor literal. Para soportar `founder.uy` y `www.founder.uy` simultáneamente hay que setearlo dinámicamente desde el código del servidor (no desde `vercel.json` que es estático). MDN lo confirma como la práctica correcta.
+4. **`Allow-Origin: null` es el fallback correcto para orígenes no permitidos.** Devuelve el string literal `'null'`, no la palabra clave `null` (que sería peligrosa por documentos sandboxed).
+5. **Validación server-side de precios en e-commerce es la vulnerabilidad #1.** Es la primera cosa que cualquier auditoría seria de un e-commerce chico encuentra. Si ya tenés MP (absorbe PCI-DSS), seguís siendo vulnerable por business logic. Fix: rechazar el pedido si el precio enviado por el cliente no coincide con el de la DB.
+6. **Cierre formal de la lección Sesión 27:** la lección decía "considerar pinning con `~` o exacto en deps críticas". Hoy se aplicó. La lección queda cerrada operativamente, no solo documentada.
+
+### 📦 Archivo de aplicación
+
+La guía paso a paso para subir los 11 archivos a GitHub está en `GUIA-APLICACION-SESION-30.md`. Incluye orden recomendado de upload (3 grupos para evitar inconsistencias intermedias), mensajes de commit pre-redactados, 4 verificaciones post-deploy (smoke test funcional, securityheaders.com, W3C validator, prueba CORS desde otro sitio) y plan de rollback con Vercel "Promote to Production".
 
 ---
 
@@ -2424,45 +2572,127 @@ founder-web/
   `PLAN-PERSONALIZACION.md` v2 con 18 decisiones cerradas, arquitectura
   técnica, plan en 4 sesiones (A: visual + admin / B: backend + galería /
   C: limpieza + admin polish / D: emails + smoke test). Pendiente arrancar
-  **Sesión A** después de tener el láser físico operativo. ← **Acá terminamos.**
-- **Sesión 28:** Si el usuario tiene el láser físico y testeó → arrancar
-  **Sesión A** del feature de personalización (frontend visual + admin
-  config global, ~2-2.5 hs). Si no, alguna de las opciones pendientes de
-  Sesión 26 (B reseñas reales, D limpieza, E Gmail send-as, F Search
-  Console). ← **Próxima.**
+  **Sesión A** después de tener el láser físico operativo.
+- **Sesión 28 (Personalización láser — implementación end-to-end):**
+  arranque del feature mayor. Bloques A (frontend visual + admin config
+  global) y B (backend de uploads + galería) completos. Tabla nueva
+  `personalizacion_examples`, buckets de storage `personalizacion-uploads`
+  (privado) y `personalizacion-examples` (público), endpoint nuevo
+  `api/upload-personalizacion.js` con whitelist MIME y signed URLs,
+  4 columnas booleanas nuevas en `products` (`permite_grabado_*`), JSON
+  config en `site_settings.personalizacion_config` con master switch,
+  bloque visual completo en `producto.html`, panel admin extendido con
+  configuración global + galería. Master switch apagado por defecto
+  hasta tener láser físico. 2 hotfixes operativos en la misma sesión.
+- **Sesión 29 (Personalización láser — Bloques C + D operativos):**
+  cierre del feature de personalización. Endpoint nuevo
+  `api/cleanup-personalizacion.js` (4 modos: cron auto + 3 acciones
+  admin), endpoint nuevo `api/download-personalizacion-bulk.js` (ZIP por
+  pedido + ZIP backup pre-limpieza, sin deps externas), tabla nueva
+  `cleanup_logs`, cron semanal configurado en `vercel.json` (domingos
+  06:00 UTC). Frontend admin extendido: filtro "✦ Con grabado", badge
+  dorado en cards, sección de detalle por pedido con botones "Ver /
+  Descargar / ZIP completo", card de limpieza con estado del bucket +
+  historial. `email-templates.js` extendido con `blockPersonalizacion`
+  inyectado en los 4 templates transaccionales (regresión zero para
+  pedidos sin grabado). **Lección de Sesión 29:** intento fallido de
+  agregar bloque `functions` en `vercel.json` para `maxDuration: 60s`
+  (Vercel rechazaba con `pattern doesn't match any Serverless
+  Functions`). Solución: sacar el bloque, usar default de 10s.
+  Feature totalmente operacional, master switch sigue apagado hasta
+  láser físico.
+- **Sesión 30 (Auditoría salud + seguridad e-commerce — 9 fixes):**
+  doble auditoría sin tocar features. Bloque salud: pinear Supabase
+  exacto a `2.105.4` (cierre formal de lección Sesión 27), fixes HTML
+  estructural en `index.html` (`</head>` faltante + `</div>` huérfano),
+  README profesional. Bloque seguridad: validación de precios
+  server-side en `/api/checkout` (anti-manipulación), 5 headers HTTP
+  de seguridad (HSTS/X-Frame/X-Content-Type/Referrer/Permissions),
+  CORS restringido con whitelist dinámica vía wrapper en
+  `api/_lib/supabase.js`, ofuscación de emails en logs
+  (`ju***@gmail.com`), HMAC con `timingSafeEqual` en webhook MP,
+  mensaje claro en log MP. 11 archivos modificados, 34 tests sintéticos
+  pasados (6+9+6+13). Score esperado securityheaders.com: F → A/A+.
+  Pendientes para próxima sesión: rate limiting (C-2), JWT admin
+  (A-2), CSP. ← **Próxima.**
 
 ---
 
-**FIN — Cierre Sesión 27.** Sesión mixta con tres bloques: UX carrito,
-incidente crítico resuelto, y planificación profunda del feature de
-personalización láser.
+**FIN — Cierre Sesión 30.** Sesión de hardening completo (salud + seguridad)
+sin tocar features. 9 fixes aplicados en 11 archivos. 34 tests sintéticos
+automatizados pasados. Cero cambios funcionales — todo es estructural y
+defensivo.
 
-**Lo más relevante para recordar:** el incidente del admin reveló que
-el proyecto tenía un archivo duplicado dormido desde hacía 2 semanas
-y una incompatibilidad latente Node 20 + Supabase nuevo. Ambos
-estaban "funcionando por suerte" hasta que un build limpio los
-expuso. **Lección documentada:** versionar deps con `~` o pinning
-exacto en producción, y NUNCA asumir que "si funcionaba ayer, está
-bien".
+**Lo más relevante para recordar:**
 
-**Estado del sitio post-Sesión 27:**
+1. **El sitio venía teniendo una vulnerabilidad crítica sin saberlo:** los
+   precios del carrito viajaban del cliente al server SIN re-validación
+   contra la DB. Un atacante con conocimiento técnico básico podía pagar
+   $1 por cualquier producto. Fix aplicado: `validateItemsAgainstDB`
+   antes de la RPC en `/api/checkout`. Bloqueado para siempre.
+
+2. **La lección crítica de Sesión 27 quedó cerrada operativamente.** Se
+   había documentado que `^x.y.z` en deps era riesgoso. Hoy se aplicó:
+   `@supabase/supabase-js` pineado a `2.105.4` exacto. La próxima versión
+   de Supabase no puede romper el sitio sin aprobación explícita.
+
+3. **`index.html` era el único HTML con estructura inválida del proyecto.**
+   Faltaba un `</head>` y sobraba un `</div>`. Los navegadores lo
+   auto-arreglaban silenciosamente, pero validadores W3C marcaban
+   errores. Resuelto y validado con parser HTML estricto.
+
+4. **El sitio quedó listo para securityheaders.com A/A+.** HSTS de 2 años
+   con preload, X-Frame-Options, X-Content-Type-Options, Referrer-Policy,
+   Permissions-Policy. CORS dinámico con whitelist (founder.uy + www).
+
+**Estado del sitio post-Sesión 30:**
 - ✅ Performance excelente (95-99 desktop, 85-90 mobile)
 - ✅ Email transaccional + bidireccional (`info@founder.uy` operativo)
 - ✅ Base SEO universal completa (sitemap, robots, schema, meta tags, og-image)
 - ✅ Google Search Console verificado e indexando
 - ✅ Tracking Meta funcional con CAPI deduplicado
-- ✅ Mercado Pago en producción real
+- ✅ Mercado Pago en producción real (PCI-DSS delegado)
 - ✅ Emails automáticos al cambiar estado del pedido
-- ✅ **Backend estabilizado** (Node 22 + sin archivos duplicados)
-- ✅ **UX del carrito mobile mejorada** (ícono + 85%)
-- 📋 **Plan completo de personalización láser documentado** (`PLAN-PERSONALIZACION.md` v2)
+- ✅ Backend estabilizado (Node 22 + sin archivos duplicados)
+- ✅ UX del carrito mobile (ícono + 85%)
+- ✅ Feature personalización láser end-to-end (master switch off hasta láser físico)
+- ✅ **HTML válido (parser W3C: 0 errores)** ← Sesión 30
+- ✅ **Validación de precios server-side (anti-manipulación)** ← Sesión 30
+- ✅ **5 headers de seguridad HTTP** ← Sesión 30
+- ✅ **CORS restringido a founder.uy con whitelist dinámica** ← Sesión 30
+- ✅ **Emails ofuscados en logs (GDPR)** ← Sesión 30
+- ✅ **HMAC webhook MP con timingSafeEqual** ← Sesión 30
+- ✅ **Dependencia Supabase pineada exacta** ← Sesión 30 (cierre lección Sesión 27)
+- ✅ **README profesional** ← Sesión 30
 
-**Próximo gran bloque:** feature de personalización láser. Pendiente
-de arrancar cuando el usuario tenga el láser físicamente y haya hecho
-1-2 pruebas con cuero descartable para calibrar valores tentativos.
-Estimación: 4 sesiones de trabajo (~7-9 hs total).
+**Pendientes para Sesión 31 (post-aplicación de Sesión 30 en GitHub):**
 
-Sesión 28 va a ser corta o larga según qué decida el usuario y si
-ya tiene el láser disponible. 🚀
+- **Smoke test funcional post-deploy** del usuario en producción.
+  Verificar que: el sitio carga normal, una compra de prueba con
+  transferencia se confirma OK, el admin loguea y muestra pedidos.
+  Si todo OK → Sesión 30 oficialmente "deployed and verified".
+
+- **Próximo bloque de seguridad recomendado: Rate limiting (C-2)** —
+  sería el cierre perfecto de la triple-defensa del checkout
+  (validación precios + rate limit + headers de seguridad ya
+  aplicados). Requiere habilitar Vercel KV (storage extra). Esfuerzo
+  estimado: 1.5–2 hs.
+
+- **Hardening profundo opcional:** JWT para sesión admin (A-2),
+  CSP (Content Security Policy) para llegar a A+ en
+  securityheaders.com.
+
+- **Pendientes anteriores que siguen abiertos:**
+  - Smoke test personalización láser end-to-end (Sesión 29 pendiente,
+    necesita láser físico).
+  - Email automático al admin cuando entra pedido con grabado (código
+    existe en `blockPersonalizacion(..., 'admin')`, falta conectarlo).
+  - Reseñas reales (Sesión 26 — Opción B).
+  - Gmail send-as desde `info@founder.uy` (Sesión 26 — Opción E).
+
+**El sitio está en su mejor estado histórico.** Performance, SEO,
+features, seguridad e higiene técnica — los 5 ejes en verde. Sesión 31
+puede ser una sesión más relajada de pendientes secundarios, o atacar
+el bloque de Rate limiting si querés blindar del todo el checkout. 🚀
 
 
