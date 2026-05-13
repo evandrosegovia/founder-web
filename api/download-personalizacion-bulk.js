@@ -31,7 +31,7 @@
 //   - Path traversal: las paths vienen de la DB, no del cliente.
 // ═════════════════════════════════════════════════════════════════
 
-import { supabase, ok, fail, parseBody } from './_lib/supabase.js';
+import { supabase, ok, fail, parseBody, buildCorsHeaders } from './_lib/supabase.js';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 
@@ -320,15 +320,12 @@ async function buildBorrablesZip() {
 // ═════════════════════════════════════════════════════════════════
 // HANDLER
 // ═════════════════════════════════════════════════════════════════
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
 export default async function handler(req, res) {
+  // CORS dinámico — siempre aplicar antes de cualquier respuesta
+  const cors = buildCorsHeaders(req);
+  Object.entries(cors).forEach(([k, v]) => res.setHeader(k, v));
+
   if (req.method === 'OPTIONS') {
-    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
     res.status(204).end();
     return;
   }
@@ -365,7 +362,7 @@ export default async function handler(req, res) {
 
     // Devolver el binario como JSON con base64. Más simple para el frontend
     // que streamear binario; el frontend reconstruye Blob y dispara download.
-    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
+    // (Los headers CORS ya se setearon al inicio del handler.)
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(200);
     res.end(JSON.stringify({

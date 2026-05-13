@@ -68,9 +68,12 @@ const STATUS_MAP = {
 // casos de "no procesado", para evitar reintentos innecesarios).
 // ─────────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
-  // CORS preflight (defensivo — MP no usa CORS pero no estorba)
+  // CORS preflight (defensivo — MP es server-to-server y no usa CORS,
+  // pero un browser malicioso podría intentar un preflight). Restringimos
+  // a 'null' para que ningún origen web pueda usar el endpoint via CORS.
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin',  '*');
+    res.setHeader('Access-Control-Allow-Origin',  'null');
+    res.setHeader('Vary',                         'Origin');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-signature, x-request-id');
     res.status(204).end();

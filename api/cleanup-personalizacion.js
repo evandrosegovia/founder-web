@@ -27,7 +27,7 @@
 // Tope: MAX_DELETE_PER_RUN = 500.
 // ═════════════════════════════════════════════════════════════════
 
-import { supabase, ok, fail, parseBody } from './_lib/supabase.js';
+import { supabase, ok, fail, parseBody, buildCorsHeaders } from './_lib/supabase.js';
 import crypto from 'node:crypto';
 
 const BUCKET = 'personalizacion-uploads';
@@ -231,15 +231,12 @@ async function executeCleanup(trigger) {
   };
 }
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
 export default async function handler(req, res) {
+  // CORS dinámico — siempre aplicar antes de cualquier respuesta
+  const cors = buildCorsHeaders(req);
+  Object.entries(cors).forEach(([k, v]) => res.setHeader(k, v));
+
   if (req.method === 'OPTIONS') {
-    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
     res.status(204).end();
     return;
   }

@@ -42,6 +42,160 @@ const COUPON_ERROR_MAP = {
   email_required:             { http: 400, msg: 'El email es obligatorio' },
 };
 
+// ── Constantes de envío (espejo de frontend) ────────────────────
+// Estas constantes existen también en founder-checkout.js (CONFIG.FREE_SHIPPING
+// y CONFIG.SHIPPING_COST). Si cambian allá, hay que actualizarlas acá.
+// Mejor opción a futuro: moverlas a site_settings y leerlas en ambos lados.
+const SHIPPING_FREE_THRESHOLD = 2000;  // ≥ este monto → envío gratis
+const SHIPPING_COST           = 250;   // costo fijo de envío a domicilio
+
+// ─────────────────────────────────────────────────────────────────
+// validateItemsAgainstDB
+// ─────────────────────────────────────────────────────────────────
+// Defensa server-side contra manipulación de precios desde el cliente.
+//
+// El frontend manda precio_unitario en cada item, pero ese valor viene
+// del navegador y un atacante podría manipularlo (DevTools, localStorage,
+// fetch directo a la API). Esta función trae el precio REAL desde la DB
+// para cada item y lo compara contra lo que mandó el cliente.
+//
+// Si algún item tiene precio incorrecto → rechazamos todo el pedido.
+//
+// Reglas de precio:
+//   - Si el color tiene estado='oferta' y precio_oferta válido → precio_oferta
+//   - En cualquier otro caso → products.precio
+//
+// Reglas de disponibilidad:
+//   - El producto debe existir y estar activo=true
+//   - El color debe existir
+//   - El color NO debe tener estado='sin_stock'
+//
+// Devuelve:
+//   - { ok: true, prices: Map<key,precio> } si todo cuadra
+//   - { ok: false, code, http, msg, detail? } si algo no cuadra
+async function validateItemsAgainstDB(items) {
+  // Recolectar nombres únicos de productos para una sola query
+  const productNames = [...new Set(items.map(it => it.product_name).filter(Boolean))];
+  if (productNames.length === 0) {
+    return { ok: false, code: 'no_items', http: 400, msg: 'El pedido no tiene items válidos.' };
+  }
+
+  // Una sola query: trae los productos + sus colores
+  const { data: products, error } = await supabase
+    .from('products')
+    .select(`
+      id, nombre, precio, activo,
+      product_colors ( nombre, estado, precio_oferta )
+    `)
+    .in('nombre', productNames);
+
+  if (error) {
+    return { ok: false, code: 'db_error', http: 500, msg: error.message };
+  }
+  if (!products || products.length === 0) {
+    return { ok: false, code: 'product_not_found', http: 400,
+      msg: 'Alguno de los productos del pedido no existe.' };
+  }
+
+  // Indexar por nombre para lookup rápido
+  const byName = new Map(products.map(p => [p.nombre, p]));
+
+  // Validar cada item
+  const prices = new Map(); // key = "<product>|<color>" → precio real
+  for (const it of items) {
+    const prod = byName.get(it.product_name);
+    if (!prod) {
+      return { ok: false, code: 'product_not_found', http: 400,
+        msg: `Producto no encontrado: "${it.product_name}".` };
+    }
+    if (!prod.activo) {
+      return { ok: false, code: 'product_inactive', http: 400,
+        msg: `El producto "${it.product_name}" no está disponible.` };
+    }
+
+    const colorRow = (prod.product_colors || []).find(c => c.nombre === it.color);
+    if (!colorRow) {
+      return { ok: false, code: 'color_not_found', http: 400,
+        msg: `Color no encontrado: "${it.color}" para "${it.product_name}".` };
+    }
+    if (colorRow.estado === 'sin_stock') {
+      return { ok: false, code: 'color_sin_stock', http: 400,
+        msg: `Sin stock: "${it.product_name}" en color "${it.color}".` };
+    }
+
+    // Precio real: oferta si corresponde, sino el base del producto
+    const precioReal = (colorRow.estado === 'oferta' && colorRow.precio_oferta)
+      ? Number(colorRow.precio_oferta)
+      : Number(prod.precio);
+
+    if (!Number.isFinite(precioReal) || precioReal <= 0) {
+      return { ok: false, code: 'invalid_db_price', http: 500,
+        msg: `Precio inválido en la base para "${it.product_name}".` };
+    }
+
+    // Validar que el precio enviado coincide con el real
+    if (Number(it.precio_unitario) !== precioReal) {
+      return { ok: false, code: 'price_mismatch', http: 400,
+        msg: 'Los precios del carrito no son válidos. Recargá la página e intentá nuevamente.',
+        detail: {
+          product: it.product_name, color: it.color,
+          sent: Number(it.precio_unitario), expected: precioReal,
+        },
+      };
+    }
+
+    // Validar cantidad razonable (defensa anti-spam)
+    const qty = Number(it.cantidad);
+    if (!Number.isInteger(qty) || qty < 1 || qty > 99) {
+      return { ok: false, code: 'invalid_quantity', http: 400,
+        msg: `Cantidad inválida para "${it.product_name}".` };
+    }
+
+    prices.set(`${it.product_name}|${it.color}`, precioReal);
+  }
+
+  return { ok: true, prices };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// validateOrderTotals
+// ─────────────────────────────────────────────────────────────────
+// Recalcula subtotal/envío y los compara con lo que envió el cliente.
+// El descuento NO se valida acá porque lo aplica la RPC SQL (cupón
+// real) o lo verifica el frontend (descuento por transferencia).
+//
+// Tolerancia: usamos comparación exacta para subtotal (debe ser igual)
+// y para envío (solo 2 valores posibles: 0 o SHIPPING_COST).
+function validateOrderTotals(cleanOrder, cleanItems) {
+  // Recalcular subtotal desde precios reales
+  const subtotalReal = cleanItems.reduce((acc, it) => {
+    return acc + (Number(it.precio_unitario) * Number(it.cantidad));
+  }, 0);
+
+  if (cleanOrder.subtotal !== subtotalReal) {
+    return { ok: false, code: 'subtotal_mismatch', http: 400,
+      msg: 'El subtotal del pedido no coincide. Recargá la página e intentá nuevamente.',
+      detail: { sent: cleanOrder.subtotal, expected: subtotalReal } };
+  }
+
+  // Validar envío: si es "Retiro" → debe ser 0. Si es "Envío" → 0 o SHIPPING_COST.
+  const entregaLower = (cleanOrder.entrega || '').toLowerCase();
+  if (entregaLower === 'retiro') {
+    if (cleanOrder.envio !== 0) {
+      return { ok: false, code: 'invalid_shipping', http: 400,
+        msg: 'El retiro en local tiene envío $0.' };
+    }
+  } else {
+    // Envío a domicilio: solo 0 o SHIPPING_COST son válidos
+    if (cleanOrder.envio !== 0 && cleanOrder.envio !== SHIPPING_COST) {
+      return { ok: false, code: 'invalid_shipping', http: 400,
+        msg: 'Costo de envío inválido.' };
+    }
+  }
+
+  return { ok: true };
+}
+
 // ═════════════════════════════════════════════════════════════════
 // ACCIÓN 1: validate_coupon — solo lectura, sin tocar la DB
 // ═════════════════════════════════════════════════════════════════
@@ -191,6 +345,33 @@ async function handleCreateOrder(body, res, req) {
 
     return base;
   });
+
+  // ── Validación crítica de seguridad: precios y disponibilidad ──
+  // Verificamos que cada item del pedido tenga el precio real de la DB.
+  // Protege contra clientes maliciosos que manipulan el carrito en su
+  // navegador para pagar menos de lo que el producto vale.
+  // También verifica que productos y colores estén disponibles.
+  const priceCheck = await validateItemsAgainstDB(cleanItems);
+  if (!priceCheck.ok) {
+    // Logueamos detalle solo en server (no se expone al cliente).
+    if (priceCheck.detail) {
+      console.warn('[checkout] price validation failed:', priceCheck.code, priceCheck.detail);
+    }
+    return fail(res, priceCheck.http, priceCheck.code, priceCheck.msg);
+  }
+
+  // ── Validación de subtotal y envío ─────────────────────────────
+  // Después de confirmar los precios unitarios, recalculamos el subtotal
+  // y validamos el costo de envío. El total final NO se valida acá
+  // porque depende del descuento que aplica la RPC (cupón) — la RPC SQL
+  // es la fuente de verdad para el total persistido.
+  const totalsCheck = validateOrderTotals(cleanOrder, cleanItems);
+  if (!totalsCheck.ok) {
+    if (totalsCheck.detail) {
+      console.warn('[checkout] totals validation failed:', totalsCheck.code, totalsCheck.detail);
+    }
+    return fail(res, totalsCheck.http, totalsCheck.code, totalsCheck.msg);
+  }
 
   // Llamar a la RPC atómica
   const { data, error } = await supabase.rpc('apply_coupon_and_create_order', {
