@@ -279,6 +279,15 @@ textarea.fi{resize:vertical;min-height:70px}
 .cupon-form-card{background:var(--gray);border:1px solid var(--border);padding:22px;position:sticky;top:80px}
 .cupon-form-title{font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:18px}
 .cupon-form-grid{display:flex;flex-direction:column;gap:14px}
+/* Sesión 32 — Checkbox "Solo clientes repetidos" */
+.cupon-flag{display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--mid);border:1px solid var(--border);cursor:pointer;transition:all .2s}
+.cupon-flag:hover{border-color:var(--gold)}
+.cupon-flag:has(input:checked){background:rgba(201,169,110,.08);border-color:var(--gold)}
+.cupon-flag input[type="checkbox"]{margin-top:2px;accent-color:var(--gold);cursor:pointer;flex-shrink:0}
+.cupon-flag__text{display:flex;flex-direction:column;gap:4px}
+.cupon-flag__name{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--white)}
+.cupon-flag:has(input:checked) .cupon-flag__name{color:var(--gold)}
+.cupon-flag__hint{font-size:10px;color:var(--muted);line-height:1.5}
 .cf{display:flex;flex-direction:column;gap:6px}
 .cl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
 .ci{background:var(--mid);border:1px solid var(--border);color:var(--white);padding:10px 12px;font-family:'Montserrat',sans-serif;font-size:11px;outline:none;width:100%;transition:border-color .2s}
@@ -829,6 +838,14 @@ textarea.fi{resize:vertical;min-height:70px}
                   <option value="false">⏸️ Inactivo</option>
                 </select>
               </div>
+              <!-- Sesión 32 — Cupón exclusivo para compradores recurrentes -->
+              <label class="cupon-flag">
+                <input type="checkbox" id="cpSoloRepetidos">
+                <div class="cupon-flag__text">
+                  <span class="cupon-flag__name">🔄 Solo clientes con compra previa</span>
+                  <span class="cupon-flag__hint">Si está marcado, el código solo funciona si el email del comprador ya tiene una compra con estado <strong>Entregado</strong>. Ideal para códigos de fidelización tipo FOUNDER20 que entregás con el primer pedido. Combinable con "Único uso por comprador".</span>
+                </div>
+              </label>
               <button class="btn btn-primary" id="cpSaveBtn" onclick="saveCupon()" style="margin-top:4px">Crear cupón</button>
             </div>
           </div>
