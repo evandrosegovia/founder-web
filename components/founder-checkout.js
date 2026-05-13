@@ -411,6 +411,11 @@
   }
 
   // ── CÁLCULO DE TOTALES ───────────────────────────────────────
+  // Precio unitario por slot de personalización. Espejo de la
+  // constante que usa la RPC SQL (`v_slot_unit_price = 290`).
+  // Si cambia en el panel admin, también hay que cambiarlo acá.
+  const PERSONALIZ_SLOT_UNIT_PRICE = 290;
+
   function calculateOrderTotals() {
     // Subtotal de productos = precio base × qty.
     const subtotal     = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
@@ -424,30 +429,69 @@
 
     const transferDisc = state.pagoMode === 'transfer' ? 0.10 : 0;
 
-    // Descuento del cupón (no acumulable con transferencia — se aplica el mayor).
-    // OJO: el descuento se aplica sobre el SUBTOTAL DE PRODUCTOS, no sobre la
-    // personalización. Esto es decisión de negocio: los grabados son un servicio
-    // adicional y no entran en cupones/descuentos por transferencia.
-    let couponAmount = 0;
+    // Descuento del cupón. Hay 2 modos posibles:
+    //
+    //  A) Cupón clásico (descuento sobre subtotal de productos):
+    //     se aplica sobre el SUBTOTAL DE PRODUCTOS, no sobre la
+    //     personalización. Compite con el 10% de transferencia
+    //     (se usa el mayor).
+    //
+    //  B) Cupón de personalización (Sesión 33):
+    //     descuenta del costo de PERSONALIZACIÓN, no del subtotal.
+    //     Cálculo: slots × items_grabados × precio_unit_slot,
+    //     topeado al 100% del personalizExtra real. NO compite con
+    //     el 10% de transferencia — son descuentos independientes.
+    let couponAmountSubtotal      = 0;  // descuento sobre subtotal de productos
+    let couponAmountPersonalizado = 0;  // descuento sobre personalización
     if (state.coupon) {
-      if (state.coupon.tipo === 'porcentaje') {
-        couponAmount = Math.round(subtotal * state.coupon.valor / 100);
+      if (state.coupon.descuentaPersonalizacion === true) {
+        // Modo B: contar items con grabado (sumando cantidad).
+        const itemsGrabados = state.cart.reduce((s, i) => {
+          const p = i.personalizacion;
+          const tieneSlot = p && (p.adelante || p.interior || p.atras || (p.texto && p.texto.length));
+          return s + (tieneSlot ? (Number(i.qty) || 1) : 0);
+        }, 0);
+        let calc = state.coupon.personalizacionSlotsCubiertos * itemsGrabados * PERSONALIZ_SLOT_UNIT_PRICE;
+        if (calc > personalizExtra) calc = personalizExtra; // tope al 100%
+        couponAmountPersonalizado = calc;
+      } else if (state.coupon.tipo === 'porcentaje') {
+        // Modo A — porcentaje
+        couponAmountSubtotal = Math.round(subtotal * state.coupon.valor / 100);
       } else {
-        couponAmount = Math.min(state.coupon.valor, subtotal);
+        // Modo A — fijo
+        couponAmountSubtotal = Math.min(state.coupon.valor, subtotal);
       }
     }
 
-    // Se usa el descuento que más beneficia al cliente
+    // El descuento del cupón clásico (modo A) compite con el de
+    // transferencia (se usa el mayor). El cupón de personalización
+    // (modo B) NO compite — siempre se aplica además.
     const transferAmount = Math.round(subtotal * transferDisc);
-    const discountAmount = Math.max(couponAmount, transferAmount);
-    const discountSource = couponAmount >= transferAmount && couponAmount > 0 ? 'cupon' : (transferAmount > 0 ? 'transfer' : 'none');
+    const subtotalDiscount = Math.max(couponAmountSubtotal, transferAmount);
+    const discountSource =
+      couponAmountSubtotal >= transferAmount && couponAmountSubtotal > 0 ? 'cupon'
+      : (transferAmount > 0 ? 'transfer' : 'none');
 
-    const subtotalConDesc = subtotal - discountAmount + personalizExtra;
+    // discountAmount es el monto total de descuento (lo que se
+    // resta del subtotal del pedido). Suma el descuento clásico
+    // + el descuento de personalización.
+    const discountAmount = subtotalDiscount + couponAmountPersonalizado;
+
+    const subtotalConDesc = subtotal - subtotalDiscount + (personalizExtra - couponAmountPersonalizado);
     const shipping = state.entregaMode === 'retiro' ? 0
       : (subtotalConDesc >= CONFIG.FREE_SHIPPING ? 0 : CONFIG.SHIPPING_COST);
     const total = subtotalConDesc + shipping;
 
-    return { subtotal, personalizExtra, discountAmount, discountSource, shipping, total };
+    return {
+      subtotal,
+      personalizExtra,
+      discountAmount,                       // total (compat con renderOrderSummary)
+      discountSource,                       // 'cupon' | 'transfer' | 'none'
+      couponAmountSubtotal,                 // Sesión 34: descuento sobre subtotal
+      couponAmountPersonalizado,            // Sesión 34: descuento sobre personalización
+      shipping,
+      total,
+    };
   }
 
   // ── RESUMEN DEL PEDIDO ───────────────────────────────────────
@@ -489,18 +533,45 @@
       </div>`;
     }).join('');
 
-    const { subtotal, personalizExtra, discountAmount, discountSource, shipping, total } = calculateOrderTotals();
+    const {
+      subtotal, personalizExtra, discountAmount, discountSource,
+      couponAmountSubtotal, couponAmountPersonalizado,
+      shipping, total
+    } = calculateOrderTotals();
 
-    // Mostrar línea explícita de personalización si hay
+    // Línea de personalización. Si hay descuento de cupón de
+    // personalización (Sesión 33/34), mostramos el monto neto
+    // (extra - descuento) con el descuento entre paréntesis abajo
+    // para que el cliente entienda de dónde sale el ahorro.
     if (personalizExtra > 0) {
-      html += `<div class="co-summary__item"><span>Personalización láser</span><span style="color:var(--color-gold)">+$${personalizExtra.toLocaleString('es-UY')}</span></div>`;
+      const personalizNeto = personalizExtra - couponAmountPersonalizado;
+      if (couponAmountPersonalizado > 0) {
+        // Muestra el extra original tachado + el neto en dorado + indicador del cupón.
+        html += `<div class="co-summary__item">
+          <span>Personalización láser</span>
+          <span style="color:var(--color-gold)">
+            <span style="text-decoration:line-through;color:var(--color-muted);font-size:.85em;margin-right:6px">+$${personalizExtra.toLocaleString('es-UY')}</span>
+            ${personalizNeto > 0 ? '+$' + personalizNeto.toLocaleString('es-UY') : 'Gratis 🎁'}
+          </span>
+        </div>`;
+        html += `<div class="co-summary__item" style="font-size:.85em;color:var(--color-success)">
+          <span>↳ Cupón ${state.coupon.codigo}</span>
+          <span>-$${couponAmountPersonalizado.toLocaleString('es-UY')}</span>
+        </div>`;
+      } else {
+        html += `<div class="co-summary__item"><span>Personalización láser</span><span style="color:var(--color-gold)">+$${personalizExtra.toLocaleString('es-UY')}</span></div>`;
+      }
     }
 
-    if (discountAmount > 0) {
+    // Descuento del subtotal (cupón clásico o transferencia). Solo se
+    // muestra si hay descuento que aplica al subtotal de productos —
+    // el descuento de personalización ya se mostró arriba.
+    const subtotalDiscount = Math.max(couponAmountSubtotal, state.pagoMode === 'transfer' ? Math.round(subtotal * 0.10) : 0);
+    if (subtotalDiscount > 0) {
       const label = discountSource === 'cupon'
         ? `Cupón ${state.coupon.codigo}`
         : 'Descuento transferencia 10%';
-      html += `<div class="co-summary__item"><span>${label}</span><span style="color:var(--color-success)">-$${discountAmount.toLocaleString('es-UY')}</span></div>`;
+      html += `<div class="co-summary__item"><span>${label}</span><span style="color:var(--color-success)">-$${subtotalDiscount.toLocaleString('es-UY')}</span></div>`;
     }
     html += `<div class="co-summary__item"><span>Envío</span><span>${shipping === 0 ? 'Gratis 🎁' : '$' + shipping.toLocaleString('es-UY')}</span></div>`;
     html += `<div class="co-summary__total"><span class="co-summary__total-label">Total</span><span class="co-summary__total-value">$${total.toLocaleString('es-UY')} UYU</span></div>`;
@@ -582,11 +653,22 @@
         valor:     Number(data.cupon.valor) || 0,
         uso:       data.cupon.uso,
         minCompra: Number(data.cupon.minCompra) || 0,
+        // Sesión 34 fix: flags de personalización para que
+        // calculateOrderTotals() sepa cómo calcular el descuento.
+        descuentaPersonalizacion:      data.cupon.descuentaPersonalizacion === true,
+        personalizacionSlotsCubiertos: Number(data.cupon.personalizacionSlotsCubiertos) || 0,
       };
 
-      const descLabel = state.coupon.tipo === 'porcentaje'
-        ? `${state.coupon.valor}% de descuento`
-        : `$${state.coupon.valor.toLocaleString('es-UY')} de descuento`;
+      // Etiqueta amigable según tipo de cupón
+      let descLabel;
+      if (state.coupon.descuentaPersonalizacion) {
+        const slots = state.coupon.personalizacionSlotsCubiertos;
+        descLabel = `${slots} slot${slots === 1 ? '' : 's'} de personalización gratis`;
+      } else if (state.coupon.tipo === 'porcentaje') {
+        descLabel = `${state.coupon.valor}% de descuento`;
+      } else {
+        descLabel = `$${state.coupon.valor.toLocaleString('es-UY')} de descuento`;
+      }
 
       setText('couponAppliedText', `✓ ${state.coupon.codigo} — ${descLabel}`);
       $('couponApplied').classList.add('is-visible');

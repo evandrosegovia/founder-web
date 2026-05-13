@@ -1946,6 +1946,11 @@
     const wrap = $('cuponesTableWrap');
     if (wrap) wrap.innerHTML = '<div class="no-cupones">Cargando cupones...</div>';
 
+    // Sesión 34: setup idempotente del toggle "Personalización gratis"
+    // → opaca los campos clásicos (Tipo / Valor / Mínimo de compra)
+    // mostrando al admin que esos campos no aplican.
+    setupCuponPersonalizacionToggle();
+
     const { ok, data } = await apiAdmin('list_coupons');
     if (!ok) {
       if (wrap) wrap.innerHTML = `<div class="no-cupones">⚠️ No se pudieron cargar los cupones. <button class="btn btn-sm btn-secondary" onclick="loadCoupones()" style="margin-top:8px">Reintentar</button></div>`;
@@ -1953,6 +1958,21 @@
     }
     state.coupons = data.coupons || [];
     renderCouponsTable();
+  }
+
+  /** Sesión 34: instala el listener del checkbox 🎨 una sola vez.
+   *  Es idempotente: si ya se instaló, retorna inmediatamente. */
+  function setupCuponPersonalizacionToggle() {
+    const chk = $('cpDescuentaPers');
+    if (!chk || chk.dataset.s34Listener === '1') return;
+    const classicWrap = $('cuponClassicFields');
+    if (!classicWrap) return;
+    const sync = () => {
+      classicWrap.classList.toggle('is-disabled', chk.checked);
+    };
+    chk.addEventListener('change', sync);
+    sync();  // estado inicial
+    chk.dataset.s34Listener = '1';
   }
 
   /**
@@ -2025,10 +2045,7 @@
   /** Crea un cupón nuevo desde el formulario del sidebar. */
   async function saveCupon() {
     const codigo = ($('cpCodigo')?.value || '').trim().toUpperCase();
-    const tipo   = $('cpTipo')?.value || 'porcentaje';
-    const valor  = parseFloat($('cpValor')?.value || '0');
     const uso    = $('cpUso')?.value  || 'multiuso';
-    const min_compra = parseFloat($('cpMinCompra')?.value || '0') || 0;
     const desde  = $('cpDesde')?.value || '';  // YYYY-MM-DD
     const hasta  = $('cpHasta')?.value || '';
     const activo = ($('cpActivo')?.value === 'true');
@@ -2037,6 +2054,16 @@
     const descuenta_personalizacion     = !!($('cpDescuentaPers')?.checked);   // Sesión 33
     const personalizacion_slots_cubiertos =
       descuenta_personalizacion ? (parseInt($('cpSlotsCubiertos')?.value, 10) || 1) : 0;
+
+    // Sesión 34 fix: en modo personalización los campos clásicos NO se
+    // mandan al backend (forzamos defaults). En modo clásico se leen
+    // del formulario normalmente. Esto evita el bug histórico que vimos:
+    // si el usuario escribió "100" en Valor y después marcó el checkbox
+    // de personalización, el frontend lo mandaba igual y terminaba
+    // aplicando 100% sobre el subtotal.
+    const tipo       = descuenta_personalizacion ? 'porcentaje' : ($('cpTipo')?.value || 'porcentaje');
+    const valor      = descuenta_personalizacion ? 0 : parseFloat($('cpValor')?.value || '0');
+    const min_compra = descuenta_personalizacion ? 0 : (parseFloat($('cpMinCompra')?.value || '0') || 0);
 
     // Validaciones locales (UX rápido — el backend re-valida igual)
     if (!codigo) { toast('El código es obligatorio', true); return; }
@@ -2097,6 +2124,12 @@
     ['cpSoloRepetidos', 'cpSoloNuevos', 'cpDescuentaPers']
       .forEach(id => { const el = $(id); if (el) el.checked = false; });
     const slotsSel = $('cpSlotsCubiertos'); if (slotsSel) slotsSel.value = '1';
+
+    // Sesión 34: re-sincronizar el estado visual de los campos
+    // clásicos (deshabilitar/habilitar) ahora que el checkbox quedó
+    // desmarcado por el reset.
+    const classicWrap = $('cuponClassicFields');
+    if (classicWrap) classicWrap.classList.remove('is-disabled');
 
     toast(`✅ Cupón ${codigo} creado`);
     await loadCoupons();
