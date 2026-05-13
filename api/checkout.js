@@ -40,9 +40,6 @@ const COUPON_ERROR_MAP = {
   cupon_already_used:         { http: 400, msg: 'Este código ya fue utilizado' },
   cupon_already_used_by_email:{ http: 400, msg: 'Ya usaste este código anteriormente' },
   cupon_min_purchase:         { http: 400, msg: 'No alcanzás el mínimo de compra del cupón' },
-  cupon_solo_clientes_repetidos:{ http: 400, msg: 'Este código es exclusivo para clientes con compra previa (verificá que estés usando el mismo email de tu compra anterior).' },
-  cupon_solo_clientes_nuevos: { http: 400, msg: 'Este código es exclusivo para nuevos clientes.' },
-  cupon_requiere_personalizacion:{ http: 400, msg: 'Este código requiere productos personalizados en el pedido.' },
   email_required:             { http: 400, msg: 'El email es obligatorio' },
 };
 
@@ -242,7 +239,7 @@ async function handleValidateCoupon(body, res) {
 
   const { data, error } = await supabase
     .from('coupons')
-    .select('codigo, tipo, valor, uso, min_compra, activo, usos_count, emails_usados, desde, hasta, solo_clientes_repetidos, solo_clientes_nuevos, descuenta_personalizacion, personalizacion_slots_cubiertos')
+    .select('codigo, tipo, valor, uso, min_compra, activo, usos_count, emails_usados, desde, hasta')
     .eq('codigo', codigoRaw)
     .maybeSingle();
 
@@ -277,87 +274,14 @@ async function handleValidateCoupon(body, res) {
       `Compra mínima requerida: $${Number(data.min_compra).toLocaleString('es-UY')} UYU`);
   }
 
-  // ── NUEVO Sesión 32: validar cliente repetido ────────────────
-  // Si el cupón está marcado como "solo para clientes con compra
-  // previa entregada", contamos órdenes 'Entregado' del mismo email.
-  // Esta validación se hace acá Y en la RPC SQL (defensa en
-  // profundidad: el frontend recibe el error inmediatamente al
-  // aplicar el cupón, sin tener que esperar a "Confirmar pedido").
-  if (data.solo_clientes_repetidos === true) {
-    if (!email) {
-      return fail(res, 400, 'email_required', 'Ingresá tu email antes de aplicar el cupón');
-    }
-    const { count, error: countErr } = await supabase
-      .from('orders')
-      .select('id', { count: 'exact', head: true })
-      .ilike('email', email)
-      .eq('estado', 'Entregado')
-      .or('archivado.is.null,archivado.eq.false');
-    if (countErr) {
-      return fail(res, 500, 'db_error', countErr.message);
-    }
-    if (!count || count < 1) {
-      return fail(res, 400, 'cupon_solo_clientes_repetidos',
-        'Este código es exclusivo para clientes con compra previa (verificá que estés usando el mismo email de tu compra anterior).');
-    }
-  }
-
-  // ── NUEVO Sesión 33: validar cliente nuevo ───────────────────
-  // Espejo opuesto del check anterior. Si el cupón es solo para
-  // clientes nuevos, el email NO debe tener compras 'Entregado'.
-  // Si tiene al menos una, rechazamos.
-  if (data.solo_clientes_nuevos === true) {
-    if (!email) {
-      return fail(res, 400, 'email_required', 'Ingresá tu email antes de aplicar el cupón');
-    }
-    const { count, error: countErr } = await supabase
-      .from('orders')
-      .select('id', { count: 'exact', head: true })
-      .ilike('email', email)
-      .eq('estado', 'Entregado')
-      .or('archivado.is.null,archivado.eq.false');
-    if (countErr) {
-      return fail(res, 500, 'db_error', countErr.message);
-    }
-    if (count && count > 0) {
-      return fail(res, 400, 'cupon_solo_clientes_nuevos',
-        'Este código es exclusivo para nuevos clientes.');
-    }
-  }
-
-  // ── NUEVO Sesión 33: validar requiere personalización ────────
-  // Si el cupón descuenta personalización, validamos que el carrito
-  // tenga al menos un item personalizado. El frontend nos manda un
-  // flag `hasPersonalizacion` (boolean) que indica si el carrito
-  // tiene algún item con personalización.
-  //
-  // FIX Sesión 34: la lógica anterior rechazaba siempre cuando el
-  // flag no venía. Ahora solo rechazamos si viene EXPLÍCITAMENTE en
-  // false. Si no viene (compat antiguo o frontend custom), dejamos
-  // pasar y la RPC SQL valida con los items reales al crear orden.
-  if (data.descuenta_personalizacion === true) {
-    if (body.hasPersonalizacion === false) {
-      // El frontend nos confirma explícitamente que no hay personalización
-      // → rechazamos inmediatamente para evitar confusión al cliente.
-      return fail(res, 400, 'cupon_requiere_personalizacion',
-        'Este código requiere productos personalizados en el pedido.');
-    }
-    // Si hasPersonalizacion es true o no viene el flag, dejamos pasar.
-    // La RPC SQL hace la validación final con los items reales del pedido.
-  }
-
   // OK — devolver metadata normalizada al frontend (mismo shape que usaba la versión Sheet)
   return ok(res, {
     cupon: {
-      codigo:    data.codigo,
-      tipo:      data.tipo,              // 'fijo' | 'porcentaje'
-      valor:     Number(data.valor) || 0,
-      uso:       data.uso,               // 'multiuso' | 'unico' | 'por-email'
-      minCompra: Number(data.min_compra) || 0,
-      // Sesión 33: flags para que el frontend pueda renderizar el
-      // descuento correcto en el resumen (subtotal vs personalización).
-      descuentaPersonalizacion:        data.descuenta_personalizacion === true,
-      personalizacionSlotsCubiertos:   Number(data.personalizacion_slots_cubiertos) || 0,
+      codigo:     data.codigo,
+      tipo:       data.tipo,              // 'fijo' | 'porcentaje'
+      valor:      Number(data.valor) || 0,
+      uso:        data.uso,               // 'multiuso' | 'unico' | 'por-email'
+      minCompra:  Number(data.min_compra) || 0,
     },
   });
 }
@@ -407,6 +331,11 @@ async function handleCreateOrder(body, res, req) {
     // Sesión 28 Bloque B
     personalizacion_extra: parseInt(order.personalizacion_extra, 10) || 0,
     acepto_no_devolucion:  order.acepto_no_devolucion === true,
+    // Sesión 36: el cupón viene en un parámetro separado (body.cupon),
+    // pero el email lo necesita en el objeto order para atribuir el
+    // descuento correctamente. Lo agregamos acá para que llegue al
+    // template y para que mp-webhook lo persista en `cupon_codigo`.
+    cupon_codigo: cupon ? String(cupon).trim().toUpperCase() : null,
   };
 
   // Sanitización de items + extracción/limpieza de personalización.

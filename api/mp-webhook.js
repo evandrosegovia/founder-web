@@ -196,8 +196,9 @@ async function processWebhook(req, res) {
     .select(`
       id, numero, estado, mp_payment_id, mp_payment_status,
       nombre, apellido, celular, email,
-      total, envio, descuento, entrega,
-      order_items ( product_name, color, cantidad, precio_unitario )
+      total, envio, descuento, entrega, pago, cupon_codigo,
+      personalizacion_extra,
+      order_items ( product_name, color, cantidad, precio_unitario, personalizacion )
     `)
     .ilike('numero', numero)
     .maybeSingle();

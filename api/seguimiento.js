@@ -62,9 +62,9 @@ export default createHandler(async (req, res) => {
       id, numero, fecha, nombre, apellido, celular, email,
       entrega, direccion, productos,
       subtotal, descuento, envio, total,
-      pago, estado, notas, cupon_codigo,
+      pago, estado, notas, cupon_codigo, personalizacion_extra,
       nro_seguimiento, url_seguimiento,
-      order_items ( product_name, color, cantidad, precio_unitario )
+      order_items ( product_name, color, cantidad, precio_unitario, personalizacion )
     `)
     .ilike('numero', numeroRaw.toUpperCase())
     .ilike('email',  email)
@@ -80,9 +80,9 @@ export default createHandler(async (req, res) => {
         id, numero, fecha, nombre, apellido, celular, email,
         entrega, direccion, productos,
         subtotal, descuento, envio, total,
-        pago, estado, notas, cupon_codigo,
+        pago, estado, notas, cupon_codigo, personalizacion_extra,
         nro_seguimiento, url_seguimiento,
-        order_items ( product_name, color, cantidad, precio_unitario )
+        order_items ( product_name, color, cantidad, precio_unitario, personalizacion )
       `)
       .ilike('numero', `%${numeroNorm}%`)
       .ilike('email',  email)
