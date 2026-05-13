@@ -1,8 +1,340 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 31 — Rate Limiting (Bloque B) + JWT para sesión admin (Bloque C). 14 archivos modificados (10 código + 1 config + 1 SQL + 2 docs). 4 endpoints críticos ahora con rate limit (`admin_login`, `create_order`, `validate_coupon`, `seguimiento`). Login admin emite JWT HS256 con expiración de 8h; password ya no viaja en cada request. Módulo `admin-auth.js` compartido por 3 endpoints (DRY). Helper `apiAdminFetch` centraliza llamadas autenticadas a endpoints admin auxiliares. Cleanup de `rate_limits` consolidado en el cron semanal de `cleanup-personalizacion` por límite de Vercel Hobby. 18/18 tests sintéticos de JWT pasados. Fix lateral: `founder-checkout.js` migrado de `toLocaleString('es-UY')` a `toISOString()` para evitar error "TIME ZONE 'P.' NOT RECOGNIZED" de Postgres + `normalizeFecha` defensivo en backend. (12-13/05/2026)
-**Próxima sesión:** 32 — opciones: (a) smoke test personalización láser end-to-end cuando llegue el láser físico (sigue pendiente desde Sesión 29); (b) **CSP (Content Security Policy)** — última pieza para llegar a A+ definitivo en securityheaders.com, esfuerzo ~1h; (c) **Drop columna legacy `products.banner_url`** (pendiente desde Sesión 21); (d) **Email automático al admin cuando entra pedido con grabado** (código existe en `blockPersonalizacion('admin')`, falta conectarlo); (e) pendientes secundarios de Sesión 26 (B reseñas reales, E Gmail send-as, datos bancarios reales en email de transferencia).
+**Última actualización:** Sesión 37 — UX de descuentos completa en los 3 momentos del flujo de compra. Esta sesión cierra un arco de 6 sesiones (32-37) iniciado como "feature de cupones para clientes repetidos" que terminó refactorizando toda la lógica de descuentos del e-commerce. **Sesión 32:** atributo `solo_clientes_repetidos` en `coupons` + fix de constraints viejos sincronizados con el frontend (bug latente desde Sesión 14). **Sesión 33:** 2 tipos de cupón nuevos (✨ solo nuevos clientes + 🎨 personalización gratis con N slots cubiertos). **Sesión 34:** UX del slot de imagen subida (verde "Subido" + link "Eliminar imagen") + fixes críticos del cupón de personalización (frontend no enviaba `hasPersonalizacion`, cálculo del descuento mal aplicado al subtotal en vez de la personalización). **Sesión 35:** 4 ajustes UX (badge GRABADO no se rompe en mobile, auto-marca checkbox no-devolución cuando se marca privacidad, texto "X grabados personalizados gratis", admin mobile responsive opción B = pedidos/cupones/estados). **Sesión 36:** rediseño completo de la fórmula de descuentos — transferencia 10% ahora siempre es acumulable con cupones, se aplica sobre `(subtotal − cupón_subtotal) + (personalización − cupón_personalización)` sin tocar envío. Tarjetas verdes (Opción D) en checkout + seguimiento. Bug raíz arreglado: el campo `cupon_codigo` ya existía en DB desde sesiones anteriores pero ningún endpoint lo estaba leyendo (3 lugares: `api/checkout.js`, `mp-webhook.js`, `api/seguimiento.js`). **Sesión 37:** tarjetas verdes en emails con split exacto del descuento (cupón vs transferencia) usando despeje matemático sin queries extra a DB. Stack tocado: 6 archivos código JS frontend, 5 archivos código JS backend serverless, 3 archivos HTML, 2 archivos SQL en Supabase. 22/22 tests sintéticos pasados en distintos puntos del arco. Todas las sesiones deployed y validadas en producción por el dueño (Evandro). Ver `DETALLE-SESIONES-32-37.md` para contexto técnico extendido. (13/05/2026)
+**Próxima sesión:** 38 — opciones disponibles, en orden sugerido de prioridad:
+- (a) **Agregar columnas `descuento_cupon` y `descuento_transferencia` a `orders`** — hoy guardamos solo el descuento total, el split en email/seguimiento se calcula por despeje matemático (funciona pero frágil si cambia la lógica). Con columnas dedicadas, todo el flujo se simplifica y los reportes financieros del admin pueden separar facilmente "ventas brutas vs ahorros por cupones". Esfuerzo: 30-45 min.
+- (b) **Edición de cupones post-creación** — hoy el admin solo permite Pausar/Activar/Eliminar. Para cambiar `valor`, `min_compra`, flags, hay que recrear. Esfuerzo: 1 hora.
+- (c) **Email automático con FOUNDER20 a los 10 días post-entrega** — idea propuesta por el usuario en Sesión 32. Requiere cron + flag de dedup. Esfuerzo: 2 horas.
+- (d) **Email automático al admin cuando entra pedido con grabado** — el código `blockPersonalizacion('admin')` ya existe, falta conectarlo. Esfuerzo: 30 min.
+- (e) **Admin mobile parte 2** — completar editor de productos y panel de personalización láser en mobile (Sesión 35 dejó priority B; productos y láser quedaron pendientes). Esfuerzo: 2-3 horas.
+- (f) **CSP (Content Security Policy)** — la última pieza para A+ definitivo en securityheaders.com. Esfuerzo: 1 hora.
+- (g) **Auditoría general de constraints CHECK en TODAS las tablas** — Sesión 32 reveló que `coupons_uso_check` y `coupons_tipo_check` estaban desincronizados con el código desde hacía 18 sesiones. Hay que repasar `orders`, `products`, `product_colors`, etc. Esfuerzo: 30 min.
+- (h) **Drop columna legacy `products.banner_url`** — pendiente desde Sesión 21.
 **Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
+
+---
+
+## ✅ SESIÓN 37 — Tarjetas verdes (Opción D) en emails con split exacto del descuento [13/05/2026]
+
+**Sesión cosmética con cálculo matemático preciso.** Cerró el último gap del arco 32-37: los emails ahora muestran los descuentos como tarjetas verdes con borde izquierdo (el mismo formato visual que checkout y seguimiento), con el monto exacto de cada componente del descuento (cupón vs transferencia).
+
+**Bloque A — Tarjetas en HTML email:** reescribió la función `renderDiscountLines` en `api/email-templates.js`. Antes mostraba filas planas de texto ("Cupón PERSONAL aplicado / Pago por transferencia (10%) / Total descontado -$X"). Ahora muestra **tabla anidada con `border-left: 3px solid #4caf82` y fondo `rgba(76,175,130,0.08)`**, compatible con Outlook, Gmail y Apple Mail (única forma confiable de hacer tarjetas en email: no usa flexbox, CSS variables, ni clases). Helper `renderCard(colspan, title, subtitle, amount)` genera la misma estructura para los 3 templates (transferencia, MP aprobado, MP pendiente, status update con foto).
+
+**Bloque B — Split matemático exacto del descuento:** la DB guarda solo el descuento total (no desglosado entre cupón y transferencia). Antes de Sesión 37, emails mostraban "Total descontado" sin atribución de montos. Ahora se despeja con la ecuación:
+```
+descuento_cupon = subtotal + personalización - ((total - envío) / 0.90)
+descuento_transferencia = descuento_total - descuento_cupon
+```
+Esto funciona porque la transferencia siempre es 10% del total después del cupón (regla establecida en Sesión 36). Cero queries extra a DB. Si el cálculo da inconsistente (sanity check: suma negativa o no cierra), fallback a una tarjeta combinada.
+
+**Bloque C — Enriquecimiento de `opts` en `blockItems` y `blockItemsWithPhotos`:** ambas funciones ya recibían `total`, `envio`, `descuento` y los items. Ahora calculan internamente `subtotal` y `personalizExtra` desde los items, los agregan al `opts`, y los pasan a `renderDiscountLines`. Los templates llamadores no cambiaron — refactor sin breaking changes.
+
+**Archivos modificados:** 1 (`api/email-templates.js`).
+
+**Tests sintéticos:** 4/4 pasados (caso real del dueño con cupón PERSONAL + transferencia → $1.740 cupón + $498 transferencia = $2.238 ✓, solo cupón, solo transferencia, cupón clásico FOUNDER20 + transferencia con grabado).
+
+**Validación en producción:** el dueño verificó el email del pedido entregado y confirmó que las 2 tarjetas muestran montos individuales correctos.
+
+---
+
+## ✅ SESIÓN 36 — Rediseño completo de la fórmula de descuentos + Opción D (tarjetas verdes) [13/05/2026]
+
+**Sesión grande de refactor de business logic.** El dueño identificó que la regla histórica "cupón + transferencia = se aplica el mayor" desincentivaba la transferencia (que es lo que él quiere fomentar para ahorrar comisiones de Mercado Pago). La sesión cambió la regla a "todos los descuentos son acumulables" y unificó la UX en los 3 momentos del flujo (checkout, seguimiento, emails).
+
+### Bloque A — Nueva fórmula de descuentos
+
+**Antes:**
+- Cupón clásico (subtotal) + Transferencia → se aplicaba el mayor (incompatible).
+- Cupón personalización + Transferencia → se sumaban.
+
+**Ahora:**
+- TODO es acumulable.
+- Transferencia 10% se calcula al final, sobre `(subtotal − cupón_subtotal) + (personalización − cupón_personalización)`. NUNCA toca el envío.
+- El envío gratis (≥ $2.000) se decide sobre la base ANTES de transferencia (el cliente "se ganó" el envío con productos+grabados, la transferencia es bonus separado).
+
+**Razón de negocio:** transferencia evita comisión de MP (~6% del total). El dueño quiere que el cliente vea el descuento de transferencia siempre que aplique, incluso si ya usó un cupón.
+
+**Ejemplo numérico (validado con el dueño):**
+- Founder Confort $2.490 + 4 grabados $1.160 + cupón FOUNDER20 (20%) + transferencia
+- Cupón: -$498 (20% × $2.490)
+- Base transferencia: ($2.490 − $498) + $1.160 = $3.152
+- Transferencia: -$315 (10% × $3.152)
+- Envío: gratis (base ≥ $2.000)
+- **Total: $2.837**
+
+### Bloque B — Tarjetas verdes (Opción D) en frontend
+
+`founder-checkout.js`: refactor de `calculateOrderTotals()` con nueva fórmula. Render del resumen ahora muestra tarjetas verdes con título + subtítulo + monto:
+- *✓ Cupón XXX aplicado / 20% de descuento del producto / -$498*
+- *✓ Pago por transferencia / 10% sobre productos + grabados / -$315*
+
+Tarjetas usan flexbox + variables CSS — en frontend funcionan sin problema.
+
+`seguimiento.html` + `founder-seguimiento.js`: mismo patrón visual. La heurística: si hay solo 1 fuente de descuento → 1 tarjeta con monto. Si hay 2 fuentes → 2 tarjetas con descripción + línea "Total descontado" con monto total (limitación cerrada en Sesión 37 con despeje matemático).
+
+### Bloque C — Bug raíz: `cupon_codigo` no se leía en 3 endpoints
+
+El campo `cupon_codigo` ya existía en `orders` desde Sesión 14, y la RPC `apply_coupon_and_create_order` lo poblaba correctamente. Pero **tres endpoints diferentes nunca lo habían leído**:
+
+1. **`api/checkout.js`** (`cleanOrder`): no inyectaba `cupon_codigo` en el objeto que pasa a `sendOrderConfirmationTransfer(cleanOrder, items)`. El email de transferencia inicial perdía la atribución del cupón.
+2. **`api/mp-webhook.js`** (select de DB): no incluía `cupon_codigo`, `pago`, ni `personalizacion` en el select, así que el email post-MP no tenía contexto.
+3. **`api/seguimiento.js`** (select de DB): no incluía `personalizacion_extra` ni `personalizacion` en items. La página de seguimiento ya tenía el render preparado pero no recibía los datos.
+
+Los 3 selects fueron extendidos. La página de seguimiento ahora muestra atribución correcta para TODOS los pedidos (incluso los viejos, porque la RPC ya guardaba `cupon_codigo` desde antes).
+
+### Bloque D — Bug del email no mostraba personalización por item
+
+En `email-templates.js`, las funciones `blockItems` y `blockItemsWithPhotos` calculaban el subtotal de cada línea como `precio × cantidad`, sin sumar el extra de personalización. En la captura del dueño se veían 2 Founder Confort a $2.490 c/u pero arriba decía "Extra por grabado: $1.740". La suma de líneas no cuadraba con el total. Fix: ahora `subtotal = (precio + extra) × cantidad` y se agrega un subtítulo "· con grabado láser (+$X)" cuando aplica.
+
+### Archivos modificados
+
+8 archivos: `checkout.html`, `components/founder-checkout.js`, `api/checkout.js`, `api/mp-webhook.js`, `api/seguimiento.js`, `api/email-templates.js`, `seguimiento.html`, `components/founder-seguimiento.js`.
+
+**Tests sintéticos:** 7/7 pasados (FOUNDER20 + transferencia + grabado completo, PERSONAL + transferencia + grabado completo, sin descuentos, solo transferencia, solo cupón FOUNDER20, caso límite con producto chico que cobra envío, retiro en local).
+
+### Limitación cerrada en Sesión 37
+
+En Sesión 36, cuando había cupón + transferencia, el email mostraba 2 etiquetas + un "Total descontado" porque no se podían dividir los montos sin queries extra a DB. Sesión 37 resolvió esto con despeje matemático.
+
+---
+
+## ✅ SESIÓN 35 — UX polish + admin mobile (priority B) [13/05/2026]
+
+**4 ajustes en paralelo, todos independientes.**
+
+**Ajuste 1 — Badge GRABADO no se rompe en mobile:** el `<span class="order-badge">✦ GRABADO</span>` tenía `letter-spacing:1px` y estaba inline en `.order-id` sin flex-wrap. En pantallas chicas se cortaba feo. Se creó clase `.order-badge` con `display:inline-flex` + `white-space:nowrap` y se cambió `.order-head` a `flex-wrap:wrap`. Mismo tratamiento para el badge "ARCHIVADO".
+
+**Ajuste 2 — Auto-marca checkbox no-devolución:** unidireccional. Cuando el cliente marca el checkbox de Política de Privacidad, el segundo checkbox (no-devolución para personalización) se marca automáticamente — pero solo si está visible (carrito tiene grabado). Si el cliente DES-marca Privacidad, el otro NO se desmarca (decisión: legalmente más seguro). Listener idempotente con `dataset.s35Linked` para evitar duplicación si `init()` se llama varias veces. Implementado en `founder-checkout.js`.
+
+**Ajuste 3 — Texto del cupón aplicado:** "X slots de personalización gratis" → "X grabados personalizados gratis". Con singular/plural ("1 grabado" vs "3 grabados"). Cambio mínimo en el `descLabel` de `founder-checkout.js`.
+
+**Ajuste 4 — Admin mobile (priority B confirmada por el dueño):** sidebar como menú hamburguesa, lista de pedidos optimizada para mobile, modal de detalle responsive, filtros con scroll horizontal, formulario de cupones en una sola columna, botones más grandes para tocar con dedo.
+
+- **Topbar**: agregado botón hamburguesa antes del logo (oculto en desktop). Logo más pequeño en mobile, badge "ADMIN" oculto en <768px, "Ver sitio →" oculto en <480px.
+- **Sidebar**: `position:fixed`, drawer que entra desde la izquierda con `transform:translateX`. Backdrop oscuro semitransparente (`.sidebar-backdrop`) con click para cerrar.
+- **Auto-cierre del drawer** cuando se navega a otra página en mobile (check `window.innerWidth <= 768` dentro de `nav()`).
+- **3 breakpoints** progresivos: ≤900px (tablet, stats 2 cols, orders-grid 1 col), ≤768px (mobile, drawer + cards stack), ≤480px (small mobile, stats 1 col).
+- **Cards de pedidos**: botones full-width con `padding:10px 12px` para tap fácil.
+- **Filtros**: scroll horizontal con `-webkit-overflow-scrolling:touch` (iOS smooth scroll).
+- **Modal "Ver detalle"**: ocupa casi todo el viewport en mobile, grids internos pasan a 1 columna.
+- Funciones `toggleSidebar()` y `closeSidebar()` exportadas al window desde `founder-admin.js`.
+
+**Pendiente para próxima sesión:** editor de productos (tabs de colores/fotos, drag&drop) y panel de personalización láser en mobile. Funcionales pero no totalmente pulidos visualmente.
+
+**Archivos modificados:** 3 (`admin.html`, `components/founder-admin.js`, `components/founder-checkout.js`).
+
+**Validación HTML:** 341/341 divs, 41/41 buttons, 26/26 spans.
+
+---
+
+## ✅ SESIÓN 34 — UX slot personalización + 2 bugs críticos cupón [13/05/2026]
+
+**Sesión que cerró 2 bugs descubiertos al usar los cupones de Sesión 33 en producción, + 1 cambio UX cosmético.**
+
+### Ajuste UX — Slot de imagen subida ya no parece error
+
+Cuando el cliente subía una imagen de personalización láser, antes veía un botón rojo "✕ Quitar" que daba la impresión de error o problema. Ahora:
+- Badge verde "✓ Subido" en lugar del botón rojo.
+- Debajo del badge, link rojo subrayado "Eliminar imagen" (más chico, discreto pero accesible).
+
+Clases nuevas: `.laser-upload__actions` (wrapper flex), `.laser-upload__status` (badge verde), `.laser-upload__remove-link` (link). Media query mobile adaptado para que el grupo se acomode bien en pantallas chicas (`.laser-upload__actions` con `grid-column:1/-1` y `align-items:center`).
+
+`removeLaserFile(tipo)` sin cambios — sigue siendo el mismo callback. Sin confirmación previa (decisión del dueño: pedir confirmación sería fricción innecesaria para algo que se puede volver a subir en 5 segundos).
+
+### Bug crítico #1 — Cupón GRABADOFREE siempre rechazaba
+
+**Síntoma:** el dueño aplicaba el cupón en un carrito CON personalización y obtenía error *"Este código requiere productos personalizados en el pedido."*
+
+**Causa raíz:** En Sesión 33 escribí en `api/checkout.js`:
+```js
+const hasPersonalizacion = body.hasPersonalizacion === true;
+if (hasPersonalizacion === false) { rechazar; }
+```
+Pero el frontend `founder-checkout.js` **NUNCA enviaba `hasPersonalizacion` en el body de `validate_coupon`**. Llegaba `undefined`, que NO es `=== true`, entonces siempre entraba en el rechazo.
+
+**Fix:**
+- `founder-checkout.js`: ahora envía `hasPersonalizacion: state.cart.some(i => i && i.personalizacion)` en `validate_coupon`.
+- `api/checkout.js`: cambió la lógica a `if (body.hasPersonalizacion === false)` — solo rechaza si viene EXPLÍCITAMENTE en false. Si viene `true` o `undefined`, deja pasar (la RPC SQL valida server-side con los items reales).
+
+### Bug crítico #2 — Descuento aplicado sobre el subtotal del producto en vez de la personalización
+
+**Síntoma:** cliente compra Founder Confort ($2.490) + 4 grabados ($1.160) y aplica cupón de personalización. El resumen mostraba: producto $2.490 - $2.490 = $0 + personalización $1.160 + envío. El descuento se comió todo el producto en vez de descontar de la personalización.
+
+**Causa raíz:** En el admin, el usuario tenía que poner "Valor" en el cupón aunque marcara la flag "🎨 Descuenta personalización" (un campo obligatorio del formulario). El frontend `founder-checkout.js` en `calculateOrderTotals()` calculaba el descuento usando `state.coupon.tipo` y `state.coupon.valor` sin chequear si era un cupón de personalización. Como el usuario puso `valor=100`, el cálculo fue `subtotal × 100/100 = subtotal entero`.
+
+**Fix:**
+- `state.coupon` ahora guarda `descuentaPersonalizacion` y `personalizacionSlotsCubiertos` desde la respuesta del backend.
+- `calculateOrderTotals()` bifurca: si `descuentaPersonalizacion === true`, calcula descuento con `slots × items_grabados × $290` (espejo de la RPC SQL).
+- En el render del resumen, descuento se muestra en la **línea de personalización** (tachado el original + línea "↳ Cupón XXX -$YYY" en verde), no como descuento del producto.
+
+### Mejora UX adicional — Admin no deja crear cupones inconsistentes
+
+En `admin.html` se agrupó "Tipo de descuento + Valor + Mínimo de compra" en un wrapper `#cuponClassicFields` con clase `.cupon-classic-fields`. Cuando se marca "🎨 Personalización gratis", el wrapper se opaca (`.is-disabled`) con un mensaje *"⚠ Estos campos no se usan en cupones de personalización gratis"*. Listener idempotente en `loadCoupons()` → `setupCuponPersonalizacionToggle()`.
+
+Frontend del admin (`founder-admin.js`) ahora **fuerza** `valor: 0`, `tipo: 'porcentaje'`, `min_compra: 0` al backend cuando es cupón de personalización, ignorando lo que haya escrito el usuario por error.
+
+**Archivos modificados:** 5 (`producto.html`, `api/checkout.js`, `components/founder-checkout.js`, `admin.html`, `components/founder-admin.js`).
+
+**Tests sintéticos:** 5/5 (caso del bug original con cifras exactas, cupón 2 slots multi-item, cupón clásico no toca personalización, sin cupón, cantidad 2 con grabado).
+
+**Validación en producción:** dueño validó pedido $2.490 producto + $1.160 personalización + cupón PERSONAL 3 slots → producto $2.490 entero + personalización $290 neto + descuento -$870 → Total $2.780 ✓.
+
+### Lección de la sesión
+
+Los 2 bugs se escaparon porque en Sesión 33 testeé la **lógica de cada pieza aislada** (SQL puro, helper de admin) pero no probé la **integración frontend↔backend** (qué campos viajan, en qué shape, dónde se calcula cada cosa). **Regla para próximas sesiones:** cuando se agrega un tipo nuevo de algo (cupón, producto, descuento), revisar TODAS las funciones de cálculo y rendering que asuman los tipos viejos. Especialmente en frontend, donde los cálculos pueden estar en 2-3 lugares (preview, render, payload final).
+
+---
+
+## ✅ SESIÓN 33 — 2 tipos nuevos de cupón (✨ nuevos clientes + 🎨 personalización gratis) [13/05/2026]
+
+**Sesión arquitectónica de extensión del sistema de cupones.** El dueño quería 2 cupones nuevos pero conceptualmente distintos al `FOUNDER20` (clásico) de Sesión 32. La sesión agregó 3 columnas + 1 CHECK constraint a la tabla `coupons` y refactorizó las funciones de creación/validación para soportar combinaciones.
+
+### Schema nuevo
+
+**3 columnas nuevas en `coupons`:**
+- `solo_clientes_nuevos BOOLEAN DEFAULT FALSE` — espejo opuesto de `solo_clientes_repetidos`.
+- `descuenta_personalizacion BOOLEAN DEFAULT FALSE` — master flag para cupones que descuentan grabado en vez de subtotal.
+- `personalizacion_slots_cubiertos INTEGER DEFAULT 0` — cuántos slots cubre (1 a 4 si `descuenta_personalizacion=true`, 0 si la flag está apagada).
+
+**Constraint nuevo `coupons_consistency_check`:**
+```sql
+NOT (solo_clientes_nuevos AND solo_clientes_repetidos)  -- excluyentes
+AND (
+  (descuenta_personalizacion = TRUE AND slots BETWEEN 1 AND 4)
+  OR (descuenta_personalizacion = FALSE AND slots = 0)
+)
+```
+Imposible crear un cupón malformado a nivel DB.
+
+### Cupón #1 — ✨ Solo nuevos clientes (espejo de Sesión 32)
+
+Si el cupón tiene `solo_clientes_nuevos = TRUE`, solo aplica si el email del comprador NO tiene compras `Entregado` previas. Defensa en profundidad: chequeo en `validate_coupon` (UX inmediato) y en la RPC SQL (verdad inviolable). Mensaje al cliente: *"Este código es exclusivo para nuevos clientes."*
+
+NO combinable con `solo_clientes_repetidos` (un email es nuevo O recurrente, nunca ambos). Bloqueado a 3 niveles: frontend admin (toast), backend admin (`cupon_combinacion_invalida`), DB constraint.
+
+### Cupón #2 — 🎨 Personalización gratis (concepto distinto)
+
+Descuenta del costo de personalización (`personalizacion_extra` en `orders`), NO del subtotal. Cálculo:
+```
+descuento = MIN(slots_cubiertos × items_con_grabado × $290, personalizacion_extra_real)
+```
+- Multiplica por cantidad de items grabados del pedido.
+- Tope al 100% del costo real de personalización (si el cupón cubre 4 slots pero el cliente personalizó 2, descuento = lo personalizado).
+- Items "con grabado" = los que tienen al menos 1 slot lleno (adelante / interior / atrás / texto).
+
+Combinable con `solo_clientes_repetidos` (cupón VIP) y `solo_clientes_nuevos` (cupón de bienvenida) y `por-email` (1 vez por persona).
+
+### Archivos modificados
+
+5 archivos: 1 SQL + `api/checkout.js`, `api/admin.js`, `admin.html`, `components/founder-admin.js`.
+
+**Tests sintéticos:** 8/8 del cálculo de descuento (1 item con 1 slot tope 100%, 1 item 4 slots cupón 3, 2 items mixtos, sin personalización error, cupón 4 cliente 2 tope, cantidad 3 multiplicación, personalización vacía, mix grabado/no-grabado).
+
+### Detalle no detectado en Sesión 33 (cerrado en Sesión 34)
+
+Por foco en tests sintéticos, no testeé integración frontend↔backend. El cupón "Personalización gratis" tenía 2 bugs:
+1. Frontend no enviaba `hasPersonalizacion` (rechazaba siempre).
+2. Frontend usaba `tipo/valor` para calcular descuento sin ver la flag (aplicaba 100% del subtotal).
+
+Ambos cerrados en Sesión 34.
+
+---
+
+## ✅ SESIÓN 32 — Cupón para clientes repetidos + fix de constraints históricos [13/05/2026]
+
+**Feature de fidelización + cierre de bug latente desde Sesión 14.**
+
+### Bloque A — Feature principal (5 archivos + 1 SQL)
+
+**Decisión arquitectónica:** NO crear un tipo nuevo en `coupons.uso`. En su lugar agregar **atributo booleano `solo_clientes_repetidos`** (BOOLEAN, default FALSE) combinable con cualquier `uso` (multiuso / unico / por-email). Razones:
+- Cero impacto en cupones existentes.
+- Futuras extensiones triviales (VIP, primer comprador del mes, etc.).
+- Mantiene CHECK constraints estables.
+
+**SQL:** `ALTER TABLE coupons ADD COLUMN` + bloque nuevo en RPC `apply_coupon_and_create_order` que cuenta `orders WHERE LOWER(TRIM(email)) = v_email AND estado = 'Entregado' AND COALESCE(archivado, FALSE) = FALSE` cuando la flag está activa. Si count < 1 → `RAISE EXCEPTION 'cupon_solo_clientes_repetidos'`.
+
+**Backend `api/checkout.js`:** 3 cambios — mensaje al error map, SELECT extendido con la nueva columna, pre-check en `handleValidateCoupon` para UX inmediato al aplicar (no hace falta esperar a "Confirmar pedido").
+
+**Backend `api/admin.js`:** whitelist extendida + insert con `solo_clientes_repetidos: c.solo_clientes_repetidos === true`.
+
+**Frontend `admin.html`:** CSS nuevo `.cupon-flag` (checkbox-card consistente con `.perm-grabado-check`) + markup con checkbox "🔄 Solo clientes con compra previa" + hint explicativo.
+
+**Frontend `components/founder-admin.js`:** `saveCupon` lee y manda la flag. `renderCouponsTable` agrega badge 🔄 al lado del código. `viewOrder` con helper local `countDeliveredOrdersForEmail(email, excludeOrderId)` que cuenta en memoria sobre `state.allOrders` (cero round-trips a DB) + burbuja dorada "🔄 Cliente repetido — Xª compra" en el modal cuando count ≥ 1.
+
+### Bloque B — Fix de constraints históricos (descubierto durante smoke test)
+
+Durante la primera prueba de creación del cupón, INSERT a `coupons` falló con error 500 *"violates check constraint coupons_uso_check"*. SELECT a `pg_constraint` reveló:
+
+```
+ANTES (valores viejos de Sesión 14):
+coupons_uso_check:  CHECK (uso  IN ('unico', 'multiple'))
+coupons_tipo_check: CHECK (tipo IN ('porcentaje', 'monto'))
+
+DESPUÉS (lo que el código siempre mandó):
+coupons_uso_check:  CHECK (uso  IN ('multiuso', 'unico', 'por-email'))
+coupons_tipo_check: CHECK (tipo IN ('porcentaje', 'fijo'))
+```
+
+El bug venía **desde la Sesión 14** (creación inicial de `coupons`). Como la tabla estaba **completamente vacía** (`SELECT count(*) = 0`), nadie intentó crear cupones desde el admin después de los cambios de strings. La regla histórica documentada en Sesión 22 ("constraints CHECK de orders = strings del frontend EXACTO") nunca se aplicó retroactivamente a `coupons`.
+
+**Fix:** DROP + CREATE de ambos constraints con valores correctos. Cero riesgo de pérdida de data (tabla vacía).
+
+### Bloque C — Smoke test end-to-end en producción
+
+4/4 tests: crear cupón con flag activa, aplicar a email nunca visto (rechazado correctamente), aplicar a email recurrente (aceptado con 20%), burbuja "Cliente repetido — Xª compra" en modal admin.
+
+**Decisión de UX confirmada por el dueño:** comportamiento "aplicar ≠ consumir" — el cupón solo se marca usado al COMPLETAR el pago, no al hacer click en Aplicar. Patrón estándar de e-commerces (Amazon, Mercado Libre).
+
+### Métricas Sesión 32
+
+- 11/11 tests sintéticos del helper `countDeliveredOrdersForEmail`.
+- 4/4 tests end-to-end en producción.
+- Cupón `FOUNDER20` (porcentaje 20%, por-email, solo clientes repetidos, sin fecha de fin) creado y operativo.
+
+### Lecciones Sesión 32
+
+1. **Pedir la función SQL real antes de tocarla**, no reconstruirla por inferencia. En el primer intento reconstruí la RPC y habría sobrescrito detalles sutiles (FOR UPDATE para lockear cupón, retorno `{order_id, descuento_calc}`, INTEGER en vez de NUMERIC). Regla: cuando hay que modificar una función SQL existente, pedir el código actual antes que adivinarlo.
+2. **Atributo > tipo nuevo** cuando la naturaleza del cambio es "combinable con lo existente".
+3. **El helper en memoria vence al round-trip a DB** cuando el admin ya tiene `state.allOrders` cargado.
+4. **Defensa en profundidad para UX**: la RPC SQL es la fuente de verdad inviolable, pero validar también en `validate_coupon` permite que el cliente vea el error al APLICAR (no al ENVIAR).
+5. **El smoke test descubre esqueletos en el placard**. El bug de constraints (Sesión 14, 18 sesiones atrás) sobrevivió por tabla vacía. Pendiente: auditoría general de constraints CHECK en TODAS las tablas (queda como opción `(g)` en próxima sesión).
+6. **Método científico vence al "tirar fixes"**. Al ver "Error al guardar cupón", se barajaron 3 hipótesis (caché navegador, caché Vercel, GRANT). Las 3 erróneas. Capturar el Response real del POST en DevTools reveló la causa en 10 segundos. **Mejor instrumentar que hipotetizar.**
+
+---
+
+## 📋 Inventario completo de archivos tocados (Sesiones 32-37)
+
+| Archivo | Sesiones que lo tocaron |
+|---|---|
+| `admin.html` | 32, 33, 34, 35 |
+| `components/founder-admin.js` | 32, 33, 34, 35 |
+| `api/checkout.js` | 32, 33, 34, 36 |
+| `api/admin.js` | 32, 33 |
+| `components/founder-checkout.js` | 34, 35, 36 |
+| `producto.html` | 34 |
+| `checkout.html` | 36 |
+| `seguimiento.html` | 36 |
+| `components/founder-seguimiento.js` | 36 |
+| `api/seguimiento.js` | 36 |
+| `api/mp-webhook.js` | 36 |
+| `api/email-templates.js` | 36, 37 |
+| **SQL Supabase** | 32, 33 |
+
+## 🛡️ Estado del sitio post-Sesión 37
+
+✅ Todo lo anterior (perf, SEO, MP, headers, rate limit, JWT, personalización láser end-to-end, etc.)
+✅ **3 tipos de cupones combinables** (clientes repetidos, nuevos clientes, personalización gratis) — Sesión 32-33
+✅ **Burbuja visual de cliente recurrente** en admin con count en memoria — Sesión 32
+✅ **Bug histórico de constraints `coupons` cerrado** (Sesión 14 → 32) — Sesión 32
+✅ **Defensa en triple capa**: frontend valida + backend valida + DB constraint — Sesión 32-33
+✅ **Slot de imagen subida ya no parece error** (verde "Subido" + link "Eliminar imagen") — Sesión 34
+✅ **Cupón de personalización funcional** (2 bugs críticos arreglados, descuento aplica donde corresponde) — Sesión 34
+✅ **Auto-marca consent de no-devolución** unidireccional al marcar privacidad — Sesión 35
+✅ **Admin mobile usable** (sidebar hamburguesa, pedidos + estados + cupones optimizados) — Sesión 35
+✅ **Fórmula de descuentos acumulables** (cupón + transferencia ahora suman, no compiten) — Sesión 36
+✅ **Tarjetas verdes Opción D** en checkout + seguimiento + emails — Sesión 36-37
+✅ **Atribución correcta del descuento** en emails (cupón vs transferencia con montos exactos) — Sesión 37
+✅ **`cupon_codigo` ahora se lee correctamente** en 3 endpoints (checkout, mp-webhook, seguimiento) — Sesión 36
 
 ---
 
