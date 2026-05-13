@@ -35,6 +35,7 @@ import {
   templateOrderMpApproved,
   templateOrderMpPending,
   templateOrderStatusUpdate,
+  templateReviewThankYou,
   statusEmailSubject,
   statusTriggersEmail,
 } from './email-templates.js';
@@ -249,5 +250,38 @@ export async function sendOrderStatusUpdate(order, items, statusKey, photoMap) {
     subject,
     html,
     type:    `status_${statusKey.toLowerCase().replace(/\s+/g, '_')}`,
+  });
+}
+
+/**
+ * Envía email de agradecimiento + cupón de recompensa cuando el cliente
+ * deja una reseña. Sesión 38.
+ *
+ * Disparado desde api/reviews.js (action='create') con fire-and-forget
+ * + timeout, mismo patrón que el resto.
+ *
+ * @param {Object} order pedido (numero, email, nombre).
+ * @param {Object} review datos de la reseña recién creada:
+ *                        - rating (1-5)
+ *                        - texto (string)
+ *                        - rewardCoupon (null | { codigo, tipo, valor })
+ * @returns {Promise<{ok:boolean, error?:string, message_id?:string}>}
+ */
+export async function sendReviewThankYou(order, review) {
+  if (!order || !order.email) {
+    return { ok: false, error: 'invalid_order' };
+  }
+  const html    = templateReviewThankYou(order, review || {});
+  const subject = review?.rewardCoupon
+    ? `¡Gracias por tu reseña! Tu cupón ${review.rewardCoupon.codigo} ya está activo`
+    : `¡Gracias por tu reseña!`;
+  if (!html) {
+    return { ok: false, error: 'template_render_failed' };
+  }
+  return sendEmail({
+    to:      order.email,
+    subject,
+    html,
+    type:    'review_thank_you',
   });
 }

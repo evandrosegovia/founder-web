@@ -172,6 +172,7 @@ export const LIMITS = Object.freeze({
   create_order:    { max: 10, windowSec: 60 * 60 },  // 10 / 1h    → spam de pedidos
   validate_coupon: { max: 20, windowSec: 60 * 60 },  // 20 / 1h    → enumeración de cupones
   seguimiento:     { max: 30, windowSec: 60 * 60 },  // 30 / 1h    → scraping de pedidos
+  create_review:   { max: 5,  windowSec: 60 * 60 },  // 5 / 1h     → spam de reseñas (Sesión 38)
 });
 
 /**

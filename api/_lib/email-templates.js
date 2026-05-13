@@ -1041,3 +1041,92 @@ export function statusEmailSubject(order, statusKey) {
   const numero = esc(order.numero || '');
   return cfg.subject.replace('${numero}', numero);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// TEMPLATE: Agradecimiento por reseña + cupón de recompensa
+// Sesión 38. Disparado por api/reviews.js cuando un cliente deja reseña.
+// ─────────────────────────────────────────────────────────────────
+/**
+ * Renderiza el email "gracias por tu reseña".
+ *
+ * @param {Object} order  pedido (numero, nombre).
+ * @param {Object} review { rating, texto, rewardCoupon }
+ *                        rewardCoupon = null | { codigo, tipo, valor }
+ * @returns {string} HTML del email
+ */
+export function templateReviewThankYou(order, review) {
+  const numero = esc(order.numero || '');
+  const nombre = esc(order.nombre || 'cliente');
+  const rating = parseInt(review?.rating, 10) || 5;
+
+  // Estrellas en dorado para el ranking
+  const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+
+  // Bloque del cupón (puede no existir si el dueño no tiene cupón configurado)
+  const reward = review?.rewardCoupon;
+  let rewardBlock = '';
+  if (reward && reward.codigo) {
+    const valorTxt = reward.tipo === 'porcentaje'
+      ? `${reward.valor}% de descuento`
+      : `$${reward.valor} de descuento`;
+
+    rewardBlock = `
+<tr><td style="padding:0 32px 24px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+    style="background:rgba(201,169,110,0.08);border:1px solid rgba(201,169,110,0.35);">
+    <tr><td style="padding:24px 24px 20px;text-align:center;">
+      <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:#c9a96e;margin-bottom:8px;">
+        ✨ Tu recompensa
+      </div>
+      <div style="font-family:Georgia,serif;font-size:22px;color:#f8f8f4;margin-bottom:14px;font-weight:300;">
+        Acá tenés tu cupón
+      </div>
+      <div style="font-family:'Courier New',monospace;font-size:24px;letter-spacing:4px;
+                  color:#c9a96e;background:#0a0a0a;border:1px dashed #c9a96e;
+                  padding:14px 20px;display:inline-block;margin-bottom:14px;font-weight:700;">
+        ${esc(reward.codigo)}
+      </div>
+      <div style="font-size:13px;color:#bdbdbd;line-height:1.6;">
+        ${esc(valorTxt)} en tu próxima compra.<br>
+        Usalo al hacer el checkout en <a href="https://www.founder.uy"
+          style="color:#c9a96e;text-decoration:underline;">founder.uy</a>.
+      </div>
+    </td></tr>
+  </table>
+</td></tr>`;
+  }
+
+  const inner = `
+<tr><td style="padding:36px 32px 8px;text-align:center;">
+  <div style="font-size:9px;letter-spacing:5px;text-transform:uppercase;color:#c9a96e;margin-bottom:14px;">
+    💛 ¡Gracias!
+  </div>
+  <div style="font-family:Georgia,serif;font-size:26px;color:#f8f8f4;font-weight:300;line-height:1.4;">
+    ¡Gracias por tu reseña, ${nombre}!
+  </div>
+</td></tr>
+
+<tr><td style="padding:0 32px 24px;text-align:center;">
+  <div style="font-size:24px;letter-spacing:6px;color:#c9a96e;margin-bottom:10px;">
+    ${stars}
+  </div>
+  <div style="font-size:13px;color:#bdbdbd;line-height:1.7;max-width:480px;margin:0 auto;">
+    Recibimos tu reseña del pedido <strong style="color:#c9a96e;">#${numero}</strong>.
+    Antes de publicarla, la revisamos para mantener un espacio confiable para
+    todos. Suele tardar menos de 24 horas.
+  </div>
+</td></tr>
+
+${rewardBlock}
+
+<tr><td style="padding:0 32px 36px;text-align:center;">
+  <div style="font-size:12px;color:#9a9a9a;line-height:1.7;">
+    Si tenés cualquier consulta, escribinos por
+    <a href="https://wa.me/598098550096" style="color:#c9a96e;text-decoration:underline;">WhatsApp</a>.
+  </div>
+</td></tr>
+
+${blockFooter()}`;
+
+  return wrapEmail(inner, '¡Gracias por dejar tu reseña en Founder!');
+}
