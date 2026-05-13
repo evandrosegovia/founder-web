@@ -88,12 +88,23 @@ function blockHeader() {
  */
 function blockItems(items, total, envio, descuento, opts) {
   const rows = (items || []).map(it => {
-    const subtotal = Number(it.cantidad || 0) * Number(it.precio_unitario || 0);
+    const cantidad = Number(it.cantidad || 0);
+    const precio   = Number(it.precio_unitario || 0);
+    // Sesión 36 fix: el extra de personalización por item entra en
+    // el subtotal de la línea. Antes el email solo mostraba el
+    // precio base sin el grabado → la suma de líneas no cuadraba
+    // con el total final.
+    const extra    = Number((it.personalizacion && it.personalizacion.extra) || 0);
+    const subtotal = (precio + extra) * cantidad;
+    // Subtítulo con la info de personalización si aplica
+    const grabadoInfo = extra > 0
+      ? ` <span style="color:#c9a96e;">· con grabado láser (+$${fmtUYU(extra)})</span>`
+      : '';
     return `
       <tr>
         <td style="padding:14px 0;border-bottom:1px solid #2e2e2e;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#f8f8f4;line-height:1.5;">
           <strong style="color:#f8f8f4;">Founder ${esc(it.product_name)}</strong><br>
-          <span style="color:#9a9a9a;font-size:11px;letter-spacing:1px;">${esc(it.color)} · x${Number(it.cantidad)}</span>
+          <span style="color:#9a9a9a;font-size:11px;letter-spacing:1px;">${esc(it.color)} · x${cantidad}${grabadoInfo}</span>
         </td>
         <td style="padding:14px 0;border-bottom:1px solid #2e2e2e;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#f8f8f4;text-align:right;white-space:nowrap;">
           $${fmtUYU(subtotal)}
@@ -253,7 +264,10 @@ function blockItemsWithPhotos(items, total, envio, descuento, photoMap, opts) {
     const productName = String(it.product_name || '');
     const color       = String(it.color || '');
     const cantidad    = Number(it.cantidad || 0);
-    const subtotal    = cantidad * Number(it.precio_unitario || 0);
+    const precio      = Number(it.precio_unitario || 0);
+    // Sesión 36 fix: incluir extra de personalización en el subtotal
+    const extra       = Number((it.personalizacion && it.personalizacion.extra) || 0);
+    const subtotal    = (precio + extra) * cantidad;
 
     const key = `${productName}||${color}`;
     const photoUrl = safeMap[key] || null;
@@ -261,6 +275,10 @@ function blockItemsWithPhotos(items, total, envio, descuento, photoMap, opts) {
     const photoCell = photoUrl
       ? `<img src="${esc(photoUrl)}" width="80" height="80" alt="${esc(productName)}" style="display:block;width:80px;height:80px;object-fit:cover;border:1px solid #2e2e2e;background:#0f0f0f;">`
       : `<div style="width:80px;height:80px;background:#1a1a1a;border:1px solid #2e2e2e;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-size:32px;font-weight:300;color:#c9a96e;line-height:80px;text-align:center;">${esc(productName.charAt(0).toUpperCase() || 'F')}</div>`;
+
+    const grabadoInfo = extra > 0
+      ? `<div style="font-size:10px;color:#c9a96e;letter-spacing:1px;line-height:1.5;margin-top:3px;">✦ Grabado láser +$${fmtUYU(extra)}</div>`
+      : '';
 
     return `
       <tr>
@@ -275,6 +293,7 @@ function blockItemsWithPhotos(items, total, envio, descuento, photoMap, opts) {
             Color: ${esc(color)}<br>
             Cantidad: ${cantidad}
           </div>
+          ${grabadoInfo}
         </td>
         <td style="padding:12px 0;border-bottom:1px solid #2e2e2e;vertical-align:top;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#f8f8f4;text-align:right;white-space:nowrap;">
           $${fmtUYU(subtotal)}
