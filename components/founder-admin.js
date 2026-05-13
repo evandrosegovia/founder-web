@@ -933,6 +933,33 @@
       </div>`;
   }
 
+  /**
+   * Cuenta cuántos pedidos con estado='Entregado' tiene un email
+   * en `state.allOrders` (que ya está cargado en memoria), excluyendo
+   * el pedido actual. Usado por viewOrder() para mostrar la burbuja
+   * de "cliente repetido" sin un round-trip extra a Supabase.
+   *
+   * Nota: state.allOrders se carga al entrar a Pedidos (default view
+   * 'active', solo no archivados). Eso es exactamente lo que queremos
+   * — los Cancelado/archivados no cuentan como compras válidas.
+   *
+   * Devuelve 0 si:
+   *  - El email viene vacío
+   *  - state.allOrders todavía no se cargó
+   *  - No hay coincidencias
+   */
+  function countDeliveredOrdersForEmail(email, excludeOrderId) {
+    const e = String(email || '').trim().toLowerCase();
+    if (!e) return 0;
+    const list = Array.isArray(state.allOrders) ? state.allOrders : [];
+    return list.reduce((acc, o) => {
+      if (!o || o.id === excludeOrderId) return acc;
+      const sameEmail  = String(o.email || '').trim().toLowerCase() === e;
+      const isDelivered = (o.estado || '') === 'Entregado';
+      return acc + (sameEmail && isDelivered ? 1 : 0);
+    }, 0);
+  }
+
   /** Abre el modal con el detalle completo de un pedido. */
   function viewOrder(id) {
     const o = state.allOrders.find(x => x.id === id);
@@ -1011,6 +1038,27 @@
       </div>
 
       ${progressHTML}
+
+      ${(() => {
+        // ── Sesión 32: burbuja "Cliente repetido" ─────────────
+        // Si el comprador ya tiene compras 'Entregado' previas, lo
+        // destacamos para que el admin sepa que NO le tiene que
+        // enviar de nuevo el código de descuento (ej. FOUNDER20).
+        const prev = countDeliveredOrdersForEmail(o.email, o.id);
+        if (prev < 1) return '';
+        // "2ª compra" si tiene 1 previa, "3ª compra" si tiene 2, etc.
+        const ordinal = prev + 1;
+        return `
+          <div style="background:rgba(201,169,110,.10);border:1px solid var(--gold);padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:18px">🔄</span>
+            <div style="flex:1;min-width:200px">
+              <div style="color:var(--gold);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600">Cliente repetido — ${ordinal}ª compra</div>
+              <div style="color:var(--muted);font-size:10px;line-height:1.5;margin-top:2px">
+                Este comprador ya tiene ${prev} ${prev === 1 ? 'compra entregada' : 'compras entregadas'} previa${prev === 1 ? '' : 's'} con el mismo email. No envíes nuevamente el código de descuento.
+              </div>
+            </div>
+          </div>`;
+      })()}
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
         <div class="card">
@@ -1936,8 +1984,13 @@
       const usoLabel = { multiuso: 'Multiuso', unico: 'Único uso', 'por-email': 'Por comprador' }[c.uso] || c.uso;
       const descLabel = c.tipo === 'porcentaje' ? `${c.valor}%` : fmtUYU(c.valor);
       const minLabel  = (Number(c.min_compra) > 0) ? fmtUYU(c.min_compra) : '—';
+      // Sesión 32 — badge visual junto al código si el cupón es solo
+      // para clientes con compra previa (acompaña al texto, no lo reemplaza)
+      const repetidoBadge = c.solo_clientes_repetidos
+        ? `<span title="Solo para clientes con compra previa entregada" style="margin-left:4px;font-size:10px">🔄</span>`
+        : '';
       return `<tr>
-        <td><div class="cupon-code">${esc(c.codigo)}</div></td>
+        <td><div class="cupon-code">${esc(c.codigo)}${repetidoBadge}</div></td>
         <td>${descLabel}</td>
         <td style="font-size:10px;color:var(--muted)">${esc(usoLabel)}</td>
         <td style="font-size:10px;color:var(--muted)">${minLabel}</td>
@@ -1972,6 +2025,7 @@
     const desde  = $('cpDesde')?.value || '';  // YYYY-MM-DD
     const hasta  = $('cpHasta')?.value || '';
     const activo = ($('cpActivo')?.value === 'true');
+    const solo_clientes_repetidos = !!($('cpSoloRepetidos')?.checked);  // Sesión 32
 
     if (!codigo)       { toast('El código es obligatorio', true); return; }
     if (!valor || valor <= 0) { toast('El valor debe ser mayor a 0', true); return; }
@@ -1983,7 +2037,7 @@
     if (btn) { btn.textContent = '⏳ Guardando...'; btn.disabled = true; }
 
     const { ok, data } = await apiAdmin('create_coupon', {
-      coupon: { codigo, tipo, valor, uso, min_compra, desde: desde || null, hasta: hasta || null, activo },
+      coupon: { codigo, tipo, valor, uso, min_compra, desde: desde || null, hasta: hasta || null, activo, solo_clientes_repetidos },
     });
 
     if (btn) { btn.textContent = 'Crear cupón'; btn.disabled = false; }
@@ -1996,9 +2050,10 @@
       return;
     }
 
-    // Limpiar inputs
+    // Limpiar inputs (incluido el checkbox de cliente repetido)
     ['cpCodigo', 'cpValor', 'cpMinCompra', 'cpDesde', 'cpHasta']
       .forEach(id => { const el = $(id); if (el) el.value = ''; });
+    const chk = $('cpSoloRepetidos'); if (chk) chk.checked = false;
 
     toast(`✅ Cupón ${codigo} creado`);
     await loadCoupons();
