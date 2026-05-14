@@ -311,6 +311,11 @@
 
     // Mostrar resultado
     document.getElementById('searchCard').style.display = 'none';
+    // Sesión 38: ocultar título "Seguí tu pedido" + subtítulo cuando ya
+    // estás viendo el detalle. Se vuelve a mostrar en resetear() al
+    // tocar "Nueva consulta".
+    const pageHeader = document.getElementById('pageHeader');
+    if (pageHeader) pageHeader.style.display = 'none';
     document.getElementById('resultado').classList.add('visible');
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -540,6 +545,9 @@
   function resetear() {
     document.getElementById('resultado').classList.remove('visible');
     document.getElementById('searchCard').style.display = '';
+    // Sesión 38: volver a mostrar el título "Seguí tu pedido" al resetear.
+    const pageHeader = document.getElementById('pageHeader');
+    if (pageHeader) pageHeader.style.display = '';
     document.getElementById('inputPedido').value = '';
     document.getElementById('inputEmail').value  = '';
     document.getElementById('trackingSection').style.display       = 'none';
