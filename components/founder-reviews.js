@@ -108,7 +108,9 @@
     container.innerHTML = '';
     container.style.display = 'none';
     state.pedido = pedido;
-    state.rating = 0;
+    // Sesión 38: pre-seleccionar 5 estrellas por default. UX más amigable y
+    // evita que clientes despistados envíen reseñas con 0 estrellas sin querer.
+    state.rating = 5;
     state.fotos  = [];
     state.submitting = false;
 
@@ -197,11 +199,11 @@
           <label class="review-form__label">Tu calificación</label>
           <div class="review-stars" id="reviewStars" role="radiogroup" aria-label="Calificación">
             ${[1,2,3,4,5].map(n => `
-              <button type="button" class="review-star" data-rating="${n}"
-                role="radio" aria-checked="false" aria-label="${n} estrellas">★</button>
+              <button type="button" class="review-star is-active" data-rating="${n}"
+                role="radio" aria-checked="true" aria-label="${n} estrellas">★</button>
             `).join('')}
           </div>
-          <div class="review-form__hint" id="reviewRatingHint">Tocá las estrellas para calificar</div>
+          <div class="review-form__hint" id="reviewRatingHint">🤩 Excelente</div>
         </div>
 
         <div class="review-form__field">
