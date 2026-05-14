@@ -549,6 +549,46 @@ async function handleUpdateCoupon(body, res, req) {
     }
   }
 
+  // ── Sesión 39 hotfix: reactivar cupón único usado → resetear usos_count ──
+  //
+  // Caso de uso: el admin pausó un cupón de uso único después de que se
+  // consumió, y ahora quiere reactivarlo. Sin este bloque, el cupón
+  // reactivado quedaría inutilizable porque `usos_count >= 1` lo sigue
+  // bloqueando en validate_coupon y en la RPC SQL.
+  //
+  // Regla: solo se resetea cuando ocurre la TRANSICIÓN inactivo → activo
+  // en un cupón `uso='unico'` con `usos_count >= 1`. No se toca en
+  // ediciones normales (re-guardar "activo=true" sobre uno que ya estaba
+  // activo NO resetea nada).
+  //
+  // Notas de diseño:
+  //  - Solo afecta cupones 'unico'. Para 'multiuso' o 'por-email' el
+  //    contador es informativo/limitante y no tiene sentido resetearlo.
+  //  - `emails_usados[]` se conserva intencionalmente (decisión Opción 1):
+  //    si querés permitir que el MISMO email vuelva a usarlo, eliminá y
+  //    recreá el cupón. Esto evita sorpresas en cupones por-email que
+  //    también podrían ser únicos.
+  //  - Logueamos el reset para que quede traza en los logs de Vercel.
+  if (patch.activo === true) {
+    const { data: current, error: readActivoErr } = await supabase
+      .from('coupons')
+      .select('codigo, uso, activo, usos_count')
+      .eq('id', id)
+      .maybeSingle();
+    if (readActivoErr) return fail(res, 500, 'db_error', readActivoErr.message);
+    if (!current) return fail(res, 404, 'cupon_not_found', 'Cupón no encontrado');
+
+    const estabaInactivo = current.activo === false;
+    const esUnico        = current.uso === 'unico';
+    const yaFueUsado     = Number(current.usos_count) >= 1;
+
+    if (estabaInactivo && esUnico && yaFueUsado) {
+      patch.usos_count = 0;
+      console.log('[admin/update_coupon] reactivando cupón único usado — usos_count reseteado a 0',
+        { id, codigo: current.codigo, usos_previos: current.usos_count });
+    }
+  }
+
   const { error } = await supabase.from('coupons').update(patch).eq('id', id);
   if (error) return fail(res, 500, 'db_error', error.message);
   return ok(res);
