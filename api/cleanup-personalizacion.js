@@ -1,7 +1,7 @@
 // ═════════════════════════════════════════════════════════════════
-// FOUNDER — /api/cleanup-personalizacion (Sesión 29 + 31 + 42)
+// FOUNDER — /api/cleanup-personalizacion (Sesión 29 + 31 + 42 + 43)
 // ─────────────────────────────────────────────────────────────────
-// Cron de mantenimiento semanal — encapsula TRES tareas independientes:
+// Cron de mantenimiento semanal — encapsula CUATRO tareas independientes:
 //
 //   A) Limpieza de imágenes obsoletas del bucket privado
 //      `personalizacion-uploads` (Sesión 29 — Bloque C).
@@ -13,6 +13,14 @@
 //      Defensa contra el caso en que `delete_review` falla al borrar
 //      del storage, o el cliente sube fotos pero no completa la reseña.
 //
+//   D) Envío de emails automáticos de RECOMPRA (Sesión 43 — Opción B).
+//      A cada cliente con pedido en estado 'Entregado' cuyo `updated_at`
+//      tiene ≥10 días Y aún no recibió email de recompra, le manda un
+//      email con cupón de descuento (vencimiento +30 días, solo en texto).
+//      Flag de dedup: columna `orders.recompra_email_sent_at`.
+//      Feature OPT-IN: requiere env var `REPURCHASE_COUPON_CODE`;
+//      si no está → skip silencioso.
+//
 // Por qué las tareas en un mismo cron:
 //   Vercel Hobby permite 2 crons máximo y el segundo cron NO se
 //   registra de forma estable en el panel (bug conocido del plan
@@ -22,12 +30,14 @@
 //   trivial (5 min de refactor).
 //
 // Modos de invocación:
-//   1) GET  ?trigger=auto                            → cron auto (corre A + B + C)
+//   1) GET  ?trigger=auto                            → cron auto (corre A + B + C + D)
 //   2) POST { action: "get_cleanup_status",  ... }   → solo A (lectura)
 //   3) POST { action: "run_cleanup_manual",  ... }   → solo A (manual)
-//   4) POST { action: "list_cleanup_logs",   ... }   → historial (incluye A y C)
+//   4) POST { action: "list_cleanup_logs",   ... }   → historial (incluye A, C y D)
 //   5) POST { action: "get_reviews_orphans_status",  ... }  → solo C (lectura)
 //   6) POST { action: "run_reviews_orphans_manual",  ... }  → solo C (manual)
+//   7) POST { action: "get_recompra_status",  ... }         → solo D (lectura)
+//   8) POST { action: "run_recompra_manual",  ... }         → solo D (manual)
 //
 // Reglas de retención de IMÁGENES (tarea A):
 //   🟡 Huérfanas (uploads sin orden): borrar a los 10 días
@@ -45,6 +55,13 @@
 //   🔵 Huérfanas con MENOS de 24h: NO se borran (cliente puede estar
 //      en pleno upload mientras corre el cron)
 //
+// Reglas de envío de EMAILS DE RECOMPRA (tarea D):
+//   ✉️  Candidatos: estado='Entregado' AND recompra_email_sent_at IS NULL
+//                   AND updated_at <= now() - 10 days
+//   ⏸️  Tope: 50 emails por corrida (si hay más, se distribuyen semana a semana)
+//   🔁 Dedup: tras envío exitoso se setea recompra_email_sent_at = now()
+//   ❌ Si email falla: NO se setea el flag → se reintenta la semana siguiente
+//
 // "Hace más de 60 días": como NO hay columna `fecha_entrega` explícita,
 //   usamos `orders.updated_at` cuando estado = 'Entregado'. Si el admin
 //   marca "Entregado" manualmente, updated_at se setea automáticamente
@@ -56,13 +73,16 @@
 //   - POST requiere auth admin (JWT bearer o password).
 //
 // Topes:
-//   - MAX_DELETE_PER_RUN       = 500 (imágenes de personalización)
-//   - MAX_REVIEW_DELETE_PER_RUN = 100 (fotos de reseñas — más conservador)
+//   - MAX_DELETE_PER_RUN         = 500 (imágenes de personalización)
+//   - MAX_REVIEW_DELETE_PER_RUN  = 100 (fotos de reseñas — más conservador)
+//   - MAX_RECOMPRA_PER_RUN       = 50  (emails recompra — muy conservador,
+//                                       protege rate limit de Resend)
 //   - Rate_limits: sin tope (delete masivo en una query, filas triviales)
 // ═════════════════════════════════════════════════════════════════
 
 import { supabase, ok, fail, parseBody, buildCorsHeaders } from './_lib/supabase.js';
 import { checkAdminAuth } from './_lib/admin-auth.js';
+import { sendRecompraEmail } from './_lib/email.js';
 
 const BUCKET = 'personalizacion-uploads';
 
@@ -537,6 +557,301 @@ async function cleanupReviewOrphans() {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════
+// TAREA D — Email automático de RECOMPRA (Sesión 43)
+// ─────────────────────────────────────────────────────────────────
+// Detecta pedidos entregados hace ≥10 días que aún no recibieron el
+// email de recompra y los procesa: por cada uno envía un email con
+// cupón de descuento y marca la columna `recompra_email_sent_at`
+// para que no se repita.
+//
+// Feature OPT-IN — requiere env var `REPURCHASE_COUPON_CODE`:
+//   • Si no está configurada → skip silencioso (log + return).
+//   • Si está configurada pero el cupón no existe o está inactivo
+//     en DB → skip con warning (no rompe el cron).
+//
+// Razones de diseño:
+//   • El cupón se referencia por código vía env (no hardcoded en JS)
+//     para que el admin pueda cambiarlo sin redeploy del código fuente.
+//     Cambiar la env en Vercel + redeploy es <1 minuto.
+//
+//   • Vencimiento solo en TEXTO del email (+30 días). NO se valida en
+//     DB. Si el admin quiere validación dura, debe setear `coupons.hasta`
+//     manualmente en el admin. Decisión consciente (Sesión 43): mantener
+//     simple para v1.
+//
+//   • Tope de 50 emails/run: protege rate limit de Resend (límite Free
+//     es 100/día). 50/semana es ampliamente sostenible.
+//
+//   • Fail-safe: si un email falla, el flag NO se setea → se reintenta
+//     la próxima semana. Si el cupón está mal configurado o Resend cae,
+//     no perdemos pedidos pendientes.
+//
+//   • Update del flag SIN re-select: usamos UPDATE ... WHERE
+//     recompra_email_sent_at IS NULL como defensa adicional contra
+//     una doble corrida concurrente (race condition teórica).
+// ═════════════════════════════════════════════════════════════════
+const RECOMPRA_MIN_DIAS_POST_ENTREGA = 10;
+const RECOMPRA_VENCIMIENTO_DIAS      = 30;
+const MAX_RECOMPRA_PER_RUN           = 50;
+
+// Meses en español para formatear la fecha de vencimiento del cupón.
+// Se usa solo para el TEXTO del email (no para validación DB).
+const MESES_ES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+/**
+ * Formatea una fecha como "13 de junio de 2026" (estilo español).
+ * @param {Date} d
+ * @returns {string}
+ */
+function formatFechaEs(d) {
+  const dia  = d.getDate();
+  const mes  = MESES_ES[d.getMonth()];
+  const anio = d.getFullYear();
+  return `${dia} de ${mes} de ${anio}`;
+}
+
+/**
+ * Lee el cupón de recompra desde Supabase, dado el código del env.
+ * Valida que esté activo y dentro de fechas (si tiene `hasta`).
+ *
+ * Devuelve null si:
+ *   • La env REPURCHASE_COUPON_CODE no está seteada.
+ *   • El cupón no existe en DB.
+ *   • Está marcado inactivo.
+ *   • Está fuera de fechas (desde / hasta).
+ *
+ * En todos esos casos: log warning y skip — no rompe el cron.
+ *
+ * @returns {Promise<null | { codigo, tipo, valor }>}
+ */
+async function loadRecompraCoupon() {
+  const code = String(process.env.REPURCHASE_COUPON_CODE || '').trim();
+  if (!code) {
+    console.warn('[cleanup-recompra] REPURCHASE_COUPON_CODE no configurado — skip');
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('coupons')
+    .select('id, codigo, tipo, valor, activo, desde, hasta')
+    .eq('codigo', code)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[cleanup-recompra] error leyendo cupón:', error.message);
+    return null;
+  }
+  if (!data) {
+    console.warn(`[cleanup-recompra] cupón "${code}" no existe en DB — skip`);
+    return null;
+  }
+  if (data.activo !== true) {
+    console.warn(`[cleanup-recompra] cupón "${code}" está inactivo — skip`);
+    return null;
+  }
+
+  // Validación de fechas (si las tiene)
+  const hoy = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  if (data.desde && hoy < data.desde) {
+    console.warn(`[cleanup-recompra] cupón "${code}" aún no vigente (desde=${data.desde}) — skip`);
+    return null;
+  }
+  if (data.hasta && hoy > data.hasta) {
+    console.warn(`[cleanup-recompra] cupón "${code}" vencido (hasta=${data.hasta}) — skip`);
+    return null;
+  }
+
+  return { codigo: data.codigo, tipo: data.tipo, valor: data.valor };
+}
+
+/**
+ * Busca pedidos candidatos para recibir el email de recompra.
+ * Criterios:
+ *   • estado = 'Entregado'
+ *   • recompra_email_sent_at IS NULL (no enviado aún)
+ *   • updated_at <= now() - 10 días (entregado hace ≥10 días)
+ *   • Tope MAX_RECOMPRA_PER_RUN
+ *
+ * Se ordena por updated_at ASC (los más viejos primero) para que si
+ * hay backlog se vacíe primero la cola anterior.
+ *
+ * @returns {Promise<Array<{id, numero, nombre, email}>>}
+ */
+async function findRecompraCandidates() {
+  const cutoffIso = new Date(
+    Date.now() - RECOMPRA_MIN_DIAS_POST_ENTREGA * 24 * 60 * 60 * 1000
+  ).toISOString();
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, numero, nombre, email')
+    .eq('estado', 'Entregado')
+    .is('recompra_email_sent_at', null)
+    .lte('updated_at', cutoffIso)
+    .order('updated_at', { ascending: true })
+    .limit(MAX_RECOMPRA_PER_RUN);
+
+  if (error) {
+    throw new Error(`db_load_recompra_candidates_failed: ${error.message}`);
+  }
+  return data || [];
+}
+
+/**
+ * Marca un pedido como "email de recompra enviado" seteando el
+ * timestamp en la columna recompra_email_sent_at.
+ *
+ * Usa filtro adicional `recompra_email_sent_at IS NULL` como defensa
+ * contra una eventual doble corrida del cron (race condition teórica
+ * en caso de retry de Vercel). Si otra corrida ya marcó el flag,
+ * este UPDATE no afecta filas — no es error.
+ */
+async function markRecompraSent(orderId, sentAtIso) {
+  const { error } = await supabase
+    .from('orders')
+    .update({ recompra_email_sent_at: sentAtIso })
+    .eq('id', orderId)
+    .is('recompra_email_sent_at', null);
+
+  if (error) {
+    console.error(`[cleanup-recompra] error marcando flag para ${orderId}:`, error.message);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Ejecuta la tarea D completa: detecta candidatos, envía emails y
+ * marca flags. Nunca tira — captura todos los errores internamente
+ * para no interrumpir el cron que corre A → B → C → D en serie.
+ *
+ * Modo solo lectura (dryRun=true): devuelve el conteo de candidatos
+ * sin enviar nada. Usado por la acción POST get_recompra_status para
+ * mostrar en el admin "hay X pedidos pendientes de recompra".
+ *
+ * @param {Object} [opts]
+ * @param {boolean} [opts.dryRun=false] si true, no envía emails (solo cuenta)
+ */
+async function processRecompraEmails(opts = {}) {
+  const dryRun = opts.dryRun === true;
+
+  try {
+    const coupon = await loadRecompraCoupon();
+    if (!coupon) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: 'no_coupon_configured',
+        sent: 0,
+        failed: 0,
+        candidates: 0,
+      };
+    }
+
+    const candidates = await findRecompraCandidates();
+
+    if (dryRun) {
+      return {
+        ok: true,
+        dry_run: true,
+        candidates: candidates.length,
+        coupon_code: coupon.codigo,
+      };
+    }
+
+    if (candidates.length === 0) {
+      return {
+        ok: true,
+        sent: 0,
+        failed: 0,
+        candidates: 0,
+        coupon_code: coupon.codigo,
+      };
+    }
+
+    // Calculamos la fecha de vencimiento del cupón (texto solamente).
+    // +30 días desde HOY (la fecha en que sale el email).
+    const expDate  = new Date(Date.now() + RECOMPRA_VENCIMIENTO_DIAS * 24 * 60 * 60 * 1000);
+    const expiraEn = formatFechaEs(expDate);
+
+    const couponInfo = {
+      codigo:   coupon.codigo,
+      tipo:     coupon.tipo,
+      valor:    coupon.valor,
+      expiraEn,
+    };
+
+    let sent   = 0;
+    let failed = 0;
+    const errors = [];
+
+    // Procesamos en serie. Resend acepta paralelismo pero serializar
+    // mantiene el rate-limit de Resend Free (100/día) bien controlado
+    // y permite parar limpiamente si hay error transitorio.
+    for (const order of candidates) {
+      const result = await sendRecompraEmail(order, couponInfo);
+      if (result?.ok) {
+        const flagSet = await markRecompraSent(order.id, new Date().toISOString());
+        if (flagSet) {
+          sent++;
+        } else {
+          // El email salió pero el flag no se pudo marcar. NO contamos
+          // como failed porque el cliente sí recibió el email; solo
+          // loggeamos para que vos veas en logs si pasa.
+          console.warn(`[cleanup-recompra] email OK pero flag NO seteado — ${order.numero}`);
+          sent++;
+        }
+      } else {
+        failed++;
+        errors.push({
+          numero: order.numero,
+          error:  result?.error || 'unknown',
+        });
+        console.error(`[cleanup-recompra] email falló — ${order.numero}: ${result?.error || 'unknown'}`);
+      }
+    }
+
+    const summary = {
+      ok: true,
+      candidates: candidates.length,
+      sent,
+      failed,
+      coupon_code:    coupon.codigo,
+      coupon_valor:   coupon.valor,
+      coupon_tipo:    coupon.tipo,
+      vencimiento_en: expiraEn,
+      errors:         errors.length > 0 ? errors : undefined,
+    };
+
+    // Log en cleanup_logs con discriminador `tipo='recompra_emails'`
+    // para que el panel histórico del admin pueda distinguir.
+    await writeCleanupLog({
+      trigger:      'auto',
+      borradas:     sent,           // reusamos columna `borradas` como "procesadas"
+      liberados_mb: 0,              // no aplica para emails
+      detalle: {
+        tipo:           'recompra_emails',  // ← distinguible de los otros logs
+        candidates:     candidates.length,
+        sent,
+        failed,
+        coupon_code:    coupon.codigo,
+        coupon_valor:   coupon.valor,
+        vencimiento_en: expiraEn,
+        capped:         candidates.length === MAX_RECOMPRA_PER_RUN,
+      },
+    });
+
+    return summary;
+  } catch (err) {
+    console.error('[cleanup-recompra] excepción:', err?.message || String(err));
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
 
 export default async function handler(req, res) {
   // CORS dinámico — siempre aplicar antes de cualquier respuesta
@@ -565,9 +880,9 @@ export default async function handler(req, res) {
             'Solo Vercel Cron puede disparar trigger=auto');
         }
 
-        // Ejecutamos las TRES tareas en serie. Si la primera falla
+        // Ejecutamos las CUATRO tareas en serie. Si la primera falla
         // tira excepción y va al catch — no llegamos a las siguientes.
-        // Si la segunda o tercera fallan, quedan loggeadas pero NO rompen
+        // Si la segunda, tercera o cuarta fallan, quedan loggeadas pero NO rompen
         // la respuesta del cron (las anteriores ya quedaron persistidas
         // en cleanup_logs y vale la pena reportarlas).
         const cleanupImagesResult     = await executeCleanup('auto');
@@ -580,10 +895,15 @@ export default async function handler(req, res) {
         const cleanupReviewOrphansResult = await cleanupReviewOrphans();
         console.log('[cleanup-reviews] auto-run completed:', cleanupReviewOrphansResult);
 
+        // Sesión 43 — Tarea D: emails automáticos de recompra.
+        const recompraResult = await processRecompraEmails();
+        console.log('[cleanup-recompra] auto-run completed:', recompraResult);
+
         return ok(res, {
           images:         cleanupImagesResult,
           rate_limits:    cleanupRateLimitsResult,
           review_orphans: cleanupReviewOrphansResult,
+          recompra:       recompraResult,
         });
       }
 
@@ -651,6 +971,22 @@ export default async function handler(req, res) {
         // Disparo manual desde el admin. Útil si vos detectás que hubo un
         // delete_review con error y querés limpiar sin esperar al cron.
         const result = await cleanupReviewOrphans();
+        return ok(res, result);
+      }
+
+      // Sesión 43 — manejo manual de la Tarea D (emails de recompra)
+      if (action === 'get_recompra_status') {
+        // Solo lectura. Devuelve cuántos pedidos están pendientes
+        // de email de recompra sin enviar nada.
+        const result = await processRecompraEmails({ dryRun: true });
+        return ok(res, result);
+      }
+
+      if (action === 'run_recompra_manual') {
+        // Disparo manual del envío de emails de recompra. Útil para
+        // testear la feature recién configurada o forzar una corrida
+        // sin esperar al domingo.
+        const result = await processRecompraEmails();
         return ok(res, result);
       }
 
