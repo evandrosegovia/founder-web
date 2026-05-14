@@ -2280,6 +2280,21 @@
       patch: { activo: newActivo },
     });
     if (!ok) { toast('Error al actualizar' + (data?.message ? ': ' + data.message : ''), true); return; }
+
+    // Sesión 39 hotfix: si reactivamos un cupón único que ya estaba usado,
+    // el backend lo resetea automáticamente (usos_count → 0). Recargamos
+    // la lista completa para que la UI refleje el nuevo contador y
+    // mostramos un mensaje específico para que el admin sepa qué pasó.
+    const seHizoResetUnico = (newActivo === true)
+                             && c.uso === 'unico'
+                             && Number(c.usos_count) >= 1;
+    if (seHizoResetUnico) {
+      await loadCoupons();
+      toast(`Cupón ${c.codigo} reactivado — usos reiniciados a 0`);
+      return;
+    }
+
+    // Caso normal (no hubo reset): update local rápido sin recargar.
     c.activo = newActivo;
     renderCouponsTable();
     toast(`Cupón ${c.codigo} ${newActivo ? 'activado' : 'pausado'}`);
