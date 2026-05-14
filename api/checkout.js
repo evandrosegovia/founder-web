@@ -346,6 +346,14 @@ async function handleCreateOrder(body, res, req) {
     // Sesión 28 Bloque B
     personalizacion_extra: parseInt(order.personalizacion_extra, 10) || 0,
     acepto_no_devolucion:  order.acepto_no_devolucion === true,
+    // Sesión 39 (completada en Sesión 41) — desglose de descuentos.
+    // Estos campos NO los inserta la RPC SQL; los persiste un UPDATE
+    // post-RPC más abajo. Acá los sanitizamos para tenerlos listos.
+    // Si el frontend no los manda (clientes muy viejos), quedan en 0
+    // y caen al fallback de despeje matemático del front-end de seguimiento.
+    cupon_codigo:            cupon ? String(cupon).trim().toUpperCase() : null,
+    descuento_cupon:         parseInt(order.descuento_cupon,         10) || 0,
+    descuento_transferencia: parseInt(order.descuento_transferencia, 10) || 0,
   };
 
   // Sanitización de items + extracción/limpieza de personalización.
@@ -419,6 +427,28 @@ async function handleCreateOrder(body, res, req) {
     return fail(res, totalsCheck.http, totalsCheck.code, totalsCheck.msg);
   }
 
+  // ── Validación de coherencia del desglose de descuentos (Sesión 41) ──
+  // El frontend envía `descuento_cupon` + `descuento_transferencia` por
+  // separado además del `descuento` total. Acá validamos que sumen igual,
+  // con tolerancia de 1 peso por redondeos del 10% transferencia.
+  //
+  // Si AMBOS vienen en 0, se acepta sin chequear (compatibilidad con
+  // posibles clientes legacy que aún no envíen el desglose). En ese caso
+  // los campos quedan en 0 en DB y el desglose se calcula por fallback
+  // matemático en seguimiento/emails — comportamiento idéntico al
+  // pre-Sesión 39.
+  const dCup = cleanOrder.descuento_cupon;
+  const dTr  = cleanOrder.descuento_transferencia;
+  if (dCup > 0 || dTr > 0) {
+    const sumaDesglose = dCup + dTr;
+    if (Math.abs(sumaDesglose - cleanOrder.descuento) > 1) {
+      console.warn('[checkout] desglose incoherente:',
+        { descuento: cleanOrder.descuento, descuento_cupon: dCup, descuento_transferencia: dTr });
+      return fail(res, 400, 'descuento_split_mismatch',
+        'El desglose de descuentos no coincide con el total. Recargá la página e intentá nuevamente.');
+    }
+  }
+
   // Llamar a la RPC atómica
   const { data, error } = await supabase.rpc('apply_coupon_and_create_order', {
     p_order: cleanOrder,
@@ -439,6 +469,34 @@ async function handleCreateOrder(body, res, req) {
       return fail(res, 409, 'numero_duplicate', 'Ya existe un pedido con ese número. Reintentá.');
     }
     return fail(res, 500, 'db_error', error.message);
+  }
+
+  // ── UPDATE post-RPC con desglose de descuentos (Sesión 41) ──────
+  // La RPC `apply_coupon_and_create_order` no maneja los 2 campos del
+  // desglose (decisión de Sesión 39: mantener la RPC atómica y simple,
+  // los campos del desglose son informativos, no críticos).
+  //
+  // Si este UPDATE falla, el pedido ya está creado correctamente en
+  // Supabase con `descuento_cupon=0` y `descuento_transferencia=0`
+  // (defaults de las columnas). En ese caso, seguimiento + emails
+  // calculan el desglose por despeje matemático (fallback Sesión 36).
+  // NO devolvemos error al cliente — el pedido es válido.
+  //
+  // Solo ejecutamos el UPDATE si hay desglose efectivo (al menos un
+  // valor > 0). Si todo viene en 0 (pedido sin descuentos), no hay
+  // nada que persistir.
+  if (data?.id && (dCup > 0 || dTr > 0)) {
+    const { error: splitErr } = await supabase
+      .from('orders')
+      .update({
+        descuento_cupon:         dCup,
+        descuento_transferencia: dTr,
+      })
+      .eq('id', data.id);
+    if (splitErr) {
+      console.warn('[checkout] UPDATE desglose falló (no crítico):',
+        splitErr.message, { numero: cleanOrder.numero });
+    }
   }
 
   // ── Bifurcar según método de pago ─────────────────────────────
