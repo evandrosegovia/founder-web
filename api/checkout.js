@@ -239,7 +239,11 @@ async function handleValidateCoupon(body, res) {
 
   const { data, error } = await supabase
     .from('coupons')
-    .select('codigo, tipo, valor, uso, min_compra, activo, usos_count, emails_usados, desde, hasta')
+    .select(`
+      codigo, tipo, valor, uso, min_compra, activo,
+      usos_count, emails_usados, desde, hasta,
+      descuenta_personalizacion, personalizacion_slots_cubiertos
+    `)
     .eq('codigo', codigoRaw)
     .maybeSingle();
 
@@ -269,12 +273,19 @@ async function handleValidateCoupon(body, res) {
   }
 
   // Validar mínimo de compra
-  if (data.min_compra && data.min_compra > 0 && subtotal < data.min_compra) {
+  // Nota: los cupones de personalización ignoran min_compra (la flag
+  // descuenta_personalizacion vuelve irrelevante el umbral del subtotal).
+  if (!data.descuenta_personalizacion
+      && data.min_compra && data.min_compra > 0
+      && subtotal < data.min_compra) {
     return fail(res, 400, 'cupon_min_purchase',
       `Compra mínima requerida: $${Number(data.min_compra).toLocaleString('es-UY')} UYU`);
   }
 
-  // OK — devolver metadata normalizada al frontend (mismo shape que usaba la versión Sheet)
+  // OK — devolver metadata normalizada al frontend.
+  // Sesión 40: agregadas las flags de personalización (Sesión 33/34).
+  // Sin estas, el frontend no detectaba el cupón de personalización y caía
+  // a la rama de cupón clásico (= aplicaba % sobre subtotal del producto).
   return ok(res, {
     cupon: {
       codigo:     data.codigo,
@@ -282,6 +293,10 @@ async function handleValidateCoupon(body, res) {
       valor:      Number(data.valor) || 0,
       uso:        data.uso,               // 'multiuso' | 'unico' | 'por-email'
       minCompra:  Number(data.min_compra) || 0,
+      // Sesión 33 — flags para cupones de personalización láser.
+      // El frontend bifurca en calculateOrderTotals() según descuentaPersonalizacion.
+      descuentaPersonalizacion:      data.descuenta_personalizacion === true,
+      personalizacionSlotsCubiertos: Number(data.personalizacion_slots_cubiertos) || 0,
     },
   });
 }
