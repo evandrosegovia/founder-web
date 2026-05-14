@@ -1292,3 +1292,104 @@ export function templateAdminPersonalizacionAlert(order, items) {
 
   return wrapEmail(inner, `Nuevo pedido con grabado: #${numero}`);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// TEMPLATE 7: RECOMPRA — cupón automático post-entrega (Sesión 43)
+// ─────────────────────────────────────────────────────────────────
+/**
+ * Email automático de recompra que sale ~10-16 días después de
+ * marcar el pedido como "Entregado". El cron Tarea D
+ * (cleanup-personalizacion.js) lo dispara semanalmente.
+ *
+ * Tono: equilibrado — saludo cálido + cupón visible + CTA claro.
+ * Variant elegida en Sesión 43 tras comparar 3 previews.
+ *
+ * Diferencia clave con `templateReviewThankYou`:
+ *   • Aquel se dispara cuando el cliente DEJA una reseña (acción suya).
+ *   • Este es PROACTIVO: lo decide el cron sin que el cliente haga nada.
+ *   • Vencimiento es solo TEXTO del email (no se valida en DB) — la
+ *     restricción real depende del campo `hasta` del cupón en Supabase.
+ *
+ * @param {Object} order pedido (nombre, email, numero).
+ * @param {Object} coupon datos del cupón: { codigo, tipo, valor, expiraEn }
+ *                        - codigo (string, ej "FOUNDER15")
+ *                        - tipo ("porcentaje" | "fijo")
+ *                        - valor (number, ej 15)
+ *                        - expiraEn (string formateado, ej "13 de junio de 2026")
+ * @returns {string} HTML del email completo
+ */
+export function templateRecompra(order, coupon) {
+  const nombre = esc(order?.nombre || 'cliente');
+
+  const codigo   = esc(coupon?.codigo || '');
+  const tipo     = String(coupon?.tipo || 'porcentaje');
+  const valor    = Number(coupon?.valor || 0);
+  const expiraEn = esc(coupon?.expiraEn || '');
+
+  // Texto del descuento según el tipo (porcentaje vs fijo).
+  // Para el headline grande usamos el formato corto ("15% OFF" vs "$500 OFF").
+  const headlineOff = tipo === 'porcentaje'
+    ? `${valor}% OFF`
+    : `$${fmtUYU(valor)} OFF`;
+
+  const inner = `
+    ${blockHeader()}
+
+<tr><td style="padding:40px 32px 8px;text-align:center;">
+  <div style="font-size:9px;letter-spacing:5px;text-transform:uppercase;color:#c9a96e;margin-bottom:18px;">
+    💛 Gracias por elegirnos
+  </div>
+  <div style="font-family:Georgia,serif;font-size:26px;color:#f8f8f4;font-weight:300;line-height:1.4;">
+    Hola ${nombre}, ¿qué tal tu Founder?
+  </div>
+</td></tr>
+
+<tr><td style="padding:18px 40px 28px;text-align:center;">
+  <div style="font-size:14px;color:#bdbdbd;line-height:1.8;max-width:460px;margin:0 auto;">
+    Pasaron unos días desde que llegó tu pedido y queríamos agradecerte por sumarte a Founder.
+    <br><br>
+    Te dejamos <strong style="color:#c9a96e;">un cupón para tu próxima compra</strong> — para vos, para regalar, o para sumar otro color a la colección.
+  </div>
+</td></tr>
+
+<tr><td style="padding:0 32px 28px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+    style="background:rgba(201,169,110,0.08);border:1px solid rgba(201,169,110,0.45);">
+    <tr><td style="padding:32px 24px 26px;text-align:center;">
+      <div style="font-family:Georgia,serif;font-size:42px;color:#c9a96e;font-weight:300;line-height:1;margin-bottom:6px;">
+        ${headlineOff}
+      </div>
+      <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#9a9a9a;margin-bottom:20px;">
+        Tu próxima Founder
+      </div>
+      <div style="font-family:'Courier New',monospace;font-size:26px;letter-spacing:5px;
+                  color:#c9a96e;background:#0a0a0a;border:1px dashed #c9a96e;
+                  padding:14px 22px;display:inline-block;margin-bottom:16px;font-weight:700;">
+        ${codigo}
+      </div>
+      ${expiraEn ? `
+      <div style="font-size:12px;color:#9a9a9a;line-height:1.6;">
+        Válido hasta el <strong style="color:#bdbdbd;">${expiraEn}</strong>
+      </div>` : ''}
+    </td></tr>
+  </table>
+</td></tr>
+
+<tr><td style="padding:0 32px 40px;text-align:center;">
+  <a href="https://www.founder.uy" style="display:inline-block;background:#c9a96e;color:#141414;padding:15px 38px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;text-decoration:none;">
+    Usar mi cupón →
+  </a>
+  <div style="font-size:11px;color:#9a9a9a;margin-top:18px;line-height:1.6;">
+    Pegá el código <strong style="color:#c9a96e;font-family:'Courier New',monospace;">${codigo}</strong> en el checkout.
+  </div>
+</td></tr>
+
+${blockFooter()}`;
+
+  // Preview text (lo que se ve en el inbox al lado del subject).
+  const previewParts = [`${headlineOff} en tu próxima Founder`];
+  if (expiraEn) previewParts.push(`Válido hasta ${expiraEn}`);
+  const preview = previewParts.join(' · ');
+
+  return wrapEmail(inner, preview);
+}

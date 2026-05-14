@@ -36,6 +36,12 @@
 //        Disparado desde api/checkout.js (transferencia) y
 //        api/mp-webhook.js (MP approved/pending).
 //
+//   7) sendRecompraEmail(order, coupon)  ⬅ Sesión 43
+//        Email AUTOMÁTICO de recompra al cliente, con cupón de
+//        descuento, disparado por el cron Tarea D
+//        (cleanup-personalizacion.js) ~10-16 días post-entrega.
+//        Es proactivo: no requiere acción del cliente.
+//
 // Variables de entorno requeridas:
 //   • RESEND_API_KEY  — generada en https://resend.com/api-keys
 //   • ADMIN_EMAIL     — email del admin para recibir alertas internas
@@ -54,6 +60,7 @@ import {
   templateOrderStatusUpdate,
   templateReviewThankYou,
   templateAdminPersonalizacionAlert,
+  templateRecompra,
   statusEmailSubject,
   statusTriggersEmail,
 } from './email-templates.js';
@@ -357,6 +364,49 @@ export async function sendAdminPersonalizacionAlert(order, items) {
     subject: `⚡ Pedido con grabado #${order.numero} — preparar láser`,
     html:    templateAdminPersonalizacionAlert(order, items || []),
     type:    'admin_personalizacion',
+  });
+}
+
+/**
+ * Envía email automático de recompra al cliente con un cupón de
+ * descuento. Sesión 43.
+ *
+ * Disparado por el cron Tarea D (cleanup-personalizacion.js) cuando
+ * detecta pedidos en estado 'Entregado' con `updated_at` ≥10 días
+ * atrás y `recompra_email_sent_at` aún NULL.
+ *
+ * Diferencia con otras funciones:
+ *   • Es la ÚNICA proactiva: no la dispara una acción del cliente,
+ *     sino el cron semanal.
+ *   • El subject incluye el nombre del cliente (más personal).
+ *   • Requiere coupon = { codigo, tipo, valor, expiraEn } — el caller
+ *     (cron) es responsable de armarlo a partir de la DB + cálculo
+ *     de fecha de vencimiento (texto en español).
+ *
+ * Si falta info del pedido o del cupón → retorna error sin tirar.
+ * El caller (cron) decide si marcar el flag de dedup según el resultado:
+ * solo lo marca si `result.ok === true`.
+ *
+ * @param {Object} order   pedido completo (debe tener numero, email, nombre)
+ * @param {Object} coupon  { codigo, tipo, valor, expiraEn? }
+ * @returns {Promise<{ok:boolean, error?:string, message_id?:string}>}
+ */
+export async function sendRecompraEmail(order, coupon) {
+  if (!order || !order.numero || !order.email) {
+    return { ok: false, error: 'invalid_order' };
+  }
+  if (!coupon || !coupon.codigo) {
+    return { ok: false, error: 'invalid_coupon' };
+  }
+
+  const nombre = (order.nombre || '').trim() || 'Hola';
+  const subject = `${nombre}, te dejamos un cupón en Founder 💛`;
+
+  return sendEmail({
+    to:      order.email,
+    subject,
+    html:    templateRecompra(order, coupon),
+    type:    'recompra',
   });
 }
 
