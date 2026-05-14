@@ -377,57 +377,133 @@ select:active,
   .laser-options { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* Cada opción es un "card" tappable. Estado base: borde sutil.
-   Estado seleccionado: borde dorado + fondo levemente dorado.
-   Indicador "✓" arriba a la derecha cuando está activa. */
+/* Cada opción es un "card" tappable. Estética premium con dos layouts:
+   - MOBILE (default): horizontal apilado. Ícono a la izquierda con
+     separador vertical. Borde izquierdo dorado cuando is-selected.
+   - DESKTOP (≥720px): vertical en 4 columnas. Borde superior dorado
+     cuando is-selected.
+   En ambos: check ✓ dorado arriba a la derecha + divisor sutil
+   entre el nombre y la fila inferior (precio + ver ejemplo). */
 .laser-option {
   position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 14px 12px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
   cursor: pointer;
   transition: border-color var(--transition-fast), background var(--transition-fast);
   text-align: left;
+  overflow: hidden;
+  color: var(--color-text);
+  /* Reset de estilos heredados de <button> */
+  font: inherit;
+}
+/* ── MOBILE: layout horizontal ────────────────────────────────── */
+.laser-option {
+  align-items: stretch;
+  padding: 0;
+  border-left: 3px solid transparent;
+  border-radius: 0 4px 4px 0;
 }
 .laser-option:hover { border-color: rgba(201,169,110,.4); }
 .laser-option.is-selected {
-  border-color: var(--color-gold);
-  background: rgba(201,169,110,.06);
+  border-color: var(--color-border);
+  border-left-color: var(--color-gold);
+  background: rgba(201,169,110,.08);
 }
+/* Ícono mobile: bloque a la izquierda con separador vertical */
 .laser-option__icon {
-  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  font-size: 22px;
   line-height: 1;
+  border-right: 1px solid var(--color-border);
+  flex-shrink: 0;
+  transition: border-color var(--transition-fast);
+}
+.laser-option.is-selected .laser-option__icon {
+  border-right-color: rgba(201,169,110,.18);
+}
+/* Cuerpo del card: nombre arriba, divisor, precio + ver ejemplo */
+.laser-option__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
 }
 .laser-option__name {
   font-size: 10px;
   letter-spacing: 2px;
-  color: var(--color-text);
   text-transform: uppercase;
+  color: var(--color-text);
+  margin-bottom: 6px;
+  transition: color var(--transition-fast);
+}
+.laser-option.is-selected .laser-option__name {
+  color: var(--color-gold);
+  font-weight: 600;
+}
+.laser-option__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+  transition: border-color var(--transition-fast);
+}
+.laser-option.is-selected .laser-option__row {
+  border-top-color: rgba(201,169,110,.18);
 }
 .laser-option__price {
   font-size: 11px;
   color: var(--color-gold);
   letter-spacing: 0.5px;
 }
+/* Check ✓ arriba a la derecha — solo visible cuando is-selected */
 .laser-option__check {
   position: absolute;
-  top: 8px; right: 8px;
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  background: var(--color-gold);
-  color: var(--color-bg);
-  font-size: 10px;
+  top: 6px;
+  right: 8px;
+  font-size: 13px;
   font-weight: 700;
+  color: var(--color-gold);
+  line-height: 1;
   display: none;
-  align-items: center;
-  justify-content: center;
 }
-.laser-option.is-selected .laser-option__check { display: flex; }
+.laser-option.is-selected .laser-option__check { display: block; }
+
+/* ── DESKTOP (≥720px): layout vertical en 4 columnas ──────────── */
+@media (min-width: 720px) {
+  .laser-option {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 14px 12px 10px;
+    border-left: 1px solid var(--color-border);
+    border-top: 3px solid transparent;
+    border-radius: 0 0 4px 4px;
+  }
+  .laser-option.is-selected {
+    border-top-color: var(--color-gold);
+    border-left-color: var(--color-border);
+  }
+  .laser-option__icon {
+    padding: 0;
+    font-size: 20px;
+    border-right: none;
+  }
+  .laser-option.is-selected .laser-option__icon {
+    border-right: none;
+  }
+  .laser-option__body {
+    width: 100%;
+    padding: 0;
+    gap: 0;
+  }
+}
 
 /* Input de texto — solo aparece si "TEXTO" está seleccionado */
 .laser-text-input {
@@ -588,10 +664,10 @@ select:active,
   .lp-example-body { padding: 14px 16px 20px; }
 }
 
-/* Botón "Ver ejemplo" en cada laser-option (link sutil arriba a la derecha) */
+/* Link "Ver ejemplo" dentro de .laser-option__row. Convive con el
+   precio (justify-content: space-between en el row). Es un <span>
+   tappable que detiene la propagación al click para no togglear el card. */
 .laser-option__see {
-  position: absolute;
-  bottom: 8px; right: 8px;
   background: none;
   border: none;
   color: var(--color-muted);
@@ -599,18 +675,13 @@ select:active,
   letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 0;
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 2px;
   transition: color var(--transition-fast);
+  white-space: nowrap;
 }
 .laser-option__see:hover { color: var(--color-gold); }
-/* Cuando la opción está seleccionada, el check ocupa la esquina derecha;
-   movemos el "ver ejemplo" abajo a la izquierda */
-.laser-option.is-selected .laser-option__see {
-  right: auto;
-  left: 8px;
-}
 
 /* ── PRODUCTO — Personalización láser: uploads (Sesión 28 Bloque B) ─────
    Por cada opción de imagen seleccionada (adelante/interior/atrás)
@@ -2430,12 +2501,16 @@ async function initLaserSection() {
               onclick="toggleLaserOption('${t.key}')"
               aria-pressed="false">
         <span class="laser-option__icon" aria-hidden="true">${t.icon}</span>
-        <span class="laser-option__name">${t.label}</span>
-        <span class="laser-option__price">+$${config.precio_por_elemento.toLocaleString('es-UY')} UYU</span>
+        <span class="laser-option__body">
+          <span class="laser-option__name">${t.label}</span>
+          <span class="laser-option__row">
+            <span class="laser-option__price">+$${config.precio_por_elemento.toLocaleString('es-UY')} UYU</span>
+            <span class="laser-option__see"
+                  onclick="event.stopPropagation(); openLaserExamples('${t.key}')"
+                  role="button" tabindex="0">ⓘ ver ejemplo</span>
+          </span>
+        </span>
         <span class="laser-option__check" aria-hidden="true">✓</span>
-        <span class="laser-option__see"
-              onclick="event.stopPropagation(); openLaserExamples('${t.key}')"
-              role="button" tabindex="0">ⓘ ver ejemplo</span>
       </button>
     `).join('');
   }
