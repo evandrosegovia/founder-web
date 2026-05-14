@@ -1,21 +1,277 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 42 — **Cleanup automático de fotos huérfanas de reseñas (Opción G del backlog).** Cierre de la última deuda técnica chica del backlog. Se agrega **Tarea C** al cron semanal existente (`cleanup-personalizacion.js`) sin agregar cron nuevo, respetando el límite de 2 crons de Vercel Hobby. La tarea detecta archivos en el bucket `reviews-photos` que NO están referenciados en `reviews.fotos_urls`, con salvaguarda de 24 horas mínimo (protege contra borrar fotos en pleno upload) y tope de 100 borrados por corrida. 2 endpoints POST nuevos para invocación manual desde el admin (`get_reviews_orphans_status` y `run_reviews_orphans_manual`). Validado en producción con endpoint de status: bucket vacío (0 archivos, 0 huérfanas) — el sistema queda preparado para cuando empiecen a entrar reseñas reales con fotos. Total: 1 archivo tocado (+1 cron task), cero regresiones, cero downtime. (14/05/2026)
+**Última actualización:** Sesión 43 — **Combo Opción D + Opción B + UI recompra + Opción C.** Cuádruple sesión: (1) fix del favicon 404 detectado en Sesión 42 — 1 línea agregada a `admin.html`; (2) **feature comercial de alto valor**: email automático de recompra con cupón post-entrega +10 días, integrada como Tarea D del cron semanal existente (mismo patrón que Sesión 42), con backend completo + nuevo template `templateRecompra` + función `sendRecompraEmail` + flag de dedup persistido en DB (`orders.recompra_email_sent_at`) + feature opt-in vía env var `REPURCHASE_COUPON_CODE`; (3) UI dedicada en la página de Cupones del admin para ver pendientes/cupón activo/próximo cron + botón de envío manual; (4) **Admin mobile parte 2** completando lo que Sesión 35 dejó pendiente: editor de productos (form-grid, photo-slots 5→2 cols, color-name-in fluido) y panel de personalización láser (galería 2 cols, checkboxes legibles). Total: 4 archivos JS/HTML + 1 migración SQL + 1 env var nueva. Validado end-to-end: email recibido en producción (cupón `FOUNDER15`, 15% off, vencimiento +30 días). Cero regresiones. (14/05/2026)
 
 **Sesiones del día 14/05/2026 (todas exitosas, sin rollbacks):**
 - **Sesión 40** — Combo de 3 mini-features: (a) email admin con grabado, (b) auditoría general de CHECK constraints, (c) drop `products.banner_url`. **+ 2 bugs descubiertos en producción durante testing:** (1) cupón PERSONAL aplicaba 100% del producto en vez del grabado (validate_coupon nunca devolvía las flags de personalización al frontend), (2) botón de confirmar pedido bloqueado al volver de MP con back button.
 - **Sesión 41** — Combo Opción 1 + Opción 4: completar Sesión 39 (UPDATE post-RPC con `descuento_cupon` + `descuento_transferencia` + validación de coherencia + migración SQL idempotente para pedidos viejos) **+** dashboard financiero en admin con 4 tarjetas (ventas brutas, ahorros cupones, ahorros transferencia, tasa descuento) + bar chart top 5 cupones + selector de período persistido en localStorage.
 - **Sesión 41b** — Extensión rápida del dashboard: botón "Todo" agregado al selector (6 botones totales) + **el filtro ahora aplica a TODO el dashboard** (no solo al panel financiero), excepto stats del catálogo que son atemporales + fix de bug `$$` doble en tarjetas. Refactor a `state.dashboardPeriod` con compatibilidad backward con `state.financialPeriod` legacy.
-- **Sesión 42** — Cleanup automático de fotos huérfanas de reseñas (este resumen).
+- **Sesión 42** — Cleanup automático de fotos huérfanas de reseñas (Opción G del backlog). Tarea C del cron semanal.
+- **Sesión 43** — Combo Opción D + Opción B + UI recompra + Opción C (este resumen).
 
-**Próxima sesión:** 43 — opciones disponibles, en orden sugerido de prioridad:
+**Próxima sesión:** 44 — opciones disponibles, en orden sugerido de prioridad:
 - (a) **CSP (Content Security Policy)** — la última pieza para A+ definitivo en securityheaders.com. Esfuerzo: 1 hora. **Riesgo medio:** un CSP mal armado rompe scripts (MP, Meta Pixel, Cloudinary). Hay que auditar inline scripts antes de definir directives.
-- (b) **Email automático con FOUNDER20 / GRACIAS10 a los 10 días post-entrega** — recompra. Cron + flag de dedup. **Alto valor comercial.** Esfuerzo: 2 horas.
-- (c) **Admin mobile parte 2** — completar editor de productos y panel de personalización láser en mobile. Esfuerzo: 2-3 horas.
-- (d) **Favicon del admin (mini-bug)** — Sesión 42 detectó que `admin.html` no declara `<link rel="icon">`, por eso el browser pide `/favicon.ico` y da 404. Cosmético, sin impacto, pero queda como hallazgo pendiente. Esfuerzo: 5 min.
-- (e) **UI en admin para invocar manualmente cleanup de huérfanas de reseñas** — el endpoint `run_reviews_orphans_manual` ya existe (Sesión 42), falta agregar botón en el panel de Personalización Láser junto al cleanup de imágenes existente. Esfuerzo: 30 min. **Solo es necesario si querés disparar manualmente sin esperar al cron del domingo.**
+- (b) **UI en admin para invocar manualmente cleanup de huérfanas de reseñas** — el endpoint `run_reviews_orphans_manual` ya existe (Sesión 42), falta agregar botón en el panel de Personalización Láser junto al cleanup de imágenes existente. Esfuerzo: 30 min. **Solo es necesario si querés disparar manualmente sin esperar al cron del domingo.**
+- (c) **Métricas de conversión de la feature de recompra** — dashboard chico con "% de cupones FOUNDER15 usados sobre emails enviados" + ingresos generados por recompras. Requiere joinear `orders` (donde `cupon_codigo = REPURCHASE_COUPON_CODE`) contra el conteo de `recompra_email_sent_at IS NOT NULL`. Esfuerzo: 1.5 hs. Útil después de algunas semanas con datos reales.
+- (d) **Subir DMARC a `p=quarantine`** en 2-4 semanas si los reportes confirman que SPF + DKIM pasan en todos los proveedores. Editar el TXT `_dmarc` en Vercel y cambiar `p=none` por `p=quarantine`. Importante: revisar primero los reportes XML que llegan a `founder.uy@gmail.com`.
+- (e) **Subir el email de recompra a Recibidos principal de Gmail** — hoy cae en Promociones (esperado y deseable). Mejorar deliverability con `p=quarantine` (item d) + reputación del dominio a lo largo del tiempo lo va a mover gradualmente. No es una acción única, es un proceso. **No urgente.**
 
 **Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
+
+---
+
+## ✅ SESIÓN 43 — Combo Opción D + Opción B + UI recompra + Opción C [14/05/2026]
+
+**Quinta sesión del día 14/05.** Cuatro frentes en una sesión: un fix cosmético (favicon), la feature comercial **más rentable del backlog** (email automático de recompra), su UI de gestión en el admin, y la finalización del refactor mobile que Sesión 35 dejó pendiente. Cero rollbacks. La feature de recompra fue **validada end-to-end con email real recibido en producción**.
+
+### 🅐 Opción D — Favicon del admin (calentamiento, 5 min)
+
+**Hallazgo de Sesión 42:** `admin.html` era la única página del proyecto sin `<link rel="icon">`. Eso provocaba un `GET /favicon.ico → 404` en cada carga del admin. Cosmético, sin impacto funcional, pero quedaba sucio en los logs de Vercel.
+
+**Fix:** 1 línea agregada en el `<head>` de `admin.html`, entre las fonts y el `<style>`. **Idéntico patrón al resto del sitio** (`index.html`, `checkout.html`, `producto.html`, etc.) — SVG inline (data URI) con la "F" dorada (`#c9a96e`) sobre fondo negro (`#141414`). Cero requests adicionales, escala a cualquier resolución, sin archivo aparte que subir.
+
+```html
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23141414'/><text y='72' x='50' text-anchor='middle' font-size='60' font-family='serif' fill='%23c9a96e'>F</text></svg>">
+```
+
+Validado en producción: la "F" dorada aparece en la pestaña del browser, el 404 desapareció de DevTools.
+
+### 🅑 Opción B — Email automático de recompra (la feature grande)
+
+**Objetivo comercial:** a los 10-15 días de marcar un pedido como "Entregado", el cliente recibe automáticamente un email con un cupón de descuento para volver a comprar. Cero esfuerzo manual del admin, recompras automatizadas.
+
+**Decisión arquitectónica clave — cómo definir el cupón:**
+
+Se evaluaron 3 opciones:
+
+| Opción | Cómo | Pro | Contra |
+|---|---|---|---|
+| Hardcodear "FOUNDER20" en código | `const CODE = 'FOUNDER20'` | Simple | Frágil: si renombrás el cupón, deploy roto |
+| Marcar cupón como "recompra reward" en DB (estilo `review_reward` de Sesión 38) | Nueva columna + RPC + UI admin | Editable desde admin | Scope grande, schema migration extra, UI duplicada del review_reward |
+| **Env var `REPURCHASE_COUPON_CODE` en Vercel** ⭐ | Configurás el código en Vercel | Cero schema, cero UI, mismo patrón que `ADMIN_EMAIL` de Sesión 40, feature opt-in | Cambiar cupón = ir a Vercel + redeploy |
+
+**Elegida: env var.** Razones:
+- El cupón de recompra es una decisión comercial **estable** (no cambia cada semana).
+- **Cero scope creep:** mismo patrón que `ADMIN_EMAIL` de Sesión 40.
+- Si no está configurada → feature **apagada con skip silencioso**, cero impacto.
+
+**Decisión de UX clave — cupón compartido vs separado:**
+
+El dueño tenía `FOUNDER20` (20% off) ya creado, destinado a entregarse en **panfleto físico dentro del paquete**. Consultó si usar el mismo cupón para ambos canales (panfleto + email).
+
+**Decisión: cupones separados.** El argumento decisivo fue que los cupones son `por-email` (1 uso por email). Si compartían cupón:
+
+```
+Día 1 → Juan compra. Recibe panfleto FOUNDER20.
+Día 5 → Juan usa FOUNDER20 para regalarle una a su hermano. ✓
+Día 14 → Cron automático le envía email con FOUNDER20.
+Día 14 → Juan intenta usarlo → ❌ "Ya usaste este cupón."
+        → Percepción negativa de la marca: "me ofrecieron algo que no puedo usar"
+```
+
+Con cupones separados (`FOUNDER20` panfleto / `FOUNDER15` email), Juan puede usar **AMBOS** = doble oportunidad de recompra del mismo cliente. **Cero costo operativo** de gestión, **alto valor incremental**.
+
+Decisión final: cupón nuevo `FOUNDER15` (15% off, por-email, solo clientes repetidos) destinado exclusivamente al email automático.
+
+**Tono del email — proceso de selección:**
+
+Se generaron **3 previsualizaciones reales** (archivos HTML con table layout estilo email + CSS inline) para que el dueño eligiera:
+
+- **A — Cálido y personal:** foco en relación, cupón discreto, 3 párrafos emotivos.
+- **B — Comercial y directo:** "20% OFF" gigante, cupón en caja dashed, 1 párrafo, CTA fuerte "Comprar ahora".
+- **C — Equilibrado:** saludo cálido + cupón bien visible al medio + CTA específico "Usar mi cupón". ⭐ **Elegido.**
+
+El proceso de previsualizar 3 opciones antes de codear evitó iteración posterior — el template quedó al primer intento.
+
+**Schema nuevo (`SESION-43-SQL.sql`):**
+
+```sql
+ALTER TABLE orders
+ADD COLUMN IF NOT EXISTS recompra_email_sent_at TIMESTAMPTZ DEFAULT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_orders_recompra_pending
+ON orders (updated_at)
+WHERE estado = 'Entregado' AND recompra_email_sent_at IS NULL;
+```
+
+Flag de dedup: `NULL` = no enviado, timestamp = enviado en esa fecha. **Índice parcial** sobre el subconjunto relevante (entregados sin email) → query del cron O(log n) sin penalizar el resto de operaciones sobre `orders`.
+
+**Arquitectura del envío — Tarea D del cron:**
+
+Sigue exactamente el mismo patrón que las Tareas A, B, C del cron `cleanup-personalizacion.js`. Vercel Hobby permite 2 crons máximo y el segundo NO se registra de forma estable → tarea adicional al cron existente (heredado de Sesión 31 y reforzado en Sesión 42).
+
+Orden serie en el handler GET `?trigger=auto`: **A → B → C → D**.
+
+**5 funciones nuevas en `cleanup-personalizacion.js`:**
+
+1. **`loadRecompraCoupon()`** — lee env `REPURCHASE_COUPON_CODE`, busca el cupón en `coupons`, valida que `activo=true` y esté dentro de fechas `desde`/`hasta`. Devuelve `null` con log warning si algo no cierra (skip silencioso, no rompe el cron).
+
+2. **`findRecompraCandidates()`** — query `orders` con: `estado='Entregado'` AND `recompra_email_sent_at IS NULL` AND `updated_at <= now() - 10 days`. Ordena por `updated_at` ASC (más viejos primero — si hay backlog se vacía primero). Tope `MAX_RECOMPRA_PER_RUN = 50` (protege rate limit Resend Free de 100/día).
+
+3. **`markRecompraSent(orderId, sentAtIso)`** — UPDATE con filtro extra `recompra_email_sent_at IS NULL` como defensa contra race condition teórica (doble corrida del cron).
+
+4. **`formatFechaEs(date)`** — helper local que formatea fecha como "13 de junio de 2026" (estilo español) para el texto del email.
+
+5. **`processRecompraEmails({ dryRun })`** — orquestador principal. Si `dryRun=true`, devuelve solo el conteo de candidatos sin enviar. Si no, envía emails en serie (no paralelo: respeta rate limit Resend), marca flags, loguea en `cleanup_logs` con `detalle.tipo='recompra_emails'`.
+
+**Decisión: vencimiento solo en TEXTO del email, NO en DB.** El email dice "Válido hasta el 13 de junio de 2026" pero el cupón en DB no tiene `hasta` seteado por la feature. El cliente puede usar el cupón después de esa fecha (técnicamente) pero la presión psicológica del email genera urgencia. Si el admin quiere validación dura, debe setear `coupons.hasta` manualmente desde el panel. Decisión consciente para v1 — mantener simple.
+
+**Template `templateRecompra(order, coupon)` (en `email-templates.js`):**
+
+Sigue el patrón de los 6 templates existentes: usa `wrapEmail()`, `blockHeader()`, `blockFooter()`. Variables: `nombre`, `codigo`, `tipo`, `valor`, `expiraEn`. Si el cupón es `porcentaje` muestra "X% OFF"; si es `fijo` muestra "$X OFF" con `fmtUYU()`. El `${expiraEn ? ... : ''}` es condicional → si en el futuro se desactiva el vencimiento, no rompe el template.
+
+**Función `sendRecompraEmail(order, coupon)` (en `email.js`):**
+
+Validación temprana: requiere `order.numero`, `order.email`, `coupon.codigo`. Si falta algo, retorna `{ ok: false, error }` sin tirar. Subject: `"${nombre}, te dejamos un cupón en Founder 💛"` (personalizado con nombre del cliente, más conversión que un genérico).
+
+**Endpoints POST adicionales (para invocación manual y testing):**
+
+- `get_recompra_status` → solo lectura (dryRun). Devuelve `{ ok, dry_run, candidates, coupon_code }`. Usado por la UI del admin.
+- `run_recompra_manual` → ejecuta el envío ya mismo. Útil para testing o forzar envío sin esperar al cron.
+
+### 🆕 UI de emails de recompra en el admin
+
+**Pregunta de UX clave: ¿dónde poner la card?** Tres opciones consideradas:
+
+1. **Panel de Personalización Láser** (donde ya está el cleanup de imágenes). **Rechazada por el dueño:** "No tiene nada que ver con personalización".
+2. **Dashboard**. **Rechazada:** "Ya está bastante cargado".
+3. **Página de Cupones**. **Elegida** porque conceptualmente la feature ES "envío automático de cupones" → vive donde se gestionan los cupones. Coherencia de dominio.
+
+**Ubicación física:** card a ancho completo **debajo del grid `cupones-layout`** (tabla + formulario), dentro de `page-cupones`. Cero impacto en el layout existente.
+
+**Componentes nuevos en `admin.html` (+40 líneas):**
+
+- Card con título "📧 Emails de recompra automática" + botón "↻ Actualizar".
+- `info-box` explicando frecuencia, dedup, cómo cambiar el cupón, cómo desactivar la feature.
+- `#recompraStatusBox` que renderiza un grid de 3 columnas: **Pendientes** (count en verde/dorado), **Cupón configurado** (código en monospace dorado), **Próximo envío automático** (fecha calculada del próximo domingo 3am).
+- Botón `#recompraRunBtn` "📤 Enviar pendientes ahora" deshabilitado si no hay pendientes.
+
+**3 funciones JS nuevas en `founder-admin.js` (+191 líneas):**
+
+1. **`loadRecompraStatus()`** — llama `get_recompra_status`, renderiza el statusBox con manejo de 4 estados visuales: `skipped` (cupón no configurado → warning rojo), `candidates=0` (sin pendientes → verde), `candidates>0` (con pendientes → dorado + botón habilitado), error de red.
+
+2. **`runRecompraManual()`** — confirma con `confirm()`, llama `run_recompra_manual`, toast con resultado (success/parcial/fail), recarga el status.
+
+3. **`calcularProximoDomingo3am()`** — helper local que calcula el próximo domingo a las 3am Uruguay y devuelve texto humano: "Domingo 17 de mayo · 3am" o "Hoy a las 3am" (si hoy es domingo antes de las 3am). El cron real está en UTC (`vercel.json: "0 6 * * 0"`), que equivale a 3am Uruguay (UTC-3).
+
+**Auto-load:** invocación de `loadRecompraStatus()` integrada en el handler `nav('cupones')`, junto a `loadCoupons()`. El admin entra a Cupones y ve el estado al instante.
+
+**Window exports:** `loadRecompraStatus` y `runRecompraManual` agregados al bloque de exports al final de `founder-admin.js`.
+
+### 🅒 Opción C — Admin mobile parte 2 (cierre del refactor)
+
+**Sesión 35 dejó pendiente:** editor de productos (tabs de colores/fotos, drag&drop) y panel de personalización láser en mobile. Esta sesión cierra ese gap.
+
+**Análisis previo:** se identificaron 6 problemas críticos en mobile:
+
+1. **`.photo-slots { grid-template-columns: repeat(5, 1fr); }`** — en mobile cada slot quedaba ~50px de ancho, imposible de usar. **El más crítico.**
+2. **`.color-name-in { width: 140px; }`** — width fijo no respondía al viewport, rompía el layout.
+3. **`.slot-btn { font-size: 8px; }`** — tap target inaceptable.
+4. **`.form-grid { grid-template-columns: 1fr 1fr; }`** — inputs ilegibles a 2 columnas en mobile.
+5. **`.product-row` con `prod-price` y `prod-actions`** — botones de Editar/Eliminar imposibles de tocar.
+6. **Modal-foot con botones inline** — botones "Guardar/Cancelar" muy chicos.
+
+**Implementación:** bloque CSS nuevo de **167 líneas**, claramente marcado `SESIÓN 43 — MOBILE PARTE 2`, ubicado **después** del breakpoint `@media (max-width: 480px)` de Sesión 35 y **antes** del bloque de Reseñas (Sesión 38). Decisión deliberada: no tocar nada existente, solo **agregar** reglas que extienden las anteriores. Cero riesgo de regresión en lo que ya funcionaba.
+
+**Cambios principales en `@media (max-width: 768px)`:**
+
+| Sección | Cambio |
+|---|---|
+| `.product-row` | `flex-wrap: wrap`, `prod-actions` full-width, botones 10px |
+| `.form-grid` | 2 cols → 1 col |
+| `.modal-foot` | Botones full-width verticales |
+| `.color-name-in` | `width: auto`, `flex: 1`, `min-width: 110px` |
+| `.color-estado-btns` | `flex-wrap: wrap`, baja a nueva línea |
+| `.photo-slots` ⚠️ | **5 cols → 2 cols**, slot-preview 60px → 100px |
+| `.slot-btn` | font 8px → 10px, padding 9px |
+| `.lp-ex-grid` (galería ejemplos) | `auto-fill minmax(140px)` → 2 cols fijas |
+| `.lp-ex-colores` (checkboxes) | 2 cols + padding más generoso |
+
+**Cambios en `@media (max-width: 480px)`:** ajustes finos — galería de ejemplos a 1 sola columna, modal padding compacto, slots de 85px.
+
+**No tocados (siguen como estaban):**
+- Reseñas (Sesión 38) ya tienen su propio `@media (max-width: 700px)` correcto.
+- Card de recompra recién creada usa `auto-fit minmax(180px, 1fr)` → naturalmente responsive.
+- Sidebar drawer, topbar, sales-grid, orders-grid → Sesión 35 los cubrió bien.
+
+### 📊 Validación end-to-end en producción
+
+Procedimiento ejecutado por el dueño en producción:
+
+1. **SQL migration corrida** en Supabase SQL Editor → "Success. No rows returned".
+2. **Env var configurada** en Vercel: `REPURCHASE_COUPON_CODE=FOUNDER15` (Production + Preview + Development).
+3. **4 archivos subidos** a GitHub:
+   - `admin.html` (favicon + UI recompra + mobile parte 2)
+   - `components/founder-admin.js` (funciones UI + auto-load)
+   - `api/_lib/email-templates.js` (templateRecompra)
+   - `api/_lib/email.js` (sendRecompraEmail + import)
+   - `api/cleanup-personalizacion.js` (Tarea D completa)
+4. **Vercel deploy automático** OK (~30s).
+
+**Test 1 — `get_recompra_status` desde consola del admin:**
+```json
+{ ok: true, dry_run: true, candidates: 1, coupon_code: 'FOUNDER15' }
+```
+✓ Sistema activo, cupón validado en DB, 1 pedido pendiente (era del propio dueño).
+
+**Test 2 — `run_recompra_manual`:**
+```json
+{ ok: true, candidates: 1, sent: 1, failed: 0, coupon_code: 'FOUNDER15', coupon_valor: 15, vencimiento_en: '13 de junio de 2026' }
+```
+✓ Envío exitoso.
+
+**Test 3 — Email recibido en inbox personal del dueño:**
+- Subject: "Evandro, te dejamos un cupón en Founder 💛" ✓
+- Pestaña: **Promociones** de Gmail (esperado — cumple criterios de marketing).
+- Render: idéntico a la preview C aprobada. Logo FOUNDER, "15% OFF", FOUNDER15 en caja dashed, vencimiento 13/06/2026, botón "Usar mi cupón →", footer con WhatsApp.
+
+**Test 4 — UI del admin (post-deploy):**
+- Entrar a Cupones → card aparece al final.
+- Pendientes: **0** (verde, ya enviado) ✓
+- Cupón: **FOUNDER15** (dorado, monospace) ✓
+- Próximo envío: **"Domingo 17 de mayo · 3am"** (helper calculó correcto) ✓
+- Botón "Enviar pendientes ahora" deshabilitado ✓
+
+**Test 5 — Mobile parte 2:** revisado en celular real. Editor de productos, photo-slots 2 cols, formularios 1 col, modales fullscreen — todo confirmado OK.
+
+### 📦 Archivos tocados (6)
+
+| Tipo | Archivo | Cambios |
+|------|---------|---------|
+| 🆕 SQL | `SESION-43-SQL.sql` (migration, no se sube al repo) | +1 columna `recompra_email_sent_at` + 1 índice parcial sobre entregados sin email |
+| ✏️ Backend | `api/_lib/email-templates.js` | +101 líneas: `templateRecompra(order, coupon)` con detección de tipo porcentaje/fijo y vencimiento opcional |
+| ✏️ Backend | `api/_lib/email.js` | +50 líneas: import de `templateRecompra` + `sendRecompraEmail(order, coupon)` con subject personalizado por nombre |
+| ✏️ Backend | `api/cleanup-personalizacion.js` | +336 líneas: comentario header expandido a 4 tareas + import `sendRecompraEmail` + 5 funciones nuevas (`loadRecompraCoupon`, `findRecompraCandidates`, `markRecompraSent`, `formatFechaEs`, `processRecompraEmails`) + invocación serie A→B→C→D en cron auto + 2 acciones POST (status + manual) |
+| ✏️ Frontend | `admin.html` | +207 líneas totales: favicon (2 líneas) + card UI recompra en `page-cupones` (40 líneas) + bloque CSS mobile parte 2 (167 líneas, marcado `SESIÓN 43`) |
+| ✏️ Frontend | `components/founder-admin.js` | +191 líneas: 3 funciones (`loadRecompraStatus`, `runRecompraManual`, `calcularProximoDomingo3am`) + auto-load en `nav('cupones')` + 2 window exports |
+
+**Variable de entorno nueva:** `REPURCHASE_COUPON_CODE=FOUNDER15` en Vercel (3 environments).
+
+**Cupón nuevo en DB:** `FOUNDER15` (porcentaje, 15%, por-email, solo_clientes_repetidos=true, activo) creado manualmente por el dueño desde el panel admin antes del deploy.
+
+### 🎓 Lecciones de la sesión
+
+1. **El proceso "previsualizar antes de codear" ahorra iteración masiva.** Generar 3 archivos HTML completos con table layout (estilo email real) para que el dueño eligiera el tono ANTES de escribir el template JS evitó cambios posteriores. El template salió en una sola pasada. Aplicable a cualquier decisión de copy/UX donde hay 2+ opciones razonables.
+
+2. **El patrón "env var como switch maestro" se está consolidando en el proyecto.** Sesión 40 introdujo `ADMIN_EMAIL` con el mismo concepto. Sesión 43 lo reusa para `REPURCHASE_COUPON_CODE`. Beneficios: feature opt-in con cero downtime al activar/desactivar, sin schema changes, cambio = 1 click en Vercel + redeploy. Patrón candidato para futuras features condicionalmente activables (ej. modal del index.html postergado desde Sesión 22).
+
+3. **Defensa en profundidad en feature de envío masivo es crítica.** El flag `recompra_email_sent_at` se setea SOLO si el email salió OK. Si Resend cae, los pedidos pendientes se reintentan la semana siguiente automáticamente — sin acción del admin. Tope `MAX_RECOMPRA_PER_RUN=50` protege contra rate limit. Filter extra `recompra_email_sent_at IS NULL` en el UPDATE protege contra race conditions. **Tres capas de defensa para una feature que toca el inbox de clientes reales.**
+
+4. **Coherencia conceptual > consistencia de patrón.** Mi instinto inicial fue poner la UI de recompra junto al cleanup de imágenes (en Personalización Láser) porque "es el mismo patrón visual del cron". El dueño corrigió: "el cleanup de fotos no tiene NADA que ver con emails de recompra". Tenía razón — la coherencia conceptual (recompra ↔ cupones) gana sobre la consistencia visual (cron tasks en un solo lugar). Aplicable a cualquier decisión de IA: pensar primero en el **dominio del negocio**, no en el patrón técnico.
+
+5. **Cupones separados para canales separados es la decisión correcta.** Compartir `FOUNDER20` entre panfleto físico y email automático parecía "más simple" pero generaba un escenario terrible: clientes recibiendo emails con cupones que NO podían usar (porque `por-email` los bloquea tras el primer uso). Cupones separados = doble oportunidad de recompra del mismo cliente, **sin costo operativo adicional**. Aplicable a cualquier futura campaña multicanal (ej. cuando se sume cupón de cumpleaños, cupón de aniversario, etc.).
+
+6. **Calcular fechas dinámicas en el frontend (no en el backend) es válido cuando la regla es estable.** `calcularProximoDomingo3am()` vive en `founder-admin.js`, no en una API. El cron es siempre los domingos a las 3am Uruguay — esa regla NO va a cambiar sin un refactor de `vercel.json`. Si cambia, hay que actualizar el helper también, pero ese acoplamiento es **explícito y documentado en el comentario** de la función. No vale la pena hacer una API solo para devolver una fecha calculada.
+
+### 🐛 Hallazgo lateral pendiente
+
+Durante la revisión de `admin.html` para agregar el favicon, se detectó que **no declara `<meta name="robots" content="noindex, nofollow">`**. Esto significa que técnicamente Google podría indexar `founder.uy/admin.html` si encuentra un link público hacia ahí. Probablemente ya está bloqueado por `robots.txt` (revisar), pero por **defensa en profundidad** conviene agregarlo. Es 1 línea. **No urgente** porque no hay links públicos al admin, pero queda como tarea de pulido para una sesión futura.
+
+### ⚠️ Pendientes específicos de Sesión 43 (para próximas sesiones)
+
+- **Métricas de conversión de la feature** (Opción c del backlog de Sesión 44). Después de 2-4 semanas con datos reales, construir un mini-dashboard con: emails enviados, % de cupones FOUNDER15 usados, ingresos generados por recompras (joinear `orders` donde `cupon_codigo='FOUNDER15'` contra `recompra_email_sent_at IS NOT NULL`).
+- **Validar deliverability del email a largo plazo**. Hoy cae en Promociones de Gmail (esperado y deseable para emails con cupones). Mejorar con: subir DMARC a `p=quarantine` (Sesión 44 opción d), mantener bounce rate bajo, reputación del dominio crece con el tiempo.
+- **UI similar para Tarea C (huérfanas reseñas)** si en algún momento se necesita disparar manualmente. Endpoints `get_reviews_orphans_status` y `run_reviews_orphans_manual` ya existen desde Sesión 42, falta solo agregar la card en el admin. Opción b del backlog de Sesión 44.
 
 ---
 
