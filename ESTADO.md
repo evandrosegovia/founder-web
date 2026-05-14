@@ -1,18 +1,383 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 39 — **Combo financiero: desglose de descuentos en `orders` + edición de cupones post-creación + 2 hotfixes inline.** Dos features arquitectónicas que cierran deuda técnica importante. **(A) Desglose de descuentos:** se reemplaza el despeje matemático frágil de Sesión 36/37 por dos columnas dedicadas (`descuento_cupon` + `descuento_transferencia`) en `orders`. Frontend de checkout ya calculaba los 3 valores por separado pero solo enviaba la suma — ahora envía el desglose explícito. Backend hace UPDATE post-RPC con los dos campos (la RPC del cupón queda intacta y atómica). Seguimiento y emails priorizan las columnas dedicadas; despeje matemático queda como fallback solo para pedidos viejos. **Migración SQL one-shot** que recalcula el split para pedidos viejos con verificación final 3-en-TRUE. **(B) Edición de cupones:** botón ✏️ Editar en tabla → formulario se prellena con datos del cupón + scroll suave. `código` y `tipo` quedan bloqueados (read-only visualmente atenuado) para preservar integridad histórica (`orders.cupon_codigo` apunta al código; cambiar tipo cambia la semántica del valor). Botón "Cancelar edición" que vuelve a modo crear. Una sola función `saveCupon()` maneja create + update (DRY). Backend `update_coupon` reforzado con validaciones espejo de `create_coupon`. **2 hotfixes post-deploy en la misma sesión:** (1) email de confirmación de transferencia no detectaba presencia de cupón → faltaba `cupon_codigo` en `cleanOrder` (bug histórico expuesto por Sesión 39); (2) reactivar cupón de uso único usado lo dejaba inutilizable → regla nueva: transición `inactivo → activo` en cupón `uso='unico'` con `usos_count >= 1` resetea automáticamente el contador a 0, con toast informativo "usos reiniciados a 0". **Trazabilidad completa del desglose:** frontend (3 valores) → backend (validación coherencia, tolerancia 1 peso por redondeo) → DB (2 columnas + 2 CHECK constraints) → backend (SELECTs extendidos) → frontend (prioridad DB sobre despeje). Total: 9 archivos tocados + 1 SQL migration con verificación, cero rollbacks, cero regresiones, 6/6 casos de migración cierran con suma exacta en smoke test. (14/05/2026)
+**Última actualización:** Sesión 42 — **Cleanup automático de fotos huérfanas de reseñas (Opción G del backlog).** Cierre de la última deuda técnica chica del backlog. Se agrega **Tarea C** al cron semanal existente (`cleanup-personalizacion.js`) sin agregar cron nuevo, respetando el límite de 2 crons de Vercel Hobby. La tarea detecta archivos en el bucket `reviews-photos` que NO están referenciados en `reviews.fotos_urls`, con salvaguarda de 24 horas mínimo (protege contra borrar fotos en pleno upload) y tope de 100 borrados por corrida. 2 endpoints POST nuevos para invocación manual desde el admin (`get_reviews_orphans_status` y `run_reviews_orphans_manual`). Validado en producción con endpoint de status: bucket vacío (0 archivos, 0 huérfanas) — el sistema queda preparado para cuando empiecen a entrar reseñas reales con fotos. Total: 1 archivo tocado (+1 cron task), cero regresiones, cero downtime. (14/05/2026)
 
-**Próxima sesión:** 40 — opciones disponibles, en orden sugerido de prioridad:
-- (a) **Email automático al admin cuando entra pedido con grabado** — el código `blockPersonalizacion('admin')` ya existe, falta conectarlo al flujo de creación de orden en `checkout.js`. Esfuerzo: 30 min.
-- (b) **Auditoría general de constraints CHECK en TODAS las tablas** — Sesión 32 reveló que `coupons_uso_check` y `coupons_tipo_check` estaban desincronizados con el código desde hacía 18 sesiones. Hay que repasar `orders`, `products`, `product_colors`, etc. Sesión 39 agregó 2 CHECK constraints nuevos a `orders` (descuento_cupon ≥ 0, descuento_transferencia ≥ 0) que sirven como precedente. Esfuerzo: 30 min.
-- (c) **Drop columna legacy `products.banner_url`** — pendiente desde Sesión 21.
-- (d) **Email automático con FOUNDER20 / GRACIAS10 a los 10 días post-entrega** — idea propuesta en Sesión 32, ahora también aplicable a recordar GRACIAS10 a clientes que dejaron reseña y no lo usaron. Requiere cron + flag de dedup. Esfuerzo: 2 horas.
-- (e) **Admin mobile parte 2** — completar editor de productos y panel de personalización láser en mobile (Sesión 35 dejó priority B; productos y láser quedaron pendientes). Esfuerzo: 2-3 horas.
-- (f) **CSP (Content Security Policy)** — la última pieza para A+ definitivo en securityheaders.com. Esfuerzo: 1 hora.
-- (g) **Cleanup automático de fotos de reseñas eliminadas** — hoy `delete_review` borra las fotos del bucket en línea, pero si el storage falla las fotos quedan huérfanas. Agregar cron semanal que liste paths del bucket y compare con `reviews.fotos_urls`. Esfuerzo: 1 hora.
-- (h) **Reportes financieros en admin con desglose de descuentos** — ahora que la DB tiene las 2 columnas dedicadas (Sesión 39), construir un dashboard que separe "ventas brutas vs ahorros por cupones vs ahorros por transferencia" por período. Esfuerzo: 2-3 horas.
+**Sesiones del día 14/05/2026 (todas exitosas, sin rollbacks):**
+- **Sesión 40** — Combo de 3 mini-features: (a) email admin con grabado, (b) auditoría general de CHECK constraints, (c) drop `products.banner_url`. **+ 2 bugs descubiertos en producción durante testing:** (1) cupón PERSONAL aplicaba 100% del producto en vez del grabado (validate_coupon nunca devolvía las flags de personalización al frontend), (2) botón de confirmar pedido bloqueado al volver de MP con back button.
+- **Sesión 41** — Combo Opción 1 + Opción 4: completar Sesión 39 (UPDATE post-RPC con `descuento_cupon` + `descuento_transferencia` + validación de coherencia + migración SQL idempotente para pedidos viejos) **+** dashboard financiero en admin con 4 tarjetas (ventas brutas, ahorros cupones, ahorros transferencia, tasa descuento) + bar chart top 5 cupones + selector de período persistido en localStorage.
+- **Sesión 41b** — Extensión rápida del dashboard: botón "Todo" agregado al selector (6 botones totales) + **el filtro ahora aplica a TODO el dashboard** (no solo al panel financiero), excepto stats del catálogo que son atemporales + fix de bug `$$` doble en tarjetas. Refactor a `state.dashboardPeriod` con compatibilidad backward con `state.financialPeriod` legacy.
+- **Sesión 42** — Cleanup automático de fotos huérfanas de reseñas (este resumen).
+
+**Próxima sesión:** 43 — opciones disponibles, en orden sugerido de prioridad:
+- (a) **CSP (Content Security Policy)** — la última pieza para A+ definitivo en securityheaders.com. Esfuerzo: 1 hora. **Riesgo medio:** un CSP mal armado rompe scripts (MP, Meta Pixel, Cloudinary). Hay que auditar inline scripts antes de definir directives.
+- (b) **Email automático con FOUNDER20 / GRACIAS10 a los 10 días post-entrega** — recompra. Cron + flag de dedup. **Alto valor comercial.** Esfuerzo: 2 horas.
+- (c) **Admin mobile parte 2** — completar editor de productos y panel de personalización láser en mobile. Esfuerzo: 2-3 horas.
+- (d) **Favicon del admin (mini-bug)** — Sesión 42 detectó que `admin.html` no declara `<link rel="icon">`, por eso el browser pide `/favicon.ico` y da 404. Cosmético, sin impacto, pero queda como hallazgo pendiente. Esfuerzo: 5 min.
+- (e) **UI en admin para invocar manualmente cleanup de huérfanas de reseñas** — el endpoint `run_reviews_orphans_manual` ya existe (Sesión 42), falta agregar botón en el panel de Personalización Láser junto al cleanup de imágenes existente. Esfuerzo: 30 min. **Solo es necesario si querés disparar manualmente sin esperar al cron del domingo.**
 
 **Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
+
+---
+
+## ✅ SESIÓN 42 — Cleanup automático de fotos huérfanas de reseñas (Opción G) [14/05/2026]
+
+**Cuarta y última sesión del día 14/05.** Cierra una deuda técnica menor del backlog: hoy `handleDeleteReview` (`admin.js`) borra las fotos del bucket `reviews-photos` cuando el admin elimina una reseña, pero si el storage falla (timeout, error de red, race), las fotos quedan huérfanas sin referencia en `reviews.fotos_urls`. También quedan huérfanas las fotos que el cliente sube durante el formulario pero nunca termina de publicar (cerró pestaña, falló validación, etc).
+
+### 🏗️ Arquitectura
+
+**Restricción de Vercel Hobby:** el plan gratuito permite 2 crons máximo, y el cron secundario NO se registra de forma estable. Solución (heredada de Sesión 31): **un solo cron que ejecuta múltiples tareas en serie.** Ya hay Tarea A (imágenes personalización) y Tarea B (rate_limits viejos). Sesión 42 agrega Tarea C: fotos huérfanas de reseñas.
+
+**Detección de huérfanos en 3 pasos:**
+
+1. **`listAllReviewPhotos()`** — lista TODO el bucket `reviews-photos` recursivamente. La estructura es `YYYYMM/UID-slug.ext`, así que recorre primero el nivel raíz, luego cada subcarpeta. Devuelve `[{ path, size, created_at }]`.
+
+2. **`loadAliveReviewPaths()`** — lee toda la tabla `reviews` (solo columna `fotos_urls`, sin joins ni filtros porque es text[]) y parsea las URLs públicas para extraer los paths internos. Usa el marker `/storage/v1/object/public/reviews-photos/` para localizar el inicio del path. Devuelve un `Set<path>` para lookup O(1).
+
+3. **`classifyReviewPhotos(allFiles, aliveSet)`** — clasifica cada archivo en 3 categorías:
+   - **Vivas:** referenciadas en `aliveSet`. Nunca se borran.
+   - **Recientes:** huérfanas pero con menos de 24 horas en el bucket. NO se borran — un cliente podría estar en pleno upload mientras corre el cron.
+   - **Borrables:** huérfanas con más de 24 horas. Se borran (hasta el tope).
+
+**Salvaguardas críticas:**
+
+- **`REVIEWS_MIN_AGE_HORAS = 24`** — protege contra race conditions. Si un cliente subió foto1 hace 30 segundos y todavía no envió la reseña, NO se borra. El próximo cron (en 7 días) sí la limpiará si todavía está huérfana.
+- **`MAX_REVIEW_DELETE_PER_RUN = 100`** — más conservador que las 500 de Tarea A. Las fotos de reseñas son por naturaleza menos volumen. Si hay un acumulado patológico (ej. 1000 huérfanas), se irán limpiando 100/semana sin riesgo.
+- **`created_at` vacío → tratado como reciente** (NO se borra). Defensa contra archivos con metadata corrupta del bucket.
+- **Tarea C captura sus propias excepciones internamente** (no tira al cron). Si Tarea C falla, Tareas A y B ya quedaron persistidas en `cleanup_logs` y la respuesta del cron es válida.
+
+### 📝 Logging unificado
+
+Se persiste el resultado en la misma tabla `cleanup_logs` que usan A y B. El campo `detalle` JSONB lleva un nuevo discriminador `tipo: 'reviews_orphans'` (vs el implícito `'images'` de Tarea A) para distinguir corridas en el historial del admin. Esto evita migrar la tabla y mantiene el panel histórico funcionando sin cambios.
+
+### 🛠️ Endpoints adicionales (manual)
+
+Además del cron automático, se expusieron 2 acciones POST con auth admin:
+
+- **`get_reviews_orphans_status`** — solo lectura. Devuelve `{ total_fotos_bucket, vivas_count, huerfanas_count, recientes_count, huerfanas_mb }`. Útil para auditar el bucket sin disparar nada.
+- **`run_reviews_orphans_manual`** — ejecuta la limpieza ya mismo. Útil si el admin detecta un `delete_review` con error y quiere limpiar antes del próximo cron.
+
+No se agregó UI en el admin (no es prioridad; el cron semanal es suficiente). Los endpoints quedan disponibles vía `apiAdminFetch` cuando se quiera sumar el botón.
+
+### 📊 Validación en producción
+
+Se invocó `get_reviews_orphans_status` desde la consola del admin con el JWT del session storage (`founder_admin_token`). Resultado en producción al final de la sesión:
+
+```
+{ ok: true, total_fotos_bucket: 0, vivas_count: 0, huerfanas_count: 0, recientes_count: 0, huerfanas_mb: 0 }
+```
+
+El bucket está vacío porque todavía no hay reseñas reales con fotos publicadas. Pero confirma que el endpoint funciona end-to-end: auth → listado del bucket → parseo de paths → respuesta correcta. El cron del próximo domingo correrá las 3 tareas en serie con éxito.
+
+### 📦 Archivos tocados (1)
+
+| Tipo | Archivo | Cambios |
+|------|---------|---------|
+| ✏️ Backend | `api/cleanup-personalizacion.js` | +1 constante de bucket nuevo, +1 constante de tope, +1 constante de min-age, +4 funciones (listAllReviewPhotos, loadAliveReviewPaths, classifyReviewPhotos, cleanupReviewOrphans), +1 invocación en cron auto (serie A→B→C), +2 acciones POST (status + manual), comentario del cabezal expandido a 3 tareas |
+
+### 🎓 Lecciones de la sesión
+
+1. **El límite de 2 crons de Vercel Hobby sigue siendo el factor arquitectónico dominante.** Cada vez que aparece una necesidad de "cron nuevo", la decisión correcta es sumar tarea al cron existente. Cuando se migre a Vercel Pro, separar las 3 tareas en 3 endpoints distintos es trivial.
+
+2. **Salvaguarda temporal `MIN_AGE` es esencial en cualquier cleanup basado en "referencia/no-referencia".** Sin las 24h, una foto recién subida durante el formulario activo del cliente podría borrarse en el mismo segundo. La ventana protege contra el caso real (cliente subiendo) sin penalizar el caso patológico (huérfana hace meses).
+
+3. **Reusar la tabla `cleanup_logs` con discriminador en `detalle` es la decisión correcta.** Crear `cleanup_reviews_logs` separada habría sumado 1 migración SQL, 1 SELECT extra en la UI del admin, y 0 valor incremental. JSONB resuelve el caso sin schema migrations.
+
+4. **El nombre del JWT en sessionStorage es `founder_admin_token`** (no `founder_admin_jwt`). Anotado para futuras sesiones cuando se necesiten invocar endpoints desde la consola del browser para debugging.
+
+### 🐛 Hallazgo lateral pendiente
+
+Durante el testing del endpoint en producción, se observó en la consola DevTools un error 404 de `/favicon.ico`. El archivo `admin.html` no declara `<link rel="icon">`, así que el browser hace la petición default y como no existe el archivo en el server, devuelve 404. **Cosmético, sin impacto funcional.** Queda como opción (d) en el backlog de Sesión 43.
+
+---
+
+## ✅ SESIÓN 41b — Extensión del dashboard: botón "Todo" + filtro global + fix bug `$$` [14/05/2026]
+
+**Sesión rápida de pulido del dashboard de Sesión 41.** Sin features nuevas, pero 3 ajustes importantes detectados en uso real:
+
+### Bug detectado al renderizar — `$$` doble en tarjetas
+
+**Síntoma:** las 4 tarjetas financieras de Sesión 41 mostraban `$$2.830` en lugar de `$2.830`. También el subtítulo de "Tasa de descuento" decía "descontados `$$539` sobre `$$2.830`".
+
+**Causa raíz:** la función `fmtUYU(n)` (definida en `founder-admin.js`) ya devuelve el string con `$` adelante (`'$' + n.toLocaleString('es-UY')`). Al escribir el render de Sesión 41 puse `'$' + fmtUYU(...)` por costumbre, generando el doble signo.
+
+**Fix:** quitar los `$` manuales en los 4 `setText` de las cards + en el subtítulo. **Solo cambió la concatenación**, no la lógica. La función `fmtUYU` queda intacta porque se usa en muchos lugares y revisar todos sería trabajo de scope mayor.
+
+### Extensión por feedback del usuario — botón "Todo" + filtro global
+
+El selector original de Sesión 41 (7/30/90/120/365 días) aplicaba solo al panel financiero. El usuario pidió:
+1. Un botón **"Todo"** para ver el histórico completo del sitio.
+2. Que el filtro afecte **TODO el dashboard**, no solo las 4 tarjetas financieras.
+
+**Decisión arquitectónica clave:** ¿qué se filtra y qué NO?
+
+| Métrica | Tipo | Decisión |
+|---------|------|----------|
+| Productos, Variantes color, Sets de fotos | Catálogo | **NO se filtra** (atemporal) |
+| Pedidos totales | Catálogo / Ventas (ambiguo) | **SE filtra**, label cambia a "Pedidos del período" cuando no es Todo |
+| Ingresos totales, Pedidos confirmados, Pendientes, Ticket promedio | Ventas | **SE filtra** |
+| Análisis financiero (4 cards + top 5 cupones) | Ventas | **SE filtra** (ya filtraba en Sesión 41) |
+| Ventas por producto, Métodos de pago, Estado de pedidos, Colores más vendidos | Gráficos de pedidos | **SE filtran** |
+
+El gráfico de "Estado de pedidos" sigue mostrando cancelados/rechazados/pendientes (los estados que el panel financiero excluye), porque ese gráfico está justamente para visibilizar esos casos. Para distinguir las dos lógicas se introdujo un flag en `filterOrdersByPeriod()`:
+
+```js
+filterOrdersByPeriod(orders, periodValue, { excludeNonSales: true })
+```
+
+`renderDashboard()` filtra sin la flag (incluye todos los estados). `renderFinancialMetrics()` filtra con la flag (excluye Cancelado, Pago rechazado, Pendiente pago).
+
+### Refactor de naming
+
+- `state.financialPeriod` → `state.dashboardPeriod` (refleja el scope nuevo).
+- `setFinancialPeriod()` → `setDashboardPeriod()` (idem).
+- `window.setFinancialPeriod` → `window.setDashboardPeriod`.
+- Key de localStorage: `founder_admin_dashboard_period` (nuevo) con fallback de lectura al key viejo `founder_admin_fin_period` (Sesión 41), así no se pierde la preferencia del usuario en el upgrade.
+
+`setDashboardPeriod()` ahora llama a `renderDashboard()` completo en lugar de solo a `renderFinancialMetrics()`. El re-render es rápido (todo en memoria, no toca DB) así que no hay penalty.
+
+### HTML — UI del selector
+
+- Botón nuevo **"Todo"** agregado al final del grupo, con `data-period="todo"`.
+- Título del bloque cambió de "📊 Análisis financiero" a "📊 Período de análisis" para reflejar el scope expandido.
+- Label de `statPedidos` ahora es dinámica: "Pedidos totales" cuando es "Todo", "Pedidos del período" cuando es 7/30/90/120/365. Nuevo `id="statPedidosLabel"` para que JS la modifique.
+
+### 📦 Archivos tocados (2)
+
+| Tipo | Archivo | Cambios |
+|------|---------|---------|
+| 🎨 UI | `admin.html` | Botón "Todo" + cambio de `onclick` (de `setFinancialPeriod` a `setDashboardPeriod`) + título del bloque + `id="statPedidosLabel"` |
+| 💻 Frontend | `components/founder-admin.js` | Refactor `financialPeriod` → `dashboardPeriod` (state + función + window + key localStorage con compat backward) + `renderDashboard()` ahora calcula `filteredOrders` una sola vez y todas las métricas/gráficos lo consumen + flag `excludeNonSales` en `filterOrdersByPeriod` + label dinámica de `statPedidos` + fix de `$$` doble en `renderFinancialMetrics` |
+
+### 🎓 Lecciones de la sesión
+
+1. **`fmtUYU` ya incluye el símbolo** — anotado fuerte para que no se repita. Las funciones formateadoras deben ser consistentes en el shape de retorno; si una devuelve con `$`, todas deben hacerlo (o ninguna).
+
+2. **Backward compat de localStorage es trivial y vale la pena.** El user no perdió su preferencia (30 días que tenía guardada de Sesión 41) gracias a 2 líneas de fallback en el lector. Cero fricción en el upgrade.
+
+3. **Calcular `filteredOrders` una sola vez al inicio de `renderDashboard`** es el patrón correcto. Pasarlo como argumento a cada bloque o filtrar en cada uno habría sido duplicación + bug-prone.
+
+4. **El selector de período es un UI primitive de bajo costo y alto valor.** El user pidió la extensión 1 hora después de tenerlo. Sugiere que el patrón "selector de período → re-render todo" puede aparecer en otras vistas (ej. pedidos, cupones por uso, ventas por producto en detalle). Vale la pena consolidar la lógica en helpers reutilizables si vuelve a aparecer.
+
+---
+
+## ✅ SESIÓN 41 — Combo Opción 1 + Opción 4: completar Sesión 39 + dashboard financiero [14/05/2026]
+
+**Sesión grande con dos features arquitectónicas combinadas.** La primera cierra una deuda técnica detectada hoy mismo (Sesión 39 incompleta en producción); la segunda construye un dashboard financiero que **depende** de la primera para tener datos limpios.
+
+### 🚨 Hallazgo crítico — Sesión 39 estaba documentada pero NO implementada
+
+Durante el análisis previo a Sesión 41 (planificando reportes financieros), se descubrió que **la arquitectura descrita en Sesión 39 del ESTADO.md NO coincidía con el código real**:
+
+| Componente | Sesión 39 documentaba | Realidad pre-Sesión 41 |
+|------------|----------------------|------------------------|
+| Columnas DB (`descuento_cupon`, `descuento_transferencia`) | ✅ Existen | ✅ Existen (confirmado por auditoría de Sesión 40) |
+| CHECK constraints | ✅ Existen | ✅ Existen |
+| `admin.js` SELECTs extendidos | ✅ | ✅ |
+| `seguimiento.js` SELECT extendido | ✅ | ✅ |
+| `founder-seguimiento.js` lee DB con fallback | ✅ | ✅ |
+| `email-templates.js` propaga campos | ✅ | ✅ |
+| `founder-checkout.js` envía los campos | ✅ | ✅ |
+| **`checkout.js` cleanOrder con los 3 campos** | ✅ | **❌ NO** |
+| **`checkout.js` validación coherencia frontend↔backend** | ✅ | **❌ NO** |
+| **`checkout.js` UPDATE post-RPC** | ✅ | **❌ NO** |
+| **`checkout.js` `cupon_codigo` en cleanOrder** (causa Hotfix #1 de S39) | ✅ | **❌ NO** |
+| Migración SQL para pedidos viejos | ✅ Idempotente | **❌ Nunca corrida** |
+
+**Hipótesis del por qué:** todo el trabajo de lectura (admin, seguimiento, emails) estaba aplicado correctamente. Solo el archivo `checkout.js` —el que **escribe** los datos— quedó en versión vieja, posiblemente por un commit revertido o un merge parcial sin notar. El sitio funcionaba bien porque todos los lectores tienen fallback de despeje matemático (Sesión 36/37) cuando la DB trae los campos en 0.
+
+**Impacto:** ningún pedido nuevo persistía el desglose en DB. Todos quedaban con `descuento_cupon=0, descuento_transferencia=0` y el desglose se reconstruía siempre por la fórmula matemática (que es frágil si cambia el porcentaje de transferencia).
+
+### 🅰 Parte A — Completar la implementación de Sesión 39
+
+**Tres cambios en `checkout.js`:**
+
+1. **`cleanOrder` extendido** con `cupon_codigo` (normalizado uppercase), `descuento_cupon` (parseInt) y `descuento_transferencia` (parseInt). Defaults en 0 si el frontend no los envía (compat con cualquier cliente legacy).
+
+2. **Validación de coherencia** antes del RPC: si `descuento_cupon > 0` o `descuento_transferencia > 0`, la suma debe igualar `descuento` total (tolerancia 1 peso por redondeos del 10%). Si vienen ambos en 0, se acepta sin chequear. Si el chequeo falla, devuelve `descuento_split_mismatch` HTTP 400 y el pedido NO se crea.
+
+3. **UPDATE post-RPC** con los 2 campos del desglose. La RPC SQL `apply_coupon_and_create_order` queda intacta (decisión Sesión 39: la RPC sigue siendo la transacción atómica del cupón; los 2 campos nuevos son informativos, no críticos). Si el UPDATE falla, se loguea warning pero NO se devuelve error al cliente — el pedido es válido, y el frontend de seguimiento/emails caen al fallback matemático automáticamente.
+
+**Migración SQL `SESION-41-SQL.sql` para pedidos viejos:**
+
+- Script idempotente en 4 pasos: diagnóstico previo + UPDATE masivo + verificación 3-en-TRUE + (opcional) detalle de fallas.
+- Solo toca filas con `descuento > 0 AND descuento_cupon = 0 AND descuento_transferencia = 0` → no re-aplicar.
+- Fórmula reconstruida en SQL espejando el frontend: `cuponAmount = ROUND(subtotal + personalizacion_extra - ((total - envio) / 0.90))`, con clamps `LEAST(GREATEST(..., 0), descuento)` para defenderse de datos inconsistentes.
+- Validada con smoke test sintético en Node: 6/6 casos cierran con suma exacta.
+
+### 🅱 Parte B — Dashboard financiero (Opción 4 del backlog histórico)
+
+**4 tarjetas nuevas** debajo de las métricas de ventas existentes, agrupadas bajo "📊 Análisis financiero":
+
+| Tarjeta | Color | Métrica |
+|---------|-------|---------|
+| 📊 **Ventas brutas** | gold | `total_cobrado + descuentos_totales` (= "lo que hubiéramos cobrado sin descuentos") |
+| 💸 **Ahorros por cupones** | purple (nuevo tinte) | sumatoria de `descuento_cupon` en el período |
+| 💳 **Ahorros por transferencia** | blue | sumatoria de `descuento_transferencia` en el período |
+| 🎯 **Tasa de descuento** | red | `descuentos_totales / ventas_brutas` × 100, 1 decimal |
+
+**Bar chart "Top 5 cupones (por monto descontado)"** debajo de las cards: agrupa por `cupon_codigo`, ordena desc por monto total descontado en el período, top 5.
+
+**Selector de período** con 5 botones (7/30/90/120/365 días). Default 30. Persistido en localStorage para que el admin recuerde la última selección entre visitas. **(Sesión 41b después agregó botón "Todo" y expandió el scope a todo el dashboard.)**
+
+**Lógica de cálculo:**
+
+- **`filterOrdersByPeriod(orders, days)`** — filtra por fecha (campo `fecha` con fallback a `created_at`), excluye Cancelado / Pago rechazado / Pendiente pago.
+- **`splitDescuento(order)`** — devuelve `{ cupon, transferencia }` con prioridad 1 a las columnas DB y fallback al despeje matemático para pedidos pre-migración. Mismo patrón que `founder-seguimiento.js` y `email-templates.js`. Garantiza que el dashboard funcione **antes** de correr la migración SQL.
+- **`renderFinancialMetrics()`** — orquesta todo: filtra → splittea cada pedido → agrega → renderiza cards + bar chart.
+
+**Smoke test sintético** con dataset de 5 pedidos mezclando: pedidos post-Sesión 41 (con desglose DB), pedidos pre-Sesión 39 (sin desglose, fallback), y pedidos cancelados (excluidos). 5/5 casos pasaron con los totales esperados manualmente.
+
+### 📦 Archivos tocados (3) + 1 SQL
+
+| Tipo | Archivo | Cambios |
+|------|---------|---------|
+| 🔧 Backend | `api/checkout.js` | `cleanOrder` con 3 campos nuevos + validación coherencia + UPDATE post-RPC |
+| 🎨 UI | `admin.html` | CSS nuevo (sales-card purple, fin-header, fin-period, fin-empty) + bloque HTML "📊 Análisis financiero" con selector + 4 cards + bar chart top cupones |
+| 💻 Frontend | `components/founder-admin.js` | `state.financialPeriod` + `filterOrdersByPeriod` + `splitDescuento` + `setFinancialPeriod` + `renderFinancialMetrics` + sincronización de botón activo en bootstrap + `window.setFinancialPeriod` expuesto |
+| 🗄️ SQL | `SESION-41-SQL.sql` | Migración idempotente con verificación post-update |
+
+### 🎓 Lecciones de la sesión
+
+1. **La inconsistencia entre documentación y código es invisible hasta que se intenta usar lo documentado.** Sesión 39 documentaba arquitectura que nunca se aplicó. El bug pasó 1 día completo en producción sin manifestarse porque el fallback matemático tapaba el síntoma. **Regla nueva:** cuando se cierra una sesión arquitectónica grande, además del smoke test funcional hacer un grep del código por las APIs/columnas nuevas para confirmar que ESTÁN siendo escritas, no solo leídas.
+
+2. **Fallbacks en cascada salvan vidas.** El sistema funcionaba perfectamente sin el UPDATE post-RPC porque seguimiento.js, founder-seguimiento.js y email-templates.js tenían fallback al despeje. Cuando agregamos la persistencia real, los fallbacks siguen existiendo para pedidos viejos pre-migración. Esto significa **cero downtime, cero migración manual urgente**.
+
+3. **Validación de coherencia client↔server con tolerancia.** El frontend calcula `descuento_cupon + descuento_transferencia = descuento` con redondeos del 10%. El backend rechazaría con `==` estricto. La tolerancia de 1 peso es **necesaria, no opcional**.
+
+4. **Una sola función `splitDescuento` reusable** consume el patrón "prioridad DB → fallback matemático" en 3 lugares del frontend (founder-seguimiento.js, email-templates.js, founder-admin.js). El dashboard de Sesión 41 reutiliza la lógica. Si en el futuro cambia el % de transferencia, **una sola edición** en el helper actualiza todo.
+
+5. **El localStorage backward-compat es 2 líneas de código.** Lee el key nuevo primero, después el viejo. Cualquier preferencia que el user tenía persiste. Sesión 41b lo aprovechó para renombrar `financialPeriod` → `dashboardPeriod` sin que el user perdiera su selección de 30 días.
+
+---
+
+## ✅ SESIÓN 40 — Combo de 3 mini-features + 2 bugs descubiertos en producción [14/05/2026]
+
+**Primera sesión del día 14/05.** Tres tareas chicas del backlog en un solo combo + dos bugs serios descubiertos durante el testing de las features y arreglados en la misma sesión.
+
+### 🅰 Opción (a) — Email automático al admin cuando entra pedido con grabado
+
+**Pre-existía** el bloque HTML `blockPersonalizacion(order, items, 'admin')` en `email-templates.js` (Sesión 29) pero nunca se había conectado al flujo de creación de orden. Sesión 40 lo conecta.
+
+**Implementación en 4 archivos:**
+
+1. **`email-templates.js`** — agregada `templateAdminPersonalizacionAlert(order, items)`: template completo con tono operativo (sin "¡Gracias por tu compra!"; es interno al taller). Incluye: header, alerta destacada de "ESTE PEDIDO TIENE PERSONALIZACIÓN LÁSER", datos del cliente (nombre, email clickeable, celular, entrega), monto del grabado, total del pedido, link al panel admin (sin auto-login, solo navega), footer minimal.
+
+2. **`email.js`** — agregada `sendAdminPersonalizacionAlert(order, items)`: función pública con:
+   - Filtro de relevancia: solo envía si `personalizacion_extra > 0` o algún item tiene `personalizacion`.
+   - Defensa graciosa: si falta `ADMIN_EMAIL` en env, hace skip silencioso con warning (no es error). La feature es opt-in vía configuración.
+   - Subject: `⚡ Pedido con grabado #${numero} — preparar láser`.
+
+3. **`checkout.js`** — agregada al `Promise.all` del flujo de transferencia (paralelo con CAPI y email del cliente, fire-and-forget con timeout 3.5s).
+
+4. **`mp-webhook.js`** — agregada solo en la rama `esAprobacion`, NO en `esPendiente`. Razón: en MP pendiente (Abitab/Redpagos) el cliente todavía no pagó en efectivo; preparar archivos para un pago que puede caer es desperdicio. Solo cuando MP aprueba se notifica al admin. También se extendió `orderForEvents` con `personalizacion_extra` + `direccion` (faltaban en el SELECT de webhook).
+
+**Variable de entorno nueva:** `ADMIN_EMAIL` — opcional. Si no se configura, la feature está apagada y nada falla. Configurada en Vercel con el email real del dueño.
+
+**Hotfix en sesión:** el primer test mostró el email "Bounced" en Resend porque `ADMIN_EMAIL` se había escrito con typo (`foundar.uy@gmail.com` en vez de `founder.uy@gmail.com`). Corregida la variable en Vercel + redeploy + nuevo test → "Delivered" verde.
+
+### 🅱 Opción (b) — Auditoría general de CHECK constraints
+
+**Razón:** Sesión 32 reveló que `coupons_uso_check` y `coupons_tipo_check` habían estado desincronizados del código durante 18 sesiones (creados en S14, strings cambiados en sesiones posteriores, bug invisible porque la tabla estaba vacía). Sesión 40 audita todas las tablas para detectar otros casos similares.
+
+**Script SQL de auditoría** en `SESION-40-SQL.sql` parte 1 — query read-only que lista todas las CHECK constraints de las tablas públicas del proyecto con su definición completa. El usuario corre el SQL en Supabase y comparte el resultado.
+
+**Resultado de la auditoría — cero desincronizaciones:**
+
+| Constraint | DB acepta | Código manda | Estado |
+|-----------|-----------|--------------|--------|
+| `coupons_tipo_check` | `'porcentaje', 'fijo'` | idem | ✅ |
+| `coupons_uso_check` | `'multiuso', 'unico', 'por-email'` | idem | ✅ |
+| `orders_entrega_check` | `'Envío', 'Retiro'` | idem | ✅ |
+| `orders_pago_check` | `'Mercado Pago', 'Transferencia'` | idem | ✅ |
+| `orders_estado_check` | 9 estados (Pendiente pago, Pendiente confirmación, Confirmado, En preparación, En camino, Listo para retirar, Entregado, Cancelado, Pago rechazado) | 9 estados (idénticos) | ✅ |
+| `reviews_estado_check` | `'pendiente', 'aprobada', 'oculta'` | idem | ✅ |
+| `cleanup_logs_trigger_check` | `'auto', 'manual'` | idem | ✅ |
+| `personalizacion_examples_tipo_check` | `'adelante', 'interior', 'atras', 'texto'` | idem | ✅ |
+| Numéricos `>= 0` y `> 0` | — | — | ✅ |
+
+**Observación menor (no es bug):** `coupon_authorized_emails_reason_check` acepta 3 valores (`'review_reward'`, `'manual'`, `'campaign'`) pero el código solo usa 2 (`'review_reward'` y `'manual'`). Es la DB siendo **más permisiva** que el código, opuesto al bug de Sesión 32 (más restrictiva). Safe: no rompe inserts, está preparada para una futura feature de campañas.
+
+**Conclusión:** la disciplina de mantener constraints sincronizadas post-Sesión 32 (sesiones 36, 38, 39 agregaron constraints con cuidado) funcionó. La deuda técnica queda cerrada.
+
+### 🅲 Opción (c) — Drop columna legacy `products.banner_url`
+
+**Pendiente desde Sesión 21** (cuando el hero banner se movió a `site_settings.hero_banner_url`). La columna quedó como "legacy silenciosa" durante 19 sesiones.
+
+**Orden crítico de cambios:** primero JS, después SQL. Si se dropea primero la columna, los SELECTs del admin tiran error de columna inexistente.
+
+1. **`founder-admin.js`** — quitada `banner_url: p.banner_url || ''` del mapeo de productos.
+2. **`admin.js`** — quitada `banner_url` del SELECT de `list_products`.
+3. **`supabase-client.js`** — actualizado el comentario histórico.
+4. **`SESION-40-SQL.sql` parte 2** — `ALTER TABLE products DROP COLUMN IF EXISTS banner_url;` con verificación post-drop (query que devuelve 0 filas si todo OK).
+
+### 🐛 Bug #1 descubierto en producción — Cupón PERSONAL aplicaba mal el descuento
+
+**Síntoma:** al aplicar el cupón `PERSONAL` (que tiene flag `descuenta_personalizacion=true` y 3 slots cubiertos) en un carrito con Founder Confort ($2.490) + grabado láser ($290), el resumen mostraba un descuento de **−$2.490 del producto** en lugar de **−$290 del grabado**. El total quedaba $290 + envío (= producto regalado), debería haber sido $2.490 + envío (= grabado regalado).
+
+**Causa raíz:** el endpoint `handleValidateCoupon` en `api/checkout.js` traía el SELECT de la tabla `coupons` **sin** las columnas `descuenta_personalizacion` ni `personalizacion_slots_cubiertos`. El response al frontend no incluía esas flags. El frontend (`founder-checkout.js` línea 464) bifurca:
+
+```js
+if (state.coupon.descuentaPersonalizacion === true) { ... cupón personalización ... }
+else if (state.coupon.tipo === 'porcentaje')        { ... cupón clásico % ... }
+else                                                  { ... cupón clásico fijo ... }
+```
+
+Como `descuentaPersonalizacion` venía `undefined`, NO entraba al `if` y caía al `else if`. El cupón PERSONAL tiene `tipo='porcentaje', valor=100` (forzado en admin con `valor:0`, pero en la DB queda 100 para reportes), entonces aplicaba 100% × $2.490 = $2.490 sobre el subtotal del producto.
+
+**Por qué pasó:** la Sesión 34 documentó haber arreglado este bug con un fix en frontend ("`state.coupon` ahora guarda `descuentaPersonalizacion`..."), pero el fix asumía que el backend ya enviaba esos campos. Nunca se actualizó el `validate_coupon` del backend. El bug vivió desde Sesión 33 (creación del feature) hasta Sesión 40 — 7 sesiones, invisible porque el dueño nunca había probado el cupón PERSONAL hasta el testing de Sesión 40.
+
+**Fix en `checkout.js`:**
+
+1. SELECT extendido con `descuenta_personalizacion, personalizacion_slots_cubiertos`.
+2. Validación de `min_compra` **se saltea** para cupones de personalización (el admin ya ignora esos campos visualmente; el backend debe ser consistente).
+3. Response al frontend extendido con los 2 campos en camelCase (`descuentaPersonalizacion`, `personalizacionSlotsCubiertos`), espejando lo que el frontend ya esperaba leer.
+
+Validado en producción: nuevo pedido con PERSONAL aplicó **−$290 del grabado**, no del producto. ✅
+
+### 🐛 Bug #2 descubierto en producción — Botón confirmar bloqueado al volver de MP
+
+**Síntoma:** el usuario clickeó "Continuar al pago (Mercado Pago)", entró a la pantalla de MP, se arrepintió, apretó **back button del navegador**, cambió el método de pago a "Transferencia", y al intentar clickear "Confirmar pedido (Transferencia)" el botón estaba deshabilitado y no respondía.
+
+**Causa raíz:** el flow de MP en `founder-checkout.js`:
+
+1. Click → `btn.disabled = true`, `btn.textContent = '⏳ Procesando...'`.
+2. Redirect a MP: `window.location.href = apiResp.data.init_point` + `return`.
+3. Cliente back en navegador → browser muestra la página desde **bfcache** (back/forward cache de Chrome/Firefox) → la página viene **con el estado del botón disabled**.
+4. Cliente cambia método → `setPago(mode)` actualiza el texto pero NO re-habilita el botón.
+
+**Fix con doble defensa en `founder-checkout.js`:**
+
+1. **`setPago(mode)`** ahora también hace `btn.disabled = false`. Razón: si el user llega a `setPago`, está rearmando la compra; cualquier intento previo ya terminó (a MP y volvió, o falló y se mostró toast).
+
+2. **Listener `pageshow` con `event.persisted === true`** — detecta cuando el browser muestra la página desde bfcache (back/forward) sin reload completo. Restaura el botón al estado correcto. Cubre el caso "cliente vuelve a checkout sin cambiar método de pago" (no toca `setPago`, solo apretó back).
+
+Validado en producción: cliente puede ir → MP → back → cambiar a transferencia → confirmar sin trabas. ✅
+
+### 📦 Archivos tocados (7) + 1 SQL
+
+| Tipo | Archivo | Cambios |
+|------|---------|---------|
+| 🎨 Template | `api/_lib/email-templates.js` | +1 template `templateAdminPersonalizacionAlert` exportada |
+| 🔧 Backend | `api/_lib/email.js` | +1 función `sendAdminPersonalizacionAlert`, import del template, comentario de header expandido a 6 funciones, env var `ADMIN_EMAIL` documentada |
+| 🔧 Backend | `api/checkout.js` | +1 import del email admin, llamada al `Promise.all` de transferencia, fix Bug #1: SELECT + response de `validate_coupon` con flags de personalización |
+| 🔧 Backend | `api/mp-webhook.js` | +1 import del email admin, llamada en rama `esAprobacion`, `orderForEvents` extendido con `personalizacion_extra` + `direccion`, SELECT extendido con `direccion` |
+| 💻 Frontend | `components/founder-admin.js` | quitada referencia legacy a `banner_url` |
+| 🔧 Backend | `api/admin.js` | quitada `banner_url` del SELECT de productos + comentario actualizado |
+| 💻 Frontend | `supabase-client.js` | comentario histórico actualizado (drop S40) |
+| 💻 Frontend | `components/founder-checkout.js` | Fix Bug #2: `setPago` re-habilita botón + listener `pageshow` para bfcache |
+| 🗄️ SQL | `SESION-40-SQL.sql` | Parte 1 auditoría CHECK constraints (read-only) + Parte 2 drop `products.banner_url` con verificación |
+
+### 🎓 Lecciones de la sesión
+
+1. **Cuando una feature pre-existente no se "conectó" al flujo, conectarla puede destapar bugs latentes en código relacionado.** El email admin (Opción a) era trivial en aislamiento. Al probarlo en producción, el flujo completo de checkout se ejercitó por primera vez en mucho tiempo y aparecieron los 2 bugs. **Conclusión:** features chicas + testing E2E real son la mejor herramienta de descubrimiento.
+
+2. **`bfcache` (back/forward cache) es real y silencioso.** Los navegadores modernos cachean la página completa (DOM + state JS) cuando el user va a otro sitio (ej. MP) y la restauran al volver. Cualquier estado modificado por JS antes del redirect persiste. El listener `pageshow` con `event.persisted` es el hook estándar para detectar este caso. **Patrón aplicable a cualquier flow con redirect externo (OAuth, pago, etc).**
+
+3. **La inconsistencia frontend↔backend de Sesión 33 sobrevivió 7 sesiones.** El bug nunca apareció porque el feature concreto (cupón PERSONAL) no había sido testeado en producción. **Regla nueva:** cuando se agrega un campo nuevo a la DB que el frontend usa, agregar al checklist de la sesión: "verificar que el endpoint que lee el campo lo devuelva al frontend". Idealmente smoke test con request manual + inspección del response.
+
+4. **Defensa en profundidad en variables de entorno.** `ADMIN_EMAIL` puede faltar (durante un setup nuevo, durante un rollback de Vercel, durante un test en preview env). La función chequea y hace skip silencioso si falta, sin tirar error. **Cero efectos colaterales** si el dueño nunca configura la variable.
+
+5. **El typo en una env var puede tardar minutos en detectarse.** `foundar.uy` vs `founder.uy` se vio recién al mirar Resend → Logs y ver el status "Bounced". Antes de eso, el código respondía OK porque Resend acepta el envío y solo después detecta el bounce. **Aprendizaje:** cuando una integración externa devuelve OK pero no llega, mirar el dashboard del proveedor (Resend, MP, Meta) antes de revisar código.
 
 ---
 
