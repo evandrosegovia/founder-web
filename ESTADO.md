@@ -1,19 +1,209 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 38 — **Sistema completo de reseñas con recompensa por cupón + 4 fixes post-deploy + 3 ajustes UX.** Feature nueva end-to-end: clientes con pedido `Entregado` pueden dejar reseña (1-5 estrellas + texto + hasta 3 fotos opcionales) desde la página de seguimiento; el sistema autoriza automáticamente su email para usar un cupón configurable (`GRACIAS10` por default) en su próxima compra; admin tiene panel de moderación con filtros por estado (pendiente/aprobada/oculta) + opción mostrar/ocultar/eliminar sin posibilidad de editar el contenido. Las reseñas aprobadas reemplazan las 4 mock históricas de Sesión 20 en `producto.html` con render dinámico desde Supabase + Schema.org `aggregateRating` para Google rich results (estrellitas en búsquedas). **Arquitectura:** tabla nueva `reviews` + tabla auxiliar `coupon_authorized_emails` + flag `es_recompensa_resena` en `coupons` + función SQL helper `get_review_reward_coupon()` + bucket público nuevo `reviews-photos`. **Endpoint nuevo `/api/reviews`** con 4 actions (get/get_upload_url/create/list_public). Email transaccional nuevo de agradecimiento con el cupón ganado en tarjeta dorada. **Validación end-to-end en producción con bug-rate ultra-bajo:** 2 bugs detectados y cerrados en la misma sesión (incompatibilidad UUID/entero en product_id, toast silencioso en seguimiento.html). **3 ajustes UX adicionales:** estrellas pre-seleccionadas en 5 (evita 0★ accidentales), título dinámico en seguimiento (oculto al ver detalle), ícono del carrito ensanchado (22×22 → 26×24 con asas curvas). **Decisión de negocio importante:** el dueño rechazó reseñas mock por integridad — esperar reseñas orgánicas con el sistema funcional. **Cierre del pendiente "Opción B reseñas reales" abierto desde Sesión 26.** Total: 16 archivos tocados + 1 SQL migration + 1 bucket nuevo, cero rollbacks, cero regresiones. (13/05/2026)
+**Última actualización:** Sesión 39 — **Combo financiero: desglose de descuentos en `orders` + edición de cupones post-creación + 2 hotfixes inline.** Dos features arquitectónicas que cierran deuda técnica importante. **(A) Desglose de descuentos:** se reemplaza el despeje matemático frágil de Sesión 36/37 por dos columnas dedicadas (`descuento_cupon` + `descuento_transferencia`) en `orders`. Frontend de checkout ya calculaba los 3 valores por separado pero solo enviaba la suma — ahora envía el desglose explícito. Backend hace UPDATE post-RPC con los dos campos (la RPC del cupón queda intacta y atómica). Seguimiento y emails priorizan las columnas dedicadas; despeje matemático queda como fallback solo para pedidos viejos. **Migración SQL one-shot** que recalcula el split para pedidos viejos con verificación final 3-en-TRUE. **(B) Edición de cupones:** botón ✏️ Editar en tabla → formulario se prellena con datos del cupón + scroll suave. `código` y `tipo` quedan bloqueados (read-only visualmente atenuado) para preservar integridad histórica (`orders.cupon_codigo` apunta al código; cambiar tipo cambia la semántica del valor). Botón "Cancelar edición" que vuelve a modo crear. Una sola función `saveCupon()` maneja create + update (DRY). Backend `update_coupon` reforzado con validaciones espejo de `create_coupon`. **2 hotfixes post-deploy en la misma sesión:** (1) email de confirmación de transferencia no detectaba presencia de cupón → faltaba `cupon_codigo` en `cleanOrder` (bug histórico expuesto por Sesión 39); (2) reactivar cupón de uso único usado lo dejaba inutilizable → regla nueva: transición `inactivo → activo` en cupón `uso='unico'` con `usos_count >= 1` resetea automáticamente el contador a 0, con toast informativo "usos reiniciados a 0". **Trazabilidad completa del desglose:** frontend (3 valores) → backend (validación coherencia, tolerancia 1 peso por redondeo) → DB (2 columnas + 2 CHECK constraints) → backend (SELECTs extendidos) → frontend (prioridad DB sobre despeje). Total: 9 archivos tocados + 1 SQL migration con verificación, cero rollbacks, cero regresiones, 6/6 casos de migración cierran con suma exacta en smoke test. (14/05/2026)
 
-**Próxima sesión:** 39 — opciones disponibles, en orden sugerido de prioridad:
-- (a) **Agregar columnas `descuento_cupon` y `descuento_transferencia` a `orders`** — hoy guardamos solo el descuento total, el split en email/seguimiento se calcula por despeje matemático (funciona pero frágil si cambia la lógica). Con columnas dedicadas, todo el flujo se simplifica y los reportes financieros del admin pueden separar fácilmente "ventas brutas vs ahorros por cupones". Esfuerzo: 30-45 min.
-- (b) **Edición de cupones post-creación** — hoy el admin solo permite Pausar/Activar/Eliminar. Para cambiar `valor`, `min_compra`, flags, hay que recrear. Esfuerzo: 1 hora.
-- (c) **Email automático con FOUNDER20 / GRACIAS10 a los 10 días post-entrega** — idea propuesta por el usuario en Sesión 32, ahora también aplicable a recordar GRACIAS10 a clientes que dejaron reseña y no lo usaron. Requiere cron + flag de dedup. Esfuerzo: 2 horas.
-- (d) **Email automático al admin cuando entra pedido con grabado** — el código `blockPersonalizacion('admin')` ya existe, falta conectarlo. Esfuerzo: 30 min.
+**Próxima sesión:** 40 — opciones disponibles, en orden sugerido de prioridad:
+- (a) **Email automático al admin cuando entra pedido con grabado** — el código `blockPersonalizacion('admin')` ya existe, falta conectarlo al flujo de creación de orden en `checkout.js`. Esfuerzo: 30 min.
+- (b) **Auditoría general de constraints CHECK en TODAS las tablas** — Sesión 32 reveló que `coupons_uso_check` y `coupons_tipo_check` estaban desincronizados con el código desde hacía 18 sesiones. Hay que repasar `orders`, `products`, `product_colors`, etc. Sesión 39 agregó 2 CHECK constraints nuevos a `orders` (descuento_cupon ≥ 0, descuento_transferencia ≥ 0) que sirven como precedente. Esfuerzo: 30 min.
+- (c) **Drop columna legacy `products.banner_url`** — pendiente desde Sesión 21.
+- (d) **Email automático con FOUNDER20 / GRACIAS10 a los 10 días post-entrega** — idea propuesta en Sesión 32, ahora también aplicable a recordar GRACIAS10 a clientes que dejaron reseña y no lo usaron. Requiere cron + flag de dedup. Esfuerzo: 2 horas.
 - (e) **Admin mobile parte 2** — completar editor de productos y panel de personalización láser en mobile (Sesión 35 dejó priority B; productos y láser quedaron pendientes). Esfuerzo: 2-3 horas.
 - (f) **CSP (Content Security Policy)** — la última pieza para A+ definitivo en securityheaders.com. Esfuerzo: 1 hora.
-- (g) **Auditoría general de constraints CHECK en TODAS las tablas** — Sesión 32 reveló que `coupons_uso_check` y `coupons_tipo_check` estaban desincronizados con el código desde hacía 18 sesiones. Hay que repasar `orders`, `products`, `product_colors`, etc. Esfuerzo: 30 min.
-- (h) **Drop columna legacy `products.banner_url`** — pendiente desde Sesión 21.
-- (i) **Cleanup automático de fotos de reseñas eliminadas** — hoy `delete_review` borra las fotos del bucket en línea, pero si el storage falla las fotos quedan huérfanas. Agregar cron semanal que liste paths del bucket y compare con `reviews.fotos_urls`. Esfuerzo: 1 hora.
+- (g) **Cleanup automático de fotos de reseñas eliminadas** — hoy `delete_review` borra las fotos del bucket en línea, pero si el storage falla las fotos quedan huérfanas. Agregar cron semanal que liste paths del bucket y compare con `reviews.fotos_urls`. Esfuerzo: 1 hora.
+- (h) **Reportes financieros en admin con desglose de descuentos** — ahora que la DB tiene las 2 columnas dedicadas (Sesión 39), construir un dashboard que separe "ventas brutas vs ahorros por cupones vs ahorros por transferencia" por período. Esfuerzo: 2-3 horas.
 
 **Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
+
+---
+
+## ✅ SESIÓN 39 — Combo financiero: desglose de descuentos + edición de cupones + 2 hotfixes [14/05/2026]
+
+**Dos features arquitectónicas que cierran deuda técnica importante.** La primera (desglose de descuentos) reemplaza el despeje matemático frágil de Sesión 36/37 por columnas dedicadas en la DB. La segunda (edición de cupones) completa el CRUD del admin: antes solo se podía Pausar/Activar/Eliminar; ahora también Editar con preservación de integridad histórica (codigo + tipo bloqueados). Ambas features convivieron en la misma sesión porque comparten archivos clave (`admin.js`, `founder-admin.js`) y la decisión de "qué bloquear al editar" tiene implicaciones contables (cambiar valor de cupón usado vs no usado).
+
+### 🏗️ Arquitectura del feature (2 partes + 2 hotfixes)
+
+**Parte A — Desglose de descuentos en `orders`:**
+
+Antes de Sesión 39, la tabla `orders` solo tenía `descuento` (suma total). El frontend de checkout calculaba 3 valores (`couponAmountSubtotal`, `couponAmountPersonalizado`, `transferAmount`) pero solo enviaba la suma. Cuando seguimiento o emails necesitaban mostrar el desglose, hacían **despeje matemático** asumiendo la fórmula exacta del 10% transferencia. Funcionaba, pero era frágil: si cambia el porcentaje o la fórmula, todo el desglose se rompe en silencio.
+
+- 2 columnas nuevas en `orders`: `descuento_cupon` (INTEGER NOT NULL DEFAULT 0) + `descuento_transferencia` (INTEGER NOT NULL DEFAULT 0).
+- 2 CHECK constraints nuevos: `orders_descuento_cupon_check` (`>= 0`) + `orders_descuento_transferencia_check` (`>= 0`).
+- **Decisión de arquitectura clave:** NO tocar la RPC SQL `apply_coupon_and_create_order`. La RPC sigue insertando solo `descuento` total (fuente de verdad atómica del cupón). Los 2 campos nuevos se persisten vía **UPDATE post-RPC** desde el handler de Node. Razón: si el UPDATE falla, el pedido ya quedó bien creado y los campos quedan en 0 → cae al fallback de despeje. Son campos informativos, no críticos para la transacción.
+- Backend `checkout.js`: `cleanOrder` extendido con los 2 campos + validación de coherencia (`descuento_cupon + descuento_transferencia` debe sumar `descuento`, tolerancia 1 peso por redondeo). Si vienen ambos en 0, se acepta para mantener compat con clientes viejos que aún no envían el desglose.
+- Frontend `founder-checkout.js`: destructuring extendido para capturar `couponAmountSubtotal`, `couponAmountPersonalizado`, `transferAmount` de `calculateOrderTotals()`. Se mapean a `descuento_cupon: couponAmountSubtotal + couponAmountPersonalizado` (los 2 cupones se agrupan porque para el cliente y los reportes es "lo que descontó MI código") y `descuento_transferencia: transferAmount` (el 10% por método de pago).
+- Frontend `founder-seguimiento.js`: `renderTotales` con prioridad 1 (DB) + fallback heurística (Sesión 36) para pedidos viejos. La firma pasó de 7 a 9 parámetros.
+- Email `email-templates.js`: `renderDiscountLines` con prioridad 1 (DB) + fallback despeje matemático. Los 4 call sites de `blockItems`/`blockItemsWithPhotos` extendidos con `descuentoCupon` + `descuentoTransferencia`. `optsFull` propaga ambos campos a `renderDiscountLines`.
+- Backend SELECTs (`seguimiento.js`, `admin.js`): los 3 SELECTs de `orders` extendidos con las 2 columnas nuevas.
+
+**Migración SQL one-shot para pedidos viejos:**
+
+- Script `SESION-39-SQL.sql` idempotente (usa `IF NOT EXISTS` y `WHERE descuento_cupon = 0 AND descuento_transferencia = 0` para no re-aplicar).
+- UPDATE masivo que calcula el split usando la misma fórmula del frontend: `cuponAmount = subtotal + personalizExtra - ((total - envio) / 0.90)`, `transferAmount = descuento - cuponAmount`.
+- Tres casos cubiertos: cupón+transferencia (despeje matemático), solo cupón (descuento entero a cupón), solo transferencia (descuento entero a transferencia).
+- Verificación final 3-en-TRUE: columnas existen + suma coincide con descuento total para todos los pedidos migrados (tolerancia 1 peso) + no hay valores negativos. La query devuelve `verificacion = true` solo si los 3 checks pasan.
+- Smoke test sintético validado en JS: 6/6 casos cierran con suma exacta (incluido caso con personalización + cupón porcentaje + transferencia).
+
+**Parte B — Edición de cupones post-creación:**
+
+Hasta Sesión 39, la tabla de cupones en el admin solo tenía botones ⏸️/▶️ y 🗑️. Para cambiar `valor`, `min_compra` o cualquier flag, había que eliminar el cupón y recrearlo — perdiendo `usos_count`, `emails_usados[]` e historial.
+
+- Botón **✏️ Editar** agregado en cada fila de la tabla de cupones, entre Pausar y Eliminar.
+- Click → el formulario inline existente (`#cuponClassicFields`, `#cpCodigo`, etc.) se prellena con los datos del cupón + scroll suave al form (`scrollIntoView({behavior:'smooth'})`) para UX mobile/desktop.
+- **Campos bloqueados al editar:** `codigo` (input `readOnly` + clase `.is-readonly`) y `tipo` (select `disabled` + clase `.is-readonly`). CSS nuevo `.ci.is-readonly` con `background:rgba(255,255,255,0.03)` + `cursor:not-allowed` + `border-color:var(--border)` para señalizar visualmente.
+- **Por qué bloquear codigo + tipo (decisión 2B del usuario):**
+  - `codigo` → se persiste en `orders.cupon_codigo` para cada pedido que lo usa. Cambiarlo rompería las referencias visibles en historial.
+  - `tipo` → cambiar porcentaje↔fijo a mitad de vida cambia la semántica del campo `valor` y confunde reportes (un cupón con tipo=fijo y valor=20 después de cambio se interpretaría como $20 cuando antes era 20%).
+- **Una sola función `saveCupon()`** para crear y editar (DRY). Variable de estado `editingCouponId` (null|string) indica el modo. Bifurca al `apiAdmin('update_coupon', ...)` o `apiAdmin('create_coupon', ...)` según corresponda.
+- Botón **"Cancelar edición"** (`#cpCancelEditBtn`) inicialmente `display:none`. En modo edición se hace visible y limpia el form al click. Refactor `resetCuponForm()` centraliza la limpieza (inputs + checkboxes + selectores + clases visuales).
+- Mensajes contextuales: título del form cambia a *"Editar cupón \"XYZ\""*, botón cambia a *"💾 Guardar cambios"*, toast de éxito dice *"✅ Cupón XYZ actualizado"* vs *"✅ Cupón XYZ creado"*.
+
+**Backend `update_coupon` reforzado (Sesión 39):**
+
+- Whitelist de campos editables reducida: `codigo` y `tipo` **fuera** de la whitelist a nivel API (defensa en profundidad junto al frontend bloqueado). 11 campos editables, 2 bloqueados.
+- Validación espejo de `handleCreateCoupon`: si patch incluye `solo_clientes_nuevos: true` o `solo_clientes_repetidos: true`, se lee la otra flag desde la DB para detectar combinación inválida (ej: editar uno sin saber el estado actual del otro).
+- Validación de `descuenta_personalizacion: true` con slots 1-4 obligatorio.
+- Validación de `es_recompensa_resena: true` desactiva la flag en cualquier otro cupón activo (con `.neq('id', id)` para no auto-desactivarse).
+
+### 🔧 Hotfix #1 — Email de transferencia no detectaba presencia de cupón (post-deploy)
+
+**Síntoma:** después del deploy, hicimos un pedido de prueba con cupón `PRUEBADESCUENTO10` + transferencia. La DB quedó perfecta: `descuento_cupon=249`, `descuento_transferencia=224`, `cupon_codigo='PRUEBADESCUENTO10'`. El seguimiento web mostraba las 2 tarjetas verdes con montos individuales. **Pero el email mostraba una sola tarjeta** ("Pago por transferencia · -$473") en lugar de 2.
+
+**Causa raíz:** el objeto `cleanOrder` que se construye en `checkout.js` NO incluía `cupon_codigo`. Cuando `sendOrderConfirmationTransfer(cleanOrder, items)` se llamaba después del UPDATE post-RPC, el template del email recibía `order.cupon_codigo = undefined`. Dentro de `renderDiscountLines`, la condición `hayCupon = !!cuponCodigo` daba `false` → el código entraba al caso "solo transferencia" (1 tarjeta) en lugar de "cupón + transferencia" (2 tarjetas). **Bug histórico, no de Sesión 39:** existía desde que se introdujo la lógica de atribución en Sesión 36/37, pero pasaba desapercibido porque el caso "solo transferencia" mostraba lo correcto numéricamente cuando no había desglose en DB. Sesión 39 lo expuso porque ahora el sistema sí distingue los dos descuentos.
+
+**Fix:** una línea agregada en `cleanOrder`:
+```js
+cupon_codigo: cupon ? String(cupon).trim().toUpperCase() : null,
+```
+
+La variable `cupon` ya estaba disponible en el scope desde `body.cupon` (línea 311). Ahora el template detecta presencia de cupón correctamente y arma las 2 tarjetas. Validado: segundo pedido de prueba mostró correctamente *"✓ Cupón PRUEBADESCUENTO10 aplicado · -$249"* + *"✓ Pago por transferencia · -$224"*.
+
+**Lección:** los objetos que se pasan a templates de email deben tener todos los campos que el template podría necesitar para sus heurísticas, incluso si la fuente de verdad en DB ya los tiene. Acá el bug vivió 3 sesiones (36, 37, 38) porque las heurísticas anteriores fallaban silenciosamente al caso menos visible. Para el futuro: cuando se agrega un campo nuevo que afecta render, **auditar todos los objetos que se pasan a templates** (`cleanOrder`, `prevOrder`, etc.) y asegurar que incluyan el campo.
+
+### 🔧 Hotfix #2 — Reactivar cupón único usado lo dejaba inutilizable
+
+**Síntoma:** el admin intentó pausar un cupón de uso único (ya consumido por un cliente) y después reactivarlo. La UI mostraba estado "Activo" tras el toggle, pero al intentar usar el código en un pedido nuevo, devolvía `cupon_already_used`. El cupón quedaba "activo pero bloqueado".
+
+**Causa raíz:** la validación de cupón único en `checkout.js` línea 276 (`if (data.uso === 'unico' && data.usos_count >= 1)`) y su espejo en la RPC SQL no leen el campo `activo` — leen `usos_count`. Pausar/reactivar solo cambia `activo`, no toca `usos_count`. Resultado: un cupón único ya usado, aunque se reactive, sigue bloqueado para siempre por su contador.
+
+**Decisión de diseño:** entre 3 opciones discutidas (reset usos_count, reset usos_count + emails_usados, botón separado), el usuario eligió **resetear solo `usos_count`** al reactivar. Conserva `emails_usados[]` intencionalmente: si querés permitir que el MISMO email vuelva a usarlo, eliminás y recreás el cupón. Esto evita sorpresas en cupones que combinan `uso='unico'` con flags por-email.
+
+**Fix backend (`admin.js` en `handleUpdateCoupon`):**
+
+Bloque nuevo antes del UPDATE final que detecta la **transición** `inactivo → activo` en cupón `uso='unico'` con `usos_count >= 1`:
+
+```js
+if (patch.activo === true) {
+  const { data: current } = await supabase
+    .from('coupons')
+    .select('codigo, uso, activo, usos_count')
+    .eq('id', id)
+    .maybeSingle();
+  const estabaInactivo = current.activo === false;
+  const esUnico        = current.uso === 'unico';
+  const yaFueUsado     = Number(current.usos_count) >= 1;
+  if (estabaInactivo && esUnico && yaFueUsado) {
+    patch.usos_count = 0;
+    console.log('[admin/update_coupon] reactivando cupón único usado — usos_count reseteado a 0', ...);
+  }
+}
+```
+
+**Reglas precisas:**
+- Solo aplica en la **transición** inactivo → activo (no se dispara al editar un cupón ya activo).
+- Solo aplica a cupones `'unico'` (los `multiuso` y `por-email` mantienen su contador histórico).
+- Solo aplica si `usos_count >= 1` (no hay nada que resetear si nunca se usó).
+- Tabla mental de casos cubiertos: 8 escenarios, todos correctos.
+
+**Fix frontend (`founder-admin.js` en `toggleCupon`):**
+
+Cuando el toggle detecta una reactivación de cupón único usado, hace `await loadCoupons()` para refrescar la UI con el `usos_count = 0` actualizado, y muestra toast específico:
+
+```
+"Cupón XYZ reactivado — usos reiniciados a 0"
+```
+
+en lugar del genérico *"Cupón XYZ activado"*. Caso normal (sin reset) mantiene la UX rápida con update local sin recargar.
+
+**`saveCupon` en modo edición** no necesita cambio porque ya hacía `await loadCoupons()` al final — el reset se ve reflejado automáticamente.
+
+### 🔑 Decisiones arquitectónicas clave
+
+**1. UPDATE post-RPC en vez de modificar la RPC SQL.** Razones: (a) la RPC del cupón es transaccional y delicada — un error en SQL podría dejar pedidos en estado inconsistente; (b) los 2 campos nuevos son informativos, no afectan la atomicidad del cupón; (c) si el UPDATE falla, el pedido ya quedó bien creado y los campos quedan en 0 → cae al fallback de despeje (que también existe para pedidos viejos). Atomicidad estricta solo donde es realmente necesaria.
+
+**2. Despeje matemático como fallback, no como camino principal.** El código de seguimiento y emails prioriza columnas dedicadas (`descuentoCupon > 0 || descuentoTransferencia > 0`); solo si ambas vienen en 0 cae al despeje histórico. Esto permite: (a) migración suave (los pedidos viejos siguen funcionando hasta correr el SQL); (b) defensa contra fallos del UPDATE post-RPC; (c) no romper la app si por algún motivo las columnas no se llenan.
+
+**3. `cupon_codigo` derivado de la variable `cupon` del body, no del objeto `order` del cliente.** Razón: el frontend envía `cupon` en el top-level del body (separado del objeto `order`) porque la RPC lo necesita como tercer parámetro (`p_cupon`). El cliente NO envía `order.cupon_codigo` — eso lo persiste la RPC en la DB. Por eso el hotfix #1 toma `cupon` directamente (línea 311) para inyectarlo a `cleanOrder` antes de mandarlo al email.
+
+**4. Reset de `usos_count` SOLO en transición, no en cada edición.** Si re-guardo "activo=true" sobre un cupón que ya estaba activo (ej: edito otro campo y dejo el toggle como estaba), NO debe resetearse el contador. La condición `estabaInactivo === false` previene esto explícitamente. Patrón: comparar estado actual de DB vs estado nuevo del patch para decidir.
+
+**5. Bloquear `codigo` y `tipo` en edición (no solo bloqueo visual, también whitelist backend).** Defensa en profundidad: el frontend hace `readOnly` + `disabled` para UX, el backend filtra los campos por whitelist. Si un cliente malicioso usara curl para pegar al endpoint con `patch: {codigo: "NUEVO"}`, el backend descartaría ese campo silenciosamente (no llega al UPDATE).
+
+**6. Validación de coherencia con tolerancia 1 peso por redondeo.** El desglose `descuento_cupon + descuento_transferencia` debe sumar `descuento` total, pero como cada parte se calcula con `Math.round()` (frontend) y la base del 10% transferencia es post-cupón, puede haber 1 peso de diferencia por redondeo. Usar comparación exacta rompería pedidos válidos. La tolerancia se replica en la verificación SQL final.
+
+### 🧪 Validación
+
+**Sintaxis JS:** 7/7 archivos pasan `node --check` (checkout.js, seguimiento.js, admin.js, email-templates.js, founder-checkout.js, founder-seguimiento.js, founder-admin.js).
+
+**Balance HTML `admin.html`:** divs balanceados (363 abre / 363 cierra), buttons balanceados (47/47), todos los tags estructurales en cero.
+
+**SQL migration verificada en producción:** las 3 columnas del select de verificación dieron `true` — `columnas_ok=true`, `suma_ok=true`, `sin_negativos=true`, `verificacion=true`. El usuario reportó el resultado con screenshot.
+
+**Smoke test sintético en Node (6 casos):**
+- Caso 1: solo cupón 20% (subtotal $5000) → cupón=$1000, transfer=$0, suma=$1000. ✓
+- Caso 2: solo transferencia (subtotal $5000) → cupón=$0, transfer=$500, suma=$500. ✓
+- Caso 3: cupón 20% + transferencia (subtotal $5000) → cupón=$1000, transfer=$400, suma=$1400. ✓
+- Caso 4: sin descuento → 0/0. ✓
+- Caso 5: cupón fijo $500 + transferencia (subtotal $5000) → cupón=$500, transfer=$450, suma=$950. ✓
+- Caso 6: cupón 20% + transferencia + personalización $300 (subtotal $5000) → cupón=$1000, transfer=$430, suma=$1430. ✓
+
+**Validación end-to-end en producción:**
+1. SQL ejecutado en Supabase → `verificacion=true`. ✓
+2. Primer pedido de prueba (F978814, PRUEBADESCUENTO10 + transferencia) → DB correcta (`descuento=473`, `descuento_cupon=249`, `descuento_transferencia=224`), seguimiento web mostró 2 tarjetas, email mostró solo 1 tarjeta → **hotfix #1 disparado**.
+3. Segundo pedido de prueba (post hotfix #1) → email mostró las 2 tarjetas correctas. ✓
+4. Test edición de cupón → formulario prellenado correctamente, codigo+tipo bloqueados visualmente. ✓
+5. Test reactivación de cupón único usado → fallaba con `cupon_already_used` → **hotfix #2 disparado**.
+6. Test post hotfix #2 → reactivación resetea `usos_count` a 0, toast informativo, cupón funcionable de nuevo. ✓
+
+### 📜 Archivos modificados/creados
+
+| Tipo | Archivo | Sección |
+|---|---|---|
+| 🆕 Nuevo | `SESION-39-SQL.sql` | Migration SQL idempotente (no se sube al repo) |
+| ✏️ Edit | `api/checkout.js` | `cleanOrder` extendido + validación coherencia + UPDATE post-RPC + hotfix `cupon_codigo` |
+| ✏️ Edit | `api/seguimiento.js` | 2 SELECTs extendidos con `descuento_cupon` + `descuento_transferencia` |
+| ✏️ Edit | `api/admin.js` | SELECT `list_orders` + SELECT `update_order_status` extendidos + `handleUpdateCoupon` reforzado + reset usos_count en reactivación de cupón único |
+| ✏️ Edit | `api/_lib/email-templates.js` | `renderDiscountLines` prioriza DB sobre despeje + 4 call sites de `blockItems` extendidos + `optsFull` propaga campos |
+| ✏️ Edit | `founder-checkout.js` | Destructuring extendido + 2 campos nuevos en objeto `order` |
+| ✏️ Edit | `founder-seguimiento.js` | Captura 2 campos nuevos + `renderTotales` con prioridad DB / fallback heurística (firma 7→9 params) |
+| ✏️ Edit | `components/founder-admin.js` | Botón Editar en tabla + `editCupon()` + `cancelEditCupon()` + `resetCuponForm()` + `saveCupon()` dual create/update + `toggleCupon` con feedback de reset + 2 funciones expuestas al window |
+| ✏️ Edit | `admin.html` | Botón "Cancelar edición" + CSS `.ci.is-readonly` |
+| 🗄️ SQL | Supabase | 2 columnas en `orders` + 2 CHECK constraints + UPDATE migración + función helper para verificación |
+
+### ⚠️ Pendientes específicos de Sesión 39 (próximas sesiones)
+
+- **Reportes financieros con desglose** — ahora que tenemos las 2 columnas dedicadas, construir un dashboard en admin que separe "ventas brutas vs ahorros por cupones vs ahorros por transferencia" por período. Es la razón principal por la que se hizo (a). Esfuerzo: 2-3 horas.
+- **Auditoría de constraints CHECK en otras tablas** — Sesión 39 agregó 2 CHECK constraints nuevos a `orders`. Aprovechar la inercia para auditar `products`, `product_colors`, `order_items`, etc. Sesión 32 ya identificó 2 desincronizados en `coupons`. Esfuerzo: 30 min.
+- **Migrar emails históricos al nuevo desglose** — los emails de Sesión 36/37 a Sesión 38 mostraban el desglose por despeje matemático. Si algún cliente vuelve a abrir un email viejo, va a seguir viendo el despeje. No es crítico (el cálculo es matemáticamente correcto), pero podría ser visualmente inconsistente con el seguimiento web post-migración.
+- **Eliminar el despeje matemático eventualmente** — cuando todos los pedidos viejos hayan sido migrados (ya están) y suficiente tiempo haya pasado, el fallback de despeje en `renderDiscountLines` y `renderTotales` se puede eliminar para simplificar el código. No urgente — el fallback es defensa en profundidad útil.
+- **Considerar permitir editar `tipo` con confirmación explícita** — la decisión 2B fue conservadora. Si hay un caso real donde el admin necesita cambiar porcentaje↔fijo, podría agregarse una confirmación tipo *"Cambiar el tipo afecta la semántica del valor. ¿Continuar?"* en vez de bloqueo absoluto. Pendiente de feedback del usuario.
+
+### 🧠 Lecciones de Sesión 39
+
+1. **Análisis arquitectónico exhaustivo antes de codear paga.** Antes de escribir una línea, leí los call sites en 8 archivos (frontend + backend + email) y descubrí que `handleUpdateCoupon` ya tenía la whitelist completa (la edición de cupones era "casi gratis" porque el backend ya estaba). Eso permitió diseñar el UI más simple posible (un solo formulario para create/edit en vez de modal separado) y ahorró ~30 min de trabajo redundante.
+
+2. **Decidir el alcance ANTES de codear con preguntas múltiples.** Las dos preguntas iniciales (1A vs 1B vs 1C para migración + 2A vs 2B vs 2C para bloqueo) definieron el alcance exacto. Sin ellas, podría haberme metido en migración SQL one-shot y descubrir que el usuario solo quería pedidos nuevos, o bloquear solo código y después tener que cambiar a bloquear también tipo. Patrón replicable: cuanto más arquitectónica la decisión, más vale upfront elicitar.
+
+3. **No tocar la RPC SQL cuando no es estrictamente necesario.** El UPDATE post-RPC fue la decisión correcta. La tentación inicial era "todo en una transacción atómica" — pero los 2 campos nuevos son informativos, no afectan la consistencia del cupón. Atomicidad estricta solo donde realmente importa.
+
+4. **Smoke test sintético en Node antes de subir.** Los 6 casos del smoke test (incluido el caso con personalización) detectaron temprano que la fórmula de migración SQL era matemáticamente correcta. Sin ese test, podría haber subido un SQL con un signo invertido y descubrirlo solo en producción.
+
+5. **Los bugs históricos se exponen al cambiar el contexto, no al introducir el cambio.** El hotfix #1 (`cupon_codigo` faltante en `cleanOrder`) era un bug que existía desde Sesión 36. Pasaba desapercibido porque el fallback heurístico mostraba algo razonable. Sesión 39 cambió el contexto (ahora hay desglose en DB) y la incompatibilidad emergió. Lección: cuando se agrega un campo que afecta render de templates, **auditar todos los objetos que se pasan a esos templates** para verificar que tengan los campos necesarios para todas las heurísticas — no solo las que ya funcionan.
+
+6. **Las "transiciones" merecen tratamiento distinto a "estados".** En el hotfix #2, la condición correcta no era "es activo y es único y fue usado" (eso aplicaría a cada edición) sino "**pasó** de inactivo a activo". Detectar transiciones requiere leer el estado actual de la DB antes del UPDATE, comparar con el patch, y actuar según el delta. Patrón replicable para cualquier futuro caso donde una acción debe disparar efectos secundarios solo en un cambio específico.
+
+7. **Defensa en profundidad para reglas críticas: frontend + backend + DB.** Edición de cupones tiene 3 capas: (a) frontend bloquea visualmente código + tipo con `readOnly`/`disabled` (UX); (b) backend filtra los 2 campos vía whitelist en `handleUpdateCoupon` (defensa contra clientes maliciosos que peguen al endpoint con curl); (c) DB no tiene constraint específico acá, pero las CHECK constraints de las otras Sesiones (uso, tipo) protegerían contra valores inválidos. 3 capas independientes que protegen la misma invariante.
+
+8. **Toast informativos diferenciados ahorran preguntas al cliente.** En el hotfix #2, el toast diferenciado ("usos reiniciados a 0" vs "activado") evita que el admin se sorprenda con el `usos_count = 0` cuando recargue. Cuesta una línea de código y previene un *"¿Por qué el contador volvió a cero?"* en el chat. Patrón: cuando una acción tiene efectos secundarios no obvios, el toast debe nombrar el efecto secundario.
 
 ---
 
