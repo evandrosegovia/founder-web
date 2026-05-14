@@ -1253,6 +1253,44 @@ textarea.fi{resize:vertical;min-height:70px}
             </div>
           </div>
         </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             EMAILS DE RECOMPRA AUTOMÁTICA (Sesión 43)
+             ───────────────────────────────────────────────────────────
+             Card a ancho completo (debajo del grid tabla+formulario).
+             Muestra el estado del cron Tarea D (envío automático de
+             cupón post-entrega +10 días). Permite disparar manualmente
+             el envío de pendientes desde el admin.
+             Backend: /api/cleanup-personalizacion
+                      acciones: get_recompra_status, run_recompra_manual
+             ─────────────────────────────────────────────────────────── -->
+        <div class="card" style="margin-top:20px">
+          <div class="card-head">
+            <div class="card-title">📧 Emails de recompra automática</div>
+            <button class="btn btn-secondary btn-sm" onclick="loadRecompraStatus()">↻ Actualizar</button>
+          </div>
+          <div class="card-body">
+            <div class="info-box" style="margin-bottom:14px">
+              <strong>¿Qué hace esto?</strong><br>
+              A cada cliente con pedido <strong>entregado hace ≥10 días</strong> le mandamos automáticamente un email con un cupón de descuento para incentivar la recompra.<br><br>
+              • <strong>Frecuencia:</strong> automático todos los domingos a las 3am.<br>
+              • <strong>Dedup:</strong> cada cliente recibe el email <strong>una sola vez</strong> por pedido (flag persistido en DB).<br>
+              • <strong>Para cambiar el cupón:</strong> editá la variable <code>REPURCHASE_COUPON_CODE</code> en Vercel y redeployá.<br>
+              • <strong>Para desactivar la feature:</strong> borrá esa variable en Vercel (o desactivá el cupón desde la tabla de arriba).
+            </div>
+            <div id="recompraStatusBox" style="font-size:12px;line-height:1.8;color:var(--muted);background:var(--mid);padding:14px;border:1px solid var(--border);margin-bottom:14px">
+              Cargando estado del sistema de recompra...
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-primary" id="recompraRunBtn" onclick="runRecompraManual()" disabled>
+                📤 Enviar pendientes ahora
+              </button>
+            </div>
+            <div class="fhint" style="margin-top:8px">
+              💡 No necesitás hacer nada — el cron del domingo se encarga solo. El botón es solo para forzar el envío antes (útil para testing).
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ── PERSONALIZACIÓN LÁSER (Sesión 28) ──────────────────────
