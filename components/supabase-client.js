@@ -81,6 +81,10 @@
 
     return {
       id:     i + 1,
+      dbId:   row.id,    // Sesión 38: UUID real de Supabase (productos.id).
+                         // Necesario para correlacionar reseñas (reviews.product_id)
+                         // que se guardan con el UUID real, no con el id legacy.
+                         // `id` se mantiene como entero por compat con código viejo.
       name:   row.nombre,
       price:  row.precio,
       desc:   row.descripcion || '',

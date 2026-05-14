@@ -43,12 +43,51 @@
   // ── Helpers ──────────────────────────────────────────────────
   function $(sel)         { return document.querySelector(sel); }
   function $$(sel)        { return Array.from(document.querySelectorAll(sel)); }
+
+  // Sesión 38: toast self-contained.
+  // `window.showToast` solo existe en checkout/producto.html (declarado en
+  // founder-checkout.js). En seguimiento.html ese helper no está cargado,
+  // así que las notificaciones de errores (foto >5MB, etc.) fallaban
+  // silenciosamente. Implementamos nuestro propio mini-toast inline.
+  let _toastTimer = null;
   function toast(msg, kind) {
+    // Si hay showToast global, lo usamos (mantiene consistencia visual con
+    // el resto del sitio cuando está disponible).
     if (typeof window.showToast === 'function') {
       window.showToast(msg, kind || 'success');
-    } else {
-      console.log('[Founder/reviews]', msg);
+      return;
     }
+    // Fallback: toast self-contained inyectado en el DOM.
+    let el = document.getElementById('reviewToastFallback');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'reviewToastFallback';
+      el.setAttribute('role', 'alert');
+      el.style.cssText = [
+        'position:fixed', 'bottom:24px', 'left:50%',
+        'transform:translateX(-50%)', 'padding:14px 22px',
+        'background:#222', 'color:#f8f8f4',
+        'border:1px solid #2e2e2e', 'border-radius:3px',
+        'font-family:Montserrat,sans-serif', 'font-size:13px',
+        'letter-spacing:0.3px', 'box-shadow:0 4px 20px rgba(0,0,0,0.4)',
+        'z-index:9999', 'max-width:90%', 'text-align:center',
+        'opacity:0', 'transition:opacity 0.2s ease',
+        'pointer-events:none',
+      ].join(';');
+      document.body.appendChild(el);
+    }
+    // Color del borde según kind
+    el.style.borderLeftWidth = '3px';
+    el.style.borderLeftColor =
+      kind === 'error' ? '#e05555' :
+      kind === 'info'  ? '#c9a96e' :
+                         '#4caf82';
+    el.textContent = msg;
+    requestAnimationFrame(() => { el.style.opacity = '1'; });
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => {
+      el.style.opacity = '0';
+    }, kind === 'error' ? 4500 : 3000);
   }
 
   function escapeHtml(str) {
@@ -292,11 +331,12 @@
     for (const file of toUpload) {
       // Validar tipo y tamaño
       if (!['image/jpeg','image/png','image/webp'].includes(file.type)) {
-        toast('Tipo no permitido. Usá JPG, PNG o WEBP.', 'error');
+        toast(`"${file.name}" no es válido. Usá JPG, PNG o WEBP.`, 'error');
         continue;
       }
       if (file.size > 5 * 1024 * 1024) {
-        toast(`"${file.name}" supera los 5 MB`, 'error');
+        const mb = (file.size / (1024 * 1024)).toFixed(1);
+        toast(`Foto demasiado pesada (${mb} MB). Máximo 5 MB.`, 'error');
         continue;
       }
       await uploadOnePhoto(file);

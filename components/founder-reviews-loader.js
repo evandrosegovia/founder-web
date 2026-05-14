@@ -52,8 +52,12 @@
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          action:     'list_public',
-          product_id: product.id || null,
+          action:       'list_public',
+          // Sesión 38 fix: product.dbId es el UUID real de Supabase (agregado
+          // en supabase-client.js toLegacyProduct). product.id es un entero
+          // legacy que no coincide con reviews.product_id (UUID).
+          product_id:   product.dbId || null,
+          product_name: product.name || null,  // fallback por si dbId aún no está
         }),
       });
       const data = await resp.json().catch(() => ({}));
