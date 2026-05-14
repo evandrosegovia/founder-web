@@ -67,14 +67,18 @@
     lpConfig: null,
     // Galería de ejemplos — array de { id, tipo, url, ... }. Cargado por loadLpExamples().
     lpExamples: [],
-    // Período del panel financiero (Sesión 41).
-    // Valores válidos: 7, 30, 90, 120, 365 (días). Default 30.
-    // Se persiste en localStorage entre sesiones del admin para que el
-    // dueño no tenga que volver a elegir su período favorito cada visita.
-    financialPeriod: (() => {
+    // Período del dashboard (Sesión 41 + extensión Sesión 41b).
+    // Valores válidos: 7, 30, 90, 120, 365 (días) o 'todo' (histórico completo).
+    // Default 30 días. Se persiste en localStorage entre sesiones del admin.
+    // El selector aplica a TODO el panel excepto a las stats del catálogo
+    // (productos, colores, sets de fotos), que son atemporales.
+    dashboardPeriod: (() => {
       try {
-        const saved = parseInt(localStorage.getItem('founder_admin_fin_period'), 10);
-        return [7, 30, 90, 120, 365].includes(saved) ? saved : 30;
+        const raw = localStorage.getItem('founder_admin_dashboard_period')
+                 || localStorage.getItem('founder_admin_fin_period'); // legacy Sesión 41
+        if (raw === 'todo') return 'todo';
+        const n = parseInt(raw, 10);
+        return [7, 30, 90, 120, 365].includes(n) ? n : 30;
       } catch { return 30; }
     })(),
   };
@@ -351,12 +355,11 @@
       loadOrders({ silent: true }),
       loadBanner({ silent: true }),
     ]);
-    // Sesión 41: sincronizar visualmente el botón del período financiero
-    // según el valor persistido en state (puede no ser 30 días).
-    // No re-renderizamos acá porque renderDashboard() abajo va a llamar
-    // a renderFinancialMetrics() de todos modos.
+    // Sesión 41 (extendido en 41b): sincronizar visualmente el botón
+    // del período según el valor persistido en state. Aplica al dashboard
+    // completo (no solo al panel financiero).
     const periodBtn = document.querySelector(
-      `.fin-period__btn[data-period="${state.financialPeriod}"]`);
+      `.fin-period__btn[data-period="${state.dashboardPeriod}"]`);
     if (periodBtn) {
       document.querySelectorAll('.fin-period__btn').forEach(b => b.classList.remove('is-active'));
       periodBtn.classList.add('is-active');
@@ -468,28 +471,44 @@
    * Renderiza todas las métricas y gráficos del dashboard a partir
    * de `state.products` y `state.allOrders`. Seguro de llamar aunque
    * no hayan cargado todavía — muestra ceros/placeholders.
+   *
+   * Sesión 41b: el selector de período afecta TODOS los gráficos y
+   * métricas que dependen de pedidos. Las stats del catálogo (productos,
+   * colores, sets de fotos) son atemporales y NO se filtran.
    */
   function renderDashboard() {
     const products = state.products;
-    const orders   = state.allOrders;
+    const allOrders = state.allOrders;
+    // Sesión 41b: `orders` filtrado por período (puede ser 'todo' = sin filtro).
+    // Incluye TODOS los estados (cancelados, rechazados, etc.) para que los
+    // gráficos como "Estado de pedidos" sigan mostrando esos casos.
+    // Las métricas que excluyen cancelados (ventas confirmadas, ticket promedio,
+    // panel financiero) hacen su propio filtro adicional sobre esta base.
+    const orders = filterOrdersByPeriod(allOrders, state.dashboardPeriod);
+    const periodLabel = state.dashboardPeriod === 'todo'
+      ? 'histórico'
+      : `últimos ${state.dashboardPeriod} días`;
 
-    // ── Métricas del catálogo ─────────────────────────────────
+    // ── Métricas del catálogo (atemporales, NO se filtran) ───
     setText('statProductos', products.length);
     setText('statColores',   products.reduce((s, p) => s + p.colors.length, 0));
     const setsFotos = products.reduce((s, p) => s + p.colors.filter(c => c.photos.length > 0).length, 0);
     setText('statImagenes', setsFotos + ' sets');
     setText('statPedidos',  orders.length);
+    // Sesión 41b: la label de "Pedidos" refleja si es histórico o filtrado.
+    setText('statPedidosLabel',
+      state.dashboardPeriod === 'todo' ? 'Pedidos totales' : 'Pedidos del período');
 
-    // ── Métricas de ventas ────────────────────────────────────
+    // ── Métricas de ventas (filtradas por período) ───────────
     const confirmados  = orders.filter(o => ['Confirmado', 'En preparación', 'En camino', 'Listo para retirar', 'Entregado'].includes(o.estado));
     const pendientes   = orders.filter(o => ['Pendiente pago', 'Pendiente confirmación'].includes(o.estado));
     const totalIngreso = confirmados.reduce((s, o) => s + (o.total || 0), 0);
     const ticket       = confirmados.length ? Math.round(totalIngreso / confirmados.length) : 0;
 
     setText('salesTotal', fmtUYU(totalIngreso));
-    setHTML('salesTotalSub', `<span>${confirmados.length} pedido${confirmados.length !== 1 ? 's' : ''} cobrado${confirmados.length !== 1 ? 's' : ''}</span>`);
+    setHTML('salesTotalSub', `<span>${confirmados.length} pedido${confirmados.length !== 1 ? 's' : ''} cobrado${confirmados.length !== 1 ? 's' : ''} · ${periodLabel}</span>`);
     setText('salesConfirmados', confirmados.length);
-    setHTML('salesConfirmadosSub', confirmados.length ? `<span>de ${orders.length} pedidos totales</span>` : '');
+    setHTML('salesConfirmadosSub', confirmados.length ? `<span>de ${orders.length} pedidos en el período</span>` : '');
     setText('salesPendientes', pendientes.length);
     setHTML('salesPendientesSub', pendientes.length
       ? `${fmtUYU(pendientes.reduce((s, o) => s + (o.total || 0), 0))} UYU en espera`
@@ -497,7 +516,7 @@
     setText('salesTicket', ticket ? fmtUYU(ticket) : '—');
     setHTML('salesTicketSub', ticket ? 'promedio por pedido confirmado' : 'Sin pedidos confirmados aún');
 
-    // ── Gráfico: Ventas por producto ──────────────────────────
+    // ── Gráfico: Ventas por producto (filtrado) ──────────────
     const porProducto = {};
     orders.forEach(o => {
       const prodsText = o.productos || '';
@@ -519,9 +538,9 @@
               <div class="bar-track"><div class="bar-fill" style="width:${Math.round(qty / maxProd * 100)}%"></div></div>
               <div class="bar-val">${qty} ped.</div>
             </div>`).join('')
-      : '<div class="no-data">Sin datos de productos aún</div>');
+      : '<div class="no-data">Sin datos de productos en el período</div>');
 
-    // ── Gráfico: Métodos de pago (donut SVG) ──────────────────
+    // ── Gráfico: Métodos de pago (filtrado, donut SVG) ───────
     const pagos = {};
     orders.forEach(o => { if (o.pago) pagos[o.pago] = (pagos[o.pago] || 0) + 1; });
     const totalPagos = Object.values(pagos).reduce((s, n) => s + n, 0) || 1;
@@ -559,10 +578,10 @@
             </div>`).join('')}
         </div>`);
     } else {
-      setHTML('chartPagos', '<div class="no-data">Sin datos aún</div>');
+      setHTML('chartPagos', '<div class="no-data">Sin datos en el período</div>');
     }
 
-    // ── Gráfico: Estado de pedidos ───────────────────────────
+    // ── Gráfico: Estado de pedidos (filtrado) ────────────────
     const estadoConfig = {
       'Pendiente pago':         { color: 'var(--gold)',  icon: '⏳' },
       'Pendiente confirmación': { color: '#8888ff',      icon: '🔔' },
@@ -582,7 +601,7 @@
       </div>`;
     }).join(''));
 
-    // ── Gráfico: Colores más vendidos ────────────────────────
+    // ── Gráfico: Colores más vendidos (filtrado) ─────────────
     const porColor = {};
     orders.forEach(o => {
       const prodsText = o.productos || '';
@@ -605,9 +624,10 @@
               <div class="bar-track"><div class="bar-fill green" style="width:${Math.round(qty / maxColor * 100)}%"></div></div>
               <div class="bar-val">${qty} ped.</div>
             </div>`).join('')
-      : '<div class="no-data">Sin datos de colores aún</div>');
+      : '<div class="no-data">Sin datos de colores en el período</div>');
 
     // ── Lista de productos en el dashboard ────────────────────
+    // (catálogo + contador de pedidos del período actual)
     setHTML('dashProductList', products.length ? products.map(p => {
       const firstFoto  = p.colors.flatMap(c => c.photos).find(Boolean);
       const setsFotosP = p.colors.filter(c => c.photos.length > 0).length;
@@ -632,7 +652,7 @@
   // ═══════════════════════════════════════════════════════════════
   // PANEL FINANCIERO (Sesión 41)
   // ───────────────────────────────────────────────────────────────
-  // Lee state.allOrders + state.financialPeriod (días) y renderiza:
+  // Lee state.allOrders + state.dashboardPeriod (días | 'todo') y renderiza:
   //  • 4 tarjetas: ventas brutas, ahorros cupones, ahorros transfer, tasa %.
   //  • Bar chart: top 5 cupones por monto descontado en el período.
   //
@@ -641,24 +661,44 @@
   // para pedidos viejos pre-Sesión 39. Esto garantiza que el panel
   // funcione incluso si la migración SQL todavía no se corrió.
   //
-  // Selector de período: 7/30/90/120/365. Cambia state.financialPeriod
-  // vía setFinancialPeriod(), persiste en localStorage, re-renderiza.
+  // Selector de período: 7/30/90/120/365/Todo. Cambia state.dashboardPeriod
+  // vía setDashboardPeriod(), persiste en localStorage, re-renderiza
+  // TODO el dashboard (no solo este panel — Sesión 41b).
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Filtra los pedidos de `state.allOrders` a los de los últimos `days` días.
-   * Usa el campo `fecha` (preferido) o `created_at` como fallback.
-   * Pedidos cancelados / pago rechazado se excluyen — no son ventas reales.
+   * Filtra los pedidos de `state.allOrders` según el período activo.
+   *
+   * @param {Array}              orders            lista completa de pedidos
+   * @param {number|string}      periodValue       7|30|90|120|365|'todo'
+   * @param {Object}              [opts]
+   * @param {boolean}             [opts.excludeNonSales=false]
+   *        Si es true, además del filtro temporal excluye estados que no
+   *        son ventas reales (Cancelado, Pago rechazado, Pendiente pago).
+   *        Útil para métricas financieras donde un cancelado no debe contar.
+   *        Por defecto incluye TODOS los estados para que los gráficos
+   *        como "Estado de pedidos" sigan mostrando los rechazados y
+   *        cancelados (que es justamente la información que se quiere ver).
    */
-  function filterOrdersByPeriod(orders, days) {
+  function filterOrdersByPeriod(orders, periodValue, opts = {}) {
+    const excludeNonSales = !!opts.excludeNonSales;
+    const ESTADOS_NO_VENTAS = new Set(['Cancelado', 'Pago rechazado', 'Pendiente pago']);
+
+    // Modo "todo": sin filtro temporal. Solo aplica el filtro de estados si
+    // se pidió excludeNonSales.
+    if (periodValue === 'todo') {
+      return excludeNonSales
+        ? orders.filter(o => !ESTADOS_NO_VENTAS.has(o.estado))
+        : orders.slice();
+    }
+
+    const days = Number(periodValue) || 30;
     const since = new Date();
     since.setDate(since.getDate() - days);
     const sinceTs = since.getTime();
 
-    const ESTADOS_NO_VENTAS = new Set(['Cancelado', 'Pago rechazado', 'Pendiente pago']);
-
     return orders.filter(o => {
-      if (ESTADOS_NO_VENTAS.has(o.estado)) return false;
+      if (excludeNonSales && ESTADOS_NO_VENTAS.has(o.estado)) return false;
       const raw = o.fecha || o.created_at;
       const ts  = raw ? new Date(raw).getTime() : NaN;
       if (isNaN(ts)) return false;
@@ -717,38 +757,45 @@
   }
 
   /**
-   * Cambia el período activo, persiste en localStorage, actualiza UI
-   * del selector y re-renderiza el panel financiero.
+   * Cambia el período activo del dashboard, persiste en localStorage,
+   * actualiza UI del selector y re-renderiza TODO el dashboard.
    *
-   * @param {number} days       7 | 30 | 90 | 120 | 365
-   * @param {HTMLElement} btnEl botón que disparó el cambio (para tildar visualmente)
+   * El filtro NO afecta las stats de catálogo (productos, colores,
+   * sets de fotos) — esas son atemporales. Sí afecta: pedidos totales,
+   * métricas de ventas, análisis financiero, todos los gráficos.
+   *
+   * @param {number|'todo'} period 7 | 30 | 90 | 120 | 365 | 'todo'
+   * @param {HTMLElement}   btnEl  botón que disparó el cambio (visual)
    */
-  function setFinancialPeriod(days, btnEl) {
-    if (![7, 30, 90, 120, 365].includes(days)) return;
-    state.financialPeriod = days;
-    try { localStorage.setItem('founder_admin_fin_period', String(days)); } catch {}
+  function setDashboardPeriod(period, btnEl) {
+    if (period !== 'todo' && ![7, 30, 90, 120, 365].includes(period)) return;
+    state.dashboardPeriod = period;
+    try {
+      localStorage.setItem('founder_admin_dashboard_period', String(period));
+    } catch {}
 
     // Toggle visual del botón activo
-    const buttons = document.querySelectorAll('.fin-period__btn');
-    buttons.forEach(b => b.classList.remove('is-active'));
+    document.querySelectorAll('.fin-period__btn').forEach(b => b.classList.remove('is-active'));
     if (btnEl && btnEl.classList) {
       btnEl.classList.add('is-active');
     } else {
-      // Si se llamó sin botón (ej. al cargar la página), encontramos el correcto
-      const target = document.querySelector(`.fin-period__btn[data-period="${days}"]`);
+      const target = document.querySelector(`.fin-period__btn[data-period="${period}"]`);
       if (target) target.classList.add('is-active');
     }
 
-    renderFinancialMetrics();
+    // Re-renderizar todo el dashboard, no solo el panel financiero.
+    // El resto del admin (pedidos, productos, etc.) no se afecta.
+    renderDashboard();
   }
 
   /**
    * Render principal del panel financiero. Llamado por renderDashboard()
-   * y por setFinancialPeriod(). Lee state.allOrders + state.financialPeriod.
+   * y por setDashboardPeriod(). Lee state.allOrders + state.dashboardPeriod.
    */
   function renderFinancialMetrics() {
-    const days   = state.financialPeriod;
-    const period = filterOrdersByPeriod(state.allOrders, days);
+    const periodValue = state.dashboardPeriod;
+    // Métricas financieras: excluir cancelados/rechazados (no son ventas).
+    const period = filterOrdersByPeriod(state.allOrders, periodValue, { excludeNonSales: true });
 
     // Agregados
     let ahorroCupones      = 0;
@@ -778,19 +825,20 @@
       : 0;
 
     // ── Render de las 4 tarjetas ──────────────────────────────
-    setText('finVentasBrutas',  ventasBrutas ? '$' + fmtUYU(ventasBrutas) : '—');
+    // Nota: fmtUYU ya incluye el símbolo "$" — NO concatenar otro adelante.
+    setText('finVentasBrutas',  ventasBrutas ? fmtUYU(ventasBrutas) : '—');
     setHTML('finVentasBrutasSub',
       period.length
         ? `<span>${period.length} pedido${period.length !== 1 ? 's' : ''} en el período</span>`
         : 'sin pedidos en el período');
 
-    setText('finAhorroCupones', ahorroCupones ? '−$' + fmtUYU(ahorroCupones) : '—');
+    setText('finAhorroCupones', ahorroCupones ? '−' + fmtUYU(ahorroCupones) : '—');
     setHTML('finAhorroCuponesSub',
       ahorroCupones
         ? `<span>regalado a clientes vía códigos</span>`
         : 'sin cupones usados');
 
-    setText('finAhorroTransfer', ahorroTransferencia ? '−$' + fmtUYU(ahorroTransferencia) : '—');
+    setText('finAhorroTransfer', ahorroTransferencia ? '−' + fmtUYU(ahorroTransferencia) : '—');
     setHTML('finAhorroTransferSub',
       ahorroTransferencia
         ? `<span>10% por elegir transferencia</span>`
@@ -799,7 +847,7 @@
     setText('finTasaDescuento', ventasBrutas ? tasaDescuento.toFixed(1) + '%' : '—');
     setHTML('finTasaDescuentoSub',
       ventasBrutas
-        ? `descontados $${fmtUYU(totalDescuentos)} sobre $${fmtUYU(ventasBrutas)}`
+        ? `descontados ${fmtUYU(totalDescuentos)} sobre ${fmtUYU(ventasBrutas)}`
         : 'descuentos sobre ventas brutas');
 
     // ── Bar chart: Top 5 cupones ──────────────────────────────
@@ -815,7 +863,7 @@
         <div class="bar-row">
           <div class="bar-label" style="color:var(--gold)">${esc(codigo)}</div>
           <div class="bar-track"><div class="bar-fill" style="width:${Math.round(monto / maxMonto * 100)}%"></div></div>
-          <div class="bar-val">$${fmtUYU(monto)}</div>
+          <div class="bar-val">${fmtUYU(monto)}</div>
         </div>`).join(''));
     }
   }
@@ -3246,8 +3294,8 @@
 
   // Dashboard / acciones generales
   window.loadData            = bootstrap;   // botón "↻ Actualizar" del dashboard
-  // Sesión 41: selector de período del panel financiero
-  window.setFinancialPeriod  = setFinancialPeriod;
+  // Sesión 41: selector de período del dashboard (extendido en 41b: aplica a todo)
+  window.setDashboardPeriod  = setDashboardPeriod;
 
   // Productos
   window.openNewProduct      = openNewProduct;
