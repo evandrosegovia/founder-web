@@ -389,6 +389,14 @@ async function handleListPublic(body, res) {
   const productName = String(body.product_name || '').trim();
   const limit       = Math.min(parseInt(body.limit, 10) || 20, 50);
 
+  // Sesión 38 fix: validar que product_id sea un UUID válido antes de
+  // usarlo en la query. Si llega un entero (bug histórico antes del fix
+  // de dbId en supabase-client.js) o cualquier otro string, Supabase
+  // tira 500 al comparar UUID con tipo incompatible. Detectamos acá y
+  // caemos a product_name como fallback.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const productIdValid = productId && UUID_RE.test(productId);
+
   let q = supabase
     .from('reviews')
     .select(`
@@ -401,16 +409,21 @@ async function handleListPublic(body, res) {
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  // Filtrar por producto: priorizar product_id (más exacto), después
-  // product_name como fallback (por si la reseña vieja perdió la FK).
-  if (productId) {
+  // Filtrar por producto: priorizar product_id (más exacto) cuando es UUID
+  // válido, después product_name como fallback (por si la reseña vieja perdió
+  // la FK o el frontend mandó id legacy).
+  if (productIdValid) {
     q = q.eq('product_id', productId);
   } else if (productName) {
     q = q.ilike('product_name', productName);
   }
 
   const { data, error } = await q;
-  if (error) return fail(res, 500, 'db_error', error.message);
+  if (error) {
+    console.error('[reviews/list_public] db error:', error.message,
+      { productId, productIdValid, productName });
+    return fail(res, 500, 'db_error', error.message);
+  }
 
   return ok(res, { reviews: data || [] });
 }
