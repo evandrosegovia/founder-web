@@ -931,7 +931,7 @@ textarea.fi{resize:vertical;min-height:70px}
           <div class="stat-card"><div class="stat-icon">👜</div><div class="stat-value" id="statProductos">—</div><div class="stat-label">Productos</div></div>
           <div class="stat-card"><div class="stat-icon">🎨</div><div class="stat-value" id="statColores">—</div><div class="stat-label">Variantes color</div></div>
           <div class="stat-card"><div class="stat-icon">🖼️</div><div class="stat-value" id="statImagenes">—</div><div class="stat-label">Sets de fotos</div></div>
-          <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-value" id="statPedidos">—</div><div class="stat-label">Pedidos totales</div></div>
+          <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-value" id="statPedidos">—</div><div class="stat-label" id="statPedidosLabel">Pedidos totales</div></div>
         </div>
 
         <!-- Métricas de ventas -->
@@ -962,15 +962,16 @@ textarea.fi{resize:vertical;min-height:70px}
           </div>
         </div>
 
-        <!-- Panel financiero con selector de período (Sesión 41) -->
+        <!-- Selector de período: aplica a TODO el dashboard (Sesión 41b) -->
         <div class="fin-header">
-          <div class="fin-header__title">📊 Análisis financiero</div>
+          <div class="fin-header__title">📊 Período de análisis</div>
           <div class="fin-period" role="tablist" aria-label="Período de análisis">
-            <button type="button" class="fin-period__btn"            data-period="7"   onclick="setFinancialPeriod(7,this)">7 días</button>
-            <button type="button" class="fin-period__btn is-active"  data-period="30"  onclick="setFinancialPeriod(30,this)">30 días</button>
-            <button type="button" class="fin-period__btn"            data-period="90"  onclick="setFinancialPeriod(90,this)">90 días</button>
-            <button type="button" class="fin-period__btn"            data-period="120" onclick="setFinancialPeriod(120,this)">120 días</button>
-            <button type="button" class="fin-period__btn"            data-period="365" onclick="setFinancialPeriod(365,this)">365 días</button>
+            <button type="button" class="fin-period__btn"            data-period="7"     onclick="setDashboardPeriod(7,this)">7 días</button>
+            <button type="button" class="fin-period__btn is-active"  data-period="30"    onclick="setDashboardPeriod(30,this)">30 días</button>
+            <button type="button" class="fin-period__btn"            data-period="90"    onclick="setDashboardPeriod(90,this)">90 días</button>
+            <button type="button" class="fin-period__btn"            data-period="120"   onclick="setDashboardPeriod(120,this)">120 días</button>
+            <button type="button" class="fin-period__btn"            data-period="365"   onclick="setDashboardPeriod(365,this)">365 días</button>
+            <button type="button" class="fin-period__btn"            data-period="todo"  onclick="setDashboardPeriod('todo',this)">Todo</button>
           </div>
         </div>
 
