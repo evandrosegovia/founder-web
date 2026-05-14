@@ -67,6 +67,16 @@
     lpConfig: null,
     // Galería de ejemplos — array de { id, tipo, url, ... }. Cargado por loadLpExamples().
     lpExamples: [],
+    // Período del panel financiero (Sesión 41).
+    // Valores válidos: 7, 30, 90, 120, 365 (días). Default 30.
+    // Se persiste en localStorage entre sesiones del admin para que el
+    // dueño no tenga que volver a elegir su período favorito cada visita.
+    financialPeriod: (() => {
+      try {
+        const saved = parseInt(localStorage.getItem('founder_admin_fin_period'), 10);
+        return [7, 30, 90, 120, 365].includes(saved) ? saved : 30;
+      } catch { return 30; }
+    })(),
   };
 
   // ── DOM HELPERS ──────────────────────────────────────────────
@@ -341,6 +351,16 @@
       loadOrders({ silent: true }),
       loadBanner({ silent: true }),
     ]);
+    // Sesión 41: sincronizar visualmente el botón del período financiero
+    // según el valor persistido en state (puede no ser 30 días).
+    // No re-renderizamos acá porque renderDashboard() abajo va a llamar
+    // a renderFinancialMetrics() de todos modos.
+    const periodBtn = document.querySelector(
+      `.fin-period__btn[data-period="${state.financialPeriod}"]`);
+    if (periodBtn) {
+      document.querySelectorAll('.fin-period__btn').forEach(b => b.classList.remove('is-active'));
+      periodBtn.classList.add('is-active');
+    }
     // El dashboard se renderiza con TODO lo que haya llegado.
     renderDashboard();
   }
@@ -604,6 +624,200 @@
         <div class="prod-price">${fmtUYU(p.precio)}</div>
       </div>`;
     }).join('') : '<div style="padding:32px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px">Sin productos cargados</div>');
+
+    // Sesión 41: panel financiero (depende del período seleccionado).
+    renderFinancialMetrics();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PANEL FINANCIERO (Sesión 41)
+  // ───────────────────────────────────────────────────────────────
+  // Lee state.allOrders + state.financialPeriod (días) y renderiza:
+  //  • 4 tarjetas: ventas brutas, ahorros cupones, ahorros transfer, tasa %.
+  //  • Bar chart: top 5 cupones por monto descontado en el período.
+  //
+  // Fuente de datos: prioridad 1 (columnas DB `descuento_cupon` +
+  // `descuento_transferencia`), con fallback de despeje matemático
+  // para pedidos viejos pre-Sesión 39. Esto garantiza que el panel
+  // funcione incluso si la migración SQL todavía no se corrió.
+  //
+  // Selector de período: 7/30/90/120/365. Cambia state.financialPeriod
+  // vía setFinancialPeriod(), persiste en localStorage, re-renderiza.
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Filtra los pedidos de `state.allOrders` a los de los últimos `days` días.
+   * Usa el campo `fecha` (preferido) o `created_at` como fallback.
+   * Pedidos cancelados / pago rechazado se excluyen — no son ventas reales.
+   */
+  function filterOrdersByPeriod(orders, days) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const sinceTs = since.getTime();
+
+    const ESTADOS_NO_VENTAS = new Set(['Cancelado', 'Pago rechazado', 'Pendiente pago']);
+
+    return orders.filter(o => {
+      if (ESTADOS_NO_VENTAS.has(o.estado)) return false;
+      const raw = o.fecha || o.created_at;
+      const ts  = raw ? new Date(raw).getTime() : NaN;
+      if (isNaN(ts)) return false;
+      return ts >= sinceTs;
+    });
+  }
+
+  /**
+   * Calcula el desglose de descuentos (cupón vs transferencia) para un
+   * pedido. Prioriza las columnas DB; si vienen en 0 y hay descuento total,
+   * cae al despeje matemático (Sesión 36/37) — mismo patrón que el
+   * founder-seguimiento.js y email-templates.js.
+   *
+   * Devuelve { cupon, transferencia, total } donde total = cupon + transferencia.
+   */
+  function splitDescuento(order) {
+    const dCup  = parseInt(order.descuento_cupon         ?? 0, 10) || 0;
+    const dTr   = parseInt(order.descuento_transferencia ?? 0, 10) || 0;
+    const desc  = parseInt(order.descuento ?? 0, 10) || 0;
+
+    // Prioridad 1: si la DB tiene el desglose, usarlo.
+    if (dCup > 0 || dTr > 0) {
+      return { cupon: dCup, transferencia: dTr, total: dCup + dTr };
+    }
+
+    // Sin descuento total: nada que dividir.
+    if (desc <= 0) return { cupon: 0, transferencia: 0, total: 0 };
+
+    // Prioridad 2 (fallback pedidos viejos): despeje matemático.
+    const hayCupon         = !!(order.cupon_codigo && String(order.cupon_codigo).trim());
+    const hayTransferencia = /transfer/i.test(order.pago || '');
+
+    if (hayCupon && hayTransferencia) {
+      // Reconstruir con la fórmula del frontend:
+      //   baseTransfer = (total - envio) / 0.90
+      //   cuponAmount  = subtotal + personalizExtra - baseTransfer
+      //   transfer     = descuento - cuponAmount
+      const subtotal = parseInt(order.subtotal ?? 0, 10) || 0;
+      const perso    = parseInt(order.personalizacion_extra ?? 0, 10) || 0;
+      const total    = parseInt(order.total ?? 0, 10) || 0;
+      const envio    = parseInt(order.envio ?? 0, 10) || 0;
+      const baseTr   = (total - envio) / 0.90;
+      let cupon      = Math.round(subtotal + perso - baseTr);
+      if (cupon < 0)    cupon = 0;
+      if (cupon > desc) cupon = desc;
+      const transfer = desc - cupon;
+      return { cupon, transferencia: transfer, total: desc };
+    }
+
+    if (hayCupon)         return { cupon: desc, transferencia: 0,    total: desc };
+    if (hayTransferencia) return { cupon: 0,    transferencia: desc, total: desc };
+
+    // Pedido viejísimo sin atribución: lo contamos como cupón
+    // (el caso es estadísticamente despreciable post-Sesión 36).
+    return { cupon: desc, transferencia: 0, total: desc };
+  }
+
+  /**
+   * Cambia el período activo, persiste en localStorage, actualiza UI
+   * del selector y re-renderiza el panel financiero.
+   *
+   * @param {number} days       7 | 30 | 90 | 120 | 365
+   * @param {HTMLElement} btnEl botón que disparó el cambio (para tildar visualmente)
+   */
+  function setFinancialPeriod(days, btnEl) {
+    if (![7, 30, 90, 120, 365].includes(days)) return;
+    state.financialPeriod = days;
+    try { localStorage.setItem('founder_admin_fin_period', String(days)); } catch {}
+
+    // Toggle visual del botón activo
+    const buttons = document.querySelectorAll('.fin-period__btn');
+    buttons.forEach(b => b.classList.remove('is-active'));
+    if (btnEl && btnEl.classList) {
+      btnEl.classList.add('is-active');
+    } else {
+      // Si se llamó sin botón (ej. al cargar la página), encontramos el correcto
+      const target = document.querySelector(`.fin-period__btn[data-period="${days}"]`);
+      if (target) target.classList.add('is-active');
+    }
+
+    renderFinancialMetrics();
+  }
+
+  /**
+   * Render principal del panel financiero. Llamado por renderDashboard()
+   * y por setFinancialPeriod(). Lee state.allOrders + state.financialPeriod.
+   */
+  function renderFinancialMetrics() {
+    const days   = state.financialPeriod;
+    const period = filterOrdersByPeriod(state.allOrders, days);
+
+    // Agregados
+    let ahorroCupones      = 0;
+    let ahorroTransferencia = 0;
+    let ventasNetas         = 0; // = sum(total) — lo que efectivamente cobramos
+    const cuponesAcum       = {}; // { 'CODIGO': monto_descontado_total }
+
+    for (const o of period) {
+      const { cupon, transferencia } = splitDescuento(o);
+      ahorroCupones       += cupon;
+      ahorroTransferencia += transferencia;
+      ventasNetas         += parseInt(o.total ?? 0, 10) || 0;
+
+      // Agrupación de cupones para el top 5
+      const codigo = (o.cupon_codigo || '').trim().toUpperCase();
+      if (codigo && cupon > 0) {
+        cuponesAcum[codigo] = (cuponesAcum[codigo] || 0) + cupon;
+      }
+    }
+
+    const totalDescuentos = ahorroCupones + ahorroTransferencia;
+    // Ventas brutas = lo que habría sido el ingreso si NO se hubieran
+    // aplicado descuentos. Es ventasNetas + descuentos totales.
+    const ventasBrutas   = ventasNetas + totalDescuentos;
+    const tasaDescuento  = ventasBrutas > 0
+      ? Math.round((totalDescuentos / ventasBrutas) * 1000) / 10  // 1 decimal
+      : 0;
+
+    // ── Render de las 4 tarjetas ──────────────────────────────
+    setText('finVentasBrutas',  ventasBrutas ? '$' + fmtUYU(ventasBrutas) : '—');
+    setHTML('finVentasBrutasSub',
+      period.length
+        ? `<span>${period.length} pedido${period.length !== 1 ? 's' : ''} en el período</span>`
+        : 'sin pedidos en el período');
+
+    setText('finAhorroCupones', ahorroCupones ? '−$' + fmtUYU(ahorroCupones) : '—');
+    setHTML('finAhorroCuponesSub',
+      ahorroCupones
+        ? `<span>regalado a clientes vía códigos</span>`
+        : 'sin cupones usados');
+
+    setText('finAhorroTransfer', ahorroTransferencia ? '−$' + fmtUYU(ahorroTransferencia) : '—');
+    setHTML('finAhorroTransferSub',
+      ahorroTransferencia
+        ? `<span>10% por elegir transferencia</span>`
+        : 'sin pagos por transferencia');
+
+    setText('finTasaDescuento', ventasBrutas ? tasaDescuento.toFixed(1) + '%' : '—');
+    setHTML('finTasaDescuentoSub',
+      ventasBrutas
+        ? `descontados $${fmtUYU(totalDescuentos)} sobre $${fmtUYU(ventasBrutas)}`
+        : 'descuentos sobre ventas brutas');
+
+    // ── Bar chart: Top 5 cupones ──────────────────────────────
+    const topCupones = Object.entries(cuponesAcum)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    if (topCupones.length === 0) {
+      setHTML('chartCupones', '<div class="no-data">Sin cupones usados en este período</div>');
+    } else {
+      const maxMonto = topCupones[0][1];  // ya ordenado desc
+      setHTML('chartCupones', topCupones.map(([codigo, monto]) => `
+        <div class="bar-row">
+          <div class="bar-label" style="color:var(--gold)">${esc(codigo)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(monto / maxMonto * 100)}%"></div></div>
+          <div class="bar-val">$${fmtUYU(monto)}</div>
+        </div>`).join(''));
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -3032,6 +3246,8 @@
 
   // Dashboard / acciones generales
   window.loadData            = bootstrap;   // botón "↻ Actualizar" del dashboard
+  // Sesión 41: selector de período del panel financiero
+  window.setFinancialPeriod  = setFinancialPeriod;
 
   // Productos
   window.openNewProduct      = openNewProduct;
