@@ -147,6 +147,7 @@ async function handleListOrders(body, res, req) {
       id, numero, fecha, nombre, apellido, celular, email,
       entrega, direccion, productos,
       subtotal, descuento, envio, total,
+      descuento_cupon, descuento_transferencia,
       pago, estado, notas, cupon_codigo,
       nro_seguimiento, url_seguimiento,
       archivado,
@@ -181,6 +182,7 @@ const { data: prevOrder, error: readErr } = await supabase
       id, numero, fecha, nombre, apellido, celular, email,
       entrega, direccion, productos,
       subtotal, descuento, envio, total,
+      descuento_cupon, descuento_transferencia,
       pago, estado, notas, cupon_codigo,
       nro_seguimiento, url_seguimiento,
       archivado,
@@ -473,9 +475,16 @@ async function handleUpdateCoupon(body, res, req) {
   const id = String(body.id || '').trim();
   if (!id) return fail(res, 400, 'id_required');
 
-  // Solo campos whitelisted se pueden actualizar
+  // Sesión 39: campos editables después de crear el cupón.
+  // `codigo` y `tipo` quedan FUERA de la whitelist para preservar
+  // integridad histórica:
+  //  - codigo  → se persiste en orders.cupon_codigo en cada pedido
+  //              que lo usa. Cambiarlo rompería referencias visibles.
+  //  - tipo    → cambiar porcentaje↔fijo a mitad de vida cambia la
+  //              semántica del campo `valor` y confunde reportes.
+  // Para cambiar cualquiera de los dos, hay que eliminar y recrear.
   const allowed = [
-    'codigo', 'tipo', 'valor', 'uso', 'min_compra', 'activo', 'desde', 'hasta',
+    'valor', 'uso', 'min_compra', 'activo', 'desde', 'hasta',
     'solo_clientes_repetidos',                                                  // Sesión 32
     'solo_clientes_nuevos', 'descuenta_personalizacion',                        // Sesión 33
     'personalizacion_slots_cubiertos',                                          // Sesión 33
@@ -487,8 +496,58 @@ async function handleUpdateCoupon(body, res, req) {
       patch[k] = body.patch[k];
     }
   }
-  if (typeof patch.codigo === 'string') patch.codigo = patch.codigo.trim().toUpperCase();
   if (Object.keys(patch).length === 0) return fail(res, 400, 'nothing_to_update');
+
+  // Validación: solo_clientes_nuevos y solo_clientes_repetidos son
+  // mutuamente excluyentes (espejo de handleCreateCoupon).
+  // Si solo se está editando UNA de las dos, también hay que leer
+  // la otra desde la DB para hacer el cruce — sino se podría
+  // marcar la segunda flag por separado y dejar el cupón inválido.
+  if (patch.solo_clientes_nuevos === true || patch.solo_clientes_repetidos === true) {
+    const { data: current, error: readErr } = await supabase
+      .from('coupons')
+      .select('solo_clientes_nuevos, solo_clientes_repetidos')
+      .eq('id', id)
+      .maybeSingle();
+    if (readErr) return fail(res, 500, 'db_error', readErr.message);
+    if (!current) return fail(res, 404, 'cupon_not_found', 'Cupón no encontrado');
+
+    const finalNuevos = patch.solo_clientes_nuevos !== undefined
+      ? patch.solo_clientes_nuevos === true
+      : current.solo_clientes_nuevos === true;
+    const finalRepetidos = patch.solo_clientes_repetidos !== undefined
+      ? patch.solo_clientes_repetidos === true
+      : current.solo_clientes_repetidos === true;
+
+    if (finalNuevos && finalRepetidos) {
+      return fail(res, 400, 'cupon_combinacion_invalida',
+        'No podés marcar "solo nuevos" y "solo clientes recurrentes" al mismo tiempo.');
+    }
+  }
+
+  // Validación: si pasa a ser cupón de personalización, slots debe estar entre 1 y 4
+  if (patch.descuenta_personalizacion === true) {
+    const slots = Number(patch.personalizacion_slots_cubiertos);
+    if (!Number.isInteger(slots) || slots < 1 || slots > 4) {
+      return fail(res, 400, 'slots_invalidos',
+        'Cuando el cupón descuenta personalización, debés indicar entre 1 y 4 slots.');
+    }
+  }
+
+  // Validación: si está activando flag de recompensa por reseña, desactivar
+  // la flag en cualquier otro cupón activo que la tenga (espejo de createCoupon).
+  if (patch.es_recompensa_resena === true) {
+    const { error: clearErr } = await supabase
+      .from('coupons')
+      .update({ es_recompensa_resena: false })
+      .neq('id', id)
+      .eq('es_recompensa_resena', true)
+      .eq('activo', true);
+    if (clearErr) {
+      console.error('[admin/update_coupon] clear reward error:', clearErr.message);
+      return fail(res, 500, 'db_error', clearErr.message);
+    }
+  }
 
   const { error } = await supabase.from('coupons').update(patch).eq('id', id);
   if (error) return fail(res, 500, 'db_error', error.message);

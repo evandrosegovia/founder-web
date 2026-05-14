@@ -62,6 +62,7 @@ export default createHandler(async (req, res) => {
       id, numero, fecha, nombre, apellido, celular, email,
       entrega, direccion, productos,
       subtotal, descuento, envio, total,
+      descuento_cupon, descuento_transferencia,
       pago, estado, notas, cupon_codigo, personalizacion_extra,
       nro_seguimiento, url_seguimiento,
       order_items ( product_name, color, cantidad, precio_unitario, personalizacion )
@@ -80,6 +81,7 @@ export default createHandler(async (req, res) => {
         id, numero, fecha, nombre, apellido, celular, email,
         entrega, direccion, productos,
         subtotal, descuento, envio, total,
+        descuento_cupon, descuento_transferencia,
         pago, estado, notas, cupon_codigo, personalizacion_extra,
         nro_seguimiento, url_seguimiento,
         order_items ( product_name, color, cantidad, precio_unitario, personalizacion )

@@ -224,6 +224,22 @@ function validateOrderTotals(cleanOrder, cleanItems) {
     }
   }
 
+  // Sesión 39: validar coherencia del desglose de descuentos.
+  // Si el cliente envió descuento_cupon o descuento_transferencia > 0,
+  // la suma debe coincidir con `descuento` total (tolerancia: 1 peso por
+  // redondeos). Si no envió nada (ambos en 0), aceptamos para mantener
+  // compat con clientes viejos que aún no envían el desglose.
+  const dcupon = Number(cleanOrder.descuento_cupon)         || 0;
+  const dtrans = Number(cleanOrder.descuento_transferencia) || 0;
+  const dtot   = Number(cleanOrder.descuento)               || 0;
+  if (dcupon > 0 || dtrans > 0) {
+    if (Math.abs((dcupon + dtrans) - dtot) > 1) {
+      return { ok: false, code: 'descuento_desglose_mismatch', http: 400,
+        msg: 'El desglose de descuentos no coincide con el total. Recargá la página e intentá nuevamente.',
+        detail: { dcupon, dtrans, dtot } };
+    }
+  }
+
   return { ok: true };
 }
 
@@ -239,7 +255,7 @@ async function handleValidateCoupon(body, res) {
 
   const { data, error } = await supabase
     .from('coupons')
-    .select('id, codigo, tipo, valor, uso, min_compra, activo, usos_count, emails_usados, desde, hasta, es_recompensa_resena')
+    .select('codigo, tipo, valor, uso, min_compra, activo, usos_count, emails_usados, desde, hasta')
     .eq('codigo', codigoRaw)
     .maybeSingle();
 
@@ -265,26 +281,6 @@ async function handleValidateCoupon(body, res) {
     const used = Array.isArray(data.emails_usados) ? data.emails_usados : [];
     if (used.includes(email)) {
       return fail(res, 400, 'cupon_already_used_by_email', 'Ya usaste este código anteriormente');
-    }
-  }
-
-  // ── Sesión 38: validar cupón de recompensa por reseña ─────────
-  // Si el cupón está marcado como recompensa, SOLO los emails con
-  // autorización previa (que dejaron reseña) pueden usarlo.
-  if (data.es_recompensa_resena) {
-    if (!email) return fail(res, 400, 'email_required',
-      'Ingresá tu email antes de aplicar este cupón');
-
-    const { data: authRow } = await supabase
-      .from('coupon_authorized_emails')
-      .select('id')
-      .eq('coupon_id', data.id)
-      .ilike('email', email)
-      .maybeSingle();
-
-    if (!authRow) {
-      return fail(res, 400, 'cupon_review_reward_only',
-        'Este cupón es exclusivo para clientes que dejaron una reseña.');
     }
   }
 
@@ -351,6 +347,13 @@ async function handleCreateOrder(body, res, req) {
     // Sesión 28 Bloque B
     personalizacion_extra: parseInt(order.personalizacion_extra, 10) || 0,
     acepto_no_devolucion:  order.acepto_no_devolucion === true,
+    // Sesión 39: desglose explícito del descuento.
+    // Estos NO van a la RPC (que sigue insertando solo `descuento` total);
+    // se persisten vía UPDATE post-RPC más abajo. Valores informativos
+    // usados por seguimiento y emails para mostrar tarjetas separadas
+    // sin necesidad de despeje matemático.
+    descuento_cupon:         parseInt(order.descuento_cupon,         10) || 0,
+    descuento_transferencia: parseInt(order.descuento_transferencia, 10) || 0,
   };
 
   // Sanitización de items + extracción/limpieza de personalización.
@@ -424,34 +427,6 @@ async function handleCreateOrder(body, res, req) {
     return fail(res, totalsCheck.http, totalsCheck.code, totalsCheck.msg);
   }
 
-  // ── Sesión 38: si se aplicó un cupón, revalidar autorización ──
-  // La RPC `apply_coupon_and_create_order` NO conoce coupon_authorized_emails.
-  // Para no tocarla (es delicada + atómica), validamos acá ANTES de invocarla.
-  // Defensa en profundidad: aunque el frontend ya validó al aplicar, el
-  // cliente podría haber pegado al endpoint directo.
-  if (cupon) {
-    const cupCode = String(cupon).trim().toUpperCase();
-    const { data: cupRow } = await supabase
-      .from('coupons')
-      .select('id, es_recompensa_resena')
-      .eq('codigo', cupCode)
-      .maybeSingle();
-
-    if (cupRow?.es_recompensa_resena) {
-      const { data: authRow } = await supabase
-        .from('coupon_authorized_emails')
-        .select('id')
-        .eq('coupon_id', cupRow.id)
-        .ilike('email', cleanOrder.email)
-        .maybeSingle();
-
-      if (!authRow) {
-        return fail(res, 400, 'cupon_review_reward_only',
-          'Este cupón es exclusivo para clientes que dejaron una reseña.');
-      }
-    }
-  }
-
   // Llamar a la RPC atómica
   const { data, error } = await supabase.rpc('apply_coupon_and_create_order', {
     p_order: cleanOrder,
@@ -472,6 +447,27 @@ async function handleCreateOrder(body, res, req) {
       return fail(res, 409, 'numero_duplicate', 'Ya existe un pedido con ese número. Reintentá.');
     }
     return fail(res, 500, 'db_error', error.message);
+  }
+
+  // ── Sesión 39: persistir desglose de descuento post-RPC ───────
+  // La RPC inserta solo `descuento` total (sigue siendo la fuente de verdad
+  // del cupón). Acá hacemos UPDATE puntual con los dos campos informativos
+  // descuento_cupon + descuento_transferencia para que seguimiento/emails
+  // no tengan que despejar matemáticamente.
+  // Si falla, lo logueamos pero NO devolvemos error: el pedido ya quedó
+  // bien creado y los pedidos sin desglose tienen fallback de despeje.
+  if (cleanOrder.descuento_cupon > 0 || cleanOrder.descuento_transferencia > 0) {
+    const { error: descErr } = await supabase
+      .from('orders')
+      .update({
+        descuento_cupon:         cleanOrder.descuento_cupon,
+        descuento_transferencia: cleanOrder.descuento_transferencia,
+      })
+      .eq('numero', cleanOrder.numero);
+    if (descErr) {
+      console.warn('[checkout] descuento split update falló (no fatal):',
+        descErr.message, { numero: cleanOrder.numero });
+    }
   }
 
   // ── Bifurcar según método de pago ─────────────────────────────
