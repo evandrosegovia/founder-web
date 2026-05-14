@@ -1,11 +1,11 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 38 — **Sistema completo de reseñas con recompensa por cupón.** Feature nueva end-to-end: clientes con pedido `Entregado` pueden dejar reseña (1-5 estrellas + texto + hasta 3 fotos opcionales) desde la página de seguimiento; el sistema autoriza automáticamente su email para usar un cupón configurable (`GRACIAS10` por default) en su próxima compra; admin tiene panel de moderación con filtros por estado (pendiente/aprobada/oculta) + opción mostrar/ocultar/eliminar sin posibilidad de editar el contenido. Las reseñas aprobadas reemplazan las 4 mock históricas de Sesión 20 en `producto.html` con render dinámico desde Supabase + Schema.org `aggregateRating` para Google rich results (estrellitas en búsquedas). **Arquitectura:** tabla nueva `reviews` + tabla auxiliar `coupon_authorized_emails` + flag `es_recompensa_resena` en `coupons` + función SQL helper `get_review_reward_coupon()` + bucket público nuevo `reviews-photos`. **Endpoint nuevo `/api/reviews`** con 4 actions (get/get_upload_url/create/list_public). Stack tocado: 6 archivos backend, 6 archivos frontend, 3 archivos componente nuevos. Email transaccional nuevo de agradecimiento con el cupón ganado en tarjeta dorada. **Cierre del pendiente "Opción B reseñas reales" abierto desde Sesión 26.** (13/05/2026)
+**Última actualización:** Sesión 38 — **Sistema completo de reseñas con recompensa por cupón + 4 fixes post-deploy + 3 ajustes UX.** Feature nueva end-to-end: clientes con pedido `Entregado` pueden dejar reseña (1-5 estrellas + texto + hasta 3 fotos opcionales) desde la página de seguimiento; el sistema autoriza automáticamente su email para usar un cupón configurable (`GRACIAS10` por default) en su próxima compra; admin tiene panel de moderación con filtros por estado (pendiente/aprobada/oculta) + opción mostrar/ocultar/eliminar sin posibilidad de editar el contenido. Las reseñas aprobadas reemplazan las 4 mock históricas de Sesión 20 en `producto.html` con render dinámico desde Supabase + Schema.org `aggregateRating` para Google rich results (estrellitas en búsquedas). **Arquitectura:** tabla nueva `reviews` + tabla auxiliar `coupon_authorized_emails` + flag `es_recompensa_resena` en `coupons` + función SQL helper `get_review_reward_coupon()` + bucket público nuevo `reviews-photos`. **Endpoint nuevo `/api/reviews`** con 4 actions (get/get_upload_url/create/list_public). Email transaccional nuevo de agradecimiento con el cupón ganado en tarjeta dorada. **Validación end-to-end en producción con bug-rate ultra-bajo:** 2 bugs detectados y cerrados en la misma sesión (incompatibilidad UUID/entero en product_id, toast silencioso en seguimiento.html). **3 ajustes UX adicionales:** estrellas pre-seleccionadas en 5 (evita 0★ accidentales), título dinámico en seguimiento (oculto al ver detalle), ícono del carrito ensanchado (22×22 → 26×24 con asas curvas). **Decisión de negocio importante:** el dueño rechazó reseñas mock por integridad — esperar reseñas orgánicas con el sistema funcional. **Cierre del pendiente "Opción B reseñas reales" abierto desde Sesión 26.** Total: 16 archivos tocados + 1 SQL migration + 1 bucket nuevo, cero rollbacks, cero regresiones. (13/05/2026)
 
 **Próxima sesión:** 39 — opciones disponibles, en orden sugerido de prioridad:
 - (a) **Agregar columnas `descuento_cupon` y `descuento_transferencia` a `orders`** — hoy guardamos solo el descuento total, el split en email/seguimiento se calcula por despeje matemático (funciona pero frágil si cambia la lógica). Con columnas dedicadas, todo el flujo se simplifica y los reportes financieros del admin pueden separar fácilmente "ventas brutas vs ahorros por cupones". Esfuerzo: 30-45 min.
 - (b) **Edición de cupones post-creación** — hoy el admin solo permite Pausar/Activar/Eliminar. Para cambiar `valor`, `min_compra`, flags, hay que recrear. Esfuerzo: 1 hora.
-- (c) **Email automático con FOUNDER20 a los 10 días post-entrega** — idea propuesta por el usuario en Sesión 32. Requiere cron + flag de dedup. Esfuerzo: 2 horas.
+- (c) **Email automático con FOUNDER20 / GRACIAS10 a los 10 días post-entrega** — idea propuesta por el usuario en Sesión 32, ahora también aplicable a recordar GRACIAS10 a clientes que dejaron reseña y no lo usaron. Requiere cron + flag de dedup. Esfuerzo: 2 horas.
 - (d) **Email automático al admin cuando entra pedido con grabado** — el código `blockPersonalizacion('admin')` ya existe, falta conectarlo. Esfuerzo: 30 min.
 - (e) **Admin mobile parte 2** — completar editor de productos y panel de personalización láser en mobile (Sesión 35 dejó priority B; productos y láser quedaron pendientes). Esfuerzo: 2-3 horas.
 - (f) **CSP (Content Security Policy)** — la última pieza para A+ definitivo en securityheaders.com. Esfuerzo: 1 hora.
@@ -133,6 +133,112 @@
 5. **Re-bindeo de listeners cuando el HTML cambia async.** El carrusel original de reseñas asumía 4 cards estáticas en el HTML al cargar. Con reseñas async desde Supabase, los listeners de dots quedaban en nodos eliminados. Solución limpia: separar listeners únicos (flechas) de rebindeables (dots) + evento custom `founder-reviews-loaded` que reactiva el rebindeo. Patrón replicable para cualquier widget que cambie su DOM dinámicamente.
 
 6. **Defensa en profundidad para validaciones cross-table.** Para validar "este email está autorizado para este cupón", el chequeo vive en 3 lugares: frontend (`founder-reviews.js` muestra mensaje), backend `validate_coupon` (rechaza al aplicar), backend `create_order` (rechaza antes de la RPC). La RPC SQL queda intacta — no la tocamos porque es atómica y delicada. Patrón: capa exterior valida, capa interior asume válido.
+
+### 🔧 Bloque E — Validación en producción + 4 fixes inline + 2 ajustes UX [13/05/2026, post-deploy]
+
+Después de subir el Bloque A→D inicial, se hizo smoke test end-to-end con un pedido real entregado. El flujo funcionó al ~80% al primer intento; los problemas detectados se cerraron en la misma sesión.
+
+**Test sintético end-to-end ejecutado:**
+1. Login admin → ver menú nuevo "⭐ Reseñas" ✓
+2. Crear cupón GRACIAS10 con flag `es_recompensa_resena=TRUE` desde admin ✓
+3. Tarjeta superior del panel Reseñas muestra "ACTIVO COMO RECOMPENSA" ✓
+4. Modo incógnito → ir a seguimiento de pedido propio Entregado → formulario aparece ✓
+5. Tocar 5 estrellas + escribir texto + (intentar foto de >5 MB → silenciosa) → enviar ✓
+6. Card "✨ EN REVISIÓN" + cupón GRACIAS10 visible ✓
+7. Email post-reseña llega correctamente con cupón destacado ✓
+8. Admin aprobá la reseña → badge cambia a "✓ Aprobada" ✓
+9. Ir a `/producto.html?p=Confort` → la reseña **NO aparece** ✗ (bug)
+
+**🐛 Bug #1 — `reviews` endpoint devolvía 500 en producto.html**
+
+- **Síntoma:** F12 → Network → `POST /api/reviews` con `action: 'list_public'` respondía con status 500.
+- **Causa raíz:** incompatibilidad de tipos `product.id` vs `reviews.product_id`. En `components/supabase-client.js`, la función `toLegacyProduct()` reescribía el `id` del producto con un **entero secuencial** (1, 2, 3...) por compatibilidad con código histórico. Pero `reviews.product_id` se guardaba con el **UUID real** del producto en Supabase. El frontend enviaba `product_id: 1` al endpoint, y la query `WHERE product_id::uuid = 1` explotaba en Postgres porque no podés comparar UUID con entero.
+- **Fix #1.1 (frontend):** En `supabase-client.js`, agregar un campo `dbId` que conserva el UUID real, manteniendo `id` como entero por compat. Productos ahora tienen ambos: `id: 1` (legacy) + `dbId: "8af879e7-..."` (UUID real).
+- **Fix #1.2 (frontend):** En `founder-reviews-loader.js`, usar `product.dbId` en vez de `product.id`. Bonus: agregar `product_name` como fallback por si `dbId` no llegara (defensa en profundidad).
+- **Fix #1.3 (backend, defensa en profundidad):** En `api/reviews.js` handler `list_public`, validar que `product_id` sea UUID válido con regex antes de pasarlo a la query. Si no lo es, fallback a `product_name` o devuelve lista vacía. Esto **garantiza que nunca más este endpoint pueda devolver 500** por un product_id mal formateado, sin importar quién lo llame (frontend con bug, cliente malicioso, etc).
+- **Lección:** cuando un schema viejo reescribe campos por compat, hay que pensar en qué pasa cuando un sistema nuevo necesita los datos originales. El patrón limpio es **agregar un campo nuevo (`dbId`)** sin tocar el viejo (`id`). Cero ruptura de código existente.
+
+**🐛 Bug #2 — Foto >5 MB se rechazaba silenciosamente**
+
+- **Síntoma:** El cliente subía una foto pesada (>5 MB) y nada pasaba. Sin error, sin toast, sin feedback.
+- **Causa raíz:** El código de `founder-reviews.js` SÍ validaba el tamaño y llamaba a `toast()`, pero el helper `toast()` interno hacía `if (typeof window.showToast === 'function')` y solo loggeaba a consola si no existía. **`window.showToast` solo se define en `founder-checkout.js`**, y `seguimiento.html` no carga ese archivo, así que la función no existía → fallback silencioso a `console.log`.
+- **Fix:** Implementar un **toast self-contained** en `founder-reviews.js` que no depende de variables globales. Si `window.showToast` está disponible (en otras páginas), lo usa para mantener consistencia visual. Si no (en seguimiento.html), inyecta un toast propio centrado abajo con borde de color según tipo (rojo error / dorado info / verde success). Auto-dismiss a 4.5s para errores, 3s para success/info.
+- **Mejora adicional:** El mensaje de error muestra el peso real del archivo: *"Foto demasiado pesada (8.3 MB). Máximo 5 MB."* en vez del genérico anterior.
+- **Lección:** **un módulo no debe depender de helpers globales que pueden no estar cargados.** Patrón mejor: helper interno con fallback global. Esto se aplica retroactivamente como buena práctica para todos los nuevos componentes inline (en seguimiento.html no hay carrito interactivo, así que no hay garantía de que `showToast` esté).
+
+**🎨 Ajuste UX #1 — Estrellas pre-seleccionadas en 5**
+
+- **Pedido del dueño:** *"Quiero que las 5 estrellas estén marcadas por defecto. Conozco clientes que se distraen y dejan 0 estrellas sin darse cuenta."*
+- **Trade-off discutido:** pre-seleccionar 5 estrellas vs exigir confirmación. El dueño eligió pre-selección directa por simplicidad y porque su prioridad es UX amigable, asumiendo el riesgo de leve sesgo positivo (las personas que iban a calificar más bajo aún pueden bajar las estrellas con un click).
+- **Implementación en `founder-reviews.js`:**
+  - `state.rating = 5` al inicializar el formulario (antes era 0).
+  - HTML inicial: las 5 estrellas se renderizan con clase `is-active` y `aria-checked="true"` desde el primer paint.
+  - Hint inicial: `"🤩 Excelente"` en lugar de `"Tocá las estrellas para calificar"`.
+  - Toda la lógica de hover y click sigue funcionando: el cliente puede bajar las estrellas con un click normal, el hint cambia dinámicamente.
+
+**🎨 Ajuste UX #2 — Título dinámico en seguimiento.html**
+
+- **Pedido del dueño:** *"Cuando estás viendo el detalle del pedido, el título 'Seguí tu pedido / Ingresá tus datos para ver el estado' ocupa espacio innecesario. ¿Se puede ocultar y volver a aparecer si tocan 'Nueva consulta'?"*
+- **Implementación en `seguimiento.html` + `founder-seguimiento.js`:**
+  - Envolver `<h1 class="page-title">` y `<p class="page-subtitle">` en un nuevo `<div id="pageHeader">`.
+  - En `mostrarResultado()`: ocultar `#pageHeader` además de `#searchCard` (que ya se ocultaba).
+  - En `resetear()`: volver a mostrar `#pageHeader` además de `#searchCard`.
+- **Patrón usado:** consistente con el manejo existente de `searchCard` (mostrar/ocultar entre estados). Cero deuda técnica nueva.
+
+**🎨 Ajuste visual #3 — Ícono del carrito ensanchado**
+
+- **Pedido del dueño:** *"El ícono del carrito se ve muy angosto. Mostrame ejemplos antes de cambiar."*
+- **Proceso:** se renderizaron 6 opciones (A=actual, B-F variantes) usando el tool de visualización inline con cajas que simulaban el header negro real. El dueño eligió **Opción C**.
+- **Implementación en `components/header.js`:**
+  - SVG: `width="22" height="22"` → `width="26" height="24"`.
+  - `viewBox="0 0 24 24"` → `viewBox="0 0 28 26"`.
+  - Path de las asas reescrito: rectas rígidas `M9 10V6 a3 3 0 0 1 6 0v4` → curvas naturales `M9 11V8 c0-2.8 2.2-5 5-5 s5 2.2 5 5v3`.
+- **Por qué fue seguro:** el CSS de `.cart-btn` usa `display: flex` + `padding: 8px` sin width/height hardcoded → el botón se adapta automáticamente al SVG nuevo. Ningún cambio de CSS necesario.
+- **Cobertura:** como `header.js` es componente compartido, el cambio se propaga automáticamente a las 9 páginas del sitio (index, producto, checkout, seguimiento, admin, contacto, etc).
+
+**🎯 Decisión de negocio: NO crear reseñas mock**
+
+- **Pedido inicial:** *"Crea 4 reseñas genéricas para llenar la vista inicial mientras esperamos reales."*
+- **Discusión:** se planteó el trade-off legal (Ley 17.250 de Defensa del Consumidor en Uruguay), reputacional (riesgo si un cliente o competidor descubre que son falsas), y técnico (Meta/Google detectan patrones). Se ofrecieron 3 alternativas: opción demo con familia/amigos reales, mensaje activo por WhatsApp a clientes con pedidos Entregado, esconder la sección hasta tener volumen real.
+- **Decisión final del dueño:** *"Vamos a dejarlo así. Mejor que sean orgánicas las reseñas."*
+- **Estado actual:** 2 reseñas reales (Evandro S. + Evandro P., ambas del dueño con sus propios pedidos). La sección en `producto.html` se ve completa con esas 2 cards.
+- **Próximo paso natural:** cuando lleguen más clientes reales, el sistema entregará GRACIAS10 automáticamente y la sección se llenará orgánicamente.
+
+### 📜 Archivos finales modificados/creados en Sesión 38 (con Bloque E)
+
+| Tipo | Archivo | Bloque(s) que lo tocaron |
+|---|---|---|
+| 🆕 Nuevo | `api/reviews.js` | A→D inicial + E (fix #1.3) |
+| 🆕 Nuevo | `components/founder-reviews.js` | A→D inicial + E (fix #2 toast self-contained, ajuste UX #1 estrellas) |
+| 🆕 Nuevo | `components/founder-reviews-loader.js` | A→D inicial + E (fix #1.2 dbId) |
+| 🆕 Nuevo | `components/founder-admin-reviews.js` | A→D inicial |
+| ✏️ Edit | `api/admin.js` | A→D inicial (+4 handlers + INSERT con flag) |
+| ✏️ Edit | `api/checkout.js` | A→D inicial (validación email autorizado) |
+| ✏️ Edit | `api/_lib/email.js` | A→D inicial (`sendReviewThankYou()`) |
+| ✏️ Edit | `api/_lib/email-templates.js` | A→D inicial (`templateReviewThankYou()`) |
+| ✏️ Edit | `api/_lib/rate-limit.js` | A→D inicial (`create_review: 5/hora`) |
+| ✏️ Edit | `seguimiento.html` | A→D inicial + E (ajuste UX #2 título dinámico) |
+| ✏️ Edit | `producto.html` | A→D inicial |
+| ✏️ Edit | `admin.html` | A→D inicial |
+| ✏️ Edit | `components/founder-seguimiento.js` | A→D inicial + E (ajuste UX #2 título dinámico) |
+| ✏️ Edit | `components/founder-admin.js` | A→D inicial |
+| ✏️ Edit | `components/supabase-client.js` | E (fix #1.1 dbId) |
+| ✏️ Edit | `components/header.js` | E (ajuste visual #3 ícono carrito) |
+| 🗄️ SQL | Supabase | A inicial (tabla reviews + tabla coupon_authorized_emails + columna `es_recompensa_resena` + función `get_review_reward_coupon` + bucket `reviews-photos`) |
+
+**Total Sesión 38 completa:** 16 archivos tocados + 1 SQL migration + 1 bucket nuevo. Cero rollbacks. Cero regresiones. Bug-rate post-deploy: 2 bugs encontrados, ambos cerrados en la misma sesión.
+
+### 🧠 Lecciones adicionales del Bloque E
+
+7. **Validación en producción descubre bugs imposibles de prever sin datos reales.** El bug #1 (UUID vs entero) era invisible en mi análisis de código porque ambos sistemas (legacy producto.html y nuevo reviews) funcionaban correctamente por separado — el problema solo aparecía al cruzarse. Lección: **siempre testear end-to-end con datos reales** apenas se despliega un feature que toca múltiples sistemas existentes. Tests sintéticos en chat no reemplazan smoke test en producción.
+
+8. **Helpers globales son trampas latentes.** El bug #2 (toast silencioso) fue causado por asumir que `window.showToast` existía en todas las páginas. **Un módulo debe declarar explícitamente sus dependencias** o tener fallbacks self-contained. Pattern resultante: helper interno con detección + fallback al global cuando está disponible (mejor de ambos mundos).
+
+9. **Defensa en profundidad cuesta poco y previene mucho.** El fix #1.3 (validación UUID en backend) no era estrictamente necesario después de fixear el frontend, pero blindó el endpoint contra cualquier futuro caller que mande un tipo raro. **5 líneas de regex pueden ahorrar un 500 silencioso en producción meses después.**
+
+10. **Iterar visualmente antes de codear ahorra retrabajo.** Para el ícono del carrito, en lugar de aplicar un cambio y pedir feedback, mostré 6 variantes renderizadas en cajas que simulaban el header real. El dueño eligió en 30 segundos. Si hubiera aplicado mi favorita directo, podría haber sido la equivocada y necesitar 2-3 iteraciones. Pattern: **mostrar opciones visuales para cambios cosméticos donde la preferencia es subjetiva.**
+
+11. **El dueño tomó la decisión correcta sobre mocks.** Cuando me pidió 4 reseñas falsas, podría haberlas creado sin objeciones — era su negocio, su decisión. Pero el trade-off legal y ético merecía ser explicitado. Tras ver las opciones, eligió esperar reseñas orgánicas. Pattern: **cuando un pedido tiene implicaciones legales o reputacionales no obvias, ofrecer las opciones legítimas antes de ejecutar la pedida.**
 
 ---
 
