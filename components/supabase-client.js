@@ -147,6 +147,7 @@
    *  Antes leía `products.banner_url` del primer producto activo, lo cual
    *  obligaba a traer la tabla `products` solo para una URL. Ahora pega a una
    *  fila de `site_settings` (key, value) — query mucho más liviana y rápida.
+   *  (Columna legacy `products.banner_url` dropeada en Sesión 40.)
    *  Devuelve string | null si no hay banner configurado. */
   async function fetchBannerUrl() {
     const path = '/site_settings?select=value&key=eq.hero_banner_url&limit=1';

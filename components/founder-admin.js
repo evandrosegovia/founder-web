@@ -396,7 +396,6 @@
         nota:             p.nota || '',
         lleva_billetes:   !!p.lleva_billetes,
         lleva_monedas:    !!p.lleva_monedas,
-        banner_url:       p.banner_url || '',
         orden:            p.orden || 1,
         activo:           p.activo !== false,
         colors,
@@ -2322,6 +2321,7 @@
   // fetchBannerUrl) lee de ahí directamente con la anon key.
   // Antes vivía en `products.banner_url` del primer producto activo,
   // pero eso obligaba a traer la tabla products entera solo para una URL.
+  // (Columna legacy `products.banner_url` dropeada en Sesión 40.)
   // ═══════════════════════════════════════════════════════════════
 
   const BANNER_KEY = 'hero_banner_url';
