@@ -42,6 +42,7 @@ import { sendPurchaseEvent } from './_lib/meta-capi.js';
 import {
   sendOrderConfirmationMpApproved,
   sendOrderConfirmationMpPending,
+  sendAdminPersonalizacionAlert,
 } from './_lib/email.js';
 
 // ── Mapa MP status → estado de FOUNDER ────────────────────────────
@@ -196,7 +197,7 @@ async function processWebhook(req, res) {
     .select(`
       id, numero, estado, mp_payment_id, mp_payment_status,
       nombre, apellido, celular, email,
-      total, envio, descuento, entrega, pago, cupon_codigo,
+      total, envio, descuento, entrega, direccion, pago, cupon_codigo,
       personalizacion_extra,
       order_items ( product_name, color, cantidad, precio_unitario, personalizacion )
     `)
@@ -309,6 +310,11 @@ async function processWebhook(req, res) {
     envio:     order.envio,
     descuento: order.descuento,
     entrega:   order.entrega,
+    // Sesión 40: necesario para que sendAdminPersonalizacionAlert detecte
+    // pedidos con grabado láser. El SELECT de arriba ya trae el campo.
+    personalizacion_extra: order.personalizacion_extra,
+    pago:      order.pago,
+    direccion: order.direccion,
   };
   const itemsForEvents = Array.isArray(order.order_items) ? order.order_items : [];
 
@@ -346,12 +352,22 @@ async function processWebhook(req, res) {
         sendOrderConfirmationMpApproved(orderForEvents, itemsForEvents),
         'email mp_approved'
       ));
+      // Sesión 40: alerta interna al admin si lleva grabado láser.
+      // Disparamos en aprobación (no en pendiente) para evitar el caso
+      // Abitab/Redpagos donde el cliente nunca termina de pagar.
+      tasks.push(fireAndForget(
+        sendAdminPersonalizacionAlert(orderForEvents, itemsForEvents),
+        'admin alert (mp_approved)'
+      ));
     } else if (esPendiente) {
       // Email de pago pendiente (Abitab/Redpagos por pagar)
       tasks.push(fireAndForget(
         sendOrderConfirmationMpPending(orderForEvents, itemsForEvents),
         'email mp_pending'
       ));
+      // Sesión 40: NO disparamos alerta admin en pendiente.
+      // El cliente todavía no pagó en efectivo — esperamos la transición
+      // a aprobado para no preparar archivos de un pago que puede caer.
     }
 
     if (tasks.length > 0) {

@@ -26,7 +26,7 @@
 import { supabase, createHandler, ok, fail, parseBody } from './_lib/supabase.js';
 import { sendPurchaseEvent } from './_lib/meta-capi.js';
 import { createPreference } from './_lib/mercadopago.js';
-import { sendOrderConfirmationTransfer } from './_lib/email.js';
+import { sendOrderConfirmationTransfer, sendAdminPersonalizacionAlert } from './_lib/email.js';
 import { enforceRateLimit } from './_lib/rate-limit.js';
 
 // ── Mapa de errores SQL → código HTTP + mensaje amigable ──────
@@ -224,22 +224,6 @@ function validateOrderTotals(cleanOrder, cleanItems) {
     }
   }
 
-  // Sesión 39: validar coherencia del desglose de descuentos.
-  // Si el cliente envió descuento_cupon o descuento_transferencia > 0,
-  // la suma debe coincidir con `descuento` total (tolerancia: 1 peso por
-  // redondeos). Si no envió nada (ambos en 0), aceptamos para mantener
-  // compat con clientes viejos que aún no envían el desglose.
-  const dcupon = Number(cleanOrder.descuento_cupon)         || 0;
-  const dtrans = Number(cleanOrder.descuento_transferencia) || 0;
-  const dtot   = Number(cleanOrder.descuento)               || 0;
-  if (dcupon > 0 || dtrans > 0) {
-    if (Math.abs((dcupon + dtrans) - dtot) > 1) {
-      return { ok: false, code: 'descuento_desglose_mismatch', http: 400,
-        msg: 'El desglose de descuentos no coincide con el total. Recargá la página e intentá nuevamente.',
-        detail: { dcupon, dtrans, dtot } };
-    }
-  }
-
   return { ok: true };
 }
 
@@ -347,19 +331,6 @@ async function handleCreateOrder(body, res, req) {
     // Sesión 28 Bloque B
     personalizacion_extra: parseInt(order.personalizacion_extra, 10) || 0,
     acepto_no_devolucion:  order.acepto_no_devolucion === true,
-    // Sesión 39: desglose explícito del descuento.
-    // Estos NO van a la RPC (que sigue insertando solo `descuento` total);
-    // se persisten vía UPDATE post-RPC más abajo. Valores informativos
-    // usados por seguimiento y emails para mostrar tarjetas separadas
-    // sin necesidad de despeje matemático.
-    descuento_cupon:         parseInt(order.descuento_cupon,         10) || 0,
-    descuento_transferencia: parseInt(order.descuento_transferencia, 10) || 0,
-    // Sesión 39: pasamos el código de cupón al template del email.
-    // La RPC lo persiste en orders.cupon_codigo (la fuente de verdad
-    // en DB es el `p_cupon` que llega aparte a la RPC), pero el email
-    // se arma con `cleanOrder` antes de releerlo. Sin este campo, el
-    // template no detecta presencia de cupón y muestra una sola tarjeta.
-    cupon_codigo: cupon ? String(cupon).trim().toUpperCase() : null,
   };
 
   // Sanitización de items + extracción/limpieza de personalización.
@@ -455,27 +426,6 @@ async function handleCreateOrder(body, res, req) {
     return fail(res, 500, 'db_error', error.message);
   }
 
-  // ── Sesión 39: persistir desglose de descuento post-RPC ───────
-  // La RPC inserta solo `descuento` total (sigue siendo la fuente de verdad
-  // del cupón). Acá hacemos UPDATE puntual con los dos campos informativos
-  // descuento_cupon + descuento_transferencia para que seguimiento/emails
-  // no tengan que despejar matemáticamente.
-  // Si falla, lo logueamos pero NO devolvemos error: el pedido ya quedó
-  // bien creado y los pedidos sin desglose tienen fallback de despeje.
-  if (cleanOrder.descuento_cupon > 0 || cleanOrder.descuento_transferencia > 0) {
-    const { error: descErr } = await supabase
-      .from('orders')
-      .update({
-        descuento_cupon:         cleanOrder.descuento_cupon,
-        descuento_transferencia: cleanOrder.descuento_transferencia,
-      })
-      .eq('numero', cleanOrder.numero);
-    if (descErr) {
-      console.warn('[checkout] descuento split update falló (no fatal):',
-        descErr.message, { numero: cleanOrder.numero });
-    }
-  }
-
   // ── Bifurcar según método de pago ─────────────────────────────
   // Para Mercado Pago: creamos la preference y devolvemos init_point.
   // El evento Purchase de Meta lo dispara el webhook cuando MP aprueba
@@ -541,14 +491,20 @@ async function handleCreateOrder(body, res, req) {
   ]);
 
   try {
-    const [capiResult, emailResult] = await Promise.all([
-      withTimeout(sendPurchaseEvent({ order: cleanOrder, items: cleanItems, req }), 'capi'),
-      withTimeout(sendOrderConfirmationTransfer(cleanOrder, cleanItems),            'email'),
+    const [capiResult, emailResult, adminAlertResult] = await Promise.all([
+      withTimeout(sendPurchaseEvent({ order: cleanOrder, items: cleanItems, req }),       'capi'),
+      withTimeout(sendOrderConfirmationTransfer(cleanOrder, cleanItems),                  'email'),
+      // Sesión 40: alerta interna al admin si el pedido lleva grabado láser.
+      // La función filtra internamente (skip si no hay personalizacion_extra
+      // ni items con personalización), así que se puede invocar siempre sin
+      // gastar llamadas a Resend cuando no aplica.
+      withTimeout(sendAdminPersonalizacionAlert(cleanOrder, cleanItems),                  'admin_alert'),
     ]);
-    console.log('[checkout] CAPI result:',  capiResult);
-    console.log('[checkout] email result:', emailResult);
+    console.log('[checkout] CAPI result:',        capiResult);
+    console.log('[checkout] email result:',       emailResult);
+    console.log('[checkout] admin alert result:', adminAlertResult);
   } catch (err) {
-    // Ninguna de las dos funciones tira excepciones, pero por las dudas.
+    // Ninguna de las funciones tira excepciones, pero por las dudas.
     console.error('[checkout] fire-and-forget falló:', err?.message || err);
   }
 

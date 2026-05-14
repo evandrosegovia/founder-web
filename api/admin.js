@@ -614,7 +614,7 @@ async function handleListProducts(body, res, req) {
     .select(`
       id, slug, nombre, precio, descripcion, especificaciones,
       capacidad, dimensiones, material, nota,
-      lleva_billetes, lleva_monedas, banner_url,
+      lleva_billetes, lleva_monedas,
       permite_grabado_adelante, permite_grabado_interior,
       permite_grabado_atras, permite_grabado_texto,
       orden, activo, created_at, updated_at,
@@ -675,8 +675,9 @@ async function handleSaveProduct(body, res, req) {
     permite_grabado_interior: p.permite_grabado_interior === true,
     permite_grabado_atras:    p.permite_grabado_atras    === true,
     permite_grabado_texto:    p.permite_grabado_texto    === true,
-    // banner_url ya no se toca desde acá: vive en site_settings.hero_banner_url
+    // El hero banner vive en site_settings.hero_banner_url
     // y se gestiona vía las acciones get_setting / set_setting.
+    // (La columna legacy products.banner_url fue dropeada en Sesión 40.)
   };
 
   // 1) Upsert del producto
