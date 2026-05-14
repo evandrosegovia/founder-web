@@ -102,6 +102,9 @@ function blockItems(items, total, envio, descuento, opts) {
     personalizExtra: Number(opts && opts.personalizExtra) || personalizExtraCalc,
     envio:           Number(envio) || 0,
     total:           Number(total) || 0,
+    // Sesión 39: pasar el desglose dedicado (si vino desde la DB)
+    descuentoCupon:         Number(opts && opts.descuentoCupon)         || 0,
+    descuentoTransferencia: Number(opts && opts.descuentoTransferencia) || 0,
   });
 
   const rows = (items || []).map(it => {
@@ -169,20 +172,35 @@ function renderDiscountLines(descuento, opts, colspan) {
   const personalizExtra  = Number((opts && opts.personalizExtra) || 0);
   const envio            = Number((opts && opts.envio) || 0);
   const total            = Number((opts && opts.total) || 0);
+  // Sesión 39: columnas dedicadas del desglose. Si vienen > 0 las usamos
+  // directamente (fuente de verdad). Si vienen en 0/undefined caemos al
+  // despeje matemático de Sesión 37 para pedidos viejos.
+  const dcupon = Number((opts && opts.descuentoCupon)         || 0);
+  const dtrans = Number((opts && opts.descuentoTransferencia) || 0);
+  const tieneDesgloseDB = (dcupon > 0 || dtrans > 0);
 
   const hayCupon          = !!cuponCodigo;
   const hayTransferencia  = /transfer/i.test(pago);
   const cs = colspan ? `colspan="${colspan}"` : '';
 
-  // Caso 1: cupón + transferencia → split matemático exacto
-  // Despeje: total = (subtotal + personaliz - cupon) × 0.90 + envio
-  //          → cupon = subtotal + personaliz - ((total - envio) / 0.90)
+  // Caso 1: cupón + transferencia → 2 tarjetas con montos
   if (hayCupon && hayTransferencia) {
-    const cuponAmount = Math.round(subtotal + personalizExtra - ((total - envio) / 0.90));
-    let transferAmount = descNum - cuponAmount;
+    let cuponAmount;
+    let transferAmount;
+    if (tieneDesgloseDB) {
+      // Sesión 39: usamos directamente las columnas dedicadas.
+      cuponAmount    = dcupon;
+      transferAmount = dtrans;
+    } else {
+      // Fallback: despeje matemático para pedidos previos a Sesión 39.
+      // total = (subtotal + personaliz - cupon) × 0.90 + envio
+      //   → cupon = subtotal + personaliz - ((total - envio) / 0.90)
+      cuponAmount    = Math.round(subtotal + personalizExtra - ((total - envio) / 0.90));
+      transferAmount = descNum - cuponAmount;
+    }
     // Sanity check: si por algún motivo el split da negativo o no cierra
     // (datos incompletos), fallback a mostrar solo el total descontado.
-    if (cuponAmount < 0 || transferAmount < 0 || (cuponAmount + transferAmount !== descNum)) {
+    if (cuponAmount < 0 || transferAmount < 0 || Math.abs((cuponAmount + transferAmount) - descNum) > 1) {
       return renderCard(cs, '✓ Cupón ' + esc(cuponCodigo) + ' + Transferencia', 'Descuentos aplicados al pedido', descNum);
     }
     // Subtítulo del cupón: si es de personalización, decimos "grabados gratis"
@@ -326,6 +344,9 @@ function blockItemsWithPhotos(items, total, envio, descuento, photoMap, opts) {
     personalizExtra: Number(opts && opts.personalizExtra) || personalizExtraCalc,
     envio:           Number(envio) || 0,
     total:           Number(total) || 0,
+    // Sesión 39: pasar el desglose dedicado (si vino desde la DB)
+    descuentoCupon:         Number(opts && opts.descuentoCupon)         || 0,
+    descuentoTransferencia: Number(opts && opts.descuentoTransferencia) || 0,
   });
 
   const rows = (items || []).map(it => {
@@ -633,7 +654,7 @@ export function templateOrderTransfer(order, items) {
         <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;color:#9a9a9a;text-transform:uppercase;margin-bottom:18px;">
           Detalle del pedido
         </div>
-        ${blockItems(items, total, envio, descuento, { cuponCodigo: order.cupon_codigo, pago: order.pago })}
+        ${blockItems(items, total, envio, descuento, { cuponCodigo: order.cupon_codigo, pago: order.pago, descuentoCupon: order.descuento_cupon, descuentoTransferencia: order.descuento_transferencia })}
       </td>
     </tr>
 
@@ -710,7 +731,7 @@ export function templateOrderMpApproved(order, items) {
         <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;color:#9a9a9a;text-transform:uppercase;margin-bottom:18px;">
           Detalle del pedido
         </div>
-        ${blockItems(items, total, envio, descuento, { cuponCodigo: order.cupon_codigo, pago: order.pago })}
+        ${blockItems(items, total, envio, descuento, { cuponCodigo: order.cupon_codigo, pago: order.pago, descuentoCupon: order.descuento_cupon, descuentoTransferencia: order.descuento_transferencia })}
       </td>
     </tr>
 
@@ -792,7 +813,7 @@ export function templateOrderMpPending(order, items) {
         <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;color:#9a9a9a;text-transform:uppercase;margin-bottom:18px;">
           Detalle del pedido
         </div>
-        ${blockItems(items, total, envio, descuento, { cuponCodigo: order.cupon_codigo, pago: order.pago })}
+        ${blockItems(items, total, envio, descuento, { cuponCodigo: order.cupon_codigo, pago: order.pago, descuentoCupon: order.descuento_cupon, descuentoTransferencia: order.descuento_transferencia })}
       </td>
     </tr>
 
@@ -973,7 +994,7 @@ export function templateOrderStatusUpdate(order, items, statusKey, photoMap) {
   // detalle, hace click en "Ver estado del pedido" y entra al seguimiento.
   const showPrices = statusKey === 'Entregado';
   const itemsBlock = showPrices
-    ? blockItemsWithPhotos(items, total, envio, descuento, photoMap, { cuponCodigo: order.cupon_codigo, pago: order.pago })
+    ? blockItemsWithPhotos(items, total, envio, descuento, photoMap, { cuponCodigo: order.cupon_codigo, pago: order.pago, descuentoCupon: order.descuento_cupon, descuentoTransferencia: order.descuento_transferencia })
     : blockItemsCompact(items, photoMap);
 
   const inner = `
