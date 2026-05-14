@@ -367,14 +367,19 @@ select:active,
   letter-spacing: 0.3px;
 }
 
-/* Grid de opciones — 2 columnas en mobile, 4 en desktop si caben */
+/* Grid de opciones — 1 columna apilada en mobile (cards horizontales),
+   4 columnas en desktop (cards verticales). El switch de layout está
+   en .laser-option vía @media (min-width: 720px). */
 .laser-options {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 @media (min-width: 720px) {
-  .laser-options { grid-template-columns: repeat(4, 1fr); }
+  .laser-options {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
 }
 
 /* Cada opción es un "card" tappable. Estética premium con dos layouts:
