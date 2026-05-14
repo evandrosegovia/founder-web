@@ -292,7 +292,12 @@
 
     // Re-cargar datos frescos al entrar a cada página
     if (page === 'pedidos')  loadOrders();
-    if (page === 'cupones')  loadCoupons();
+    if (page === 'cupones') {
+      loadCoupons();
+      // Sesión 43 — auto-load del status de emails de recompra
+      // (card al final de la página de Cupones).
+      loadRecompraStatus();
+    }
     if (page === 'banner')   loadBanner();
     if (page === 'personalizacion') {
       loadPersonalizacion();
@@ -1739,6 +1744,189 @@
       if (btn) { btn.disabled = false; btn.textContent = '🗑 Ejecutar limpieza ahora'; }
     }
   }
+
+  // ═════════════════════════════════════════════════════════════════
+  // SESIÓN 43 — EMAILS DE RECOMPRA (UI del cron Tarea D)
+  // ─────────────────────────────────────────────────────────────────
+  // Card al final de la página de Cupones. Muestra cuántos pedidos
+  // están esperando email de recompra (entregados hace ≥10 días sin
+  // email enviado) y permite disparar el envío manualmente.
+  // Backend: /api/cleanup-personalizacion
+  //   get_recompra_status  → dryRun: cuenta candidatos sin enviar.
+  //   run_recompra_manual  → envía emails ya mismo (no espera al cron).
+  // ═════════════════════════════════════════════════════════════════
+
+  /**
+   * Carga el estado del sistema de recompra: cantidad de pedidos
+   * pendientes de envío + estado del cupón configurado.
+   * Renderiza el statusBox con 3 cards (pendientes, cupón, estado)
+   * y habilita o deshabilita el botón "Enviar pendientes ahora".
+   */
+  async function loadRecompraStatus() {
+    const statusBox = $('recompraStatusBox');
+    const runBtn    = $('recompraRunBtn');
+    if (!statusBox) return;
+
+    statusBox.textContent = 'Cargando estado del sistema de recompra...';
+    if (runBtn) runBtn.disabled = true;
+
+    let data = null;
+    try {
+      const resp = await apiAdminFetch('/api/cleanup-personalizacion', 'get_recompra_status');
+      data = await resp.json();
+      if (!resp.ok || !data?.ok) {
+        statusBox.innerHTML = `<span style="color:var(--red,#e57373)">Error cargando status: ${esc(data?.error || resp.status)}</span>`;
+        return;
+      }
+    } catch (err) {
+      statusBox.innerHTML = `<span style="color:var(--red,#e57373)">Error de red: ${esc(String(err?.message || err))}</span>`;
+      return;
+    }
+
+    // Caso 1 — Cupón no configurado (env REPURCHASE_COUPON_CODE faltante o cupón inválido).
+    // El backend devuelve { ok: true, skipped: true, reason: 'no_coupon_configured' } en este caso.
+    if (data.skipped === true) {
+      statusBox.innerHTML = `
+        <div style="display:flex;align-items:center;gap:14px;padding:8px 4px">
+          <div style="font-size:32px">⚠️</div>
+          <div>
+            <div style="font-size:13px;color:var(--red);font-weight:600;margin-bottom:4px">
+              Feature desactivada
+            </div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.6">
+              No hay cupón configurado o el cupón está inactivo. Configurá la variable
+              <code style="color:var(--gold)">REPURCHASE_COUPON_CODE</code> en Vercel
+              con el código de un cupón activo y redeployá.
+            </div>
+          </div>
+        </div>`;
+      // Botón deshabilitado: no tiene sentido disparar si no hay cupón.
+      if (runBtn) runBtn.disabled = true;
+      return;
+    }
+
+    // Caso 2 — Feature activa. Render del status con 3 columnas.
+    const candidates = data.candidates    || 0;
+    const couponCode = data.coupon_code   || '—';
+    const tienePendientes = candidates > 0;
+
+    // Próximo cron: domingo a las 3am (Uruguay). Calculamos para mostrar.
+    const proximoCron = calcularProximoDomingo3am();
+
+    // Color y label dinámico según haya pendientes o no
+    const estadoLabel  = tienePendientes
+      ? `<span style="color:var(--gold)">${candidates} pendiente${candidates === 1 ? '' : 's'} de envío</span>`
+      : `<span style="color:var(--green)">✓ Sin pendientes — todo al día</span>`;
+    const pendColor    = tienePendientes ? 'var(--gold)' : 'var(--green)';
+
+    statusBox.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">
+        <div>
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase">📬 Pendientes</div>
+          <div style="font-size:24px;color:${pendColor};margin-top:4px;font-family:'Cormorant Garamond',serif;font-weight:300">${candidates}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">pedidos esperando email</div>
+        </div>
+        <div>
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase">🏷️ Cupón configurado</div>
+          <div style="font-size:14px;color:var(--gold);margin-top:4px;font-family:'Courier New',monospace;font-weight:700;letter-spacing:1px">${esc(couponCode)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">REPURCHASE_COUPON_CODE</div>
+        </div>
+        <div>
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase">📅 Próximo envío automático</div>
+          <div style="font-size:13px;color:var(--white);margin-top:4px">${esc(proximoCron)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">cron semanal</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)">
+        ${estadoLabel}
+      </div>`;
+
+    // Botón habilitado solo si hay pendientes
+    if (runBtn) runBtn.disabled = !tienePendientes;
+  }
+
+  /**
+   * Calcula la fecha/hora del próximo domingo a las 3am (Uruguay).
+   * Es solo para mostrar al usuario "cuándo va a correr el cron sin
+   * que hagas nada". Texto en español.
+   *
+   * Nota técnica: el cron real está en UTC (vercel.json: "0 6 * * 0"),
+   * lo que equivale a las 3am Uruguay (UTC-3). Si Uruguay cambiara su
+   * horario o el cron se moviera, hay que actualizar este texto.
+   */
+  function calcularProximoDomingo3am() {
+    const ahora = new Date();
+    const diaActual = ahora.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+    const horaActual = ahora.getHours();
+
+    // Días hasta el próximo domingo. Si hoy es domingo y son <3am,
+    // el próximo cron es HOY. Si es domingo y son ≥3am, el próximo
+    // es en 7 días.
+    let diasHastaDomingo;
+    if (diaActual === 0) {
+      diasHastaDomingo = horaActual < 3 ? 0 : 7;
+    } else {
+      diasHastaDomingo = 7 - diaActual;
+    }
+
+    const proximoDomingo = new Date(ahora);
+    proximoDomingo.setDate(ahora.getDate() + diasHastaDomingo);
+    proximoDomingo.setHours(3, 0, 0, 0);
+
+    // Si el próximo es HOY, decimos "Hoy a las 3am". Si no, mostramos la fecha.
+    const esHoy = diasHastaDomingo === 0;
+    if (esHoy) return 'Hoy a las 3am';
+
+    const dia    = proximoDomingo.getDate();
+    const meses  = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const mes    = meses[proximoDomingo.getMonth()];
+    return `Domingo ${dia} de ${mes} · 3am`;
+  }
+
+  /**
+   * Dispara el envío de emails de recompra manualmente.
+   * Útil para no esperar al cron del domingo (testing o si querés
+   * acelerar la conversión).
+   * Doble confirmación: el envío es irreversible (el email YA sale).
+   */
+  async function runRecompraManual() {
+    if (!confirm('¿Mandar AHORA los emails de recompra pendientes?\n\nLos clientes recibirán el cupón en sus inboxes en menos de 1 minuto. El envío es irreversible.')) return;
+
+    const btn = $('recompraRunBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '📤 Enviando...'; }
+
+    try {
+      const resp = await apiAdminFetch('/api/cleanup-personalizacion', 'run_recompra_manual');
+      const data = await resp.json();
+      if (!resp.ok || !data?.ok) {
+        toast('Error ejecutando envío: ' + (data?.error || resp.status), true);
+        return;
+      }
+      // Si la feature está desactivada (cupón faltante), el backend devuelve skipped:true
+      if (data.skipped === true) {
+        toast('No hay cupón configurado — chequeá REPURCHASE_COUPON_CODE en Vercel', true);
+        return;
+      }
+      const sent   = data.sent   || 0;
+      const failed = data.failed || 0;
+      if (sent > 0 && failed === 0) {
+        toast(`✓ ${sent} email${sent === 1 ? '' : 's'} de recompra enviado${sent === 1 ? '' : 's'}`);
+      } else if (sent > 0 && failed > 0) {
+        toast(`⚠ Parcial: ${sent} enviados, ${failed} fallaron — revisá logs de Vercel`, true);
+      } else if (failed > 0) {
+        toast(`✕ ${failed} envío${failed === 1 ? '' : 's'} falló — revisá logs de Vercel`, true);
+      } else {
+        toast('Sin pendientes para enviar');
+      }
+      // Recargar status para reflejar el nuevo estado (candidates=0 después del envío)
+      loadRecompraStatus();
+    } catch (err) {
+      toast('Error de red enviando recompra', true);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '📤 Enviar pendientes ahora'; }
+    }
+  }
+
   function closeOrderDetail() {
     const modal = $('orderDetailModal');
     if (modal) modal.classList.remove('open');
@@ -3282,6 +3470,9 @@
   window.loadCleanupStatus       = loadCleanupStatus;
   window.downloadBorrablesZip    = downloadBorrablesZip;
   window.runCleanupManual        = runCleanupManual;
+  // Sesión 43 — UI de emails de recompra (cron Tarea D)
+  window.loadRecompraStatus      = loadRecompraStatus;
+  window.runRecompraManual       = runRecompraManual;
   window.closeOrderDetail    = closeOrderDetail;
   window.changeOrderStatus   = changeOrderStatus;
   window.archiveOrder        = archiveOrder;
