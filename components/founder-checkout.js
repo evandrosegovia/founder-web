@@ -423,11 +423,42 @@
     toggle($('btnMP'),       'is-active', mode === 'mercadopago');
     toggle($('btnTransfer'), 'is-active', mode === 'transfer');
     $('transferNote').style.display = mode === 'transfer' ? 'block' : 'none';
-    $('coSubmitBtn').textContent    = mode === 'transfer'
-      ? 'Confirmar pedido (Transferencia)'
-      : 'Continuar al pago (Mercado Pago)';
+    // Sesión 40: re-habilitar el botón al cambiar de método de pago.
+    // Caso típico: cliente entra a MP, se arrepiente, vuelve atrás y
+    // cambia a transferencia. Sin esto, el botón quedaba en estado
+    // disabled="true" del intento anterior (cuando se hizo el redirect
+    // a init_point) y el cliente no podía completar el pedido sin
+    // refrescar la página entera (perdiendo todo lo escrito).
+    const btn = $('coSubmitBtn');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = mode === 'transfer'
+        ? 'Confirmar pedido (Transferencia)'
+        : 'Continuar al pago (Mercado Pago)';
+    }
     renderOrderSummary();
   }
+
+  // Sesión 40: restaurar el estado del botón cuando el navegador muestra
+  // la página desde su caché (back/forward navigation). Esto cubre el
+  // caso "cliente fue a MP y volvió atrás" incluso si NO cambia el
+  // método de pago al volver. Sin este listener, el botón quedaría
+  // disabled con el texto "⏳ Procesando..." y el cliente quedaría
+  // bloqueado sin entender por qué.
+  //
+  // El evento `pageshow` con `event.persisted === true` se dispara solo
+  // cuando la página viene del bfcache (back/forward cache) — no se
+  // dispara en una carga normal, así que no interfiere con el init.
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;  // carga normal: no tocar nada
+    const btn = $('coSubmitBtn');
+    if (btn && btn.disabled) {
+      btn.disabled = false;
+      btn.textContent = state.pagoMode === 'transfer'
+        ? 'Confirmar pedido (Transferencia)'
+        : 'Continuar al pago (Mercado Pago)';
+    }
+  });
 
   // ── CÁLCULO DE TOTALES ───────────────────────────────────────
   // Precio unitario por slot de personalización. Espejo de la
