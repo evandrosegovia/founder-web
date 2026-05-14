@@ -1151,3 +1151,144 @@ ${blockFooter()}`;
 
   return wrapEmail(inner, '¡Gracias por dejar tu reseña en Founder!');
 }
+
+// ─────────────────────────────────────────────────────────────────
+// TEMPLATE 6: ALERTA AL ADMIN — pedido con grabado láser (Sesión 40)
+// ─────────────────────────────────────────────────────────────────
+/**
+ * Email interno al admin notificando que entró un pedido con
+ * personalización láser y hay que preparar el grabado.
+ *
+ * Diferencia clave con los otros templates: este NO va al cliente,
+ * va al dueño del negocio. El tono es operativo, no comercial:
+ *   • Sin "¡Gracias por tu compra!" — vos sos el dueño, ya sabés.
+ *   • Sin CTAs de WhatsApp ni redes sociales (footer minimalista).
+ *   • Sí incluye datos de contacto del cliente por si necesitás
+ *     consultarle algo del diseño (ej. textos ambiguos).
+ *   • Sí incluye el bloque de personalización con variant='admin'
+ *     (el que ya existía pero nunca se usaba — ahora sí).
+ *   • Sí incluye link directo al panel admin para ver la orden.
+ *
+ * Se dispara desde:
+ *   • api/checkout.js cuando entra pedido por TRANSFERENCIA con grabado.
+ *   • api/mp-webhook.js cuando MP APRUEBA o deja PENDIENTE un pedido
+ *     con grabado (no cuando se crea la preferencia, porque puede
+ *     caer si el pago se rechaza).
+ *
+ * Idempotencia: el caller debe asegurarse de no llamar dos veces
+ * para el mismo pedido. Hoy se logra naturalmente porque
+ * mp-webhook solo dispara eventos en `esTransicionNueva === true`.
+ */
+export function templateAdminPersonalizacionAlert(order, items) {
+  const numero    = esc(order.numero || '');
+  const nombre    = esc(order.nombre || '');
+  const apellido  = esc(order.apellido || '');
+  const email     = esc(order.email || '');
+  const celular   = esc(order.celular || '');
+  const pago      = esc(order.pago || '');
+  const entrega   = esc(order.entrega || '');
+  const direccion = esc(order.direccion || '');
+  const extra     = Number(order.personalizacion_extra || 0);
+  const total     = Number(order.total || 0);
+
+  // El admin entra al panel autenticándose; el link es informativo.
+  const adminLink = 'https://www.founder.uy/admin.html';
+
+  // Bloque de info del cliente (compacto, todo lo accionable)
+  const blockCliente = `
+    <tr>
+      <td style="padding:0 32px 24px 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+          style="border-collapse:collapse;background:#1a1a1a;border:1px solid #2e2e2e;">
+          <tr>
+            <td style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;">
+              <div style="font-size:10px;letter-spacing:3px;color:#9a9a9a;text-transform:uppercase;margin-bottom:14px;">
+                👤 Cliente
+              </div>
+              <div style="font-size:13px;color:#f8f8f4;line-height:1.8;">
+                <strong>${nombre} ${apellido}</strong><br>
+                📧 <a href="mailto:${email}" style="color:#c9a96e;text-decoration:none;">${email}</a><br>
+                📱 ${celular || '—'}<br>
+                ${entrega ? `🚚 ${entrega}${direccion ? ` — ${direccion}` : ''}<br>` : ''}
+                💳 ${pago}
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+
+  // Resumen financiero compacto (sin desglose de descuentos — al admin
+  // le importa el grabado, no la contabilidad: para eso está el panel)
+  const blockResumen = `
+    <tr>
+      <td style="padding:0 32px 24px 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+          style="border-collapse:collapse;background:#1a1a1a;border:1px solid #2e2e2e;">
+          <tr>
+            <td style="padding:14px 20px;font-family:Arial,Helvetica,sans-serif;">
+              <div style="font-size:11px;color:#9a9a9a;line-height:1.8;">
+                Extra por grabado: <strong style="color:#c9a96e;">$${fmtUYU(extra)} UYU</strong><br>
+                Total del pedido: <strong style="color:#f8f8f4;">$${fmtUYU(total)} UYU</strong>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+
+  const inner = `
+    ${blockHeader()}
+
+    <tr>
+      <td style="padding:32px 32px 8px 32px;">
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:3px;color:#c9a96e;text-transform:uppercase;margin-bottom:14px;">
+          ⚡ Aviso interno · Taller
+        </div>
+        <div style="font-family:Georgia,serif;font-size:24px;font-weight:300;color:#f8f8f4;line-height:1.3;">
+          Nuevo pedido con grabado láser
+        </div>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9a9a9a;margin-top:10px;">
+          Pedido <strong style="color:#f8f8f4;">#${numero}</strong>
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding:18px 32px 8px 32px;">
+        <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#f8f8f4;line-height:1.7;margin:0;">
+          Entró un pedido con personalización láser. Acordate de descargar
+          los archivos desde el panel admin antes de empezar la producción.
+        </p>
+      </td>
+    </tr>
+
+    ${blockPersonalizacion(order, items, 'admin')}
+
+    ${blockCliente}
+
+    ${blockResumen}
+
+    <tr>
+      <td style="padding:0 32px 36px 32px;text-align:center;">
+        <a href="${adminLink}"
+           style="display:inline-block;background:#c9a96e;color:#141414;padding:14px 36px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;text-decoration:none;">
+          Abrir panel admin
+        </a>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#9a9a9a;line-height:1.6;margin-top:14px;">
+          Buscá el pedido <strong style="color:#c9a96e;">#${numero}</strong> en la sección Personalización Láser.
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding:18px 32px 24px 32px;text-align:center;border-top:1px solid #2e2e2e;background:#0f0f0f;">
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#9a9a9a;letter-spacing:2px;text-transform:uppercase;">
+          Aviso automático · Founder
+        </div>
+      </td>
+    </tr>
+  `;
+
+  return wrapEmail(inner, `Nuevo pedido con grabado: #${numero}`);
+}

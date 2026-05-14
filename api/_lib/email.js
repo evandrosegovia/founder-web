@@ -22,8 +22,25 @@
 //        Email cuando Mercado Pago deja el pago en PENDIENTE
 //        (caso típico: cliente eligió Abitab/Redpagos).
 //
+//   4) sendOrderStatusUpdate(order, items, statusKey, photoMap)
+//        Email de actualización de estado del pedido.
+//        Disparado desde api/admin.js.
+//
+//   5) sendReviewThankYou(order, review)
+//        Email de agradecimiento + cupón recompensa al cliente
+//        que dejó reseña. Disparado desde api/reviews.js.
+//
+//   6) sendAdminPersonalizacionAlert(order, items)  ⬅ Sesión 40
+//        Email INTERNO al dueño del negocio (variable ADMIN_EMAIL)
+//        cuando entra un pedido con grabado láser. NO va al cliente.
+//        Disparado desde api/checkout.js (transferencia) y
+//        api/mp-webhook.js (MP approved/pending).
+//
 // Variables de entorno requeridas:
 //   • RESEND_API_KEY  — generada en https://resend.com/api-keys
+//   • ADMIN_EMAIL     — email del admin para recibir alertas internas
+//                       (opcional: si falta, sendAdminPersonalizacionAlert
+//                        loguea warning y hace skip sin tirar error)
 //
 // Si falta RESEND_API_KEY, las funciones retornan early con error
 // claro pero NO tiran excepción — el caller decide qué hacer.
@@ -36,6 +53,7 @@ import {
   templateOrderMpPending,
   templateOrderStatusUpdate,
   templateReviewThankYou,
+  templateAdminPersonalizacionAlert,
   statusEmailSubject,
   statusTriggersEmail,
 } from './email-templates.js';
@@ -285,3 +303,60 @@ export async function sendReviewThankYou(order, review) {
     type:    'review_thank_you',
   });
 }
+
+/**
+ * Envía alerta INTERNA al admin cuando entra un pedido con grabado láser.
+ * Sesión 40.
+ *
+ * Disparado desde:
+ *   • api/checkout.js → flujo de TRANSFERENCIA (post-RPC create_order).
+ *   • api/mp-webhook.js → cuando MP cambia estado a approved/authorized
+ *     o pending/in_process (solo en "transición nueva", para evitar
+ *     duplicados por reintentos de webhook).
+ *
+ * Condición de envío (defensa en profundidad):
+ *   • Existe ADMIN_EMAIL en env.
+ *   • Existe `personalizacion_extra > 0` O al menos un item con
+ *     `personalizacion` (mismo criterio que `blockPersonalizacion`,
+ *     que retorna string vacío si no hay grabado — el email no se
+ *     enviaría con un cuerpo vacío, pero igual filtramos antes para
+ *     no gastar una llamada a Resend).
+ *
+ * Si falta ADMIN_EMAIL: warn + skip (no es error — el feature es opcional).
+ * Si falta RESEND_API_KEY: el helper sendEmail loguea el error y retorna.
+ *
+ * @param {Object} order pedido completo (debe incluir personalizacion_extra)
+ * @param {Array}  items items del pedido (con campo personalizacion si aplica)
+ * @returns {Promise<{ok:boolean, error?:string, skipped?:boolean, message_id?:string}>}
+ */
+export async function sendAdminPersonalizacionAlert(order, items) {
+  if (!order || !order.numero) {
+    return { ok: false, error: 'invalid_order' };
+  }
+
+  // Filtro de relevancia: solo enviamos si efectivamente hay grabado.
+  // Misma condición que blockPersonalizacion en email-templates.js.
+  const tieneExtra      = Number(order.personalizacion_extra || 0) > 0;
+  const algunItemConPer = Array.isArray(items)
+    && items.some(it => it && it.personalizacion);
+  if (!tieneExtra && !algunItemConPer) {
+    return { ok: true, error: null, skipped: true };
+  }
+
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail || !String(adminEmail).includes('@')) {
+    // ADMIN_EMAIL es opcional — si no está configurada, hacemos skip
+    // silencioso. El pedido sigue su curso normal. Vos lo configurás
+    // en Vercel cuando quieras activar las alertas.
+    console.warn('[email] admin_personalizacion: ADMIN_EMAIL no configurado — skip');
+    return { ok: true, error: null, skipped: true };
+  }
+
+  return sendEmail({
+    to:      adminEmail,
+    subject: `⚡ Pedido con grabado #${order.numero} — preparar láser`,
+    html:    templateAdminPersonalizacionAlert(order, items || []),
+    type:    'admin_personalizacion',
+  });
+}
+
