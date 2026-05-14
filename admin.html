@@ -315,6 +315,12 @@ textarea.fi{resize:vertical;min-height:70px}
 .ci option{background:var(--gray)}
 .cupon-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .no-cupones{padding:40px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px}
+/* Sesión 39 — Campos bloqueados en modo edición (código + tipo).
+   Visualmente atenuados para indicar que no se pueden cambiar. */
+.ci.is-readonly, select.ci.is-readonly{
+  background:rgba(255,255,255,0.03);color:var(--muted);cursor:not-allowed;border-color:var(--border)
+}
+.ci.is-readonly:focus{border-color:var(--border)}
 @media(max-width:900px){.cupones-layout{grid-template-columns:1fr}}
 
 /* ── PERSONALIZACIÓN LÁSER (Sesión 28) ──────────────────────────
@@ -1172,7 +1178,11 @@ textarea.fi{resize:vertical;min-height:70px}
                   <span class="cupon-flag__hint">Cuando está marcado, este cupón se entrega <strong>automáticamente</strong> a los clientes que dejan una reseña en seguimiento. Solo el email autorizado puede usarlo. <strong>Solo puede haber UN cupón activo</strong> con esta marca a la vez — si activás este, se desactiva el anterior. Ideal para combinar con "por-email" + "Único uso".</span>
                 </div>
               </label>
-              <button class="btn btn-primary" id="cpSaveBtn" onclick="saveCupon()" style="margin-top:4px">Crear cupón</button>
+              <!-- Sesión 39 — Botones: Crear (modo creación) / Guardar cambios (modo edición) + Cancelar edición -->
+              <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+                <button class="btn btn-primary" id="cpSaveBtn" onclick="saveCupon()">Crear cupón</button>
+                <button class="btn btn-secondary" id="cpCancelEditBtn" onclick="cancelEditCupon()" style="display:none">Cancelar edición</button>
+              </div>
             </div>
           </div>
         </div>
