@@ -424,6 +424,14 @@
         nota:             p.nota || '',
         lleva_billetes:   !!p.lleva_billetes,
         lleva_monedas:    !!p.lleva_monedas,
+        // Personalización láser (Sesión 28 Bloque B): los 4 flags se
+        // normalizan a boolean estricto. Sin esto, renderLpProducts y el
+        // editor de productos veían siempre `undefined` y los checks
+        // nunca se marcaban visualmente (aunque la DB sí los tuviera).
+        permite_grabado_adelante: p.permite_grabado_adelante === true,
+        permite_grabado_interior: p.permite_grabado_interior === true,
+        permite_grabado_atras:    p.permite_grabado_atras    === true,
+        permite_grabado_texto:    p.permite_grabado_texto    === true,
         orden:            p.orden || 1,
         activo:           p.activo !== false,
         colors,
