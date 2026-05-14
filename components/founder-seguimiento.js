@@ -188,6 +188,11 @@
     // Sesión 36: campos para mostrar tarjetas verdes de descuento
     const cuponCodigo       = str(p.cupon_codigo);
     const personalizExtra   = parseInt(p.personalizacion_extra ?? 0, 10) || 0;
+    // Sesión 39: desglose dedicado del descuento.
+    // Si vienen > 0 los usamos directamente; si vienen 0 (pedido viejo previo
+    // a S39) cae al fallback de heurística en renderTotales.
+    const descuentoCupon         = parseInt(p.descuento_cupon         ?? 0, 10) || 0;
+    const descuentoTransferencia = parseInt(p.descuento_transferencia ?? 0, 10) || 0;
 
     // ID formateado para mostrar al usuario (mantiene compat con formato viejo)
     const pedidoIdFormateado = id.toUpperCase().startsWith('FND')
@@ -275,7 +280,7 @@
     renderProductos(orderItems, productosStr);
 
     // Totales
-    renderTotales(subtotal, descuento, envio, total, pago, cuponCodigo, personalizExtra);
+    renderTotales(subtotal, descuento, envio, total, pago, cuponCodigo, personalizExtra, descuentoCupon, descuentoTransferencia);
 
     // ── Panel de tracking/retiro ──
     const seccion       = document.getElementById('trackingSection');
@@ -472,7 +477,7 @@
     return '$' + num.toLocaleString('es-UY');
   }
 
-  function renderTotales(subtotal, descuento, envio, total, pago, cuponCodigo, personalizExtra) {
+  function renderTotales(subtotal, descuento, envio, total, pago, cuponCodigo, personalizExtra, descuentoCupon, descuentoTransferencia) {
     const container = document.getElementById('rTotales');
     let html = '';
 
@@ -484,32 +489,43 @@
       html += `<div class="total-row"><span>Personalización láser</span><span style="color:var(--color-gold)">+${formatPesos(personaliz)}</span></div>`;
     }
 
-    // Sesión 36: tarjetas verdes para descuentos.
-    // Como en la DB solo guardamos el monto TOTAL del descuento
-    // (sin desglosar cupón vs transferencia), usamos heurística:
-    //  - Si hay cupon_codigo Y pago contiene "transferencia" → 2 fuentes
-    //  - Si solo cupon_codigo → solo cupón
-    //  - Si solo transferencia detectada → solo transferencia
-    //  - Si no se puede atribuir → fallback a fila plana "Descuento"
+    // Sesión 36 + 39: tarjetas verdes para descuentos.
+    // Prioridad 1 (Sesión 39): si la DB trae descuento_cupon y/o
+    // descuento_transferencia > 0, los usamos directamente.
+    // Prioridad 2 (fallback Sesión 36): pedidos viejos sin desglose →
+    // heurística por presencia de cuponCodigo + método de pago.
     const descNum = parseFloat(String(descuento).replace(/[^0-9.-]/g, '')) || 0;
+    const dCupon  = parseInt(descuentoCupon         ?? 0, 10) || 0;
+    const dTrans  = parseInt(descuentoTransferencia ?? 0, 10) || 0;
     const hayCupon = !!(cuponCodigo && cuponCodigo.trim());
     const hayTransferencia = /transfer/i.test(pago || '');
+    const tieneDesgloseDB = (dCupon > 0 || dTrans > 0);
 
     if (descNum > 0) {
-      if (hayCupon && hayTransferencia) {
-        // 2 tarjetas: cupón + transferencia. Como no tenemos el split
-        // exacto guardado en la DB, mostramos textos descriptivos sin
-        // monto individual (el monto total ya está en el sumario).
+      if (tieneDesgloseDB) {
+        // ── Prioridad 1: usar el desglose dedicado de la DB ──
+        if (dCupon > 0) {
+          const titulo = hayCupon
+            ? `✓ Cupón ${cuponCodigo.toUpperCase()} aplicado`
+            : '✓ Cupón aplicado';
+          html += renderDiscountCard(titulo, 'Descuento aplicado al pedido', dCupon);
+        }
+        if (dTrans > 0) {
+          html += renderDiscountCard('✓ Pago por transferencia', '10% sobre productos + grabados', dTrans);
+        }
+      } else if (hayCupon && hayTransferencia) {
+        // ── Prioridad 2 (fallback pedido viejo): heurística ──
+        // 2 tarjetas: cupón + transferencia. Sin desglose en DB no podemos
+        // mostrar montos individuales — solo la atribución.
         html += renderDiscountCard(`✓ Cupón ${cuponCodigo.toUpperCase()} aplicado`, 'Descuento aplicado al pedido', null);
         html += renderDiscountCard('✓ Pago por transferencia', '10% sobre productos + grabados', null);
-        // Total descontado para que se entienda la suma
         html += `<div class="total-row"><span style="color:var(--color-muted);font-size:0.78rem">Total descontado</span><span class="descuento-val">−${formatPesos(descuento)}</span></div>`;
       } else if (hayCupon) {
         html += renderDiscountCard(`✓ Cupón ${cuponCodigo.toUpperCase()} aplicado`, 'Descuento aplicado a tu pedido', descNum);
       } else if (hayTransferencia) {
         html += renderDiscountCard('✓ Pago por transferencia', '10% sobre productos + grabados', descNum);
       } else {
-        // Fallback: pedido viejo sin atribución
+        // Fallback final: pedido viejísimo sin atribución
         html += `<div class="total-row"><span>Descuento</span><span class="descuento-val">−${formatPesos(descuento)}</span></div>`;
       }
     }

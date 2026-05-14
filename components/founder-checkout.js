@@ -837,7 +837,16 @@
       return;
     }
 
-    const { subtotal, personalizExtra, discountAmount, shipping, total } = calculateOrderTotals();
+    const {
+      subtotal,
+      personalizExtra,
+      discountAmount,
+      couponAmountSubtotal,
+      couponAmountPersonalizado,
+      transferAmount,
+      shipping,
+      total,
+    } = calculateOrderTotals();
     const lines = state.cart.map(i => {
       const lineTotal = (i.price + (i.personalizacion?.extra || 0)) * i.qty;
       const personalizSuffix = i.personalizacion
@@ -904,6 +913,12 @@
       // Sesión 28 Bloque B
       personalizacion_extra: personalizExtra,
       acepto_no_devolucion:  hayPersonalizacion ? !!$('coConsentNoDev')?.checked : false,
+      // Sesión 39: desglose explícito de descuentos.
+      // descuento_cupon agrupa los dos tipos de cupón (subtotal + personalización)
+      // porque para el cliente y los reportes es "lo que descontó MI código".
+      // descuento_transferencia es el 10% por método de pago.
+      descuento_cupon:         couponAmountSubtotal + couponAmountPersonalizado,
+      descuento_transferencia: transferAmount,
     };
 
     // Items estructurados — se guardan en order_items para que el admin

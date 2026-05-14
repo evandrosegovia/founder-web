@@ -2050,6 +2050,7 @@
       if (c.descuenta_personalizacion)   badges.push('<span title="Descuenta el costo de personalización" style="margin-left:4px;font-size:10px">🎨</span>');
       if (c.es_recompensa_resena)        badges.push('<span title="Cupón de recompensa por reseña" style="margin-left:4px;font-size:10px">⭐</span>');
       const badgesHtml = badges.join('');
+      // Sesión 39: botón "Editar" agregado entre Pausar y Eliminar.
       return `<tr>
         <td><div class="cupon-code">${esc(c.codigo)}${badgesHtml}</div></td>
         <td>${descLabel}</td>
@@ -2060,6 +2061,7 @@
         <td><span class="cupon-badge ${c.activo ? 'activo' : 'inactivo'}">${c.activo ? 'Activo' : 'Inactivo'}</span></td>
         <td>
           <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-secondary" onclick="editCupon('${esc(c.id)}')" title="Editar este cupón">✏️ Editar</button>
             <button class="btn btn-sm ${c.activo ? 'btn-secondary' : 'btn-primary'}" onclick="toggleCupon('${esc(c.id)}')">${c.activo ? '⏸️ Pausar' : '▶️ Activar'}</button>
             <button class="btn btn-danger btn-sm" onclick="deleteCupon('${esc(c.id)}')">🗑️</button>
           </div>
@@ -2076,7 +2078,92 @@
     </table>`;
   }
 
-  /** Crea un cupón nuevo desde el formulario del sidebar. */
+  // Sesión 39: estado del formulario de cupones — 'create' o 'edit'.
+  // Cuando es 'edit', editingCouponId guarda el id que se está editando.
+  // saveCupon() consulta este estado para decidir si llamar a create_coupon
+  // o update_coupon. cancelEditCupon() lo resetea.
+  let editingCouponId = null;
+
+  /** Sesión 39: abre el formulario en modo edición pre-llenado con el cupón. */
+  function editCupon(id) {
+    const c = state.coupons.find(x => x.id === id);
+    if (!c) return;
+
+    editingCouponId = id;
+
+    // Pre-llenar campos del formulario
+    if ($('cpCodigo'))     $('cpCodigo').value     = c.codigo || '';
+    if ($('cpTipo'))       $('cpTipo').value       = c.tipo || 'porcentaje';
+    if ($('cpValor'))      $('cpValor').value      = String(c.valor ?? '');
+    if ($('cpUso'))        $('cpUso').value        = c.uso || 'multiuso';
+    if ($('cpMinCompra'))  $('cpMinCompra').value  = String(c.min_compra ?? '');
+    if ($('cpDesde'))      $('cpDesde').value      = c.desde || '';
+    if ($('cpHasta'))      $('cpHasta').value      = c.hasta || '';
+    if ($('cpActivo'))     $('cpActivo').value     = c.activo ? 'true' : 'false';
+    if ($('cpSoloRepetidos'))      $('cpSoloRepetidos').checked      = !!c.solo_clientes_repetidos;
+    if ($('cpSoloNuevos'))         $('cpSoloNuevos').checked         = !!c.solo_clientes_nuevos;
+    if ($('cpDescuentaPers'))      $('cpDescuentaPers').checked      = !!c.descuenta_personalizacion;
+    if ($('cpEsRecompensaResena')) $('cpEsRecompensaResena').checked = !!c.es_recompensa_resena;
+    if ($('cpSlotsCubiertos'))     $('cpSlotsCubiertos').value       = String(c.personalizacion_slots_cubiertos || 1);
+
+    // Bloquear campos no editables (codigo + tipo) — Sesión 39 opción 2B
+    if ($('cpCodigo')) { $('cpCodigo').readOnly = true; $('cpCodigo').classList.add('is-readonly'); }
+    if ($('cpTipo'))   { $('cpTipo').disabled = true;   $('cpTipo').classList.add('is-readonly'); }
+
+    // Actualizar visual del formulario: título, botón, botón cancelar
+    const titleEl  = document.querySelector('.cupon-form-title');
+    const btnSave  = $('cpSaveBtn');
+    const btnCancel = $('cpCancelEditBtn');
+    if (titleEl)  titleEl.textContent = `Editar cupón "${c.codigo}"`;
+    if (btnSave)  btnSave.textContent = '💾 Guardar cambios';
+    if (btnCancel) btnCancel.style.display = '';
+
+    // Re-sync del toggle de personalización (las clases se aplican
+    // según el checkbox que acabamos de marcar/desmarcar)
+    const classicWrap = $('cuponClassicFields');
+    if (classicWrap) classicWrap.classList.toggle('is-disabled', !!c.descuenta_personalizacion);
+
+    // Scroll suave al formulario para que el admin lo vea
+    const formCard = document.querySelector('.cupon-form-card');
+    if (formCard) formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /** Sesión 39: cancela la edición y limpia el formulario (vuelve a modo crear). */
+  function cancelEditCupon() {
+    editingCouponId = null;
+    resetCuponForm();
+  }
+
+  /** Sesión 39: deja el formulario en estado inicial limpio (modo crear). */
+  function resetCuponForm() {
+    // Limpiar todos los inputs
+    ['cpCodigo', 'cpValor', 'cpMinCompra', 'cpDesde', 'cpHasta']
+      .forEach(id => { const el = $(id); if (el) el.value = ''; });
+    ['cpSoloRepetidos', 'cpSoloNuevos', 'cpDescuentaPers', 'cpEsRecompensaResena']
+      .forEach(id => { const el = $(id); if (el) el.checked = false; });
+    if ($('cpTipo'))   $('cpTipo').value   = 'porcentaje';
+    if ($('cpUso'))    $('cpUso').value    = 'multiuso';
+    if ($('cpActivo')) $('cpActivo').value = 'true';
+    const slotsSel = $('cpSlotsCubiertos'); if (slotsSel) slotsSel.value = '1';
+
+    // Restaurar campos editables (estaban bloqueados en modo edición)
+    if ($('cpCodigo')) { $('cpCodigo').readOnly = false; $('cpCodigo').classList.remove('is-readonly'); }
+    if ($('cpTipo'))   { $('cpTipo').disabled = false;   $('cpTipo').classList.remove('is-readonly'); }
+
+    // Restaurar título y botones
+    const titleEl   = document.querySelector('.cupon-form-title');
+    const btnSave   = $('cpSaveBtn');
+    const btnCancel = $('cpCancelEditBtn');
+    if (titleEl)   titleEl.textContent = 'Nuevo cupón';
+    if (btnSave)   btnSave.textContent = 'Crear cupón';
+    if (btnCancel) btnCancel.style.display = 'none';
+
+    // Re-sync visual de campos clásicos
+    const classicWrap = $('cuponClassicFields');
+    if (classicWrap) classicWrap.classList.remove('is-disabled');
+  }
+
+  /** Sesión 39: guarda el cupón. Bifurca entre crear y editar según editingCouponId. */
   async function saveCupon() {
     const codigo = ($('cpCodigo')?.value || '').trim().toUpperCase();
     const uso    = $('cpUso')?.value  || 'multiuso';
@@ -2092,10 +2179,7 @@
 
     // Sesión 34 fix: en modo personalización los campos clásicos NO se
     // mandan al backend (forzamos defaults). En modo clásico se leen
-    // del formulario normalmente. Esto evita el bug histórico que vimos:
-    // si el usuario escribió "100" en Valor y después marcó el checkbox
-    // de personalización, el frontend lo mandaba igual y terminaba
-    // aplicando 100% sobre el subtotal.
+    // del formulario normalmente.
     const tipo       = descuenta_personalizacion ? 'porcentaje' : ($('cpTipo')?.value || 'porcentaje');
     const valor      = descuenta_personalizacion ? 0 : parseFloat($('cpValor')?.value || '0');
     const min_compra = descuenta_personalizacion ? 0 : (parseFloat($('cpMinCompra')?.value || '0') || 0);
@@ -2109,35 +2193,59 @@
       return;
     }
 
-    // En modo "descuenta personalización" los campos clásicos no aplican
-    // → no exigimos valor > 0. En modo clásico, sí.
     if (!descuenta_personalizacion) {
       if (!valor || valor <= 0) { toast('El valor debe ser mayor a 0', true); return; }
     }
 
-    if (state.coupons.some(c => c.codigo === codigo)) {
+    const isEdit = !!editingCouponId;
+
+    // Solo validamos duplicado de código cuando estamos CREANDO.
+    if (!isEdit && state.coupons.some(c => c.codigo === codigo)) {
       toast('Ya existe un cupón con ese código', true); return;
     }
 
     const btn = $('cpSaveBtn');
     if (btn) { btn.textContent = '⏳ Guardando...'; btn.disabled = true; }
 
-    const { ok, data } = await apiAdmin('create_coupon', {
-      coupon: {
-        codigo, tipo, valor, uso, min_compra,
-        desde: desde || null, hasta: hasta || null, activo,
-        solo_clientes_repetidos,                                                  // Sesión 32
-        solo_clientes_nuevos, descuenta_personalizacion,                          // Sesión 33
-        personalizacion_slots_cubiertos,                                          // Sesión 33
-        es_recompensa_resena,                                                     // Sesión 38
-      },
-    });
+    let resp;
+    if (isEdit) {
+      // ── Modo EDICIÓN ──
+      // Backend bloquea codigo + tipo, pero los mandamos por compatibilidad.
+      // El whitelist del backend descarta lo que no debe editarse.
+      resp = await apiAdmin('update_coupon', {
+        id: editingCouponId,
+        patch: {
+          valor, uso, min_compra,
+          desde: desde || null, hasta: hasta || null, activo,
+          solo_clientes_repetidos,
+          solo_clientes_nuevos,
+          descuenta_personalizacion,
+          personalizacion_slots_cubiertos,
+          es_recompensa_resena,
+        },
+      });
+    } else {
+      // ── Modo CREAR ──
+      resp = await apiAdmin('create_coupon', {
+        coupon: {
+          codigo, tipo, valor, uso, min_compra,
+          desde: desde || null, hasta: hasta || null, activo,
+          solo_clientes_repetidos,
+          solo_clientes_nuevos, descuenta_personalizacion,
+          personalizacion_slots_cubiertos,
+          es_recompensa_resena,
+        },
+      });
+    }
 
-    if (btn) { btn.textContent = 'Crear cupón'; btn.disabled = false; }
+    if (btn) {
+      btn.textContent = isEdit ? '💾 Guardar cambios' : 'Crear cupón';
+      btn.disabled = false;
+    }
 
-    if (!ok) {
+    if (!resp.ok) {
       // Mapeo de errores específicos a mensajes amigables
-      const errCode = data?.error;
+      const errCode = resp.data?.error;
       let msg;
       if (errCode === 'codigo_duplicate') {
         msg = 'Ya existe un cupón con ese código';
@@ -2147,27 +2255,18 @@
         msg = 'Cuando el cupón descuenta personalización, debés indicar entre 1 y 4 slots';
       } else if (errCode === 'valor_required') {
         msg = 'El valor del descuento es obligatorio';
+      } else if (errCode === 'cupon_not_found') {
+        msg = 'El cupón ya no existe — recargá la página';
       } else {
-        msg = 'Error al guardar el cupón' + (data?.message ? ': ' + data.message : '');
+        msg = `Error al ${isEdit ? 'guardar los cambios' : 'guardar el cupón'}` + (resp.data?.message ? ': ' + resp.data.message : '');
       }
       toast(msg, true);
       return;
     }
 
-    // Limpiar inputs (incluidos los 3 checkboxes + selector de slots)
-    ['cpCodigo', 'cpValor', 'cpMinCompra', 'cpDesde', 'cpHasta']
-      .forEach(id => { const el = $(id); if (el) el.value = ''; });
-    ['cpSoloRepetidos', 'cpSoloNuevos', 'cpDescuentaPers', 'cpEsRecompensaResena']
-      .forEach(id => { const el = $(id); if (el) el.checked = false; });
-    const slotsSel = $('cpSlotsCubiertos'); if (slotsSel) slotsSel.value = '1';
-
-    // Sesión 34: re-sincronizar el estado visual de los campos
-    // clásicos (deshabilitar/habilitar) ahora que el checkbox quedó
-    // desmarcado por el reset.
-    const classicWrap = $('cuponClassicFields');
-    if (classicWrap) classicWrap.classList.remove('is-disabled');
-
-    toast(`✅ Cupón ${codigo} creado`);
+    // Éxito → mensaje + limpiar form + recargar tabla
+    toast(`✅ Cupón ${codigo} ${isEdit ? 'actualizado' : 'creado'}`);
+    cancelEditCupon();  // resetea form y editingCouponId
     await loadCoupons();
   }
 
@@ -2194,6 +2293,8 @@
 
     const { ok, data } = await apiAdmin('delete_coupon', { id });
     if (!ok) { toast('Error al eliminar' + (data?.message ? ': ' + data.message : ''), true); return; }
+    // Sesión 39: si estaba en edición, cancelar
+    if (editingCouponId === id) cancelEditCupon();
     toast(`Cupón ${c.codigo} eliminado`);
     await loadCoupons();
   }
@@ -2940,6 +3041,9 @@
   window.saveCupon           = saveCupon;
   window.toggleCupon         = toggleCupon;
   window.deleteCupon         = deleteCupon;
+  // Sesión 39: edición de cupones
+  window.editCupon           = editCupon;
+  window.cancelEditCupon     = cancelEditCupon;
 
   // Banner
   window.previewBanner       = previewBanner;
