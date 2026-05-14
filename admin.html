@@ -781,6 +781,173 @@ textarea.fi{resize:vertical;min-height:70px}
 }
 
 /* ═══════════════════════════════════════════════════════════
+   SESIÓN 43 — MOBILE PARTE 2 (editor productos + personalización)
+   ─────────────────────────────────────────────────────────────
+   Completa Sesión 35. Foco en lo que quedó pendiente:
+   • Editor de productos (modal + filas + grid de fotos)
+   • Panel de personalización láser (galería + formularios)
+   • Card de recompra Sesión 43 (validación, ya es responsive)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ───── Mobile (≤768px) — extensión Sesión 43 ───── */
+@media (max-width: 768px) {
+
+  /* ── Lista de productos (page-productos) ─────────────────────
+     Antes: row horizontal con prod-img + prod-name + prod-price +
+     prod-actions, todo apretado y sin espacio para tap.
+     Ahora: layout más respirado con prod-actions full-width abajo. */
+  .product-row {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 4px;
+  }
+  .prod-name { font-size: 16px; }
+  .prod-meta { font-size: 9px; }
+  .prod-price {
+    font-size: 18px;
+    /* Anular el margin-left:auto que en mobile genera espacio raro */
+    margin-left: 0;
+    margin-right: 0;
+    flex: 1;
+    text-align: right;
+  }
+  .prod-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .prod-actions .btn { padding: 9px 14px; font-size: 10px; }
+
+  /* ── Modal de edición de producto ────────────────────────────
+     Form-grid (2 cols en desktop) pasa a 1 col en mobile.
+     Modal-foot con botones más grandes para tap. */
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .form-full { grid-column: auto; }
+  .fl { font-size: 9px; }
+  .fi { padding: 11px 12px; font-size: 13px; }
+  textarea.fi { min-height: 80px; }
+
+  /* Modal-foot: los botones full-width facilitan tap */
+  .modal-foot {
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+  .modal-foot .btn { width: 100%; padding: 12px 16px; }
+
+  /* ── Editor de colores ───────────────────────────────────────
+     color-name-in tenía width:140px fijo → no responde al ancho.
+     Ahora flex:1 con min-width para que se adapte al espacio. */
+  .color-row {
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .color-name-in {
+    width: auto;
+    flex: 1;
+    min-width: 110px;
+    padding: 9px 11px;
+    font-size: 12px;
+  }
+  .color-estado-btns {
+    flex: 1 1 100%;     /* baja a nueva línea cuando no entra arriba */
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .estado-btn {
+    font-size: 9px;
+    padding: 6px 9px;
+    flex: 1;
+    min-width: 70px;
+  }
+  .estado-btn--stockbajo { margin-left: 0; flex-basis: 100%; }
+  .oferta-precio-wrap {
+    padding-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .oferta-precio-in {
+    width: auto;
+    flex: 1;
+    min-width: 120px;
+  }
+  .add-color-btn { padding: 12px; font-size: 10px; }
+
+  /* ── Editor de fotos (slots por color) ───────────────────────
+     ⚠ Crítico: photo-slots tenía 5 columnas fijas. En mobile cada
+     slot quedaba ~50px → imposible de usar. Pasamos a 2 columnas. */
+  .photo-block {
+    padding: 12px 10px;
+    margin-bottom: 10px;
+  }
+  .photo-slots {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .slot-label { font-size: 9px; }
+  .slot-input { padding: 8px 9px; font-size: 11px; }
+  .slot-btn {
+    font-size: 10px;
+    padding: 9px 6px;
+    letter-spacing: 0.5px;
+  }
+  .slot-prev,
+  .slot-empty { height: 100px; }   /* más grande, mejor visual */
+
+  /* ── Página Personalización Láser ────────────────────────────
+     Galería de ejemplos: cards más grandes para tocar fácil.
+     Checkboxes de colores: 2 columnas para mejor lectura. */
+  .lp-ex-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .lp-ex-card__info { padding: 10px 8px; }
+  .lp-ex-colores {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  .lp-ex-colores label {
+    padding: 9px 10px;
+    font-size: 11px;
+  }
+  #lpExImagePreview img {
+    max-width: 160px;
+    max-height: 160px;
+  }
+
+  /* ── Card de info-box: padding más conservador en mobile ─── */
+  .info-box {
+    padding: 12px;
+    font-size: 11px;
+    line-height: 1.7;
+  }
+}
+
+/* ───── Small mobile (≤480px) — ajustes finos Sesión 43 ───── */
+@media (max-width: 480px) {
+
+  /* Productos: el price baja a nueva línea cuando todo se apretuja */
+  .prod-price { font-size: 16px; }
+
+  /* Editor de fotos: mantener 2 cols pero más compacto */
+  .photo-slots { gap: 8px; }
+  .slot-prev,
+  .slot-empty { height: 85px; }
+
+  /* Galería de ejemplos: una sola columna en pantallas muy chicas */
+  .lp-ex-grid { grid-template-columns: 1fr; }
+
+  /* Modal interno: padding más chico para aprovechar espacio */
+  .modal-body { padding: 14px; gap: 12px; }
+  .modal-head { padding: 12px 14px; }
+  .modal-title { font-size: 18px; }
+}
+
+/* ═══════════════════════════════════════════════════════════
    RESEÑAS — Sesión 38
    ═══════════════════════════════════════════════════════════ */
 .review-filter-btn { font-size: 10px; letter-spacing: 1.5px; }
