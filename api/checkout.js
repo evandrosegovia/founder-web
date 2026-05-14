@@ -354,6 +354,12 @@ async function handleCreateOrder(body, res, req) {
     // sin necesidad de despeje matemático.
     descuento_cupon:         parseInt(order.descuento_cupon,         10) || 0,
     descuento_transferencia: parseInt(order.descuento_transferencia, 10) || 0,
+    // Sesión 39: pasamos el código de cupón al template del email.
+    // La RPC lo persiste en orders.cupon_codigo (la fuente de verdad
+    // en DB es el `p_cupon` que llega aparte a la RPC), pero el email
+    // se arma con `cleanOrder` antes de releerlo. Sin este campo, el
+    // template no detecta presencia de cupón y muestra una sola tarjeta.
+    cupon_codigo: cupon ? String(cupon).trim().toUpperCase() : null,
   };
 
   // Sanitización de items + extracción/limpieza de personalización.
