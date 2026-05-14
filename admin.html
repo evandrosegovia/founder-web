@@ -113,6 +113,23 @@ a:active,button:active,[onclick]:active,label:active{opacity:0.75;transition:opa
 .no-data{padding:32px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px}
 @media(max-width:900px){.sales-grid{grid-template-columns:1fr 1fr}.chart-row{grid-template-columns:1fr}}
 
+/* ── PANEL FINANCIERO (Sesión 41) ─────────────────────────── */
+/* Encabezado con título + selector de período */
+.fin-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:24px 0 14px}
+.fin-header__title{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:8px}
+.fin-header__title::before{content:'';display:block;width:20px;height:1px;background:var(--gold)}
+.fin-period{display:flex;gap:0;background:var(--gray);border:1px solid var(--border)}
+.fin-period__btn{background:transparent;border:none;color:var(--muted);padding:8px 14px;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:inherit;border-right:1px solid var(--border);transition:background .15s,color .15s}
+.fin-period__btn:last-child{border-right:none}
+.fin-period__btn:hover{color:var(--white);background:var(--mid)}
+.fin-period__btn.is-active{background:var(--gold);color:#141414;font-weight:600}
+/* Reutilizamos sales-card pero con tinte rojo para descuentos negativos */
+.sales-card.purple::before{background:#a87cd6}
+/* Mensaje pequeño debajo del título cuando no hay datos del período */
+.fin-empty{padding:20px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:1px;background:var(--gray);border:1px solid var(--border)}
+@media(max-width:900px){.fin-period__btn{padding:7px 10px;font-size:9px}}
+@media(max-width:600px){.fin-header{flex-direction:column;align-items:flex-start}.fin-period{width:100%;overflow-x:auto}.fin-period__btn{flex:1;min-width:48px}}
+
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
 .stat-card{background:var(--gray);border:1px solid var(--border);padding:18px}
 .stat-icon{font-size:20px;margin-bottom:6px}
@@ -942,6 +959,53 @@ textarea.fi{resize:vertical;min-height:70px}
             <div class="sales-card__value" id="salesTicket">—</div>
             <div class="sales-card__label">Ticket promedio</div>
             <div class="sales-card__sub" id="salesTicketSub"></div>
+          </div>
+        </div>
+
+        <!-- Panel financiero con selector de período (Sesión 41) -->
+        <div class="fin-header">
+          <div class="fin-header__title">📊 Análisis financiero</div>
+          <div class="fin-period" role="tablist" aria-label="Período de análisis">
+            <button type="button" class="fin-period__btn"            data-period="7"   onclick="setFinancialPeriod(7,this)">7 días</button>
+            <button type="button" class="fin-period__btn is-active"  data-period="30"  onclick="setFinancialPeriod(30,this)">30 días</button>
+            <button type="button" class="fin-period__btn"            data-period="90"  onclick="setFinancialPeriod(90,this)">90 días</button>
+            <button type="button" class="fin-period__btn"            data-period="120" onclick="setFinancialPeriod(120,this)">120 días</button>
+            <button type="button" class="fin-period__btn"            data-period="365" onclick="setFinancialPeriod(365,this)">365 días</button>
+          </div>
+        </div>
+
+        <div class="sales-grid" id="finCardsGrid">
+          <div class="sales-card gold">
+            <div class="sales-card__icon">📊</div>
+            <div class="sales-card__value" id="finVentasBrutas">—</div>
+            <div class="sales-card__label">Ventas brutas</div>
+            <div class="sales-card__sub" id="finVentasBrutasSub">sin descuentos aplicados</div>
+          </div>
+          <div class="sales-card purple">
+            <div class="sales-card__icon">💸</div>
+            <div class="sales-card__value" id="finAhorroCupones">—</div>
+            <div class="sales-card__label">Ahorros por cupones</div>
+            <div class="sales-card__sub" id="finAhorroCuponesSub"></div>
+          </div>
+          <div class="sales-card blue">
+            <div class="sales-card__icon">💳</div>
+            <div class="sales-card__value" id="finAhorroTransfer">—</div>
+            <div class="sales-card__label">Ahorros por transferencia</div>
+            <div class="sales-card__sub" id="finAhorroTransferSub"></div>
+          </div>
+          <div class="sales-card red">
+            <div class="sales-card__icon">🎯</div>
+            <div class="sales-card__value" id="finTasaDescuento">—</div>
+            <div class="sales-card__label">Tasa de descuento</div>
+            <div class="sales-card__sub" id="finTasaDescuentoSub">descuentos sobre ventas brutas</div>
+          </div>
+        </div>
+
+        <!-- Gráfico top 5 cupones del período -->
+        <div class="chart-row" style="grid-template-columns:1fr">
+          <div class="chart-box">
+            <div class="chart-title">Top 5 cupones (por monto descontado)</div>
+            <div class="bar-chart" id="chartCupones"><div class="no-data">Cargando...</div></div>
           </div>
         </div>
 
