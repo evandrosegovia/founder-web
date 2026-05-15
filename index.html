@@ -496,9 +496,6 @@ select:active,
   font-weight: 400; letter-spacing: 2px;
 }
 .product-card__desc { font-size: var(--text-body-sm); line-height: var(--lh-body-sm); color: var(--color-muted); }
-.product-card__specs { display: flex; gap: 24px; flex-wrap: wrap; }
-.spec-item { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--color-muted); }
-.spec-item::before { content: '—'; color: var(--color-gold); }
 .product-card__footer {
   display: flex; align-items: center; justify-content: space-between;
   padding-top: 20px; border-top: 1px solid var(--color-border);
@@ -1278,7 +1275,6 @@ function renderProductCard(p, index = 0) {
           <div class="product-card__name">Founder ${p.name}</div>
         </div>
         <p class="product-card__desc">${p.desc}</p>
-        <div class="product-card__specs">${p.specs.slice(0,3).map(s=>`<div class="spec-item">${s}</div>`).join('')}</div>
         <div>
           <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--color-muted);margin-bottom:8px">Colores disponibles</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">${colorDots}</div>

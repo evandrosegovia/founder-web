@@ -2201,8 +2201,8 @@ function renderSpecsGrid(p) {
   specs.push({ label: 'Tecnología', value: 'Blindaje RFID — protección electromagnética activa' });
   specs.push({ label: 'Mecanismo', value: 'Botón deslizante lateral para acceso rápido' });
 
-  // Capacidad — del extras si existe, sino primera spec del pipe
-  const capacidad = extras.capacidad?.trim() || p.specs[0] || '';
+  // Capacidad — del extras si existe, sino primera spec del pipe (legacy)
+  const capacidad = extras.capacidad?.trim() || p.specs?.[0] || '';
   if (capacidad) specs.push({ label: 'Capacidad', value: capacidad });
 
   // Dimensiones — del extras, solo si existe
@@ -2260,7 +2260,7 @@ function renderProduct() {
 
   // Info básica
   setText('productName',     `Founder ${p.name}`);
-  setText('productSubtitle', p.specs[0] || 'Protección RFID');
+  setText('productSubtitle', p.specs?.[0] || 'Protección RFID');
   setText('productDesc',     p.desc);
   setText('productPrice',    `$${p.price.toLocaleString('es-UY')}`);
 
@@ -3749,7 +3749,7 @@ function renderRelated() {
         <div class="related-card__info">
           <div>
             <div class="related-card__name">${p.name}</div>
-            <div class="related-card__desc">${p.specs[0] || 'RFID'}</div>
+            <div class="related-card__desc">${p.specs?.[0] || 'RFID'}</div>
           </div>
           <div class="related-card__price">$${p.price.toLocaleString('es-UY')}</div>
         </div>
