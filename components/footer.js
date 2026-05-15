@@ -38,20 +38,28 @@
   ];
 
   // ── CONFIG: medios de pago (Sesión 44) ─────────────────────
-  // Orden visual del array = orden en pantalla. Cada entrada lleva
-  // la imagen del logo en assets/payments/ y el `alt` para accesibilidad.
-  // Estilo por defecto: escala de grises sutil. Al hover: a color.
+  // Orden visual del array = orden en pantalla. Cada entrada tiene un
+  // `id` que se usa para construir los paths a las imágenes:
+  //   assets/payments/{id}_gray.png  → estado normal (gris sutil)
+  //   assets/payments/{id}_color.png → estado hover (a color)
+  // El switch entre versiones se hace via CSS (opacity + transition).
   // Para agregar / quitar / reordenar: editar este array.
+  // Todos los archivos son 200x64 px, PNG con transparencia.
   const FOOTER_PAYMENTS = [
-    { src: 'assets/payments/mastercard.svg',  alt: 'Mastercard' },
-    { src: 'assets/payments/visa.svg',        alt: 'VISA' },
-    { src: 'assets/payments/mercadopago.svg', alt: 'Mercado Pago' },
-    { src: 'assets/payments/oca.svg',         alt: 'OCA' },
-    { src: 'assets/payments/prex.svg',        alt: 'Prex' },
-    { src: 'assets/payments/redpagos.svg',    alt: 'Redpagos' },
-    { src: 'assets/payments/abitab.svg',      alt: 'Abitab' },
-    { src: 'assets/payments/creditel.svg',    alt: 'Creditel' },
-    { src: 'assets/payments/lider.svg',       alt: 'Líder' }
+    { id: 'mastercard',     alt: 'Mastercard' },
+    { id: 'visa',           alt: 'VISA' },
+    { id: 'mercadopago',    alt: 'Mercado Pago' },
+    { id: 'oca',            alt: 'OCA' },
+    { id: 'prex',           alt: 'Prex' },
+    { id: 'redpagos',       alt: 'Redpagos' },
+    { id: 'abitab',         alt: 'Abitab' },
+    { id: 'lider',          alt: 'Líder' },
+    { id: 'ues',            alt: 'UES' },
+    { id: 'dac',            alt: 'DAC' },
+    { id: 'itau',           alt: 'Itaú' },
+    { id: 'bancorepublica', alt: 'Banco República' },
+    { id: 'bbva',           alt: 'BBVA' },
+    { id: 'santander',      alt: 'Santander' }
   ];
 
   // ── CONTENIDO LEGAL (editable) ─────────────────────────────
@@ -93,14 +101,23 @@
       `<li><a href="${l.href}">${l.label}</a></li>`
     ).join('');
 
-    // Sesión 44: logos de medios de pago. Cada uno es un <img> con
-    // loading="lazy" (no son above the fold) y alt para accesibilidad.
-    // Si un archivo falla en cargar, el onerror oculta el contenedor
-    // de ESE logo (defensa: si el repo aún no tiene el SVG, no se ve
-    // un ícono roto).
+    // Sesión 44: logos de medios de pago. Cada uno tiene dos imágenes
+    // superpuestas (gris + color). Por defecto se ve la gris; al hacer
+    // hover/tap, el CSS revela la versión a color con una transición.
+    // El onerror oculta el contenedor entero si falta el archivo, así
+    // no se ve un ícono roto si falta alguno en producción.
     const paymentLogos = FOOTER_PAYMENTS.map(p =>
       `<span class="footer__pay-item" title="${p.alt}">
-        <img src="${p.src}" alt="${p.alt}" loading="lazy" onerror="this.parentNode.style.display='none'">
+        <img class="footer__pay-img footer__pay-img--gray"
+             src="assets/payments/${p.id}_gray.png"
+             alt="${p.alt}"
+             loading="lazy"
+             onerror="this.parentNode.style.display='none'">
+        <img class="footer__pay-img footer__pay-img--color"
+             src="assets/payments/${p.id}_color.png"
+             alt=""
+             aria-hidden="true"
+             loading="lazy">
       </span>`
     ).join('');
 
@@ -310,15 +327,18 @@ body.cart-open .wa-bubble { transform: translateX(-440px); }
 }
 
 /* ── MEDIOS DE PAGO (Sesión 44) ──────────────────────────────
-   Fila de logos en el bottom del footer. Estilo: por defecto
-   monocromáticos (filtro grayscale + opacidad reducida); al pasar
-   el mouse o tap, cada logo recupera su color original.
-   Layout: flex centrado con wrap automático. Responsive natural. */
+   Fila de logos en el bottom del footer. Cada logo tiene 2 imágenes
+   superpuestas: la gris (visible por defecto) y la color (visible
+   al hover/tap). La transición es un cross-fade suave. Las imágenes
+   color están con position:absolute para perfecto overlap.
+   Layout: flex centrado con wrap automático. Con 14 logos suele
+   acomodarse en 2 filas en desktop, 3-4 en mobile.
+   Todos los PNGs son 200x64 px (ratio 3.125:1). */
 .footer__payments {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 18px 22px;
   flex-wrap: wrap;
   width: 100%;
   padding: 4px 0 18px;
@@ -326,34 +346,51 @@ body.cart-open .wa-bubble { transform: translateX(-440px); }
   border-bottom: 1px solid var(--color-border);
 }
 .footer__pay-item {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   height: 28px;
-  /* Defensa: si el SVG tiene fondo blanco, este filtro lo respeta;
-     si es transparente con trazos oscuros, queda menos visible (a
-     resolver subiendo SVG con trazos claros o reemplazando con PNG). */
-  filter: grayscale(1) brightness(1.1) opacity(0.55);
-  transition: filter 0.25s ease, transform 0.25s ease;
+  /* Ancho fijo proporcional al ratio 200:64 — todos parejos */
+  width: 88px;
+  transition: transform 0.25s ease;
 }
 .footer__pay-item:hover,
 .footer__pay-item:active,
 .footer__pay-item:focus {
-  filter: none;
-  transform: scale(1.05);
+  transform: scale(1.08);
 }
-.footer__pay-item img {
+.footer__pay-img {
   height: 100%;
-  width: auto;
-  max-width: 80px;
+  width: 100%;
   object-fit: contain;
   display: block;
-  /* Defensa: si el SVG es muy ancho, lo limitamos al max-width */
+  transition: opacity 0.25s ease;
+}
+/* La versión a color se posiciona encima de la gris,
+   invisible por defecto */
+.footer__pay-img--color {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Al hacer hover/tap, fade in de la color, fade out de la gris */
+.footer__pay-item:hover .footer__pay-img--color,
+.footer__pay-item:active .footer__pay-img--color,
+.footer__pay-item:focus .footer__pay-img--color {
+  opacity: 1;
+}
+.footer__pay-item:hover .footer__pay-img--gray,
+.footer__pay-item:active .footer__pay-img--gray,
+.footer__pay-item:focus .footer__pay-img--gray {
+  opacity: 0;
 }
 
 /* Versión mobile: logos un poco más chicos y gap menor */
 .footer__payments--mobile {
-  gap: 12px;
+  gap: 12px 16px;
   padding: 12px 0 14px;
   margin-top: 4px;
   margin-bottom: 4px;
@@ -362,9 +399,7 @@ body.cart-open .wa-bubble { transform: translateX(-440px); }
 }
 .footer__payments--mobile .footer__pay-item {
   height: 22px;
-}
-.footer__payments--mobile .footer__pay-item img {
-  max-width: 60px;
+  width: 70px;
 }
 `;
 
