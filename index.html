@@ -255,7 +255,16 @@ select:active,
 }
 .cart-count.is-visible { display: flex; }
 
-/* ── HERO ─────────────────────────────────────────────────── */
+/* ── HERO (carrusel multi-slide — Sesión 48) ─────────────────
+   Estructura:
+     .hero                        ← contenedor sticky con altura 100vh
+       .hero__bg .hero__grid      ← decoración estática global
+       .hero__slides              ← contenedor de slides apilados
+         .hero__slide             ← un slide (apilado position: absolute)
+           .hero__banner-img      ← imagen de fondo del slide
+           .hero__content         ← label + título + desc + ctas
+       .hero__dots                ← navegación inferior (si hay 2+ slides)
+       .hero__letter              ← "F" decorativa derecha (estática) */
 .hero {
   min-height: 100vh; display: flex; align-items: center;
   padding: 0 var(--space-lg); position: relative; overflow: hidden;
@@ -272,6 +281,29 @@ select:active,
   background-size: 80px 80px;
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
 }
+
+/* Contenedor de slides — toma todo el hero */
+.hero__slides {
+  position: absolute; inset: 0;
+  display: flex; align-items: center;
+  padding: 0 var(--space-lg);
+}
+/* Slide individual — apilado en la misma posición, controlado por opacity */
+.hero__slide {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center;
+  padding: 0 var(--space-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+.hero__slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
+
 .hero__banner-img {
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover;
@@ -281,7 +313,11 @@ select:active,
 }
 .hero__content {
   position: relative; z-index: 2;
-  max-width: 700px; animation: fadeUp 1.2s ease both;
+  max-width: 700px;
+}
+/* La animación de entrada solo en el slide activo del primer render */
+.hero__slide.is-active .hero__content {
+  animation: fadeUp 1.2s ease both;
 }
 .hero__label {
   font-size: 9px; letter-spacing: 5px; text-transform: uppercase;
@@ -291,6 +327,8 @@ select:active,
 .hero__label::before {
   content: ''; display: block; width: 40px; height: 1px;
   background: var(--color-gold);
+}
+.hero__slide.is-active .hero__label::before {
   animation: heroLineGrow 1.6s cubic-bezier(.4,0,.2,1) both;
 }
 @keyframes heroLineGrow {
@@ -316,6 +354,44 @@ select:active,
   font-size: clamp(140px, 18vw, 260px);
   font-weight: 300; color: rgba(255,255,255,.04);
   pointer-events: none; line-height: 1;
+}
+
+/* ── HERO — Navegación inferior (dots) ─────────────────────
+   Solo aparece si hay 2+ slides activos. Permite al usuario
+   saltar entre slides manualmente. El click pausa el autoplay
+   temporalmente (10s) — mismo patrón que la galería de producto.html. */
+.hero__dots {
+  position: absolute; bottom: 40px; left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  gap: 10px;
+  z-index: 3;
+}
+.hero__dots.is-visible { display: flex; }
+.hero__dot {
+  width: 28px; height: 2px;
+  background: rgba(255,255,255,0.25);
+  border: none; cursor: pointer;
+  padding: 8px 0;
+  position: relative;
+  transition: background var(--transition-base);
+}
+.hero__dot::before {
+  content: '';
+  position: absolute; left: 0; right: 0; top: 50%;
+  height: 2px; transform: translateY(-50%);
+  background: rgba(255,255,255,0.25);
+  transition: background var(--transition-base);
+}
+.hero__dot.is-active::before { background: var(--color-gold); }
+.hero__dot:hover::before { background: rgba(255,255,255,0.55); }
+.hero__dot.is-active:hover::before { background: var(--color-gold); }
+/* Anular el rectángulo visible base — solo se ve el ::before */
+.hero__dot { background: transparent; }
+
+@media (max-width: 600px) {
+  .hero__dots { bottom: 28px; gap: 8px; }
+  .hero__dot { width: 22px; }
 }
 
 /* ── BUTTONS ──────────────────────────────────────────────── */
@@ -502,6 +578,9 @@ select:active,
   .product-skeleton__img,
   .product-skeleton__line { animation: none; }
   .hero__label::before { animation: none; }
+  .hero__slide.is-active .hero__content { animation: none; }
+  .hero__slide { transition: none !important; }
+  .hero__dot::before { transition: none !important; }
   .product-card,
   .product-card::after,
   .product-card__img,
@@ -1011,20 +1090,34 @@ body.cart-open .wa-bubble {
 <script src="components/cloudinary.js"></script>
 <script src="components/header.js"></script>
 
-<!-- ── HERO ────────────────────────────────────────────────── -->
-<section class="hero" aria-label="Presentación">
+<!-- ── HERO (carrusel multi-slide — Sesión 48) ────────────────
+     El contenido de los slides se inyecta dinámicamente desde
+     site_settings.hero_slides vía supabase-client → fetchHeroSlides.
+     Mientras carga, mostramos un slide "esqueleto" con el texto
+     hardcoded por compatibilidad con visitantes que vean el HTML
+     antes de que termine el JS (mejor LCP percibido + accesibilidad). -->
+<section class="hero" aria-label="Presentación" id="heroCarousel">
   <div class="hero__bg" aria-hidden="true"></div>
   <div class="hero__grid" aria-hidden="true"></div>
-  <div id="heroBannerImg" aria-hidden="true"></div>
-  <div class="hero__content">
-    <div class="hero__label">Founder.uy — Uruguay</div>
-    <h1 class="hero__title">Protegé<br>lo que <em>importa.</em></h1>
-    <p class="hero__desc">Billeteras y tarjeteros premium con tecnología RFID. Diseño minimalista, materiales de alta calidad. Tus tarjetas, protegidas.</p>
-    <div class="hero__ctas">
-      <a href="#productos" class="btn btn--primary">Ver colección</a>
-      <a href="tecnologia-rfid.html" class="btn btn--secondary">¿Qué es RFID?</a>
-    </div>
+
+  <!-- Contenedor de slides — el JS reemplaza .hero__slides apenas tiene datos -->
+  <div class="hero__slides" id="heroSlides">
+    <article class="hero__slide is-active" data-slide-index="0">
+      <div class="hero__content">
+        <div class="hero__label">Founder.uy — Uruguay</div>
+        <h1 class="hero__title">Protegé<br>lo que <em>importa.</em></h1>
+        <p class="hero__desc">Billeteras y tarjeteros premium con tecnología RFID. Diseño minimalista, materiales de alta calidad. Tus tarjetas, protegidas.</p>
+        <div class="hero__ctas">
+          <a href="#productos" class="btn btn--primary">Ver colección</a>
+          <a href="tecnologia-rfid.html" class="btn btn--secondary">¿Qué es RFID?</a>
+        </div>
+      </div>
+    </article>
   </div>
+
+  <!-- Dots de navegación — solo visibles si hay 2+ slides activos -->
+  <div class="hero__dots" id="heroDots" role="tablist" aria-label="Navegación de banner"></div>
+
   <div class="hero__letter" aria-hidden="true">F</div>
 </section>
 
@@ -1212,44 +1305,242 @@ function getColorEstado(product, colorName) {
 /** Aplica el banner al hero. Usa fetchpriority="high" para que el navegador
  *  priorice esta imagen sobre las demás (cards de productos, etc).
  *  Fade-in al cargar para que no aparezca abruptamente. */
-function applyBanner(url) {
-  const container = $('heroBannerImg');
-  if (!container) return;
-  container.innerHTML = '';
-  if (!url?.trim()) return;
+// ── HERO SLIDES (Sesión 48) ──────────────────────────────────
+/**
+ * Renderiza y controla el carrusel del hero a partir de los datos
+ * traídos de site_settings.hero_slides (vía founderDB.fetchHeroSlides).
+ *
+ * Comportamiento:
+ *   - 1 slide   → se muestra estático, sin dots, sin autoplay.
+ *   - 2+ slides → se renderizan apilados con autoplay (8s default).
+ *                 Aparecen dots clickeables abajo. Click pausa autoplay
+ *                 12 segundos (mismo patrón que producto.html).
+ *   - Reduced motion → no autoplay; los dots siguen funcionando para
+ *                 navegación manual.
+ *   - Page Visibility → pausa cuando el tab está oculto.
+ *
+ * El primer slide tiene su imagen con fetchpriority=high y eager loading
+ * (es el LCP). El resto son lazy para no penalizar TTFB.
+ */
+const HERO_AUTOPLAY_PAUSE_AFTER_CLICK = 12000; // 12s — anti-fricción
 
-  const img = document.createElement('img');
-  img.alt = '';
-  img.className = 'hero__banner-img';
-  img.decoding = 'async';
-  img.fetchPriority = 'high';   // hint al navegador: prioridad sobre otras imgs
-  img.style.opacity = '0';
-  img.style.transition = 'opacity .35s ease';
-  img.onload = () => { img.style.opacity = ''; };  // vuelve al opacity del CSS (.5)
-  img.onerror = () => img.remove();
-  // Cloudinary fetch + srcset responsive: el banner es LCP; servimos
-  // entre 800w (mobile) y 2000w (retina desktop). f_auto sirve AVIF
-  // donde se soporta, lo cual baja el peso ~60-80% vs JPG original.
-  const trimmed = url.trim();
-  img.src = cld(trimmed, 'hero');
-  const set = cldSrcset(trimmed, 'hero');
-  if (set) {
-    img.srcset = set;
-    img.sizes  = CLD_SIZES.hero;
+const heroState = {
+  slides: [],          // array de slides activos
+  active: 0,           // índice del slide visible
+  timer: null,         // setInterval del autoplay
+  intervalMs: 8000,    // intervalo (lo sobreescribe la config)
+  pausedUntil: 0,      // timestamp ms hasta el cual está pausado por click
+  listenersBound: false, // listeners globales (hover/visibility) ya enganchados
+};
+
+/** Escapado mínimo para texto plano. Para HTML del título usamos sanitización
+ *  más estricta (sanitizeTitleHTML) que permite solo <br> y <em>. */
+function escapeText(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/** Sanitiza el HTML del título: solo permite <br>, <em> (los tags que el
+ *  admin habilita explícitamente). Cualquier otro tag se elimina, pero el
+ *  texto se conserva. Atributos no permitidos: estricto blacklist de `on*`
+ *  y `javascript:`. Suficiente como defensa en profundidad — el JSON ya
+ *  pasa por la API del admin con auth, no por input público. */
+function sanitizeTitleHTML(raw) {
+  const s = String(raw ?? '');
+  // Eliminar atributos peligrosos primero
+  const cleaned = s
+    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
+    .replace(/javascript:/gi, '');
+  // Mantener solo <br>, </br>, <br/>, <em>, </em>. Eliminar el resto.
+  return cleaned.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (match, tag) => {
+    const t = tag.toLowerCase();
+    if (t === 'br') return '<br>';
+    if (t === 'em') return match.toLowerCase().startsWith('</') ? '</em>' : '<em>';
+    return '';
+  });
+}
+
+/** Sanitiza URL de un botón: permite http/https, mailto, tel, anchors (#)
+ *  y rutas relativas. Bloquea javascript: y data:. */
+function sanitizeUrl(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return '#';
+  if (/^javascript:/i.test(s) || /^data:/i.test(s)) return '#';
+  return s;
+}
+
+/** Renderiza un único slide como string HTML. */
+function renderHeroSlide(slide, index, isFirst) {
+  const label = escapeText(slide.label || '');
+  const title = sanitizeTitleHTML(slide.title_html || '');
+  const subtitle = escapeText(slide.subtitle || '');
+  const buttons = Array.isArray(slide.buttons) ? slide.buttons.slice(0, 2) : [];
+
+  const buttonsHTML = buttons.map(b => {
+    const cls = b?.style === 'secondary' ? 'btn btn--secondary' : 'btn btn--primary';
+    const url = sanitizeUrl(b?.url);
+    const txt = escapeText(b?.text || '');
+    if (!txt) return '';
+    return `<a href="${url}" class="${cls}">${txt}</a>`;
+  }).join('');
+
+  // Imagen de fondo — primera con eager+high priority (LCP), las demás lazy
+  let imgHTML = '';
+  if (slide.image_url && slide.image_url.trim()) {
+    const url = slide.image_url.trim();
+    const srcset = cldSrcset(url, 'hero');
+    const loadAttrs = isFirst
+      ? 'loading="eager" fetchpriority="high"'
+      : 'loading="lazy" fetchpriority="low"';
+    imgHTML = `<img class="hero__banner-img" src="${escapeText(cld(url, 'hero'))}"${srcset ? ` srcset="${escapeText(srcset)}" sizes="${escapeText(CLD_SIZES.hero)}"` : ''} alt="" ${loadAttrs} decoding="async">`;
   }
-  container.appendChild(img);
+
+  return `
+    <article class="hero__slide${isFirst ? ' is-active' : ''}" data-slide-index="${index}" aria-hidden="${isFirst ? 'false' : 'true'}">
+      ${imgHTML}
+      <div class="hero__content">
+        ${label ? `<div class="hero__label">${label}</div>` : ''}
+        <h1 class="hero__title">${title}</h1>
+        ${subtitle ? `<p class="hero__desc">${subtitle}</p>` : ''}
+        ${buttonsHTML ? `<div class="hero__ctas">${buttonsHTML}</div>` : ''}
+      </div>
+    </article>`;
+}
+
+/** Aplica la configuración completa de hero slides al DOM. */
+function applyHeroSlides(config) {
+  const container = $('heroSlides');
+  const dotsEl    = $('heroDots');
+  if (!container) return;
+
+  const slides = Array.isArray(config?.slides) ? config.slides : [];
+
+  // ── Caso 0: sin slides → mantener el slide hardcoded del HTML (no romper) ──
+  if (slides.length === 0) return;
+
+  heroState.slides     = slides;
+  heroState.active     = 0;
+  heroState.intervalMs = Number.isFinite(config?.autoplay_ms) ? config.autoplay_ms : 8000;
+
+  // ── Renderizar todos los slides ──
+  container.innerHTML = slides.map((s, i) => renderHeroSlide(s, i, i === 0)).join('');
+
+  // ── Renderizar dots (solo si hay 2+) ──
+  if (dotsEl) {
+    if (slides.length > 1) {
+      dotsEl.innerHTML = slides.map((_, i) => `
+        <button type="button" class="hero__dot${i === 0 ? ' is-active' : ''}" data-dot-index="${i}" role="tab" aria-label="Slide ${i + 1}" aria-selected="${i === 0}"></button>
+      `).join('');
+      dotsEl.classList.add('is-visible');
+    } else {
+      dotsEl.innerHTML = '';
+      dotsEl.classList.remove('is-visible');
+    }
+  }
+
+  // ── Listeners de navegación + autoplay ──
+  setupHeroCarousel();
+}
+
+/** Cambia el slide activo. Si user=true, pausa el autoplay 12s. */
+function goToHeroSlide(targetIdx, userInitiated = false) {
+  const total = heroState.slides.length;
+  if (total === 0) return;
+  const idx = ((targetIdx % total) + total) % total; // wrap negativos
+  if (idx === heroState.active && total > 1) return;
+
+  const container = $('heroSlides');
+  const dotsEl    = $('heroDots');
+  if (!container) return;
+
+  container.querySelectorAll('.hero__slide').forEach((el, i) => {
+    const active = (i === idx);
+    el.classList.toggle('is-active', active);
+    el.setAttribute('aria-hidden', active ? 'false' : 'true');
+  });
+  if (dotsEl) {
+    dotsEl.querySelectorAll('.hero__dot').forEach((d, i) => {
+      const active = (i === idx);
+      d.classList.toggle('is-active', active);
+      d.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  }
+  heroState.active = idx;
+
+  if (userInitiated) {
+    heroState.pausedUntil = Date.now() + HERO_AUTOPLAY_PAUSE_AFTER_CLICK;
+  }
+}
+
+/** Engancha listeners (dots, hover, visibility) e inicia autoplay. */
+function setupHeroCarousel() {
+  const total = heroState.slides.length;
+  const hero  = $('heroCarousel');
+  const dotsEl = $('heroDots');
+  if (!hero) return;
+
+  // Listeners solo una vez por sesión (al re-aplicar config no se duplican).
+  if (!heroState.listenersBound) {
+    // Click en un dot → ir al slide + pausar autoplay
+    if (dotsEl) {
+      dotsEl.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('.hero__dot');
+        if (!btn) return;
+        const i = parseInt(btn.dataset.dotIndex, 10);
+        if (Number.isFinite(i)) goToHeroSlide(i, true);
+      });
+    }
+
+    // Hover desktop → pausar (similar a producto.html)
+    hero.addEventListener('mouseenter', () => { heroState.pausedUntil = Infinity; });
+    hero.addEventListener('mouseleave', () => { heroState.pausedUntil = 0; });
+
+    // Page Visibility → pausa cuando el tab está oculto
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stopHeroAutoplay();
+      } else {
+        startHeroAutoplay();
+      }
+    });
+
+    heroState.listenersBound = true;
+  }
+
+  // Autoplay solo con 2+ slides
+  if (total > 1) startHeroAutoplay();
+  else stopHeroAutoplay();
+}
+
+function startHeroAutoplay() {
+  if (heroState.timer) return;
+  if (heroState.slides.length <= 1) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  heroState.timer = setInterval(() => {
+    // Respetar pausa por hover o click manual
+    if (Date.now() < heroState.pausedUntil) return;
+    goToHeroSlide(heroState.active + 1, false);
+  }, heroState.intervalMs);
+}
+
+function stopHeroAutoplay() {
+  if (heroState.timer) {
+    clearInterval(heroState.timer);
+    heroState.timer = null;
+  }
 }
 
 // ── INDEX — Inicialización ───────────────────────────────────────
 async function init() {
   try {
-    // Disparamos las 3 queries en paralelo, pero NO esperamos al banner
-    // dentro del Promise.all: lo aplicamos apenas resuelva, así aparece
-    // en pantalla en cuanto se descarga (sin bloquear a productos+fotos).
-    // Esto adelanta el banner ~200-600ms en conexiones lentas.
-    const bannerPromise = window.founderDB.fetchBannerUrl()
-      .then(url => { applyBanner(url); })
-      .catch(() => { /* sin banner: el hero igual luce con su gradiente */ });
+    // Disparamos las queries en paralelo. El hero se aplica apenas
+    // resuelve su promesa para acelerar el LCP (no espera al photoMap).
+    const heroPromise = window.founderDB.fetchHeroSlides()
+      .then(config => { applyHeroSlides(config); })
+      .catch(() => { /* sin slides: el HTML hardcoded del fallback queda visible */ });
 
     const [rawProducts, photoMap] = await Promise.all([
       window.founderDB.fetchProducts(),
@@ -1259,9 +1550,8 @@ async function init() {
     state.photoMap  = photoMap;
     state.products  = enrichColors(rawProducts);
 
-    // Asegurar que el banner termine antes de seguir solo si todavía no lo hizo
-    // (no es bloqueante en la práctica — applyBanner ya se ejecutó si fue rápido).
-    bannerPromise.catch(() => {});
+    // Asegurar que el hero termine antes de seguir solo si todavía no lo hizo
+    heroPromise.catch(() => {});
 
     // Guardar snapshot de combos agotados — usado por TODAS las páginas
     // para saber qué productos eliminar del carrito si se agotaron.

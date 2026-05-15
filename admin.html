@@ -281,10 +281,47 @@ textarea.fi{resize:vertical;min-height:70px}
 .toast.err{background:var(--red);color:var(--white)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* BANNER PREVIEW */
+/* BANNER PREVIEW (legado) */
 .banner-preview{background:var(--black);border:1px solid var(--border);padding:24px;text-align:center;margin-bottom:6px;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 .banner-preview img{max-width:100%;max-height:200px;object-fit:cover}
 .banner-preview-empty{color:var(--muted);font-size:11px;letter-spacing:2px}
+
+/* HERO SLIDES (Sesión 48) */
+.hero-slides-empty{background:var(--gray);border:1px solid var(--border);padding:40px;text-align:center;color:var(--muted);font-size:12px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.hero-slide-card{background:var(--gray);border:1px solid var(--border);display:flex;gap:18px;padding:14px;margin-bottom:12px;transition:border-color 0.2s ease,opacity 0.2s ease}
+.hero-slide-card:hover{border-color:rgba(201,169,110,0.4)}
+.hero-slide-card.is-paused{opacity:0.55}
+.hero-slide-card.is-paused .hero-slide-card__preview{filter:grayscale(80%)}
+.hero-slide-card__preview{flex-shrink:0;width:180px;aspect-ratio:16/9;background:var(--black);border:1px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.hero-slide-card__preview img{width:100%;height:100%;object-fit:cover}
+.hero-slide-card__noimg{color:var(--muted);font-size:9px;letter-spacing:2px;text-transform:uppercase}
+.hero-slide-card__info{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.hero-slide-card__row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hero-slide-card__order{font-size:10px;letter-spacing:2px;color:var(--gold);background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.25);padding:3px 8px;font-weight:600}
+.hero-slide-card__title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hero-slide-card__state{font-size:10px;letter-spacing:1px;color:var(--muted)}
+.hero-slide-card__sub{font-size:11px;color:var(--muted);line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.hero-slide-card__actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.hero-slide-card__actions .btn{padding:6px 10px;font-size:9px;letter-spacing:1px}
+.hero-slide-card__actions .btn[disabled]{opacity:0.35;cursor:not-allowed}
+
+/* HERO EDIT MODAL */
+.hero-edit-preview{background:var(--black);border:1px solid var(--border);min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;aspect-ratio:16/9}
+.hero-edit-preview img{width:100%;height:100%;object-fit:cover}
+.hero-edit-noimg{color:var(--muted);font-size:11px;letter-spacing:2px;text-transform:uppercase}
+.hero-edit-buttons{background:rgba(255,255,255,0.02);border:1px solid var(--border);padding:14px}
+.hero-edit-btn-row{display:flex;gap:12px;margin-bottom:14px}
+.hero-edit-btn-row:last-of-type{margin-bottom:8px}
+.hero-edit-btn-num{flex-shrink:0;width:28px;height:28px;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.25);color:var(--gold);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:2px}
+.hero-edit-btn-fields{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+
+@media (max-width:700px){
+  .hero-slide-card{flex-direction:column}
+  .hero-slide-card__preview{width:100%;max-width:none}
+  .hero-edit-btn-row{flex-direction:column;gap:8px}
+  .hero-edit-btn-num{margin-top:0;align-self:flex-start}
+}
+
 /* INFO BOX */
 .info-box{background:rgba(201,169,110,.06);border:1px solid rgba(201,169,110,.2);padding:12px 16px;font-size:10px;color:var(--muted);line-height:1.8}
 .info-box strong{color:var(--gold)}
@@ -1252,50 +1289,98 @@ textarea.fi{resize:vertical;min-height:70px}
         <div id="productListAdmin"><div style="padding:32px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px">Cargando...</div></div>
       </div>
 
-      <!-- BANNER -->
+      <!-- BANNER (Sesión 48: ahora múltiples slides) -->
       <div class="page" id="page-banner">
         <div class="ph">
-          <div><div class="ph-title">Banner de inicio</div><div class="ph-sub">Imagen de fondo de la sección hero</div></div>
+          <div><div class="ph-title">Banners del inicio</div><div class="ph-sub">Slides rotatorios del hero — título, subtítulo, imagen y botones</div></div>
+          <button class="btn btn-primary btn-sm" onclick="addHeroSlide()">+ Nuevo banner</button>
         </div>
-        <div class="card">
-          <div class="card-head"><div class="card-title">Vista previa actual</div></div>
-          <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
-            <div class="banner-preview" id="bannerPreview">
-              <div class="banner-preview-empty" id="bannerPreviewEmpty">Sin imagen de banner — se usa el fondo degradado por defecto</div>
-            </div>
-            <div class="info-box">
-              <strong>¿Cómo funciona?</strong><br>
-              El banner se guarda en la base de datos y se muestra automáticamente a todos los visitantes del sitio en todos los navegadores. No necesitás tocar código.<br><br>
-              <strong>Formato recomendado:</strong> imagen apaisada (1920×600px), oscura o con texto blanco encima.
-            </div>
+        <div class="info-box" style="margin-bottom:18px">
+          <strong>💡 Cómo funciona:</strong> Podés crear varios banners y se irán mostrando uno después de otro (cada <strong>8 segundos</strong>) en la home.<br>
+          • <strong>Pausar</strong> un banner lo oculta del sitio pero queda guardado para reactivarlo cuando quieras (no consume rendimiento mientras está pausado).<br>
+          • Si dejás <strong>solo 1 activo</strong>, no rota — se muestra fijo.<br>
+          • <strong>Formato de imagen:</strong> apaisada 1920×600px, oscura o con espacio para texto blanco a la izquierda.
+        </div>
+        <div id="heroSlidesList">
+          <div style="padding:32px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px">Cargando banners...</div>
+        </div>
+      </div>
+
+      <!-- Modal de edición de slide -->
+      <div class="modal-overlay" id="heroEditModal" onclick="if(event.target===this)closeHeroEditModal()">
+        <div class="modal" style="max-width:720px;width:100%">
+          <div class="modal-head">
+            <div class="modal-title">Editar banner</div>
+            <button class="modal-x" onclick="closeHeroEditModal()">✕</button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="heroEditId">
+
             <div class="fg">
-              <div class="fl">Subir imagen desde tu computadora</div>
-              <button class="btn btn-primary" onclick="pickBannerFile()" style="align-self:flex-start">📁 Elegir imagen del equipo</button>
-              <div class="fhint" style="margin-top:4px">La imagen se sube directo al almacenamiento de la tienda y queda guardada automáticamente.</div>
-            </div>
-            <div style="border-top:1px solid var(--border);padding-top:14px">
-              <div class="fg">
-                <div class="fl">O pegá directamente la URL de una imagen</div>
-                <div class="conv-row">
-                  <input type="text" class="conv-inp" id="bannerInput" placeholder="https://...">
-                  <button class="conv-btn" onclick="previewBanner()">Vista previa</button>
-                </div>
+              <div class="fl">Imagen de fondo</div>
+              <div class="hero-edit-preview" id="heroEditImagePreview">
+                <div class="hero-edit-noimg">Sin imagen</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                <button class="btn btn-primary btn-sm" onclick="pickHeroEditFile()">📁 Subir imagen</button>
+              </div>
+              <div class="fhint" style="margin-top:6px">O pegá una URL directamente:</div>
+              <div class="conv-row">
+                <input type="text" class="conv-inp" id="heroEditImage" placeholder="https://..." oninput="previewHeroEditImage()">
+                <button class="conv-btn" onclick="previewHeroEditImage()">Ver</button>
               </div>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-primary" onclick="saveBanner()">💾 Guardar banner</button>
-              <button class="btn btn-secondary" onclick="clearBanner()">✕ Quitar banner</button>
+
+            <div class="fg">
+              <div class="fl">Etiqueta superior (texto pequeño dorado)</div>
+              <input type="text" class="conv-inp" id="heroEditLabel" placeholder="Founder.uy — Uruguay">
+              <div class="fhint">Suele ir un nombre de marca o categoría. Podés dejarlo vacío.</div>
             </div>
-            <div class="fhint">El banner guardado se muestra en index.html si tenés el código de integración activo (ver más abajo).</div>
+
+            <div class="fg">
+              <div class="fl">Título principal</div>
+              <textarea class="conv-inp" id="heroEditTitle" rows="3" style="font-family:'Cormorant Garamond',serif;font-size:18px;resize:vertical" placeholder="Protegé&#10;lo que <em>importa.</em>"></textarea>
+              <div class="fhint">Podés usar <code>&lt;br&gt;</code> para saltos de línea y <code>&lt;em&gt;texto&lt;/em&gt;</code> para resaltar en dorado (sin negrita).</div>
+            </div>
+
+            <div class="fg">
+              <div class="fl">Subtítulo / descripción</div>
+              <textarea class="conv-inp" id="heroEditSubtitle" rows="2" style="resize:vertical" placeholder="Descripción breve que aparece abajo del título."></textarea>
+            </div>
+
+            <div class="hero-edit-buttons">
+              <div class="fl" style="margin-bottom:8px">Botones (opcional — podés dejar 0, 1 o 2)</div>
+
+              <div class="hero-edit-btn-row">
+                <div class="hero-edit-btn-num">1</div>
+                <div class="hero-edit-btn-fields">
+                  <input type="text" class="conv-inp" id="heroEditBtn1Text" placeholder="Texto del botón (ej: Ver colección)">
+                  <input type="text" class="conv-inp" id="heroEditBtn1Url" placeholder="A dónde lleva (ej: #productos o /producto.html?p=Simple)">
+                  <select class="conv-inp" id="heroEditBtn1Style">
+                    <option value="primary">Estilo: Principal (claro)</option>
+                    <option value="secondary">Estilo: Secundario (con borde)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="hero-edit-btn-row">
+                <div class="hero-edit-btn-num">2</div>
+                <div class="hero-edit-btn-fields">
+                  <input type="text" class="conv-inp" id="heroEditBtn2Text" placeholder="Texto del botón (vacío = sin segundo botón)">
+                  <input type="text" class="conv-inp" id="heroEditBtn2Url" placeholder="A dónde lleva">
+                  <select class="conv-inp" id="heroEditBtn2Style">
+                    <option value="primary">Estilo: Principal (claro)</option>
+                    <option value="secondary" selected>Estilo: Secundario (con borde)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="fhint">Para dejar sin botones, vaciá los dos campos de texto.</div>
+            </div>
           </div>
-        </div>
-        <div class="card" style="margin-top:14px">
-          <div class="card-head"><div class="card-title">✅ Integración automática</div></div>
-          <div class="card-body">
-            <div class="info-box">
-              El banner se guarda en la base de datos y se carga automáticamente en el sitio para <strong>todos los visitantes</strong> en todos los navegadores.<br><br>
-              No necesitás tocar ningún código. Subí la imagen, hacé click en <strong>Guardar banner</strong> y listo.
-            </div>
+          <div class="modal-foot">
+            <button class="btn btn-secondary" onclick="closeHeroEditModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="saveHeroSlideEdit()">💾 Guardar cambios</button>
           </div>
         </div>
       </div>
