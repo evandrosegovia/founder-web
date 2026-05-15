@@ -372,7 +372,9 @@ body.cart-open .wa-bubble { transform: translateX(-440px); }
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px 28px;
+  /* Sesión 44 (refinamiento): gap más compacto con los nuevos logos
+     más densos (ratio 125:64). Vertical 14px, horizontal 16px. */
+  gap: 14px 16px;
   flex-wrap: wrap;
   width: 100%;
   padding: 0 0 22px;
@@ -384,10 +386,11 @@ body.cart-open .wa-bubble { transform: translateX(-440px); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* Logos más grandes en desktop para mejor legibilidad */
-  height: 34px;
-  width: 108px;
-  flex: 0 0 108px;
+  /* Logos más grandes y proporcionales al nuevo ratio 125:64 (~1.95).
+     38px alto → 38 × 1.95 = ~74px ancho. */
+  height: 38px;
+  width: 74px;
+  flex: 0 0 74px;
   transition: transform 0.25s ease;
 }
 .footer__pay-item:hover,
@@ -444,9 +447,11 @@ body.cart-open .wa-bubble { transform: translateX(-440px); }
   border-bottom: none;
 }
 .footer__payments--mobile .footer__pay-item {
-  height: 24px;
-  width: 76px;
-  flex: 0 0 76px;
+  /* Sesión 44 (refinamiento): un punto más grande que antes,
+     y proporcional al nuevo ratio 125:64. */
+  height: 28px;
+  width: 55px;
+  flex: 0 0 55px;
 }
 `;
 
