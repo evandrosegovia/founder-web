@@ -45,7 +45,7 @@
 
   // ── Conversor: fila de products (Supabase) → objeto UI ───────
   // Mantiene la forma que esperaba el código viejo:
-  //   { id, name, price, desc, colors:[{name}], extras:{...} }
+  //   { id, name, price, desc, colors:[{name}], specs:[...], extras:{...} }
   function toLegacyProduct(row, i) {
     // Reconstruir extras para mantener compat con getColorEstado()
     const colores_estado = {};
@@ -89,6 +89,11 @@
       price:  row.precio,
       desc:   row.descripcion || '',
       colors,
+      // Sesión 44: `specs` ya no se muestra como lista, pero se sigue
+      // exponiendo para fallbacks internos (subtítulo del producto,
+      // capacidad por defecto, schema.org). Los datos viven en la
+      // columna `especificaciones` de la tabla products.
+      specs:  Array.isArray(row.especificaciones) ? row.especificaciones : [],
       extras,
       // Personalización láser (Sesión 28 Bloque B): flags por producto.
       // Defaults a false si la columna aún no existe en DB (para que no
