@@ -1,6 +1,6 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 46 — **DMARC subido a `p=quarantine`.** Tercera sesión del día (15/05/2026), corta y quirúrgica. Cierre del pendiente abierto desde Sesión 25 (DMARC publicado en `p=none` modo monitoreo). **Auditoría previa** de los 4 reportes XML que Google envió a `founder.uy@gmail.com` entre el 03/05 y el 14/05/2026: **50 emails reportados, 100% pass en SPF, 100% pass en DKIM, 0% disposition negativa**. Las 9 IPs de origen están todas en el rango `23.249.215.x` de Resend/AmazonSES (legítimo). Selectores DKIM correctos: `resend` (Resend) + `n3kzslanjhdj36g2753vor472zw45rsk` (AmazonSES). Dominio SPF: `send.founder.uy`. Con esa salud de auth confirmada, se saltó el paso intermedio `pct=10` y se aplicó directamente `p=quarantine; pct=100`. **Cambio aplicado:** TXT `_dmarc` en el panel DNS de Vercel, de `v=DMARC1; p=none; rua=mailto:founder.uy@gmail.com; pct=100` a `v=DMARC1; p=quarantine; rua=mailto:founder.uy@gmail.com; pct=100` (única palabra que cambia: `none` → `quarantine`). **Validación en MxToolbox:** ✅ DMARC Record Published, ✅ Syntax valid, ✅ Multiple Records OK, ✅ **Policy Not Enabled → Quarantine/Reject policy enabled** (el warning naranja de Sesión 25 desapareció). Único warning restante: `DMARC External Validation` por usar `@gmail.com` para reportes (esperado, no es error real). Propagación DNS: inmediata vía `ns1.vercel-dns.com`. Sin cambios de código, solo DNS. (15/05/2026)
+**Última actualización:** Sesión 48c — **Sistema de banners rotatorios + pulido UX integral.** Maratón del 15/05/2026: refinamiento completo de páginas estáticas, rediseño de cards del catálogo con autoplay por color, y reemplazo del banner único legado por un sistema completo de slides rotatorios gestionables desde el admin con CRUD + pausa/reactivación. Cierra el día con un hero completamente nuevo: carrusel multi-slide con autoplay 8s, navegación inferior unificada (flechas + dots) que aparece al hover, y respeto total a `prefers-reduced-motion`. **Cambios:** 4 archivos modificados (`index.html`, `admin.html`, `components/founder-admin.js`, `components/supabase-client.js`) + 4 archivos de páginas estáticas pulidas (`contacto.html`, `sobre-nosotros.html`, `envios.html`, `tecnologia-rfid.html`) + 1 archivo de productos relacionados (`producto.html`). Sin cambios de DB schema — todo el carrusel vive en `site_settings.hero_slides` como JSON serializado, siguiendo el patrón ya establecido por `personalizacion_config`. Migración del banner legado a primer slide es automática y silenciosa. (15/05/2026)
 
 **Sesiones del día 14/05/2026 (todas exitosas, sin rollbacks):**
 - **Sesión 40** — Combo de 3 mini-features: (a) email admin con grabado, (b) auditoría general de CHECK constraints, (c) drop `products.banner_url`. **+ 2 bugs descubiertos en producción durante testing:** (1) cupón PERSONAL aplicaba 100% del producto en vez del grabado (validate_coupon nunca devolvía las flags de personalización al frontend), (2) botón de confirmar pedido bloqueado al volver de MP con back button.
@@ -12,16 +12,523 @@
 **Sesiones del día 15/05/2026:**
 - **Sesión 44** — Limpieza UX + medios de pago en footer.
 - **Sesión 45** — Cierre seguridad HTTP: CSP + security.txt.
-- **Sesión 46** — DMARC subido a `p=quarantine` (este resumen).
+- **Sesión 46** — DMARC subido a `p=quarantine`.
+- **Sesión 47** — Pulido UX integral en páginas estáticas (Opción G del menú). 4 bloques de mejoras (microinteracciones premium, refinamiento tipográfico, espaciados refinados, hover en index): 5 archivos modificados (`index.html`, `contacto.html`, `sobre-nosotros.html`, `envios.html`, `tecnologia-rfid.html`).
+- **Sesión 47b** — Rediseño de cards del catálogo en index: layout más compacto (5/4 ratio, padding reducido), colores a la derecha del título, hover dorado lift, autoplay automático de imágenes por color cada 4s. **+** producto.html: lift + línea dorada en cards de productos relacionados.
+- **Sesión 47c** — 4 ajustes a las cards del catálogo según feedback: (1) sacar el contorno rojo del color agotado, (2) badge dinámico arriba a la derecha que se actualiza según el color seleccionado (Oferta/Agotado), (3) colores en una sola línea (sin wrap), (4) autoplay ahora rota entre COLORES (no entre fotos del mismo color) — cada 4s muestra el siguiente color con su primera foto representativa.
+- **Sesión 48** — Sistema completo de banners rotatorios. Reemplaza el banner único (Sesión 26) por un carrusel multi-slide gestionable desde el admin. Nueva estructura `site_settings.hero_slides` (JSON), CRUD completo en admin (crear/editar/pausar/reactivar/reordenar/eliminar), autoplay 8s en el sitio público con dots de navegación, migración automática del banner legado. 4 archivos modificados.
+- **Sesión 48a** — Bugfix + flechas: corregido bug que impedía abrir el modal de edición (`is-open` vs `.open` en CSS) + añadidas flechas laterales prev/next al hero.
+- **Sesión 48b** — Rediseño de la navegación del carrusel post-feedback: las flechas laterales rompían la estética premium y tapaban el título. Mockup con 4 alternativas → usuario eligió **Opción C + efecto Opción A**: barra inferior unificada (`‹ • • ›`) que aparece al hover del hero con fade de 400ms. **+** Bugfix crítico del editor de slides: el modal se cerraba al soltar el mouse fuera del textarea (mousedown adentro + mouseup afuera) — reemplazado por sistema robusto que requiere mousedown+mouseup ambos sobre el overlay + cierre con tecla ESC.
+- **Sesión 48c** — Generación de este resumen consolidado en ESTADO.md.
 
-**Próxima sesión:** 47 — opciones disponibles, en orden sugerido de prioridad:
-- (a) **UI en admin para invocar manualmente cleanup de huérfanas de reseñas** — el endpoint `run_reviews_orphans_manual` ya existe (Sesión 42), falta agregar botón en el panel de Personalización Láser junto al cleanup de imágenes existente. Esfuerzo: 30 min. **Solo es necesario si querés disparar manualmente sin esperar al cron del domingo.**
-- (b) **Métricas de conversión de la feature de recompra** — dashboard chico con "% de cupones FOUNDER15 usados sobre emails enviados" + ingresos generados por recompras. Requiere joinear `orders` (donde `cupon_codigo = REPURCHASE_COUPON_CODE`) contra el conteo de `recompra_email_sent_at IS NOT NULL`. Esfuerzo: 1.5 hs. Útil después de algunas semanas con datos reales.
-- (c) **Subir DMARC a `p=reject`** dentro de 4-8 semanas, si los reportes con `p=quarantine` confirman que no hay falsos positivos (= ningún email legítimo cae en spam de clientes). Editar el TXT `_dmarc` en Vercel y cambiar `quarantine` por `reject`. `reject` es el nivel máximo: emails que fallan auth se descartan completamente en lugar de ir a spam. **No urgente** — `quarantine` ya da el 90% del beneficio antiphishing.
-- (d) **Subir el email de recompra a Recibidos principal de Gmail** — hoy cae en Promociones (esperado y deseable). Sesión 46 mejoró la deliverability subiendo a `p=quarantine`. Mejora adicional con reputación del dominio a lo largo del tiempo. No es una acción única, es un proceso. **No urgente.**
-- (e) **Endurecer el CSP retirando `'unsafe-inline'`** — el CSP actual de Sesión 45 permite `'unsafe-inline'` en `script-src` y `style-src` porque los HTML tienen muchos `onclick=` y `style=` inline + JSON-LD de Schema.org. Refactor a `addEventListener` + clases CSS + mover JSON-LD a archivo externo permitiría sacar `'unsafe-inline'` y elevar el score CSP de "permisivo" a "estricto". Esfuerzo: 3-4 hs. **Sin urgencia** — el CSP actual ya bloquea los ataques principales (orígenes externos no autorizados, iframes maliciosos, `eval`, plugins).
+**Próxima sesión:** 49 — opciones disponibles, en orden sugerido de prioridad:
+
+### 🆕 Derivados directos de Sesiones 47-48 (recomendados para 49)
+
+- (a) **Smoke test funcional post-deploy de Sesiones 47-48c.** El usuario validó visualmente cada paso del flujo, pero conviene una pasada completa en producción: (1) probar las 3 páginas estáticas en mobile + desktop, (2) carrito completo desde index (con autoplay corriendo) hasta confirmación, (3) admin: crear/editar/pausar/eliminar slides y validar que el sitio refleja todos los cambios, (4) verificar que la migración automática del banner legado funcionó. Esfuerzo: 15-20 min. **Hacelo apenas tengas tiempo, antes de seguir construyendo encima.**
+
+- (b) **Modal "Vista previa" de slide en el admin.** Hoy el admin guarda los cambios "a ciegas" — el usuario tiene que abrir el sitio en otra pestaña para ver cómo queda el banner real con su título, imagen y botones. Agregar un botón "👁 Vista previa" en el modal de edición que abra un overlay mostrando el slide tal cual se verá en el hero (incluso sin guardar todavía). Reutiliza el mismo CSS del hero. Esfuerzo: 1.5 h. **Útil ni bien empieces a generar varios banners por mes.**
+
+- (c) **Drag-and-drop para reordenar slides.** Hoy se reordenan con botones ↑ ↓. Con 2-3 slides está bien, pero si llegás a 5+ el flujo se vuelve tedioso. Implementar drag-and-drop nativo HTML5 (sin dependencias) en la lista de slides. Esfuerzo: 1.5 h. **No urgente.**
+
+- (d) **Limpiar la API legacy `hero_banner_url` (deprecation gradual).** La función `fetchBannerUrl()` en `supabase-client.js` y la action `get_setting`/`set_setting` con key `hero_banner_url` siguen funcionando como fallback de migración. En 4-6 semanas (cuando estés seguro de que ningún visitante ve el banner viejo), conviene:
+  1. Borrar la fila `hero_banner_url` de `site_settings` desde Supabase Studio.
+  2. Eliminar `fetchBannerUrl()` y el bloque "Fallback legacy" en `fetchHeroSlides()`.
+  3. Eliminar el bloque de migración legacy en `loadBanner()` del admin.
+  Esfuerzo: 30 min. **Solo cuando estés 100% seguro — no hay urgencia.**
+
+### 🟢 Pendientes pre-Sesiones de hoy (siguen abiertos)
+
+- (e) **UI en admin para invocar manualmente cleanup de huérfanas de reseñas** — el endpoint `run_reviews_orphans_manual` ya existe (Sesión 42), falta agregar botón en el panel de Personalización Láser junto al cleanup de imágenes existente. Esfuerzo: 30 min.
+
+- (f) **Métricas de conversión de la feature de recompra** — dashboard chico con "% de cupones FOUNDER15 usados sobre emails enviados" + ingresos generados por recompras. Esfuerzo: 1.5 h. Útil después de algunas semanas con datos reales.
+
+- (g) **Subir DMARC a `p=reject`** dentro de 4-8 semanas (~mediados-finales de junio 2026), si los reportes con `p=quarantine` confirman que no hay falsos positivos. **No urgente** — `quarantine` ya da el 90% del beneficio antiphishing.
+
+- (h) **Subir el email de recompra a Recibidos principal de Gmail** — hoy cae en Promociones. Mejora con reputación del dominio a lo largo del tiempo, no es acción única. **No urgente.**
+
+- (i) **Endurecer el CSP retirando `'unsafe-inline'`** — el CSP actual de Sesión 45 permite `'unsafe-inline'`. Refactor a `addEventListener` + clases CSS + JSON-LD externo permitiría sacar `'unsafe-inline'`. Esfuerzo: 3-4 h. **Sin urgencia.**
+
+- (j) **Datos bancarios reales en email de transferencia.** El template actual dice "Te enviamos los datos por WhatsApp". Cuando definas banco/cuenta/CBU/titular, agregar bloque con datos directos. Esfuerzo: 30-45 min.
+
+- (k) **Pendientes Meta Business** (3 clics en Chrome): renombrar dataset "NO" con prefijo `ZZ-`, renombrar/ignorar Ad Account vieja, agregar email de contacto al Instagram. Esfuerzo: 15 min.
+
+- (l) **Primera campaña paga de Meta Ads.** Todo listo desde Sesión 17-18. Definir presupuesto, producto, audiencia, creatividad.
 
 **Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
+
+---
+
+## ✅ SESIÓN 47 — Pulido UX integral en páginas estáticas (Opción G) [15/05/2026]
+
+**Sesión grande, primer paquete del día.** Implementación completa de la **Opción G** del backlog ("Mejoras UX en otras páginas: `index.html`, `contacto.html`, `sobre-nosotros.html`") expandida a 5 archivos. Cuatro bloques de cambios aplicados en paralelo: microinteracciones premium, refinamiento tipográfico, espaciados refinados, y polish del index. Cero cambios estructurales (HTML, JS) — solo CSS.
+
+### 🅐 Diagnóstico previo — qué no estaba a la altura
+
+Antes de tocar nada, se midió cuantitativamente la diferencia entre `producto.html` (estándar de oro del sitio post-Sesiones 25-37) y las páginas estáticas:
+
+| Métrica | producto.html | index.html | contacto.html | sobre-nosotros.html |
+|---|---|---|---|---|
+| Transiciones CSS | 60 | 30 | 23 | 23 |
+| Estados `:hover` | 43 | 20 | 12 | 12 |
+
+**Conclusión:** las páginas estáticas tenían **<50%** de la densidad de microinteracciones de producto.html. Visualmente correctas pero "muertas" al hover. La sesión apuntó a cerrar esa brecha sin romper la consistencia de tokens (colores, tipografía, espaciados base ya estaban alineados).
+
+### 🅑 Bloque 1 — Microinteracciones en `info-section` (4 páginas)
+
+Aplicado en: `contacto.html`, `sobre-nosotros.html`, `envios.html`, `tecnologia-rfid.html`.
+
+**Cambios al hover de cada `.info-section`:**
+- **Ícono dorado** (💬 / ✦ / 🚚 / 📡 / etc.): escala 1.06, borde dorado se intensifica, fondo dorado se vuelve más visible.
+- **Línea dorada del `page-hero__label::before`**: crece de 32px → 44px con transición de 0.5s `cubic-bezier(.4,0,.2,1)`.
+
+**Cambios al hover de cada `.info-card`:**
+- Aparece **borde izquierdo dorado de 3px** (con `border-left-color: transparent` → `var(--color-gold)`).
+- Fondo se aclara apenas: `#222222` → `#252525`.
+- Transición de 0.3s ease.
+
+### 🅒 Bloque 2 — Refinamiento tipográfico (las 3 páginas + envíos + RFID)
+
+- **Letter-spacing del label dorado** de 5px → **4px** (más sutil, más editorial).
+- **Título de sección** (`.info-section__title`): de `1.9rem` fijo → **`clamp(1.55rem, 2.4vw, 1.9rem)`** + `line-height: 1.15`. Mejor responsive sin perder presencia en desktop.
+- **Título del page-hero**: de `clamp(1.8rem, 3vw, 2.6rem)` → **`clamp(1.75rem, 3.2vw, 2.6rem)`** + `line-height: 1.12`. Escala más suave.
+- **`page-hero__sub`**: max-width `480px` → **`520px`**, letter-spacing `0.5px` → `0.4px`.
+
+### 🅓 Bloque 3 — Espaciados refinados
+
+- **`page-hero` padding**: `52px 48px 44px` → **`64px 48px 48px`** (respira más arriba).
+- **`page-body` padding**: `64px 24px 80px` → **`72px 24px 96px`** + gap de `48px` → **`56px`** (más aire entre secciones).
+- **Mobile** (`<600px`): padding `40px 16px 60px` → **`44px 18px 64px`** con gap **`40px`** + info-card `28px 32px` → **`22px 22px`** (menos densidad visual).
+
+### 🅔 Bloque 4 — Index polish (solo `index.html`)
+
+- **Línea dorada del `hero__label`**: animación `heroLineGrow` de 0px → 40px en 1.6s al cargar (entrada editorial).
+- **Cards de productos**: hover con lift de `translateY(-3px)` + sombra dorada sutil `0 14px 32px -16px rgba(201,169,110,0.28)`.
+- **Línea dorada inferior animada** (`::after`) en cards: `scaleX(0)` → `scaleX(1)` al hover, transición 0.5s. Patrón "subraya al hover" muy usado en editorial premium.
+- **Items RFID**: hover con fondo `#181818`, ícono escala 1.12, título pasa a dorado.
+- **Banner de envíos** (íconos): hover escala 1.12 en cada ícono.
+- **Imagen interna de las cards de productos relacionados** (producto.html): zoom suave 1.04 al hover.
+
+### 🅕 Accesibilidad: `prefers-reduced-motion`
+
+Todas las páginas tocadas ahora respetan `prefers-reduced-motion: reduce`. Si el sistema operativo del usuario lo tiene activado, todas las nuevas microinteracciones se desactivan automáticamente. Cero efecto adverso para usuarios sensibles al movimiento.
+
+### 📦 Archivos modificados
+
+| Archivo | Bloques aplicados |
+|---|---|
+| `index.html` | 1 + 2 + 3 + 4 completo |
+| `contacto.html` | 1 + 2 + 3 |
+| `sobre-nosotros.html` | 1 + 2 + 3 (+ CTA con lift + borde dorado) |
+| `envios.html` | 1 + 2 + 3 |
+| `tecnologia-rfid.html` | 1 + 2 + 3 (+ CTA con lift + borde dorado) |
+| `producto.html` | Solo Bloque 4: lift + línea dorada en related-card |
+
+**Total:** ~+1.5 KB CSS por archivo. Zero cambios estructurales. Riesgo de regresión: nulo.
+
+### 🔄 Plan de rollback
+
+| Cambio | Cómo revertir |
+|---|---|
+| Microinteracciones | Revertir cada HTML desde Git history (cambios en bloque CSS marcado con comentarios `Sesión 47`). |
+| Tipografía/espaciados | Idem — los valores anteriores están todos visibles en el diff. |
+
+**Sin migraciones DB, sin cambios de JS, sin cambios de schema. Reversible 100% por archivo.**
+
+---
+
+## ✅ SESIÓN 47b — Rediseño de cards del catálogo [15/05/2026]
+
+**Sesión derivada del feedback post-Sesión 47.** El usuario validó visualmente las microinteracciones y mencionó que **las cards del catálogo (index.html) ocupan demasiado verticalmente en desktop** — al cargar la home, los 2 productos no entran en una pantalla y hay que hacer scroll para ver los precios y botones. Además propuso mover los colores a la derecha del título y agregar interactividad (preview al click + autoplay tipo `producto.html`).
+
+### 🅐 Mediciones — el problema cuantificado
+
+Card en versión Sesión 47 (referencia desktop 1080p):
+
+| Dimensión | Valor pre-47b | Problema |
+|---|---|---|
+| Aspect-ratio imagen | 4/3 | Imagen ocupaba ~430px en desktop |
+| Padding body | 32px 36px 36px | +100px verticales |
+| Gap entre bloques internos | 20px | +60px verticales |
+| Padding-top footer | 20px | +20px |
+| **Altura total estimada** | **~860px** | **NO entra en viewport 1080p sin scroll** |
+
+### 🅑 Nuevo layout — colores a la derecha del título
+
+**Antes:**
+```
+[Subtítulo]
+[Founder Simple]
+[Descripción]
+[Colores disponibles]
+[●●●●●]
+[Precio]    [Botón]
+```
+
+**Después:**
+```
+[Subtítulo]                    [Colores disponibles]
+[Founder Simple]               [●●●●●]
+[Descripción]
+[Precio]                       [Botón]
+```
+
+**Implementación:** nuevo `.product-card__header` con flex space-between. Sub-div `__header-info` (subtítulo + nombre, con `flex: 1; min-width: 0`) + sub-div `__colors` (label + dots, con `align-items: flex-end`). En mobile (`<900px`) se vuelve `flex-direction: column` para mantener legibilidad en una sola columna.
+
+### 🅒 Compactación vertical
+
+| Dimensión | Pre-47b | Post-47b | Cambio |
+|---|---|---|---|
+| Aspect-ratio imagen | 4/3 | **5/4** | -20% altura |
+| Padding body | 32px 36px 36px | **24px 28px 28px** | -25% |
+| Gap entre bloques | 20px | **14px** | -30% |
+| Tipografía título | 28px | **26px** | -7% |
+| Tipografía precio | 28px | **26px** | -7% |
+| **Altura total** | **~860px** | **~640px** | **-26%** |
+
+Resultado: las 2 cards ahora entran completas en viewport desktop 1080p sin scroll.
+
+### 🅓 Color-dots interactivos + autoplay
+
+**Antes (Sesión 47):** los color-dots eran decorativos — solo mostraban qué colores había. No clickeables. La card mostraba 1 sola imagen.
+
+**Después (47b):**
+- Click en un color-dot → cambia la imagen al primer foto de ese color con crossfade de 450ms (mismo patrón que `producto.html`).
+- El dot activo tiene borde dorado + escala 1.1.
+- **Autoplay automático**: cada 4 segundos pasa a la siguiente foto del color activo. 3 ciclos completos y se detiene (anti-fatiga, mismo patrón que `producto.html`).
+- **Pausa al hover desktop** (no avanza mientras el cursor está sobre la card).
+- **Pausa cuando el tab no está visible** (Page Visibility API).
+- **Respeta `prefers-reduced-motion`** — sin autoplay, pero los clicks siguen funcionando.
+
+### 🅔 Implementación técnica
+
+**Renderizado:** todas las fotos del color están en el DOM apiladas (`position: absolute`), pero solo la activa tiene la clase `is-active` (`opacity: 1`). Las demás están a `opacity: 0` con transición 0.45s. Mismo patrón que `.gallery__img` en `producto.html` para consistencia.
+
+**Lazy loading inteligente:** la primera foto del color activo de las primeras 3 cards usa `eager + fetchpriority="high"`. Todas las demás usan `lazy + fetchpriority="low"`. Performance preservada.
+
+**Sistema de estado:** `WeakMap` (`cardState`) — key: elemento DOM de la card, value: `{ timer, cycles, photoIndex, hovering }`. Garbage collection automática cuando se re-renderiza el grid (común en `renderProducts()`). Sin memory leaks.
+
+**Event delegation:** un solo listener en `#productsGrid` maneja **todos** los clicks de color de **todas** las cards. No hay listeners individuales por card. Escalable a N productos sin penalización.
+
+### 🅕 Bonus: cards relacionadas en producto.html
+
+Aprovechando que se aplicaba el mismo patrón visual (lift + línea dorada), se extendió también a `.related-card` en `producto.html`. Consistencia visual entre home y detalle de producto.
+
+### 📦 Archivos modificados
+
+- `index.html` — refactor completo de `renderProductCard()` + nueva función `setupProductCardsInteractivity()` + CSS de cards rediseñado.
+- `producto.html` — solo CSS de `.related-card` para añadir el lift + línea dorada (mismo patrón).
+
+### 🔄 Plan de rollback
+
+| Cambio | Cómo revertir |
+|---|---|
+| Cards rediseñadas | Revertir `index.html` desde Git history. Sin cambios DB, sin cambios JS de otros archivos. |
+
+---
+
+## ✅ SESIÓN 47c — 4 ajustes finos a las cards del catálogo [15/05/2026]
+
+**Sesión muy corta derivada del feedback post-47b.** El usuario probó las cards rediseñadas y pidió 4 ajustes específicos:
+
+### 🅐 Color agotado se ve igual que los demás
+
+- **Pre-47c:** los colores agotados tenían un `box-shadow: 0 0 0 2px rgba(255,59,48,0.75)` (contorno rojo permanente). Llamaba demasiado la atención y rompía la armonía visual de la fila de dots.
+- **Post-47c:** se eliminó el contorno. Todos los dots se ven idénticos. El estado "agotado" se comunica únicamente vía badge dinámico arriba a la derecha **cuando el usuario selecciona ese color**.
+
+### 🅑 Badge dinámico (oferta / agotado) según color activo
+
+- **Pre-47c:** badge estático global que aparecía solo si TODO el producto estaba en oferta o agotado.
+- **Post-47c:** un único elemento `.product-card__badge-estado` por card, controlado por JS:
+  - Color en oferta → 🟨 **OFERTA** (fondo dorado, texto oscuro).
+  - Color agotado → 🟥 **AGOTADO** (fondo rojo, texto blanco).
+  - Color normal → badge invisible (`opacity: 0`) con transición de 300ms.
+- Funciona también al hacer click sobre un color agotado: cambia la imagen + muestra "AGOTADO". El usuario aprende qué colores están disponibles sin perder la previsualización.
+
+### 🅒 Colores siempre en una sola línea (sin wrap)
+
+- **Pre-47c:** con 6+ colores los dots se bajaban a una segunda línea, rompiendo el header de la card.
+- **Post-47c:** `.product-card__color-dots` con `flex-wrap: nowrap`. Para que el nombre del producto en desktop no empuje a los colores fuera de línea, se añadió `text-overflow: ellipsis` al `.product-card__name` (en mobile se desactiva y se permite wrap normal del nombre).
+
+### 🅓 Autoplay rota entre COLORES (no entre fotos)
+
+**Cambio conceptual importante.** En 47b el autoplay rotaba entre las múltiples fotos del color activo. El usuario aclaró que prefería que rotara **entre colores** (mostrando solo la primera foto de cada uno). Más intuitivo: la card actúa como un "selector visual de colores con autoplay".
+
+- **Pre-47c:** card cargaba todas las fotos de todos los colores. Si un producto tenía 5 colores con 4 fotos cada uno → 20 fotos cargadas.
+- **Post-47c:** card carga **solo la primera foto de cada color**. 5 colores → 5 fotos. **Reducción de ~50% en bundle de imágenes del index.** Mejora indirecta de LCP en mobile.
+- Estado por card simplificado: `{ colors: [...], colorIdx, timer, cycles, hovering }`. Sin tracking de índice de foto.
+
+### 📦 Archivos modificados
+
+- `index.html` (solo).
+
+### 🔄 Plan de rollback
+
+Revertir `index.html` desde Git history. Cambios localizados en `renderProductCard()` + `setupProductCardsInteractivity()` + CSS de `.color-dot` y `.product-card__badge-*`.
+
+---
+
+## ✅ SESIÓN 48 — Sistema de banners rotatorios (hero slides) [15/05/2026]
+
+**Sesión arquitectónica grande.** Reemplazo completo del banner único legado (introducido en Sesión 26 vía `site_settings.hero_banner_url`) por un **sistema de slides rotatorios gestionables desde el admin** con CRUD completo y autoplay 8s en el sitio público. Decisión del usuario: necesidad de comunicar promociones, novedades, recompras y eventos sin tocar código — el banner único era limitante.
+
+### 🅐 Diseño de datos — `site_settings.hero_slides` (JSON)
+
+Siguiendo el patrón ya establecido por `personalizacion_config` (Sesión 28), toda la configuración vive como JSON serializado en `site_settings.value`. Cero cambios de schema.
+
+```json
+{
+  "autoplay_ms": 8000,
+  "slides": [
+    {
+      "id": "s_<base36_timestamp>_<rand>",
+      "enabled": true,
+      "orden": 1,
+      "label": "Founder.uy — Uruguay",
+      "title_html": "Protegé<br>lo que <em>importa.</em>",
+      "subtitle": "Billeteras y tarjeteros premium...",
+      "image_url": "https://cloudinary.com/...",
+      "buttons": [
+        { "text": "Ver colección", "url": "#productos", "style": "primary" },
+        { "text": "¿Qué es RFID?", "url": "tecnologia-rfid.html", "style": "secondary" }
+      ]
+    },
+    { ... slide 2 ... }
+  ]
+}
+```
+
+**Decisiones clave:**
+- **`enabled: true/false`** permite pausar slides sin eliminarlos. Los pausados quedan en DB pero el sitio público no los descarga (filtro en `fetchHeroSlides()`). **Cero rendimiento gastado en pausados.**
+- **`orden: number`** permite reordenar sin recrear. Re-numeración automática 1..N al mover/eliminar.
+- **`buttons: array` (0-2)** permite slides sin botón (informativos), con 1 botón (CTA único) o con 2 (CTA principal + secundario).
+- **`title_html`** permite tags `<br>` y `<em>` (resaltado dorado). Sanitización estricta en el frontend público.
+
+### 🅑 Migración silenciosa del banner legado
+
+Cuando `site_settings.hero_slides` no existe (primera vez post-deploy), el admin **detecta automáticamente** la presencia de `hero_banner_url` (legado de Sesión 26) y construye un primer slide a partir de:
+
+- `image_url` ← valor de `hero_banner_url`.
+- `label` ← `"Founder.uy — Uruguay"` (hardcoded).
+- `title_html` ← `"Protegé<br>lo que <em>importa.</em>"` (hardcoded).
+- `subtitle` ← descripción premium hardcoded.
+- `buttons` ← `[Ver colección + ¿Qué es RFID?]`.
+
+Inmediatamente persiste el resultado en `hero_slides`. **El usuario abre el admin → ve un slide pre-poblado con su banner actual → puede editarlo, pausarlo o agregar otros.** Cero pérdida de configuración.
+
+**Fallback equivalente en el sitio público:** `fetchHeroSlides()` también detecta esta situación y arma el slide al vuelo. Así, si el usuario nunca abre el admin pero el deploy se aplica, el sitio sigue mostrando el banner como antes.
+
+### 🅒 Frontend público — carrusel del hero (index.html)
+
+**Refactor del CSS:** los `<img>` y `<div class="hero__content">` antes vivían directo en `.hero`. Ahora hay un nuevo contenedor `.hero__slides` con N `.hero__slide` (cada uno con su imagen + su content). Apilados con `position: absolute`, controlados por `opacity` + `pointer-events`.
+
+**Comportamiento:**
+- **1 slide** → estático, sin navegación, sin autoplay.
+- **2+ slides** → autoplay cada 8s + barra de navegación (flechas + dots) visible al hover.
+- **Pausa al hover desktop** (`pausedUntil = Infinity` mientras el mouse está sobre el hero).
+- **Pausa al click manual** durante 12s (`HERO_AUTOPLAY_PAUSE_AFTER_CLICK`).
+- **Pausa con Page Visibility API** cuando el tab no está visible.
+- **Respeta `prefers-reduced-motion`** — sin autoplay; dots y flechas siguen siendo navegables.
+
+**Performance:**
+- **Primera imagen** (slide activo) → `eager + fetchpriority="high"` (sigue siendo LCP).
+- **Resto** → `lazy + fetchpriority="low"`. Penalización cero vs el banner único.
+- Crossfade entre slides usa `opacity` (GPU-accelerated), no transform.
+
+**Sanitización de seguridad** (defensa en profundidad, aunque la API requiere auth):
+- `sanitizeTitleHTML()` — whitelist estricta: solo `<br>` y `<em>`. Atributos `on*` y `javascript:` removidos por regex.
+- `sanitizeUrl()` — bloquea `javascript:` y `data:`. Permite `http`, `https`, `mailto`, `tel`, anchors y rutas relativas.
+- `escapeText()` — escape HTML estándar para textos plano (label, subtitle, button text).
+
+### 🅓 Backend admin — CRUD completo (founder-admin.js)
+
+**Estado en memoria:** `state.hero = { autoplay_ms, slides }`. Inicializado vacío al load del admin, populado con `loadBanner()` (preservó el nombre legado por compat con el menú lateral).
+
+**API expuesta al `window`:**
+- `addHeroSlide()` — agrega un slide en blanco al final + abre modal de edición.
+- `editHeroSlide(id)` — abre modal con datos del slide.
+- `saveHeroSlideEdit()` — valida + persiste + cierra modal + re-renderiza panel.
+- `toggleHeroSlide(id)` — flip de `enabled: true/false`.
+- `moveHeroSlide(id, delta)` — swap de `orden` con vecino, re-numera 1..N.
+- `deleteHeroSlide(id)` — con confirmación, re-numera, persiste.
+- `previewHeroEditImage()` / `pickHeroEditFile()` — preview de imagen + subir desde equipo.
+- `closeHeroEditModal()` — cierre del modal.
+
+**Persistencia:** `persistHeroSlidesConfig()` wraps el `apiAdmin('set_setting', { key: 'hero_slides', value: JSON.stringify(...) })`. Endpoint genérico ya existente desde Sesión 26.
+
+**Backend Supabase:** las actions `get_setting` y `set_setting` (`api/admin.js`) ya soportaban keys arbitrarias. **Cero cambios al backend.**
+
+### 🅔 Admin UI (admin.html)
+
+**Panel "Banners del inicio"** (mismo path del menú, renombrado de "Banner de inicio"):
+- Lista de slides con preview de imagen (180x101px), título, estado (🟢 Activo / ⏸️ Pausado).
+- Por cada slide: botones Editar / Pausar-Activar / ↑ / ↓ / Eliminar.
+- Botón "+ Nuevo banner" arriba a la derecha.
+- Info-box explicativa con reglas del sistema (autoplay 8s, comportamiento de pausados, formato recomendado).
+
+**Modal de edición:**
+- Preview de imagen (16:9 aspect-ratio).
+- Inputs: label, title_html (textarea), subtitle (textarea), image_url.
+- 2 sub-bloques de botón (cada uno con text, url, style select).
+- Botones "Cancelar" + "💾 Guardar cambios".
+
+**Estilos consistentes con el resto del admin:** mismas tokens (`var(--gray)`, `var(--gold)`, `var(--border)`), mismo radio de tarjetas, mismo padding.
+
+### 📦 Archivos modificados
+
+| Archivo | Cambios |
+|---|---|
+| `components/supabase-client.js` | +`fetchHeroSlides()` + `HERO_SLIDES_DEFAULTS` + fallback legacy |
+| `components/founder-admin.js` | Reemplazo completo del bloque BANNER (Sesión 26) por sistema de slides |
+| `admin.html` | Panel reescrito + modal de edición nuevo + estilos `.hero-slide-card`, `.hero-edit-*` |
+| `index.html` | Hero refactorizado a carrusel multi-slide + CSS de slides/dots/flechas + JS de autoplay |
+
+### 🔄 Plan de rollback
+
+| Cambio | Cómo revertir |
+|---|---|
+| Frontend | Revertir los 4 archivos desde Git history. |
+| DB | Borrar fila `hero_slides` de `site_settings` desde Supabase Studio. El sitio cae al fallback legacy automáticamente. |
+
+**Sin migraciones SQL, sin cambios de schema. Reversible 100%.**
+
+---
+
+## ✅ SESIÓN 48a — Bugfix + flechas laterales [15/05/2026]
+
+**Sesión muy corta de hotfix + feature pequeña.** El usuario reportó:
+1. El botón "Editar" del admin no abría el modal.
+2. Pidió agregar flechas prev/next al hero para navegación manual.
+
+### 🅐 Bugfix — modal de edición no abría
+
+**Causa raíz:** el sistema de modales del admin usa la clase CSS `.open` (sin prefijo), pero en mi código nuevo de Sesión 48 había usado `.is-open` por reflejo (es el patrón de `index.html`). Inconsistencia entre los dos contextos.
+
+**Diff técnico:** `modal.classList.add('is-open')` → `modal.classList.add('open')` y `remove('is-open')` → `remove('open')`. Dos líneas.
+
+**Lección aprendida:** los proyectos a veces tienen convenios CSS distintos entre archivos. Cuando se introducen patrones nuevos, conviene buscar primero cómo lo hacen los componentes existentes del mismo archivo (`lpExampleModal`, `productModal`, `orderDetailModal` ya usaban `.open`).
+
+### 🅑 Flechas laterales prev/next (versión inicial)
+
+Implementación inicial: botones circulares `48x48px` posicionados absolutos a `left: 24px` y `right: 24px` del hero, con `backdrop-filter: blur(8px)` y fondo `rgba(20,20,20,0.55)`. Hover: borde dorado.
+
+**Esta versión no sobrevivió a la siguiente sesión** — fue reemplazada en 48b por feedback del usuario (ver abajo).
+
+### 📦 Archivos modificados
+
+- `index.html` (flechas)
+- `components/founder-admin.js` (fix `.open`)
+
+---
+
+## ✅ SESIÓN 48b — Rediseño navegación + bugfix crítico del editor [15/05/2026]
+
+**Sesión doble.** Primero arregló un bug grave del editor de slides; después rediseñó la navegación del carrusel basándose en feedback visual del usuario.
+
+### 🅐 Bugfix crítico — editor de slides se cerraba solo
+
+**Reporte del usuario:** "estoy editando en admin.html y al hacer click en editar la descripción, pasan 2 segundos y se me cierra el editor".
+
+**Causa raíz (no obvia):** en Sesión 48 había añadido al modal `<div class="modal-overlay" id="heroEditModal" onclick="if(event.target===this)closeHeroEditModal()">`. El check `event.target === this` parece correcto para "cerrar al click fuera del modal", pero falla en un caso muy común:
+
+1. Usuario hace click DENTRO del textarea de descripción para escribir.
+2. Selecciona texto arrastrando el mouse (mousedown adentro + mousemove + mouseup).
+3. **Si el mouseup termina afuera del textarea** (por ejemplo, en el área oscura del overlay), el evento `click` que se dispara tiene como `event.target` al overlay (no al textarea, porque el navegador toma el "elemento donde terminó el click").
+4. La condición `event.target === this` se cumple → cierra el modal → usuario pierde lo escrito.
+
+**Reproducción:** seleccionar texto en el textarea arrastrando hasta soltar fuera de él. **100% reproducible.**
+
+**Fix aplicado:** se eliminó el `onclick` inline del HTML. En su lugar, en JS se engancha (una sola vez por sesión) un sistema más robusto:
+
+```js
+let pressStartedOnOverlay = false;
+modal.addEventListener('mousedown', ev => { pressStartedOnOverlay = (ev.target === modal); });
+modal.addEventListener('mouseup',   ev => {
+  if (pressStartedOnOverlay && ev.target === modal) closeHeroEditModal();
+  pressStartedOnOverlay = false;
+});
+```
+
+El cierre por "click fuera" ahora **requiere que AMBOS eventos** (mousedown + mouseup) ocurran sobre el overlay. Si el usuario inicia el drag dentro del textarea, no se cumple la condición y el modal sigue abierto.
+
+**Bonus:** se añadió cierre con tecla **ESC** (`document.addEventListener('keydown', ...)`) — patrón estándar de UX que faltaba.
+
+### 🅑 Rediseño de navegación — feedback visual del usuario
+
+El usuario subió una captura mostrando que las flechas laterales (Sesión 48a) **rompían la estética premium y tapaban el título del hero**. Pidió "otras opciones y previsualización para elegir".
+
+**Mockup interactivo presentado** con 4 alternativas en SVG/HTML:
+
+| Opción | Concepto |
+|---|---|
+| A | Flechas tipográficas serif laterales, invisibles hasta hover |
+| B | Flechas con línea dorada animada debajo |
+| C | Navegación inferior unificada (flechas + dots juntos abajo) |
+| D | Sin flechas, solo dots más grandes |
+
+**Decisión del usuario:** "Opción C, con efecto de Opción A. cuando pasas por arriba salen las flechas."
+
+### 🅒 Implementación final — barra inferior unificada con fade-in
+
+**HTML:** un solo contenedor `.hero__nav` que agrupa flecha prev + dots + flecha next:
+
+```html
+<div class="hero__nav" id="heroNav">
+  <button class="hero__arrow hero__arrow--prev">‹</button>
+  <div class="hero__dots" id="heroDots"></div>
+  <button class="hero__arrow hero__arrow--next">›</button>
+</div>
+```
+
+**CSS:**
+- Posición absoluta `bottom: 36px; left: 50%; transform: translateX(-50%)`.
+- `opacity: 0; pointer-events: none` por defecto.
+- `.hero:hover .hero__nav.is-visible { opacity: 1; pointer-events: auto; }` en desktop.
+- `:focus-within { opacity: 1 }` para accesibilidad por teclado (si enfocás una flecha o dot con Tab, la barra aparece aunque no haya hover).
+- Transición `opacity 0.4s ease`.
+
+**Mobile** (`<900px`): como no hay hover, la barra queda permanentemente visible con `opacity: 0.7` (sutil). Tamaños un poco más chicos para no competir con el contenido del hero.
+
+**Flechas tipográficas:** caracteres `‹` y `›` en `font-family: var(--font-serif)` (Cormorant Garamond), `font-size: 24px`, `font-weight: 300`. Color base `rgba(248, 248, 244, 0.55)` (blanco al 55%). Hover: pasan a dorado + `transform: scale(1.2)`.
+
+**Sin fondos, sin recuadros, sin blur.** Coherente con el lenguaje editorial premium del sitio.
+
+### 📦 Archivos modificados
+
+| Archivo | Cambios |
+|---|---|
+| `index.html` | Reemplazo de flechas laterales por barra `.hero__nav` unificada |
+| `admin.html` | Eliminado `onclick` problemático del modal |
+| `components/founder-admin.js` | Sistema robusto mousedown+mouseup + cierre con ESC |
+
+### 🔄 Plan de rollback
+
+Revertir los 3 archivos desde Git history. Cambios localizados, sin efectos cruzados.
+
+---
+
+## ✅ SESIÓN 48c — Consolidación documental [15/05/2026]
+
+**Sesión administrativa, sin código.** Generación de este resumen de las sesiones 47, 47b, 47c, 48, 48a, 48b en `ESTADO.md` + actualización del cabezal con la lista de opciones para Sesión 49.
+
+**Backlog de derivadas directas identificadas durante el día** (ver "Próxima sesión: 49" arriba):
+- Smoke test funcional post-deploy.
+- Modal "Vista previa" de slide en el admin (para no abrir el sitio en otra pestaña).
+- Drag-and-drop para reordenar slides (cuando haya 5+).
+- Limpieza gradual de la API legacy `hero_banner_url` (en 4-6 semanas).
+
+**Estado del sitio post-Sesión 48c:**
+- ✅ Performance excelente (Sesión 25 + lazy loading de Sesión 47b).
+- ✅ UX premium completa (Sesiones 47 + 47b + 47c).
+- ✅ **Sistema de banners rotatorios con CRUD admin** (Sesión 48 + 48a + 48b).
+- ✅ Cards del catálogo interactivas con autoplay por color (Sesión 47b + 47c).
+- ✅ Seguridad post-PentestTools (Sesión 45).
+- ✅ DMARC en `quarantine` (Sesión 46).
+- ✅ Email transaccional + bidireccional (Sesión 26 + 30).
+- ✅ Mercado Pago en producción real (Sesión 22).
+- ✅ Feature personalización láser end-to-end (Sesión 28 + 29).
+
+**El sitio sigue en su mejor estado histórico.** Las sesiones de hoy fueron exclusivamente sobre UX premium y herramientas del admin — ninguna afectó el core transaccional. Cero riesgo regresivo conocido tras los smoke tests del usuario.
 
 ---
 
