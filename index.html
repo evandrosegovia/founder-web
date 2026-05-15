@@ -356,21 +356,56 @@ select:active,
   pointer-events: none; line-height: 1;
 }
 
-/* ── HERO — Navegación inferior (dots) ─────────────────────
-   Solo aparece si hay 2+ slides activos. Permite al usuario
-   saltar entre slides manualmente. El click pausa el autoplay
-   temporalmente (10s) — mismo patrón que la galería de producto.html. */
-.hero__dots {
-  position: absolute; bottom: 40px; left: 50%;
+/* ── HERO — Barra de navegación inferior (Sesión 48c) ──────
+   Una única barra centrada abajo del hero que contiene flechas
+   prev/next + dots de slides. Toda la barra está invisible por
+   defecto (opacity: 0) y aparece al hacer hover sobre el hero.
+   En mobile (sin hover) queda siempre visible pero sutil. */
+.hero__nav {
+  position: absolute;
+  bottom: 36px;
+  left: 50%;
   transform: translateX(-50%);
   display: none;
-  gap: 10px;
+  align-items: center;
+  gap: 20px;
   z-index: 3;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
 }
-.hero__dots.is-visible { display: flex; }
+.hero__nav.is-visible { display: flex; }
+/* Aparece al hover del hero (desktop) */
+.hero:hover .hero__nav.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* También se ve al enfocar con teclado cualquier control de adentro */
+.hero__nav.is-visible:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Flecha — caracter serif fino dorado al hover */
+.hero__arrow {
+  background: none; border: none; padding: 4px 8px;
+  color: rgba(248, 248, 244, 0.55);
+  font-family: var(--font-serif);
+  font-size: 24px; font-weight: 300; line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition-base), transform var(--transition-base);
+}
+.hero__arrow:hover { color: var(--color-gold); transform: scale(1.2); }
+.hero__arrow:active { opacity: 0.72; }
+
+/* Dots */
+.hero__dots {
+  display: flex;
+  gap: 8px;
+}
 .hero__dot {
-  width: 28px; height: 2px;
-  background: rgba(255,255,255,0.25);
+  width: 26px; height: 2px;
+  background: rgba(255, 255, 255, 0.25);
   border: none; cursor: pointer;
   padding: 8px 0;
   position: relative;
@@ -380,67 +415,30 @@ select:active,
   content: '';
   position: absolute; left: 0; right: 0; top: 50%;
   height: 2px; transform: translateY(-50%);
-  background: rgba(255,255,255,0.25);
+  background: rgba(255, 255, 255, 0.25);
   transition: background var(--transition-base);
 }
 .hero__dot.is-active::before { background: var(--color-gold); }
-.hero__dot:hover::before { background: rgba(255,255,255,0.55); }
+.hero__dot:hover::before { background: rgba(255, 255, 255, 0.55); }
 .hero__dot.is-active:hover::before { background: var(--color-gold); }
 /* Anular el rectángulo visible base — solo se ve el ::before */
 .hero__dot { background: transparent; }
 
-@media (max-width: 600px) {
-  .hero__dots { bottom: 28px; gap: 8px; }
+/* Mobile: no hay hover → la nav siempre visible pero sutil.
+   También bajamos la opacity de toda la barra para que sea menos
+   intrusiva en pantallas chicas (donde el contenido del hero ya
+   ocupa casi todo). */
+@media (max-width: 900px) {
+  .hero__nav.is-visible {
+    opacity: 0.7;
+    pointer-events: auto;
+    bottom: 28px;
+    gap: 16px;
+  }
+  .hero__arrow { font-size: 22px; }
   .hero__dot { width: 22px; }
 }
 
-/* ── HERO — Flechas prev/next (Sesión 48b) ─────────────────
-   Aparecen solo cuando hay 2+ slides activos. Posicionadas a
-   los lados del hero, encima del contenido. Click → cambia
-   slide + pausa autoplay 12s (mismo patrón que los dots). */
-.hero__arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 48px; height: 48px;
-  background: rgba(20, 20, 20, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--color-text);
-  font-family: var(--font-serif);
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-  z-index: 3;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: background var(--transition-base), border-color var(--transition-base), opacity var(--transition-base);
-  padding: 0;
-}
-.hero__arrow.is-visible { display: flex; }
-.hero__arrow:hover {
-  background: rgba(30, 30, 30, 0.85);
-  border-color: var(--color-gold);
-}
-.hero__arrow:active { opacity: 0.72; }
-.hero__arrow--prev { left: 24px; }
-.hero__arrow--next { right: 24px; }
-.hero__arrow > span { display: block; transform: translateY(-1px); }
-.hero__arrow--prev > span { transform: translateY(-1px) translateX(-2px); }
-.hero__arrow--next > span { transform: translateY(-1px) translateX(2px); }
-
-@media (max-width: 900px) {
-  .hero__arrow { width: 40px; height: 40px; font-size: 20px; }
-  .hero__arrow--prev { left: 12px; }
-  .hero__arrow--next { right: 12px; }
-}
-@media (max-width: 600px) {
-  .hero__arrow { width: 36px; height: 36px; font-size: 18px; }
-  .hero__arrow--prev { left: 8px; }
-  .hero__arrow--next { right: 8px; }
-}
 
 /* ── BUTTONS ──────────────────────────────────────────────── */
 .btn {
@@ -1163,12 +1161,12 @@ body.cart-open .wa-bubble {
     </article>
   </div>
 
-  <!-- Flechas prev/next — solo visibles si hay 2+ slides activos -->
-  <button type="button" class="hero__arrow hero__arrow--prev" id="heroArrowPrev" aria-label="Banner anterior"><span>‹</span></button>
-  <button type="button" class="hero__arrow hero__arrow--next" id="heroArrowNext" aria-label="Banner siguiente"><span>›</span></button>
-
-  <!-- Dots de navegación — solo visibles si hay 2+ slides activos -->
-  <div class="hero__dots" id="heroDots" role="tablist" aria-label="Navegación de banner"></div>
+  <!-- Barra de navegación inferior (flechas + dots) — solo visible si hay 2+ slides -->
+  <div class="hero__nav" id="heroNav" aria-label="Navegación de banner">
+    <button type="button" class="hero__arrow hero__arrow--prev" id="heroArrowPrev" aria-label="Banner anterior">‹</button>
+    <div class="hero__dots" id="heroDots" role="tablist"></div>
+    <button type="button" class="hero__arrow hero__arrow--next" id="heroArrowNext" aria-label="Banner siguiente">›</button>
+  </div>
 
   <div class="hero__letter" aria-hidden="true">F</div>
 </section>
@@ -1479,30 +1477,22 @@ function applyHeroSlides(config) {
   // ── Renderizar todos los slides ──
   container.innerHTML = slides.map((s, i) => renderHeroSlide(s, i, i === 0)).join('');
 
-  // ── Renderizar dots (solo si hay 2+) ──
+  // ── Renderizar dots (siempre, los muestra el contenedor .hero__nav) ──
   if (dotsEl) {
     if (slides.length > 1) {
       dotsEl.innerHTML = slides.map((_, i) => `
         <button type="button" class="hero__dot${i === 0 ? ' is-active' : ''}" data-dot-index="${i}" role="tab" aria-label="Slide ${i + 1}" aria-selected="${i === 0}"></button>
       `).join('');
-      dotsEl.classList.add('is-visible');
     } else {
       dotsEl.innerHTML = '';
-      dotsEl.classList.remove('is-visible');
     }
   }
 
-  // ── Mostrar/ocultar flechas (solo si hay 2+) ──
-  const arrowPrev = $('heroArrowPrev');
-  const arrowNext = $('heroArrowNext');
-  if (arrowPrev && arrowNext) {
-    if (slides.length > 1) {
-      arrowPrev.classList.add('is-visible');
-      arrowNext.classList.add('is-visible');
-    } else {
-      arrowPrev.classList.remove('is-visible');
-      arrowNext.classList.remove('is-visible');
-    }
+  // ── Mostrar/ocultar barra de navegación (flechas + dots) si hay 2+ ──
+  const nav = $('heroNav');
+  if (nav) {
+    if (slides.length > 1) nav.classList.add('is-visible');
+    else nav.classList.remove('is-visible');
   }
 
   // ── Listeners de navegación + autoplay ──
