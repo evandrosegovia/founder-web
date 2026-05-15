@@ -394,6 +394,54 @@ select:active,
   .hero__dot { width: 22px; }
 }
 
+/* ── HERO — Flechas prev/next (Sesión 48b) ─────────────────
+   Aparecen solo cuando hay 2+ slides activos. Posicionadas a
+   los lados del hero, encima del contenido. Click → cambia
+   slide + pausa autoplay 12s (mismo patrón que los dots). */
+.hero__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px; height: 48px;
+  background: rgba(20, 20, 20, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--color-text);
+  font-family: var(--font-serif);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 3;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background var(--transition-base), border-color var(--transition-base), opacity var(--transition-base);
+  padding: 0;
+}
+.hero__arrow.is-visible { display: flex; }
+.hero__arrow:hover {
+  background: rgba(30, 30, 30, 0.85);
+  border-color: var(--color-gold);
+}
+.hero__arrow:active { opacity: 0.72; }
+.hero__arrow--prev { left: 24px; }
+.hero__arrow--next { right: 24px; }
+.hero__arrow > span { display: block; transform: translateY(-1px); }
+.hero__arrow--prev > span { transform: translateY(-1px) translateX(-2px); }
+.hero__arrow--next > span { transform: translateY(-1px) translateX(2px); }
+
+@media (max-width: 900px) {
+  .hero__arrow { width: 40px; height: 40px; font-size: 20px; }
+  .hero__arrow--prev { left: 12px; }
+  .hero__arrow--next { right: 12px; }
+}
+@media (max-width: 600px) {
+  .hero__arrow { width: 36px; height: 36px; font-size: 18px; }
+  .hero__arrow--prev { left: 8px; }
+  .hero__arrow--next { right: 8px; }
+}
+
 /* ── BUTTONS ──────────────────────────────────────────────── */
 .btn {
   display: inline-block; font-family: var(--font-sans);
@@ -1115,6 +1163,10 @@ body.cart-open .wa-bubble {
     </article>
   </div>
 
+  <!-- Flechas prev/next — solo visibles si hay 2+ slides activos -->
+  <button type="button" class="hero__arrow hero__arrow--prev" id="heroArrowPrev" aria-label="Banner anterior"><span>‹</span></button>
+  <button type="button" class="hero__arrow hero__arrow--next" id="heroArrowNext" aria-label="Banner siguiente"><span>›</span></button>
+
   <!-- Dots de navegación — solo visibles si hay 2+ slides activos -->
   <div class="hero__dots" id="heroDots" role="tablist" aria-label="Navegación de banner"></div>
 
@@ -1440,6 +1492,19 @@ function applyHeroSlides(config) {
     }
   }
 
+  // ── Mostrar/ocultar flechas (solo si hay 2+) ──
+  const arrowPrev = $('heroArrowPrev');
+  const arrowNext = $('heroArrowNext');
+  if (arrowPrev && arrowNext) {
+    if (slides.length > 1) {
+      arrowPrev.classList.add('is-visible');
+      arrowNext.classList.add('is-visible');
+    } else {
+      arrowPrev.classList.remove('is-visible');
+      arrowNext.classList.remove('is-visible');
+    }
+  }
+
   // ── Listeners de navegación + autoplay ──
   setupHeroCarousel();
 }
@@ -1490,6 +1555,20 @@ function setupHeroCarousel() {
         if (!btn) return;
         const i = parseInt(btn.dataset.dotIndex, 10);
         if (Number.isFinite(i)) goToHeroSlide(i, true);
+      });
+    }
+
+    // Click en flecha prev/next → navegar + pausar autoplay
+    const arrowPrev = $('heroArrowPrev');
+    const arrowNext = $('heroArrowNext');
+    if (arrowPrev) {
+      arrowPrev.addEventListener('click', () => {
+        goToHeroSlide(heroState.active - 1, true);
+      });
+    }
+    if (arrowNext) {
+      arrowNext.addEventListener('click', () => {
+        goToHeroSlide(heroState.active + 1, true);
       });
     }
 
