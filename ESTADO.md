@@ -1,6 +1,6 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 45 — **Cierre de seguridad HTTP: CSP + security.txt.** Segunda sesión del día (15/05/2026), gatillada por reporte de PentestTools (Light scan, riesgo Low: 3 hallazgos accionables + 2 informativos). Cambios mínimos y quirúrgicos: (1) **Content-Security-Policy** agregado en `vercel.json` como header del bloque `/((?!api/).*)`, con allowlist exacta de los dominios que el sitio usa hoy (Supabase, Cloudinary, `connect.facebook.net`, Google Fonts) + `form-action` para Mercado Pago + hardening (`frame-ancestors 'self'`, `object-src 'none'`, `upgrade-insecure-requests`). Permite `'unsafe-inline'` en `script-src` y `style-src` por el uso existente de `onclick=` y `style=` inline en los HTML (auditado con grep: 9 HTMLs con inline handlers, 9 con inline styles, JSON-LD Schema.org); (2) **`/.well-known/security.txt`** servido vía endpoint dinámico `/api/security-txt.js` con rewrite en `vercel.json`, mismo patrón que `/sitemap.xml` ya usa. Genera la fecha `Expires` en runtime (+1 año, normalizada a medianoche UTC para cache estable). Hallazgos NO accionados y por qué: `robots.txt found` (informativo, ya está bien configurado), `Email Address Exposure` (info de contacto comercial necesaria, falso positivo), `Server software/technology found` (Vercel + Pixel + Cloudinary detectables desde fuera, ocultarlos rompe el sitio). Total: 1 archivo modificado (`vercel.json`) + 1 endpoint nuevo (`api/security-txt.js`). **Securityheaders.com debería pasar a A+ definitivo.** (15/05/2026)
+**Última actualización:** Sesión 46 — **DMARC subido a `p=quarantine`.** Tercera sesión del día (15/05/2026), corta y quirúrgica. Cierre del pendiente abierto desde Sesión 25 (DMARC publicado en `p=none` modo monitoreo). **Auditoría previa** de los 4 reportes XML que Google envió a `founder.uy@gmail.com` entre el 03/05 y el 14/05/2026: **50 emails reportados, 100% pass en SPF, 100% pass en DKIM, 0% disposition negativa**. Las 9 IPs de origen están todas en el rango `23.249.215.x` de Resend/AmazonSES (legítimo). Selectores DKIM correctos: `resend` (Resend) + `n3kzslanjhdj36g2753vor472zw45rsk` (AmazonSES). Dominio SPF: `send.founder.uy`. Con esa salud de auth confirmada, se saltó el paso intermedio `pct=10` y se aplicó directamente `p=quarantine; pct=100`. **Cambio aplicado:** TXT `_dmarc` en el panel DNS de Vercel, de `v=DMARC1; p=none; rua=mailto:founder.uy@gmail.com; pct=100` a `v=DMARC1; p=quarantine; rua=mailto:founder.uy@gmail.com; pct=100` (única palabra que cambia: `none` → `quarantine`). **Validación en MxToolbox:** ✅ DMARC Record Published, ✅ Syntax valid, ✅ Multiple Records OK, ✅ **Policy Not Enabled → Quarantine/Reject policy enabled** (el warning naranja de Sesión 25 desapareció). Único warning restante: `DMARC External Validation` por usar `@gmail.com` para reportes (esperado, no es error real). Propagación DNS: inmediata vía `ns1.vercel-dns.com`. Sin cambios de código, solo DNS. (15/05/2026)
 
 **Sesiones del día 14/05/2026 (todas exitosas, sin rollbacks):**
 - **Sesión 40** — Combo de 3 mini-features: (a) email admin con grabado, (b) auditoría general de CHECK constraints, (c) drop `products.banner_url`. **+ 2 bugs descubiertos en producción durante testing:** (1) cupón PERSONAL aplicaba 100% del producto en vez del grabado (validate_coupon nunca devolvía las flags de personalización al frontend), (2) botón de confirmar pedido bloqueado al volver de MP con back button.
@@ -11,18 +11,139 @@
 
 **Sesiones del día 15/05/2026:**
 - **Sesión 44** — Limpieza UX + medios de pago en footer.
-- **Sesión 45** — Cierre seguridad HTTP: CSP + security.txt (este resumen).
+- **Sesión 45** — Cierre seguridad HTTP: CSP + security.txt.
+- **Sesión 46** — DMARC subido a `p=quarantine` (este resumen).
 
-**Próxima sesión:** 46 — opciones disponibles, en orden sugerido de prioridad:
+**Próxima sesión:** 47 — opciones disponibles, en orden sugerido de prioridad:
 - (a) **UI en admin para invocar manualmente cleanup de huérfanas de reseñas** — el endpoint `run_reviews_orphans_manual` ya existe (Sesión 42), falta agregar botón en el panel de Personalización Láser junto al cleanup de imágenes existente. Esfuerzo: 30 min. **Solo es necesario si querés disparar manualmente sin esperar al cron del domingo.**
 - (b) **Métricas de conversión de la feature de recompra** — dashboard chico con "% de cupones FOUNDER15 usados sobre emails enviados" + ingresos generados por recompras. Requiere joinear `orders` (donde `cupon_codigo = REPURCHASE_COUPON_CODE`) contra el conteo de `recompra_email_sent_at IS NOT NULL`. Esfuerzo: 1.5 hs. Útil después de algunas semanas con datos reales.
-- (c) **Subir DMARC a `p=quarantine`** en 2-4 semanas si los reportes confirman que SPF + DKIM pasan en todos los proveedores. Editar el TXT `_dmarc` en Vercel y cambiar `p=none` por `p=quarantine`. Importante: revisar primero los reportes XML que llegan a `founder.uy@gmail.com`.
-- (d) **Subir el email de recompra a Recibidos principal de Gmail** — hoy cae en Promociones (esperado y deseable). Mejorar deliverability con `p=quarantine` (item c) + reputación del dominio a lo largo del tiempo lo va a mover gradualmente. No es una acción única, es un proceso. **No urgente.**
+- (c) **Subir DMARC a `p=reject`** dentro de 4-8 semanas, si los reportes con `p=quarantine` confirman que no hay falsos positivos (= ningún email legítimo cae en spam de clientes). Editar el TXT `_dmarc` en Vercel y cambiar `quarantine` por `reject`. `reject` es el nivel máximo: emails que fallan auth se descartan completamente en lugar de ir a spam. **No urgente** — `quarantine` ya da el 90% del beneficio antiphishing.
+- (d) **Subir el email de recompra a Recibidos principal de Gmail** — hoy cae en Promociones (esperado y deseable). Sesión 46 mejoró la deliverability subiendo a `p=quarantine`. Mejora adicional con reputación del dominio a lo largo del tiempo. No es una acción única, es un proceso. **No urgente.**
 - (e) **Endurecer el CSP retirando `'unsafe-inline'`** — el CSP actual de Sesión 45 permite `'unsafe-inline'` en `script-src` y `style-src` porque los HTML tienen muchos `onclick=` y `style=` inline + JSON-LD de Schema.org. Refactor a `addEventListener` + clases CSS + mover JSON-LD a archivo externo permitiría sacar `'unsafe-inline'` y elevar el score CSP de "permisivo" a "estricto". Esfuerzo: 3-4 hs. **Sin urgencia** — el CSP actual ya bloquea los ataques principales (orígenes externos no autorizados, iframes maliciosos, `eval`, plugins).
 
 **Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
 
 ---
+
+## ✅ SESIÓN 46 — DMARC subido a `p=quarantine` [15/05/2026]
+
+**Sesión corta y quirúrgica**, sin cambios de código. Cierre del pendiente más viejo del backlog: subir la política DMARC publicada en Sesión 25 (`p=none`, modo monitoreo) al siguiente nivel `p=quarantine` (los emails que fallen auth van a spam del destinatario, no se entregan a Recibidos). Esta era la **Opción (c) de Próxima Sesión 46** desde el cierre de Sesión 45.
+
+### 🅐 Auditoría previa — los 4 reportes XML de Google
+
+Antes de tocar nada, se auditaron los reportes DMARC que llegaron a `founder.uy@gmail.com` desde Sesión 25. El usuario subió 4 archivos `.zip` correspondientes a 4 días no consecutivos: **03/05, 12/05, 13/05 y 14/05/2026**. Todos de `google.com` (no llegaron reportes de Microsoft/Yahoo, esperado: el mercado UY es ~80% Gmail y los proveedores menores solo mandan reportes con tráfico significativo).
+
+**Análisis cuantitativo (sumando los 4 XML):**
+
+| Métrica | Valor |
+|---|---|
+| Total de emails reportados | **50** |
+| Total de registros DMARC | 31 |
+| SPF `pass` (policy_evaluated) | **50/50 (100%)** |
+| DKIM `pass` (policy_evaluated) | **50/50 (100%)** |
+| `disposition=none` (no bloqueo) | **50/50 (100%)** |
+| IPs únicas de origen | 9 (todas en `23.249.215.x`) |
+| Dominios SPF observados | `send.founder.uy` |
+| Selectores DKIM observados | `resend` (Resend) + `n3kzslanjhdj36g2753vor472zw45rsk` (AmazonSES) |
+
+**Observación clave de la auditoría:** el usuario creía haber enviado solo 4 emails transaccionales en el período, pero los reportes mostraron **50 emails**. Diferencia explicada por: cada pedido genera 3-5 emails (confirmación + cambios de estado + entregado), más emails de admin, recompra (Sesión 43) y reseñas (Sesión 43). Volumen suficiente y representativo para decidir con confianza.
+
+**Veredicto:** auth perfecta. Las 9 IPs corresponden al pool de envío de Resend/AmazonSES (rango legítimo), los dos selectores DKIM son los esperados, el dominio SPF (`send.founder.uy`) es el subdominio que Resend usa para SPF aligned. **Cero senders ilegítimos detectados.** Sin riesgo conocido de bloquear emails reales al subir a `quarantine`.
+
+### 🅑 Decisión sobre nivel — `quarantine; pct=100` directo
+
+Tres caminos posibles fueron evaluados con el usuario:
+
+| Camino | Política | Cuándo conviene |
+|---|---|---|
+| Conservador | `p=quarantine; pct=10` | Cuando hay poco volumen de reportes o algún fallo aislado |
+| **Directo** ← elegido | `p=quarantine; pct=100` | Cuando 100% de pase en SPF+DKIM y senders identificados |
+| Esperar | mantener `p=none` | Cuando hay senders desconocidos sin investigar |
+
+Con 100% de pase, se saltó el paso intermedio (`pct=10`) y se aplicó directamente `pct=100`.
+
+### 🅒 Cambio aplicado en DNS
+
+**Una sola palabra cambiada en el registro TXT `_dmarc` del panel DNS de Vercel.**
+
+**Antes:**
+```
+v=DMARC1; p=none; rua=mailto:founder.uy@gmail.com; pct=100
+```
+
+**Después:**
+```
+v=DMARC1; p=quarantine; rua=mailto:founder.uy@gmail.com; pct=100
+```
+
+Path del usuario: Vercel Dashboard → Domains → `founder.uy` → registro TXT con Name `_dmarc` → Edit → cambiar `p=none` por `p=quarantine` → Save.
+
+### 🅓 Validación post-cambio en MxToolbox
+
+Validación inmediata (propagación DNS instantánea vía `ns1.vercel-dns.com`):
+
+| Check | Resultado Sesión 25 (`p=none`) | Resultado Sesión 46 (`p=quarantine`) |
+|---|---|---|
+| DMARC Record Published | ✅ | ✅ |
+| DMARC Syntax Check | ✅ | ✅ |
+| DMARC Multiple Records | ✅ | ✅ |
+| DMARC Policy Not Enabled | 🟠 Policy is none | ✅ **Quarantine/Reject policy enabled** |
+| DMARC External Validation | 🟠 External domain `gmail.com` | 🟠 External domain `gmail.com` (idéntico, no cambia) |
+
+**El warning naranja "Policy Not Enabled" que arrastrábamos desde Sesión 25 ahora pasa a verde.** El warning de "External Validation" se mantiene (es esperado: usamos `founder.uy@gmail.com` para reportes y Gmail no publica DNS record de auth-recipient para dominios ajenos). No es error funcional.
+
+### 🅔 Qué cambia en producción
+
+| Antes (`p=none`) | Después (`p=quarantine`) |
+|---|---|
+| Emails con auth OK: van a Recibidos | Emails con auth OK: van a Recibidos (igual) |
+| Emails con auth fallida: van a Recibidos igual | **Emails con auth fallida: van a spam del destinatario** |
+| Cualquiera puede falsificar `@founder.uy` sin consecuencias | Falsificaciones de `@founder.uy` desde IPs no autorizadas caen en spam |
+| Google reporta pero no aplica política | Google aplica política Y reporta |
+
+**Impacto en deliverability esperado:** mejora gradual a lo largo de semanas. Gmail/Outlook ponderan positivamente a remitentes con DMARC enforced (no solo publicado). El email de recompra (Sesión 43) puede empezar a subir de Promociones a Recibidos principal a medida que la reputación del dominio crezca con `p=quarantine` activo.
+
+### 🎓 Lecciones de Sesión 46
+
+1. **Los reportes DMARC son la única fuente de verdad sobre senders del dominio.** El usuario tenía intuición de "mandé 4 emails", los reportes mostraron 50. Sin reportes, subir a `quarantine` hubiera sido a ciegas.
+
+2. **Auditar antes de cambiar política DNS es barato y previene incidentes caros.** 15 minutos de leer 4 XML > horas de debug si algún sender legítimo cayera en spam masivamente.
+
+3. **`pct=10` como paso intermedio no siempre es necesario.** La recomendación canónica de "subir gradualmente" tiene sentido cuando hay sender mix complejo (newsletter + transaccional + multi-vendor). Con un único proveedor (Resend) y 100% pass, saltar directo a `pct=100` es razonable.
+
+4. **El warning "External Validation" de MxToolbox no es un error.** Es solo informativo: el dominio que recibe reportes (`gmail.com`) no publica el record `_report._dmarc.gmail.com` que autoriza recibir reportes ajenos. Para reportes en un email personal Gmail es esperado y no se puede arreglar sin mover los reportes a un dominio propio (`reports@founder.uy` por ejemplo, requeriría inbox real).
+
+5. **Reportes DMARC pueden caer en Promociones/Spam de Gmail.** Son emails automáticos con XML adjuntos, a veces los filtros los ponen ahí. Vale la pena revisar todas las carpetas al hacer una auditoría.
+
+### 🔄 Rollback (Sesión 46)
+
+Si por algún motivo aparece un problema (cliente reportando que no le llega el email de confirmación, bounce rate subiendo bruscamente, etc.):
+
+| Cambio | Cómo revertir | Tiempo |
+|---|---|---|
+| DMARC `p=quarantine` | En Vercel DNS, editar TXT `_dmarc` y cambiar `quarantine` por `none` | <2 min + propagación |
+
+**Indicador de problema a vigilar:** reportes DMARC futuros que muestren `disposition=quarantine` o `dkim=fail`/`spf=fail` con `header_from=founder.uy` desde IPs `23.249.215.x` (Resend). Eso indicaría que algo en el setup de auth se rompió. Si pasa, primero rollback, después investigar.
+
+### 📦 Archivos modificados (Sesión 46)
+
+**Ninguno.** Cambio 100% DNS, sin commits al repo.
+
+### 🔐 Estado de email auth post-Sesión 46
+
+| Componente | Estado | Origen |
+|---|---|---|
+| SPF (`send.founder.uy`) | ✅ Publicado, pasa 100% | Sesión 22 |
+| DKIM (`resend._domainkey`) | ✅ Publicado, pasa 100% | Sesión 22 |
+| DKIM (AmazonSES via Resend) | ✅ Pasa 100% | Sesión 22 |
+| DMARC | ✅ **`p=quarantine; pct=100`** | **Sesión 46 ← ACTUALIZADO** (era `p=none` desde Sesión 25) |
+| Inbox de recepción (ImprovMX) | ✅ Activo | Sesión 26 |
+
+**Próximo paso natural (no urgente):** subir a `p=reject` dentro de 4-8 semanas si los reportes con `quarantine` siguen mostrando 100% pase y no aparecen tickets de clientes reportando emails perdidos. `reject` es el nivel máximo de DMARC. Registrado como **Opción (c) de Próxima Sesión 47**.
+
+---
+
+
 
 ## ✅ SESIÓN 45 — Cierre seguridad HTTP: CSP + security.txt [15/05/2026]
 
@@ -648,7 +769,7 @@ Durante la revisión de `admin.html` para agregar el favicon, se detectó que **
 ### ⚠️ Pendientes específicos de Sesión 43 (para próximas sesiones)
 
 - **Métricas de conversión de la feature** (Opción c del backlog de Sesión 44). Después de 2-4 semanas con datos reales, construir un mini-dashboard con: emails enviados, % de cupones FOUNDER15 usados, ingresos generados por recompras (joinear `orders` donde `cupon_codigo='FOUNDER15'` contra `recompra_email_sent_at IS NOT NULL`).
-- **Validar deliverability del email a largo plazo**. Hoy cae en Promociones de Gmail (esperado y deseable para emails con cupones). Mejorar con: subir DMARC a `p=quarantine` (Sesión 44 opción d), mantener bounce rate bajo, reputación del dominio crece con el tiempo.
+- **Validar deliverability del email a largo plazo**. Hoy cae en Promociones de Gmail (esperado y deseable para emails con cupones). Mejorar con: subir DMARC a `p=quarantine` (Sesión 44 opción d) **[✅ resuelto en Sesión 46 — subido a `p=quarantine; pct=100`]**, mantener bounce rate bajo, reputación del dominio crece con el tiempo.
 - **UI similar para Tarea C (huérfanas reseñas)** si en algún momento se necesita disparar manualmente. Endpoints `get_reviews_orphans_status` y `run_reviews_orphans_manual` ya existen desde Sesión 42, falta solo agregar la card en el admin. Opción b del backlog de Sesión 44.
 
 ---
@@ -3537,7 +3658,7 @@ Pegale a Claude este mensaje al arrancar:
 | **13** — Mejoras de calidad de imágenes | ✅ Completa | Preset `hero` actualizado para soportar 4K (widths hasta 3600). Preset nuevo `gallery_thumb` con srcset responsive para miniaturas grandes de producto.html. Sesión 25 |
 | **14** — LQIP (banner del hero) | ✅ Completa | Preset nuevo `hero_blur` (64px borroso) + función `applyBanner` reescrita con crossfade premium garantizado de 300ms. Stripe/Apple-style. Sesión 25 |
 | **15** — Scroll reveal animations | ✅ Completa | Componente nuevo `components/scroll-reveal.js` (~2 KB minificado, sin librerías). 3 clases: `.reveal`, `.reveal-up`, `.reveal-stagger`. Aplicado en 6 HTMLs públicos. Refactor: eliminado observer artesanal del index. Soporte `prefers-reduced-motion`. Sesión 25 |
-| **16** — DMARC | ✅ Completa | Publicado en DNS de Vercel con `p=none` + reportes a `founder.uy@gmail.com`. Validado en MxToolbox. Subir a `quarantine` en 2-4 semanas. Sesión 25 |
+| **16** — DMARC | ✅ Completa | Publicado Sesión 25 con `p=none`. **Sesión 46: subido a `p=quarantine; pct=100`** tras auditar 4 reportes XML de Google (50 emails, 100% pass SPF+DKIM). Reportes a `founder.uy@gmail.com`. Validado en MxToolbox (Policy Not Enabled → Enabled). |
 | **17** — Emails de cambios de estado del admin | ✅ Completa | 5 templates (Confirmado, En preparación, En camino, Listo para retirar, Entregado) con foto del producto + texto contextual envío/retiro + tracking opcional. Disparados desde `handleUpdateOrderStatus` con detección de transición y fire-and-forget. Sesión 25 |
 
 ---
@@ -4303,9 +4424,11 @@ founder-web/
   transaccionales se pierden. Hasta que se resuelva, no asumir que se
   pueda leer correo en esa dirección. Para reportes DMARC se usa el
   Gmail personal del usuario (`founder.uy@gmail.com`).
-- **DMARC está en `p=none`** (modo monitoreo). NO subir a `quarantine`
-  o `reject` sin antes confirmar 2-4 semanas que los reportes muestran
-  SPF + DKIM passing en todos los proveedores.
+- **DMARC está en `p=quarantine; pct=100`** (Sesión 46). Subido desde
+  `p=none` (Sesión 25) tras auditar 4 reportes XML de Google con 100%
+  pass de SPF y DKIM. NO subir a `p=reject` sin antes confirmar 4-8
+  semanas que `quarantine` no genera falsos positivos (= ningún sender
+  legítimo termina en spam de cliente).
 - **NO duplicar lógica de Cloudinary en backend** — si un endpoint
   necesita wrappear URLs (ej `admin.js` para emails), hacerlo inline
   con la misma constante `CLD_BASE` y validación de host. NO importar
@@ -4396,7 +4519,7 @@ founder-web/
 | **Resend dominio** | `founder.uy` verificado en Resend, región `sa-east-1` (Sesión 22) |
 | **Email remitente** | `info@founder.uy` (Sesión 22) — ⚠️ NO es inbox real, solo envía |
 | **Cloudinary** | Cuenta `founder-uy` plan Free (Sesión 24), email admin `evandrosegovia@gmail.com` |
-| **DMARC** | Publicado Sesión 25 con `p=none`, reportes a `founder.uy@gmail.com` |
+| **DMARC** | Publicado Sesión 25 con `p=none`. **Subido a `p=quarantine; pct=100` en Sesión 46.** Reportes a `founder.uy@gmail.com` |
 | **Email reportes DMARC** | `founder.uy@gmail.com` (Gmail personal del usuario) |
 | Pedido de prueba histórico | `F910752` / `test@prueba.com` / Confort Negro / $2.490 |
 | ⚠️ NO BORRAR | Pedido `F203641` / Florencia Risso / `florenciar.1196@gmail.com` (cliente real) |
@@ -4423,7 +4546,7 @@ founder-web/
 1. **Datos bancarios reales en email de transferencia**. El template actual dice "Te enviamos los datos por WhatsApp". Cuando se definan (banco, tipo de cuenta, CBU, titular), agregar bloque con datos directos en el email.
 2. **Decisión sobre el modal de index.html**. Postergada desde Sesión 22. Idealmente con datos de comportamiento real de campañas Meta.
 3. **Primera campaña paga de Meta Ads** con optimización de Purchase. Todo listo desde Sesión 17-18. Definir presupuesto, producto, audiencia, creatividad.
-4. **Subir DMARC a `p=quarantine`** en 2-4 semanas si los reportes confirman que SPF + DKIM pasan en todos los proveedores. Editar el TXT `_dmarc` en Vercel y cambiar `p=none` por `p=quarantine`. **Importante:** revisar primero los reportes XML que llegan a `founder.uy@gmail.com` para confirmar que ningún sender legítimo falla.
+4. ~~**Subir DMARC a `p=quarantine`**~~ → **resuelto en Sesión 46.** Auditoría de 4 reportes XML de Google (50 emails, 100% pass) confirmó salud de auth y se aplicó `p=quarantine; pct=100` directo. Próximo paso natural (no urgente): subir a `p=reject` en 4-8 semanas si no aparecen falsos positivos.
 5. **Pendientes Meta Business** (3 clics en Chrome):
    - Renombrar dataset "NO" (ID `1472474751248750`) con prefijo `ZZ-`.
    - Renombrar/ignorar Ad Account `26140748312219895`.
