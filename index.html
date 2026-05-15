@@ -192,8 +192,6 @@ select:active,
 .product-card:active,
 .color-dot:active,
 .color-option:active,
-.modal__thumb:active,
-.thumb-arrow:active,
 .cart__checkout-btn:active,
 .btn:active,
 .wa-bubble:active,
@@ -327,10 +325,10 @@ select:active,
 .btn--primary:hover { background: var(--color-gold); }
 /* Botón "Ver detalle de producto" en tarjeta — fondo dorado, texto oscuro
    para asegurar contraste WCAG AA (~8.5:1 con #141414 sobre #c9a96e). */
-.quick-view-btn.btn--primary {
+.btn-detalle.btn--primary {
   background: var(--color-gold); color: var(--color-bg); font-weight: 600;
 }
-.quick-view-btn.btn--primary:hover { background: var(--color-text); color: var(--color-bg); }
+.btn-detalle.btn--primary:hover { background: var(--color-text); color: var(--color-bg); }
 .btn--secondary {
   border: 1px solid rgba(255,255,255,.2); color: var(--color-text);
   background: transparent;
@@ -572,104 +570,15 @@ select:active,
 .ship-item__icon { font-size: 20px; }
 .ship-item__label { color: var(--color-text); display: block; font-size: 11px; letter-spacing: 2px; }
 
-/* ── PRODUCT MODAL ────────────────────────────────────────── */
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.85);
-  z-index: var(--z-modal); opacity: 0; pointer-events: none;
-  transition: opacity .4s;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex; align-items: center; justify-content: center; padding: 40px;
-}
-.modal-overlay.is-open { opacity: 1; pointer-events: all; }
-.modal {
-  background: var(--color-surface); max-width: 900px; width: 100%;
-  max-height: 90vh; overflow-y: auto;
-  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto;
-  border: 1px solid var(--color-border);
-  transform: translateY(20px); transition: transform .4s; position: relative;
-}
-.modal-overlay.is-open .modal { transform: translateY(0); }
-.modal__gallery { grid-row: 1; grid-column: 1; background: #111; overflow: hidden; min-height: 280px; display: flex; align-items: center; justify-content: center; }
-.modal__gallery img { width: 100%; height: 100%; object-fit: cover; }
-.modal__thumbs {
-  grid-row: 2; grid-column: 1; background: var(--color-bg);
-  padding: 10px 8px; display: flex; align-items: center; gap: 6px;
-}
-.modal__thumbs-track { display: flex; gap: 6px; flex: 1; overflow: hidden; justify-content: center; }
-.modal__thumb {
-  width: 58px; height: 58px; object-fit: cover;
-  border: 2px solid transparent; cursor: pointer;
-  transition: all var(--transition-fast); flex-shrink: 0;
-}
-.modal__thumb.is-active { border-color: var(--color-gold); }
-.modal__thumb:hover { border-color: rgba(255,255,255,.4); }
-.thumb-arrow {
-  background: rgba(255,255,255,.08); border: 1px solid var(--color-border);
-  color: var(--color-text); width: 28px; height: 58px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 12px; transition: all var(--transition-fast);
-  flex-shrink: 0; user-select: none;
-}
-.thumb-arrow:hover { background: rgba(255,255,255,.18); }
-.thumb-arrow:disabled { opacity: .2; cursor: not-allowed; }
-.modal__info {
-  grid-row: 1 / 3; grid-column: 2;
-  padding: 48px 40px; display: flex; flex-direction: column; gap: 24px;
-}
-.modal__close {
-  position: absolute; top: 16px; right: 16px;
-  background: var(--color-surface2); border: none; color: var(--color-text);
-  width: 36px; height: 36px; font-size: 18px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  z-index: 10; transition: background var(--transition-fast);
-}
-.modal__close:hover { background: var(--color-surface3); }
-.modal__label {
-  font-size: 9px; letter-spacing: 5px; text-transform: uppercase;
-  color: var(--color-gold); display: flex; align-items: center; gap: 12px;
-}
-.modal__label::before { content: ''; display: block; width: 24px; height: 1px; background: var(--color-gold); }
-.modal__name { font-family: var(--font-serif); font-size: 36px; font-weight: 400; letter-spacing: 3px; }
-.modal__specs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
-.modal__spec { display: flex; gap: 12px; font-size: var(--text-body-sm); color: var(--color-muted); line-height: var(--lh-body-sm); }
-.modal__spec::before { content: '✦'; color: var(--color-gold); font-size: 8px; margin-top: 3px; flex-shrink: 0; }
-.modal__color-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-muted); margin-bottom: 12px; }
-.modal__colors { display: flex; gap: 10px; flex-wrap: wrap; }
+/* ── INDEX — Color swatches en cards ──────────────────────── */
 .color-option { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
 .color-swatch {
   width: 20px; height: 32px; border-radius: 3px;
   border: 2px solid transparent; transition: all var(--transition-fast);
   position: relative;
 }
-.color-option.is-active .color-swatch,
 .color-option:hover .color-swatch { border-color: var(--color-text); transform: scale(1.15); }
 .color-option__name { font-size: 8px; letter-spacing: 1px; color: var(--color-muted); text-transform: uppercase; text-align: center; }
-.modal__footer { margin-top: auto; padding-top: 24px; border-top: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 16px; }
-.modal__price { font-family: var(--font-serif); font-size: 36px; font-weight: 400; line-height: 1; }
-.modal__price-note { font-size: 10px; color: var(--color-gold); letter-spacing: 1px; margin-top: 2px; }
-.modal__add-btn {
-  background: var(--color-text); color: var(--color-bg); border: none;
-  padding: 16px; font-size: 10px; letter-spacing: 4px;
-  text-transform: uppercase; font-weight: 700; cursor: pointer; transition: all var(--transition-base);
-}
-.modal__add-btn:hover { background: var(--color-gold); }
-/* Aviso sin stock en modal */
-.modal__sin-stock-aviso {
-  display: none; padding: 12px 16px;
-  background: rgba(255,59,48,0.08); border: 1px solid rgba(255,59,48,0.3);
-  border-radius: 3px; color: #ff3b30; font-size: 11px;
-  letter-spacing: 0.08em; text-align: center; font-weight: 500;
-}
-.modal__sin-stock-aviso.visible { display: block; }
-.modal__detail-link {
-  display: block; text-align: center;
-  font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
-  color: var(--color-text); text-decoration: none;
-  padding: 10px; border: 1px solid var(--color-text);
-  transition: all var(--transition-base);
-}
-.modal__detail-link:hover { color: var(--color-gold); border-color: var(--color-gold); }
 
 /* ── SHARED — Carrito lateral ───────────────────────────────── */
 .cart-overlay {
@@ -762,10 +671,6 @@ select:active,
   .products-grid { grid-template-columns: 1fr; }
   .section-header { flex-direction: column; align-items: flex-start; gap: 20px; }
   .shipping-banner { gap: 32px; padding: 32px 24px; }
-  .modal { grid-template-columns: 1fr; }
-  .modal__gallery { grid-row: 1; grid-column: 1; min-height: 200px; }
-  .modal__thumbs { grid-row: 2; grid-column: 1; }
-  .modal__info { grid-row: 3; grid-column: 1; padding: 28px; }
   .footer { padding: 60px 24px 40px; }
   .footer__grid { grid-template-columns: 1fr 1fr; gap: 36px; }
   .cart-sidebar { width: 85%; max-height: 100dvh; }
@@ -782,16 +687,6 @@ select:active,
   .footer__grid { grid-template-columns: 1fr; }
   .footer__bottom { flex-direction: column; text-align: center; gap: 12px; }
   .footer__legal { flex-direction: column; align-items: center; gap: 12px; }
-  /* Título del modal en una sola línea (como en desktop) */
-  .modal__name {
-    font-size: 26px;
-    letter-spacing: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  /* En mobile las specs vuelven a columna única para mejor lectura */
-  .modal__specs { grid-template-columns: 1fr; gap: 10px; }
 }
 
 /* ── PÁGINAS LEGALES ─────────────────────────────────────────── */
@@ -1133,33 +1028,6 @@ body.cart-open .wa-bubble {
 <script src="components/scroll-reveal.js" defer></script>
 <script src="components/meta-pixel.js"></script>
 
-<!-- ── PRODUCT MODAL ─────────────────────────────────────────── -->
-<div class="modal-overlay" id="modalOverlay" onclick="handleModalOverlayClick(event)" role="dialog" aria-modal="true" aria-label="Detalle del producto">
-  <div class="modal">
-    <div class="modal__gallery"><img id="modalImg" src="" alt="Foto del producto" loading="lazy"></div>
-    <div class="modal__thumbs" id="modalThumbs" style="display:none">
-      <button class="thumb-arrow" id="thumbPrev" onclick="scrollThumbs(-1)" aria-label="Foto anterior">‹</button>
-      <div class="modal__thumbs-track" id="thumbsTrack"></div>
-      <button class="thumb-arrow" id="thumbNext" onclick="scrollThumbs(1)" aria-label="Foto siguiente">›</button>
-    </div>
-    <div class="modal__info">
-      <button class="modal__close" onclick="closeModal()" aria-label="Cerrar">✕</button>
-      <div><div class="modal__label">FOUNDER</div><div class="modal__name" id="modalName"></div></div>
-      <div class="modal__specs" id="modalSpecs"></div>
-      <div>
-        <div class="modal__color-label">Color: <span id="selectedColorName" style="color:var(--color-text)"></span></div>
-        <div class="modal__colors" id="modalColors"></div>
-      </div>
-      <div class="modal__footer">
-        <div><div class="modal__price" id="modalPrice"></div><div class="modal__price-note">10% OFF por transferencia</div></div>
-        <div class="modal__sin-stock-aviso" id="modalSinStockAviso">Producto agotado</div>
-        <button class="modal__add-btn" onclick="addFromModal()">Agregar al carrito</button>
-        <a id="modalDetailLink" href="#" class="modal__detail-link">Ver página completa →</a>
-      </div>
-    </div>
-  </div>
-</div>
-
 
 
 <script>
@@ -1177,7 +1045,6 @@ const CONFIG = Object.freeze({
   WA_NUMBER:      '598098550096',
   FREE_SHIPPING:  2000,
   SHIPPING_COST:  250,
-  THUMBS_VISIBLE: 5,
 });
 
 const COLOR_MAP = Object.freeze({
@@ -1217,9 +1084,6 @@ const state = {
   products:       [],
   photoMap:       {},
   cart:           loadCartFromStorage(), // carrito persistente compartido con producto.html
-  currentProduct: null,
-  currentColor:   null,
-  thumbOffset:    0,
 };
 
 // ── SHARED DOM HELPERS ────────────────────────────────────────────
@@ -1321,14 +1185,6 @@ async function init() {
     // Refrescar visualmente el contador del carrito en el header.
     updateCart();
 
-    // Event delegation para modal — se registra UNA SOLA VEZ aquí, no en renderProducts()
-    document.getElementById('productsGrid').addEventListener('click', function(e) {
-      const btn = e.target.closest('.quick-view-btn');
-      if (!btn) return;
-      e.preventDefault();
-      e.stopPropagation();
-      openModal(parseInt(btn.dataset.id));
-    });
   } catch (err) {
     console.error('[Founder] Error cargando datos:', err);
     const grid = $('productsGrid');
@@ -1432,205 +1288,10 @@ function renderProductCard(p, index = 0) {
             <div class="price">$${p.price.toLocaleString('es-UY')} UYU</div>
             <div class="price-note">10% OFF por transferencia</div>
           </div>
-          <button class="btn btn--primary btn--sm quick-view-btn" data-id="${p.id}" type="button">Ver detalle de producto</button>
+          <a class="btn btn--primary btn--sm btn-detalle" href="producto.html?p=${encodeURIComponent(p.name)}">Ver detalle de producto</a>
         </div>
       </div>
     </article>`;
-}
-
-// ── INDEX — Modal de vista rápida ───────────────────────────────
-function openModal(id) {
-  id = parseInt(id);
-  state.currentProduct = state.products.find(p => p.id === id);
-  if (!state.currentProduct) return;
-  const primerDisponible = state.currentProduct.colors.findIndex(c =>
-    getColorEstado(state.currentProduct, c.name).estado !== 'sin_stock'
-  );
-  state.currentColor = state.currentProduct.colors[primerDisponible >= 0 ? primerDisponible : 0];
-
-  setText('modalName',  `Founder ${state.currentProduct.name}`);
-  // Precio inicial según estado del color seleccionado
-  const { estado: estadoInicial, precioOferta: ofertaInicial } = getColorEstado(state.currentProduct, state.currentColor.name);
-  const priceElModal = $('modalPrice');
-  const addBtnModal  = document.querySelector('.modal__add-btn');
-  const avisoModal   = $('modalSinStockAviso');
-  if (estadoInicial === 'sin_stock') {
-    if (priceElModal) priceElModal.textContent = '';
-    if (addBtnModal)  addBtnModal.style.display = 'none';
-    if (avisoModal)   avisoModal.classList.add('visible');
-  } else {
-    if (addBtnModal)  addBtnModal.style.display = '';
-    if (avisoModal)   avisoModal.classList.remove('visible');
-    if (priceElModal) {
-      if (estadoInicial === 'oferta' && ofertaInicial) {
-        priceElModal.innerHTML = `<span style="text-decoration:line-through;color:var(--color-muted);font-size:0.8em;margin-right:6px">$${state.currentProduct.price.toLocaleString('es-UY')}</span><span style="color:var(--color-gold)">$${ofertaInicial.toLocaleString('es-UY')} UYU</span>`;
-      } else {
-        priceElModal.textContent = `$${state.currentProduct.price.toLocaleString('es-UY')} UYU`;
-      }
-    }
-  }
-  // Specs: en mobile mostrar solo 3 clave (Monedero / RFID / Tarjetas); desktop muestra todas.
-  // Fallback: si el filtro no matchea ninguna (producto raro), caer a las primeras 3.
-  const allSpecs = state.currentProduct.specs || [];
-  const isMobileModal = window.matchMedia('(max-width: 600px)').matches;
-  const SPECS_MOBILE_KEYWORDS = ['monedero', 'rfid', 'tarjeta'];
-  let specsToShow = allSpecs;
-  if (isMobileModal) {
-    const filtered = allSpecs.filter(s => SPECS_MOBILE_KEYWORDS.some(kw => s.toLowerCase().includes(kw)));
-    specsToShow = filtered.length ? filtered : allSpecs.slice(0, 3);
-  }
-  setHTML('modalSpecs', specsToShow.map(s => `<div class="modal__spec">${s}</div>`).join(''));
-
-  // Actualizar link "Ver página completa"
-  const detailLink = $('modalDetailLink');
-  if (detailLink) detailLink.href = `producto.html?p=${encodeURIComponent(state.currentProduct.name)}`;
-
-  updateModalGallery();
-  renderModalColors();
-
-  $('modalOverlay').classList.add('is-open');
-  document.body.style.overflow = 'hidden';
-}
-
-function updateModalGallery() {
-  const photos = getPhotos(state.currentProduct.name, state.currentColor.name);
-  const img    = $('modalImg');
-  const thumbs = $('modalThumbs');
-  const track  = $('thumbsTrack');
-
-  // Foto principal: preset 'modal' (1000w + srcset hasta 1200w).
-  const mainPhoto = photos[0] || '';
-  img.src = cld(mainPhoto, 'modal');
-  if (mainPhoto) {
-    const set = cldSrcset(mainPhoto, 'modal');
-    if (set) {
-      img.srcset = set;
-      img.sizes  = CLD_SIZES.modal;
-    } else {
-      img.removeAttribute('srcset');
-      img.removeAttribute('sizes');
-    }
-  } else {
-    img.removeAttribute('srcset');
-    img.removeAttribute('sizes');
-  }
-  img.style.background = photos.length ? '' : 'linear-gradient(135deg,#111,#1a1a1a)';
-  state.thumbOffset = 0;
-
-  if (photos.length > 1) {
-    thumbs.style.display = 'flex';
-    // Thumbs: preset 'thumb' (200w fijo). El click pasa la URL ORIGINAL
-    // a setModalMainPhoto para no acoplar la lógica al preset.
-    track.innerHTML = photos.map((p, i) => `
-      <img src="${cld(p, 'thumb')}" class="modal__thumb ${i===0 ? 'is-active' : ''}"
-        onclick="setModalMainPhoto('${p.replace(/'/g, "\\'")}', this)" alt="Foto ${i+1}" loading="lazy">`
-    ).join('');
-    updateThumbArrows(photos.length);
-  } else {
-    thumbs.style.display = 'none';
-  }
-}
-
-function setModalMainPhoto(src, el) {
-  // src es la URL ORIGINAL de Supabase. Aplicamos el preset 'modal'
-  // al asignar al <img> principal. Mantenemos srcset/sizes coherentes.
-  const main = $('modalImg');
-  main.src = cld(src, 'modal');
-  const set = cldSrcset(src, 'modal');
-  if (set) {
-    main.srcset = set;
-    main.sizes  = CLD_SIZES.modal;
-  } else {
-    main.removeAttribute('srcset');
-    main.removeAttribute('sizes');
-  }
-  document.querySelectorAll('.modal__thumb').forEach(t => t.classList.remove('is-active'));
-  el.classList.add('is-active');
-}
-
-function scrollThumbs(dir) {
-  const track  = $('thumbsTrack');
-  const total  = track.querySelectorAll('.modal__thumb').length;
-  state.thumbOffset = Math.max(0, Math.min(total - CONFIG.THUMBS_VISIBLE, state.thumbOffset + dir));
-  track.style.transform  = `translateX(-${state.thumbOffset * (58 + 6)}px)`;
-  track.style.transition = 'transform .3s ease';
-  updateThumbArrows(total);
-}
-
-function updateThumbArrows(total) {
-  const prev = $('thumbPrev');
-  const next = $('thumbNext');
-  const showArrows = total > CONFIG.THUMBS_VISIBLE;
-  [prev, next].forEach(btn => { if (btn) btn.style.display = showArrows ? 'flex' : 'none'; });
-  if (prev) prev.disabled = state.thumbOffset === 0;
-  if (next) next.disabled = state.thumbOffset >= total - CONFIG.THUMBS_VISIBLE;
-}
-
-function renderModalColors() {
-  const p = state.currentProduct;
-  setText('selectedColorName', state.currentColor.name);
-  setHTML('modalColors', p.colors.map((c, i) => {
-    const { estado } = getColorEstado(p, c.name);
-    const sinStock = estado === 'sin_stock';
-    const enOferta = estado === 'oferta';
-    const classes = [
-      'color-option',
-      c.name === state.currentColor.name ? 'is-active' : '',
-      sinStock ? 'color-option--sin-stock' : '',
-      enOferta ? 'color-option--oferta' : '',
-    ].filter(Boolean).join(' ');
-    const clickable = `onclick="selectColor(${i})"`;
-    return `
-      <div class="${classes}" ${clickable}>
-        <div class="color-swatch" style="background:${swatchBackground(c)}">
-          ${enOferta ? '<span class="color-option__badge color-option__badge--oferta">OFERTA</span>' : ''}
-          ${sinStock ? '<span class="color-option__badge color-option__badge--agotado">AGOTADO</span>' : ''}
-        </div>
-        <div class="color-option__name">${c.name}</div>
-      </div>`;
-  }).join(''));
-}
-
-function selectColor(i) {
-  const color = state.currentProduct.colors[i];
-  const { estado, precioOferta } = getColorEstado(state.currentProduct, color.name);
-  // Sin stock ahora es clickeable — actualiza galería pero bloquea el carrito
-  state.currentColor = color;
-  updateModalGallery();
-  renderModalColors();
-
-  const addBtn = document.querySelector('.modal__add-btn');
-  const aviso  = $('modalSinStockAviso');
-
-  if (estado === 'sin_stock') {
-    // Ocultar botón agregar y mostrar aviso
-    if (addBtn) addBtn.style.display = 'none';
-    if (aviso)  aviso.classList.add('visible');
-    // Precio oculto cuando sin stock
-    const priceEl = $('modalPrice');
-    if (priceEl) priceEl.textContent = '';
-    return;
-  }
-
-  // Color disponible (activo u oferta)
-  if (addBtn) addBtn.style.display = '';
-  if (aviso)  aviso.classList.remove('visible');
-
-  // Actualizar precio (oferta con tachado)
-  const priceEl = $('modalPrice');
-  if (priceEl) {
-    if (estado === 'oferta' && precioOferta) {
-      priceEl.innerHTML = `<span style="text-decoration:line-through;color:var(--color-muted);font-size:0.8em;margin-right:6px">$${state.currentProduct.price.toLocaleString('es-UY')}</span><span style="color:var(--color-gold)">$${precioOferta.toLocaleString('es-UY')} UYU</span>`;
-    } else {
-      priceEl.textContent = `$${state.currentProduct.price.toLocaleString('es-UY')} UYU`;
-    }
-  }
-}
-
-function handleModalOverlayClick(e) { if (e.target.id === 'modalOverlay') closeModal(); }
-function closeModal() {
-  $('modalOverlay').classList.remove('is-open');
-  document.body.style.overflow = '';
 }
 
 // ── CARRITO → CHECKOUT ───────────────────────────────────────
@@ -1641,21 +1302,6 @@ function openCheckout() {
 }
 
 // ── SHARED CART ─────────────────────────────────────────────────
-function addFromModal() {
-  if (!state.currentColor) { showToast('Seleccioná un color'); return; }
-  const { estado, precioOferta } = getColorEstado(state.currentProduct, state.currentColor.name);
-  if (estado === 'sin_stock') { showToast('Este color está agotado'); return; }
-  const precio = (estado === 'oferta' && precioOferta) ? precioOferta : state.currentProduct.price;
-  addToCart(state.currentProduct, state.currentColor, precio);
-  closeModal();
-  // Usar toggleCart() en lugar de manipular clases directamente,
-  // garantiza sincronización con body.cart-open y desplazamiento de burbuja WA
-  setTimeout(() => {
-    const sidebar = $('cartSidebar');
-    if (!sidebar.classList.contains('is-open')) toggleCart();
-  }, 300);
-}
-
 function addToCart(product, color, precio) {
   const precioFinal = precio ?? product.price;
   const existing = state.cart.find(i => i.name === product.name && i.color === color.name);
