@@ -338,34 +338,41 @@ body.cart-open .wa-bubble { transform: translateX(-440px); }
    calculado para que entren 7 logos por fila en desktop ≥900px.
    Todos los PNGs son 200x64 px (ratio 3.125:1). */
 
-/* Sesión 44: override del footer__bottom para layout vertical.
-   Antes era flex horizontal (logos | copyright | legal). Ahora apilamos:
-   logos arriba, copyright+legal en una línea separada debajo. */
-.footer__bottom {
-  display: block;
-  text-align: center;
-}
-.footer__bottom-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border);
-  font-size: 10px;
-  color: var(--color-muted);
-  letter-spacing: 1px;
-}
-.footer__copy {
-  margin: 0;
-  text-align: left;
+/* Sesión 44: override del footer__bottom para layout vertical EN DESKTOP.
+   IMPORTANTE: estas reglas están envueltas en @media (min-width: 601px)
+   para NO anular el 'display: none' que aplica el media query mobile
+   de cada página HTML. Sin este wrap, el footer__bottom se mostraba
+   también en mobile, duplicando el footer (bug Sesión 44 refinamiento). */
+@media (min-width: 601px) {
+  .footer__bottom {
+    display: block;
+    text-align: center;
+  }
+  .footer__bottom-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+    font-size: 10px;
+    color: var(--color-muted);
+    letter-spacing: 1px;
+  }
+  .footer__copy {
+    margin: 0;
+    text-align: left;
+  }
 }
 
 /* Sesión 44: achicar la separación entre la grilla del footer
-   (FOUNDER / Productos / Info / Legal) y la fila de logos. */
-.footer__grid {
-  margin-bottom: 28px !important;
+   (FOUNDER / Productos / Info / Legal) y la fila de logos.
+   También envuelto en min-width para no interferir con mobile. */
+@media (min-width: 601px) {
+  .footer__grid {
+    margin-bottom: 28px !important;
+  }
 }
 
 .footer__payments {
