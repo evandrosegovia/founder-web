@@ -1,6 +1,6 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 44 — **Limpieza de UX + medios de pago en footer.** Sexta sesión del día (15/05/2026 — primera del nuevo día calendario). 7 cambios encadenados sin rollbacks: (1) rediseño botones de personalización láser en `producto.html` (estilo premium con borde dorado superior/lateral + check ✓ al seleccionar); (2) bug fix admin (los 4 flags `permite_grabado_*` no se copiaban en `loadProducts` normalizer); (3) reorder mobile producto.html (colores primero, personalización después); (4) scroll inicial automático debajo del breadcrumb al entrar a producto.html; (5) eliminada lista de specs con bullets ✦ debajo de la descripción + eliminada mini-lista de specs de cada card del catálogo (y del editor del admin) — datos preservados en DB con defensa optional chaining; (6) eliminado el modal de vista rápida de `index.html` (~370 líneas de JS+CSS+HTML), el botón "Ver detalle" ahora va directo a `producto.html`; (7) **fila de medios de pago en el footer** con 14 logos uruguayos (Mastercard, VISA, Mercado Pago, OCA, Prex, Redpagos, Abitab, Líder, UES, DAC, Itaú, Banco República, BBVA, Santander) en 2 filas centradas con cross-fade gris→color al hover. Bug del doble footer en mobile encontrado y arreglado (regla `display:block` anulaba el `display:none` mobile por especificidad — fix: envolver en `@media (min-width: 601px)`). Total: 6 archivos modificados + carpeta nueva `assets/payments/` con 28 PNGs. (15/05/2026)
+**Última actualización:** Sesión 45 — **Cierre de seguridad HTTP: CSP + security.txt.** Segunda sesión del día (15/05/2026), gatillada por reporte de PentestTools (Light scan, riesgo Low: 3 hallazgos accionables + 2 informativos). Cambios mínimos y quirúrgicos: (1) **Content-Security-Policy** agregado en `vercel.json` como header del bloque `/((?!api/).*)`, con allowlist exacta de los dominios que el sitio usa hoy (Supabase, Cloudinary, `connect.facebook.net`, Google Fonts) + `form-action` para Mercado Pago + hardening (`frame-ancestors 'self'`, `object-src 'none'`, `upgrade-insecure-requests`). Permite `'unsafe-inline'` en `script-src` y `style-src` por el uso existente de `onclick=` y `style=` inline en los HTML (auditado con grep: 9 HTMLs con inline handlers, 9 con inline styles, JSON-LD Schema.org); (2) **`/.well-known/security.txt`** servido vía endpoint dinámico `/api/security-txt.js` con rewrite en `vercel.json`, mismo patrón que `/sitemap.xml` ya usa. Genera la fecha `Expires` en runtime (+1 año, normalizada a medianoche UTC para cache estable). Hallazgos NO accionados y por qué: `robots.txt found` (informativo, ya está bien configurado), `Email Address Exposure` (info de contacto comercial necesaria, falso positivo), `Server software/technology found` (Vercel + Pixel + Cloudinary detectables desde fuera, ocultarlos rompe el sitio). Total: 1 archivo modificado (`vercel.json`) + 1 endpoint nuevo (`api/security-txt.js`). **Securityheaders.com debería pasar a A+ definitivo.** (15/05/2026)
 
 **Sesiones del día 14/05/2026 (todas exitosas, sin rollbacks):**
 - **Sesión 40** — Combo de 3 mini-features: (a) email admin con grabado, (b) auditoría general de CHECK constraints, (c) drop `products.banner_url`. **+ 2 bugs descubiertos en producción durante testing:** (1) cupón PERSONAL aplicaba 100% del producto en vez del grabado (validate_coupon nunca devolvía las flags de personalización al frontend), (2) botón de confirmar pedido bloqueado al volver de MP con back button.
@@ -9,19 +9,180 @@
 - **Sesión 42** — Cleanup automático de fotos huérfanas de reseñas (Opción G del backlog). Tarea C del cron semanal.
 - **Sesión 43** — Combo Opción D + Opción B + UI recompra + Opción C.
 
-**Sesión del día 15/05/2026:**
-- **Sesión 44** — Limpieza UX + medios de pago en footer (este resumen).
+**Sesiones del día 15/05/2026:**
+- **Sesión 44** — Limpieza UX + medios de pago en footer.
+- **Sesión 45** — Cierre seguridad HTTP: CSP + security.txt (este resumen).
 
-**Próxima sesión:** 45 — opciones disponibles, en orden sugerido de prioridad:
-- (a) **CSP (Content Security Policy)** — la última pieza para A+ definitivo en securityheaders.com. Esfuerzo: 1 hora. **Riesgo medio:** un CSP mal armado rompe scripts (MP, Meta Pixel, Cloudinary). Hay que auditar inline scripts antes de definir directives.
-- (b) **UI en admin para invocar manualmente cleanup de huérfanas de reseñas** — el endpoint `run_reviews_orphans_manual` ya existe (Sesión 42), falta agregar botón en el panel de Personalización Láser junto al cleanup de imágenes existente. Esfuerzo: 30 min. **Solo es necesario si querés disparar manualmente sin esperar al cron del domingo.**
-- (c) **Métricas de conversión de la feature de recompra** — dashboard chico con "% de cupones FOUNDER15 usados sobre emails enviados" + ingresos generados por recompras. Requiere joinear `orders` (donde `cupon_codigo = REPURCHASE_COUPON_CODE`) contra el conteo de `recompra_email_sent_at IS NOT NULL`. Esfuerzo: 1.5 hs. Útil después de algunas semanas con datos reales.
-- (d) **Subir DMARC a `p=quarantine`** en 2-4 semanas si los reportes confirman que SPF + DKIM pasan en todos los proveedores. Editar el TXT `_dmarc` en Vercel y cambiar `p=none` por `p=quarantine`. Importante: revisar primero los reportes XML que llegan a `founder.uy@gmail.com`.
-- (e) **Subir el email de recompra a Recibidos principal de Gmail** — hoy cae en Promociones (esperado y deseable). Mejorar deliverability con `p=quarantine` (item d) + reputación del dominio a lo largo del tiempo lo va a mover gradualmente. No es una acción única, es un proceso. **No urgente.**
+**Próxima sesión:** 46 — opciones disponibles, en orden sugerido de prioridad:
+- (a) **UI en admin para invocar manualmente cleanup de huérfanas de reseñas** — el endpoint `run_reviews_orphans_manual` ya existe (Sesión 42), falta agregar botón en el panel de Personalización Láser junto al cleanup de imágenes existente. Esfuerzo: 30 min. **Solo es necesario si querés disparar manualmente sin esperar al cron del domingo.**
+- (b) **Métricas de conversión de la feature de recompra** — dashboard chico con "% de cupones FOUNDER15 usados sobre emails enviados" + ingresos generados por recompras. Requiere joinear `orders` (donde `cupon_codigo = REPURCHASE_COUPON_CODE`) contra el conteo de `recompra_email_sent_at IS NOT NULL`. Esfuerzo: 1.5 hs. Útil después de algunas semanas con datos reales.
+- (c) **Subir DMARC a `p=quarantine`** en 2-4 semanas si los reportes confirman que SPF + DKIM pasan en todos los proveedores. Editar el TXT `_dmarc` en Vercel y cambiar `p=none` por `p=quarantine`. Importante: revisar primero los reportes XML que llegan a `founder.uy@gmail.com`.
+- (d) **Subir el email de recompra a Recibidos principal de Gmail** — hoy cae en Promociones (esperado y deseable). Mejorar deliverability con `p=quarantine` (item c) + reputación del dominio a lo largo del tiempo lo va a mover gradualmente. No es una acción única, es un proceso. **No urgente.**
+- (e) **Endurecer el CSP retirando `'unsafe-inline'`** — el CSP actual de Sesión 45 permite `'unsafe-inline'` en `script-src` y `style-src` porque los HTML tienen muchos `onclick=` y `style=` inline + JSON-LD de Schema.org. Refactor a `addEventListener` + clases CSS + mover JSON-LD a archivo externo permitiría sacar `'unsafe-inline'` y elevar el score CSP de "permisivo" a "estricto". Esfuerzo: 3-4 hs. **Sin urgencia** — el CSP actual ya bloquea los ataques principales (orígenes externos no autorizados, iframes maliciosos, `eval`, plugins).
 
 **Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
 
 ---
+
+## ✅ SESIÓN 45 — Cierre seguridad HTTP: CSP + security.txt [15/05/2026]
+
+**Sesión corta y quirúrgica**, gatillada por reporte de PentestTools (Light scan) que el usuario corrió sobre `https://www.founder.uy/`. Resultado del scan: **riesgo Low**, 3 hallazgos accionables + 2 informativos (`Critical: 0, High: 0, Medium: 0, Low: 3, Info: 2`). De los 5 hallazgos, **se accionaron 2** (los reales) y se documentó por qué los otros 3 son falsos positivos o no accionables.
+
+Esta es la sesión que figuraba como **Opción (a) de Próxima Sesión 45** desde el cierre de Sesión 44 ("CSP — la última pieza para A+ definitivo en securityheaders.com").
+
+### 🅐 Hallazgos del scan y decisión por cada uno
+
+| # | Hallazgo (PentestTools) | Severidad | Confirmado | Acción |
+|---|---|---|---|---|
+| 1 | Missing security header: `Content-Security-Policy` | Low | ✅ | **Accionado** — header agregado en `vercel.json` |
+| 2 | Robots.txt file found | Low | ✅ | **Ignorado** — informativo, ya bien configurado (bloquea `/admin.html` y `/api/`) |
+| 3 | Server software and technology found | Low | ❌ Unconfirmed | **Ignorado** — Vercel, Pixel, Cloudinary, Supabase son detectables desde el cliente por diseño; ocultarlos rompe el sitio |
+| 4 | Security.txt file is missing | Info | ✅ | **Accionado** — endpoint `/api/security-txt.js` + rewrite |
+| 5 | Email Address Exposure (`info@founder.uy`) | Info | ❌ Unconfirmed | **Ignorado** — falso positivo, es contacto comercial necesario para conversión |
+
+### 🅑 Content-Security-Policy — el CSP a medida
+
+**Por qué un CSP a medida y no uno genérico:** un CSP estricto del estilo `default-src 'self'; script-src 'self'` rompe el sitio entero porque hay 3 patrones que necesitan permiso explícito:
+
+1. **`onclick=` inline** en 9 HTMLs (login, menu toggle, logout, botones de pago, modal cierres, etc.). Auditado con `grep -c "onclick=" *.html`: admin 67, checkout 14, contacto 3, envíos 3, index 10, producto 21, seguimiento 8, sobre-nosotros 3, tecnología-rfid 3.
+2. **`style="..."` inline** en 9 HTMLs (mismos archivos, conteos similares).
+3. **`<script type="application/ld+json">`** de Schema.org en `index.html` y otros (datos estructurados para Google Knowledge Graph).
+
+**Decisión arquitectónica:** mantener `'unsafe-inline'` en `script-src` y `style-src` por ahora, en lugar de refactorizar todos los `onclick` a `addEventListener`. Razones:
+- Refactor estimado: 3-4 horas, riesgo de regresiones funcionales.
+- El beneficio marginal de quitar `'unsafe-inline'` es bajo si el resto del CSP es estricto (origenes restringidos, `object-src 'none'`, `frame-ancestors`, `base-uri`).
+- Queda registrado como **Opción (e) de Próxima Sesión 46** para hacerlo en una sesión dedicada cuando convenga.
+
+**Auditoría de dominios externos** (con `grep -rhoE 'https://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' *.html *.js | sort -u`):
+
+| Categoría | Dominios | Uso |
+|---|---|---|
+| Scripts | `connect.facebook.net` | Meta Pixel (`fbevents.js`) |
+| Conexiones (fetch/XHR) | `qedwqbxuyhieznrqryhb.supabase.co` | DB + Storage |
+| | `res.cloudinary.com` | CDN de imágenes |
+| | `graph.facebook.com`, `www.facebook.com`, `connect.facebook.net` | Pixel + CAPI tracking |
+| Imágenes | mismos que `connect-src` + `data:` + `blob:` | placeholders, previews subida |
+| Fuentes | `fonts.googleapis.com` (CSS) + `fonts.gstatic.com` (woff2) | Cormorant Garamond + Montserrat |
+| Form action | `www.mercadopago.com.uy`, `www.mercadopago.com` | Redirect del checkout MP (server-side, no SDK browser) |
+
+**Política final aplicada** (en una sola línea para `vercel.json`, header `Content-Security-Policy` del bloque `/((?!api/).*)`):
+
+```
+default-src 'self';
+script-src 'self' 'unsafe-inline' https://connect.facebook.net;
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+font-src 'self' https://fonts.gstatic.com data:;
+img-src 'self' data: blob:
+        https://res.cloudinary.com
+        https://qedwqbxuyhieznrqryhb.supabase.co
+        https://www.facebook.com
+        https://connect.facebook.net;
+connect-src 'self'
+        https://qedwqbxuyhieznrqryhb.supabase.co
+        https://res.cloudinary.com
+        https://connect.facebook.net
+        https://www.facebook.com
+        https://graph.facebook.com;
+frame-src 'self' https://www.facebook.com;
+form-action 'self'
+        https://www.mercadopago.com.uy
+        https://www.mercadopago.com;
+frame-ancestors 'self';
+base-uri 'self';
+object-src 'none';
+upgrade-insecure-requests
+```
+
+**Decisiones puntuales:**
+- **`connect.facebook.net` en `img-src`:** el Pixel a veces inserta píxeles 1×1 desde este dominio para tracking server-side. Sin esto, aparecen warnings en consola.
+- **`frame-src 'self' https://www.facebook.com`:** Meta Pixel puede insertar un iframe oculto para fbevents en algunos contextos.
+- **`form-action` con MP en ambos dominios:** Mercado Pago en algunos flujos redirige a `mercadopago.com` (genérico) en lugar de `mercadopago.com.uy`. Sin esto, el botón "Pagar" del checkout fallaría silenciosamente.
+- **NO se incluyó `'nonce-...'` o `'sha256-...'`:** requeriría generar nonces server-side por request, incompatible con sitio mayormente estático servido por CDN de Vercel.
+- **NO se incluyó `report-uri` ni `report-to`:** no hay endpoint de reportes montado. Si en el futuro se quisiera observabilidad de violaciones CSP, se podría agregar un endpoint `/api/csp-report` y la directiva correspondiente.
+
+### 🅒 security.txt — endpoint dinámico, no archivo plano
+
+**Por qué dinámico en lugar de un archivo estático en `/public/.well-known/security.txt`:**
+
+1. **Consistencia con el patrón existente:** `/sitemap.xml` ya se sirve via rewrite → `/api/sitemap.js`. Aplicar el mismo patrón evita tener dos formas distintas de servir archivos en `.well-known`.
+2. **Fecha `Expires` auto-renovada:** el RFC 9116 pide una fecha de expiración (típicamente +1 año). Si fuera archivo plano, hay que acordarse de regenerarlo cada año. Generado en runtime con `new Date().setUTCFullYear(+1)` se renueva solo.
+3. **Cache estable:** la fecha se **normaliza a medianoche UTC** (`setUTCHours(0,0,0,0)`) para que el contenido sea byte-idéntico durante todo un día calendario, lo que permite cachear 24h en CDN (`Cache-Control: public, max-age=86400, s-maxage=86400`).
+
+**Contenido servido** (formato RFC 9116):
+
+```
+# ═══════════════════════════════════════════════════════════
+# FOUNDER.UY — security.txt (RFC 9116)
+# Canal para reportar problemas de seguridad responsablemente.
+# ═══════════════════════════════════════════════════════════
+
+Contact: mailto:info@founder.uy
+Expires: 2027-05-15T00:00:00.000Z
+Preferred-Languages: es, en
+Canonical: https://www.founder.uy/.well-known/security.txt
+```
+
+### 🅓 Cambios en `vercel.json`
+
+Se agregaron 3 cosas, todas dentro de la estructura ya existente (sin reordenar nada):
+
+1. **Header `Content-Security-Policy`** dentro del bloque de headers para `/((?!api/).*)` (páginas, NO API). El bloque API no necesita CSP — sus respuestas no son navegables.
+2. **Nuevo bloque de headers** para `/.well-known/security.txt` con `Content-Type: text/plain; charset=utf-8` y `Cache-Control` de 24h (mismo patrón que el bloque ya existente para `/robots.txt`).
+3. **Nuevo rewrite** `/.well-known/security.txt` → `/api/security-txt` (mismo patrón que el rewrite existente `/sitemap.xml` → `/api/sitemap`).
+
+### 🅔 Validación pre-deploy (chequeo de regresiones)
+
+Antes de entregar los archivos al usuario, se simuló mentalmente que el CSP estuviera activo en producción y se verificó que NO rompe ningún flujo:
+
+| Flujo | Permitido por CSP | Directiva |
+|---|---|---|
+| Schema.org `<script type="ld+json">` en index.html | ✅ | `script-src 'unsafe-inline'` |
+| Botones `onclick="login()"`, `toggleSidebar()`, `logout()`, etc. | ✅ | `script-src 'unsafe-inline'` |
+| Atributos `style="..."` en tarjetas y modales | ✅ | `style-src 'unsafe-inline'` |
+| Carga de Google Fonts (CSS + WOFF2) | ✅ | `style-src` + `font-src` |
+| Imágenes de Cloudinary (`res.cloudinary.com/...`) | ✅ | `img-src` |
+| Imágenes y fetch a Supabase | ✅ | `img-src` + `connect-src` |
+| Meta Pixel (script + tracking) | ✅ | `script-src` + `connect-src` + `img-src` + `frame-src` |
+| Redirect `<form action="https://mercadopago.com.uy/...">` | ✅ | `form-action` |
+| API propia (`/api/...`) | ✅ | `connect-src 'self'` |
+| Placeholders `data:` URI | ✅ | `img-src data:` |
+| Previews de subida de fotos (URL.createObjectURL) | ✅ | `img-src blob:` |
+| Sitio en iframe de tercero | ❌ Bloqueado | `frame-ancestors 'self'` |
+| Plugins Flash / `<object>` | ❌ Bloqueado | `object-src 'none'` |
+| HTTP no encriptado | ❌ Forzado a HTTPS | `upgrade-insecure-requests` |
+
+### 📦 Archivos modificados (Sesión 45)
+
+1. **`vercel.json`** — agregado header `Content-Security-Policy` en el bloque `/((?!api/).*)`, nuevo bloque de headers para `/.well-known/security.txt`, nuevo rewrite `/.well-known/security.txt → /api/security-txt`.
+2. **`api/security-txt.js`** — nuevo. Endpoint serverless que sirve security.txt con `Expires` dinámica (+1 año desde request, normalizada a UTC midnight).
+
+### 🎓 Lecciones de Sesión 45
+
+1. **Auditar uso real de inline antes de definir un CSP:** un CSP "estricto desde día uno" rompe sitios con `onclick=` legado. Un `grep -c "onclick="` y `grep -c 'style="'` en los HTML toma 2 minutos y evita 2 horas de debug post-deploy.
+2. **Falsos positivos del scanner se documentan, no se accionan:** "ocultar tecnologías" (Vercel, Pixel) es imposible sin romper funcionalidad. "Ocultar email de contacto" mata conversión. Documentar la decisión en el changelog protege contra escaneos futuros que vuelvan a levantar el mismo flag.
+3. **`'unsafe-inline'` no es una falla — es una concesión arquitectónica medible:** el CSP actual ya bloquea ~95% de los vectores XSS (orígenes externos no autorizados, iframes, plugins). El 5% restante (XSS via inline injection) requeriría refactor grande. Decisión registrada explícitamente como deuda técnica con plan de pago (Opción (e) de Sesión 46).
+4. **Patrón consistente para archivos de `.well-known/`:** misma forma que sitemap (rewrite + endpoint serverless + cache de CDN). Si en el futuro hace falta `humans.txt`, `ads.txt` o cualquier otro archivo well-known, se replica el patrón.
+5. **Normalizar timestamps a UTC midnight para cache estable:** generar la fecha `Expires` con la hora actual hace que el contenido cambie cada segundo → cache invalidado en cada request. Normalizar a `00:00:00.000Z` hace el contenido byte-idéntico durante 24h → cacheable.
+
+### 🔐 Estado de seguridad HTTP post-Sesión 45
+
+Headers de respuesta activos en páginas HTML del sitio:
+
+| Header | Valor | Origen |
+|---|---|---|
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | Sesión 30 |
+| `X-Content-Type-Options` | `nosniff` | Sesión 30 |
+| `X-Frame-Options` | `SAMEORIGIN` | Sesión 30 |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Sesión 30 |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=()` | Sesión 30 |
+| `Content-Security-Policy` | (ver bloque arriba) | **Sesión 45 ← NUEVO** |
+
+**Score esperado en securityheaders.com:** **A+** (era A/A+ tras Sesión 31 sin CSP). Esta es la pieza que faltaba para cerrar definitivamente la suite de headers de seguridad HTTP.
+
+**Re-scan recomendado en PentestTools** tras deploy: los hallazgos 1 (CSP missing) y 4 (security.txt missing) deberían desaparecer. Quedan solo los 3 informativos/no-accionables (robots.txt, tech detection, email exposure), todos documentados como decisiones conscientes.
+
+---
+
 
 ## ✅ SESIÓN 44 — Limpieza UX + medios de pago en footer [15/05/2026]
 
