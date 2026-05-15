@@ -2987,12 +2987,12 @@
 
     // Abrir modal
     const modal = $('heroEditModal');
-    if (modal) modal.classList.add('is-open');
+    if (modal) modal.classList.add('open');
   }
 
   function closeHeroEditModal() {
     const modal = $('heroEditModal');
-    if (modal) modal.classList.remove('is-open');
+    if (modal) modal.classList.remove('open');
   }
 
   function renderHeroEditImagePreview(url) {
