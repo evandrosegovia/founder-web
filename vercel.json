@@ -22,7 +22,8 @@
         { "key": "X-Content-Type-Options",       "value": "nosniff" },
         { "key": "X-Frame-Options",              "value": "SAMEORIGIN" },
         { "key": "Referrer-Policy",              "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy",           "value": "camera=(), microphone=(), geolocation=(), payment=()" }
+        { "key": "Permissions-Policy",           "value": "camera=(), microphone=(), geolocation=(), payment=()" },
+        { "key": "Content-Security-Policy",      "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://connect.facebook.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://res.cloudinary.com https://qedwqbxuyhieznrqryhb.supabase.co https://www.facebook.com https://connect.facebook.net; connect-src 'self' https://qedwqbxuyhieznrqryhb.supabase.co https://res.cloudinary.com https://connect.facebook.net https://www.facebook.com https://graph.facebook.com; frame-src 'self' https://www.facebook.com; form-action 'self' https://www.mercadopago.com.uy https://www.mercadopago.com; frame-ancestors 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests" }
       ]
     },
     {
@@ -31,9 +32,17 @@
         { "key": "Content-Type",  "value": "text/plain; charset=utf-8" },
         { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=3600" }
       ]
+    },
+    {
+      "source": "/.well-known/security.txt",
+      "headers": [
+        { "key": "Content-Type",  "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=86400, s-maxage=86400" }
+      ]
     }
   ],
   "rewrites": [
-    { "source": "/sitemap.xml", "destination": "/api/sitemap" }
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    { "source": "/.well-known/security.txt", "destination": "/api/security-txt" }
   ]
 }
