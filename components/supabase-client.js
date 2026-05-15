@@ -160,6 +160,93 @@
   }
 
   // ─────────────────────────────────────────────────────────────
+  // HERO SLIDES (Sesión 48) — múltiples slides rotatorios
+  // ─────────────────────────────────────────────────────────────
+  // Toda la configuración del carrusel del hero vive en
+  // `site_settings.hero_slides` como JSON serializado en `value`.
+  //
+  // Forma del JSON:
+  //   {
+  //     "slides": [
+  //       {
+  //         "id": "<uuid>",                   // identificador interno (admin)
+  //         "enabled": true,                  // si false, no se renderiza
+  //         "orden": 1,                       // orden visual (1, 2, 3...)
+  //         "label": "Founder.uy — Uruguay",  // eyebrow dorado arriba
+  //         "title_html": "Protegé<br>lo que <em>importa.</em>",
+  //         "subtitle": "Billeteras premium...",
+  //         "image_url": "https://...",       // imagen de fondo
+  //         "buttons": [                      // 0, 1 o 2 botones
+  //           { "text": "Ver colección", "url": "#productos", "style": "primary" }
+  //         ]
+  //       }
+  //     ],
+  //     "autoplay_ms": 8000                   // intervalo entre slides
+  //   }
+  //
+  // El sitio público solo descarga slides con enabled=true. Los pausados
+  // viven en la DB pero NO consumen recursos del cliente (no se renderizan,
+  // no se descargan sus imágenes, no entran al carrusel).
+  //
+  // FALLBACK / MIGRACIÓN: si la fila `hero_slides` no existe todavía,
+  // construimos automáticamente un único slide a partir del banner legado
+  // (`hero_banner_url`) + los textos hardcoded de Sesión 25. Así el sitio
+  // nunca se ve "vacío" durante la transición.
+
+  const HERO_SLIDES_DEFAULTS = Object.freeze({
+    autoplay_ms: 8000,
+    slides: [],
+  });
+
+  /** Devuelve la configuración de hero slides para el SITIO PÚBLICO.
+   *  - Solo incluye slides con `enabled: true`, ordenados por `orden` ASC.
+   *  - Si la key no existe, fabrica un slide legado a partir del banner viejo.
+   *  - Siempre devuelve `{ autoplay_ms, slides: [] }` válido (nunca null).
+   *  - Acceso anon read-only vía RLS (site_settings tiene SELECT público). */
+  async function fetchHeroSlides() {
+    try {
+      const path = '/site_settings?select=value&key=eq.hero_slides&limit=1';
+      const rows = await supaGet(path);
+      const raw  = rows[0]?.value;
+
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const slides = Array.isArray(parsed?.slides) ? parsed.slides : [];
+        const enabledSorted = slides
+          .filter(s => s && s.enabled !== false)
+          .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999));
+
+        return {
+          autoplay_ms: Number.isFinite(parsed?.autoplay_ms) ? parsed.autoplay_ms : HERO_SLIDES_DEFAULTS.autoplay_ms,
+          slides: enabledSorted,
+        };
+      }
+
+      // ── Fallback legacy: usar hero_banner_url solo ──
+      const legacyUrl = await fetchBannerUrl();
+      return {
+        autoplay_ms: HERO_SLIDES_DEFAULTS.autoplay_ms,
+        slides: [{
+          id:         'legacy',
+          enabled:    true,
+          orden:      1,
+          label:      'Founder.uy — Uruguay',
+          title_html: 'Protegé<br>lo que <em>importa.</em>',
+          subtitle:   'Billeteras y tarjeteros premium con tecnología RFID. Diseño minimalista, materiales de alta calidad. Tus tarjetas, protegidas.',
+          image_url:  legacyUrl || '',
+          buttons: [
+            { text: 'Ver colección', url: '#productos',           style: 'primary'   },
+            { text: '¿Qué es RFID?', url: 'tecnologia-rfid.html', style: 'secondary' },
+          ],
+        }],
+      };
+    } catch (e) {
+      console.warn('[founderDB] No se pudo leer hero_slides — devolviendo defaults vacíos:', e);
+      return { autoplay_ms: HERO_SLIDES_DEFAULTS.autoplay_ms, slides: [] };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // PERSONALIZACIÓN LÁSER — Configuración global (Sesión 28)
   // ─────────────────────────────────────────────────────────────
   // Toda la config del feature de personalización vive en
@@ -298,8 +385,10 @@
     fetchProducts,
     fetchPhotoMap,
     fetchBannerUrl,
+    fetchHeroSlides,
     fetchPersonalizacionConfig,
     fetchPersonalizacionExamples,
+    HERO_SLIDES_DEFAULTS,
     PERSONALIZACION_DEFAULTS,
     // Útiles para debugging en consola del navegador
     _url:  SUPABASE_URL,

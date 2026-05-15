@@ -67,6 +67,11 @@
     lpConfig: null,
     // Galería de ejemplos — array de { id, tipo, url, ... }. Cargado por loadLpExamples().
     lpExamples: [],
+    // Hero slides — config completa del carrusel del hero (Sesión 48).
+    // Se popula con loadBanner() al entrar al panel "Banners de inicio".
+    // Forma: { autoplay_ms: number, slides: [{ id, enabled, orden, label,
+    //          title_html, subtitle, image_url, buttons: [...] }, ...] }
+    hero: { autoplay_ms: 8000, slides: [] },
     // Período del dashboard (Sesión 41 + extensión Sesión 41b).
     // Valores válidos: 7, 30, 90, 120, 365 (días) o 'todo' (histórico completo).
     // Default 30 días. Se persiste en localStorage entre sesiones del admin.
@@ -2778,102 +2783,345 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // BANNER DEL HERO
+  // HERO SLIDES (Sesión 48)
   // ───────────────────────────────────────────────────────────────
-  // El banner se guarda en la tabla `site_settings` con la key
-  // `hero_banner_url`. El sitio público (supabase-client.js →
-  // fetchBannerUrl) lee de ahí directamente con la anon key.
-  // Antes vivía en `products.banner_url` del primer producto activo,
-  // pero eso obligaba a traer la tabla products entera solo para una URL.
-  // (Columna legacy `products.banner_url` dropeada en Sesión 40.)
+  // Reemplaza al banner único de Sesión 26. La config completa se
+  // guarda en `site_settings.hero_slides` como JSON serializado.
+  //
+  // Cada slide tiene: id, enabled, orden, label, title_html, subtitle,
+  // image_url, buttons[] (0-2 botones con text/url/style).
+  //
+  // El admin gestiona TODOS los slides (activos y pausados). El sitio
+  // público solo lee los `enabled:true` — los pausados no consumen
+  // recursos (ni se descargan sus imágenes).
   // ═══════════════════════════════════════════════════════════════
 
-  const BANNER_KEY = 'hero_banner_url';
+  const HERO_SLIDES_KEY = 'hero_slides';
+  const HERO_SLIDES_DEFAULT_AUTOPLAY = 8000;
 
-  /** Carga la URL del banner desde site_settings y la pinta en el editor.
-   *  No depende de `state.products` — es totalmente independiente del catálogo. */
+  /** Genera un id único corto para un slide nuevo. */
+  function genSlideId() {
+    return 's_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+  }
+
+  /** Crea un slide vacío con los textos hardcoded como placeholder.
+   *  El admin puede editarlos completamente desde la UI. */
+  function blankSlide(orden = 1) {
+    return {
+      id:         genSlideId(),
+      enabled:    true,
+      orden,
+      label:      'Founder.uy — Uruguay',
+      title_html: 'Título<br>del <em>banner</em>',
+      subtitle:   'Descripción breve del banner. Editá este texto desde el admin.',
+      image_url:  '',
+      buttons: [
+        { text: 'Ver más', url: '#productos', style: 'primary' },
+      ],
+    };
+  }
+
+  /** Lee la configuración del backend. Devuelve { autoplay_ms, slides[] }.
+   *  Si la fila no existe (primera vez), devuelve estructura vacía. */
+  async function fetchHeroSlidesConfig() {
+    const { ok, data } = await apiAdmin('get_setting', { key: HERO_SLIDES_KEY });
+    if (!ok) return { autoplay_ms: HERO_SLIDES_DEFAULT_AUTOPLAY, slides: [] };
+    const raw = data?.value || '';
+    if (!raw) return { autoplay_ms: HERO_SLIDES_DEFAULT_AUTOPLAY, slides: [] };
+    try {
+      const parsed = JSON.parse(raw);
+      return {
+        autoplay_ms: Number.isFinite(parsed?.autoplay_ms) ? parsed.autoplay_ms : HERO_SLIDES_DEFAULT_AUTOPLAY,
+        slides: Array.isArray(parsed?.slides) ? parsed.slides : [],
+      };
+    } catch (e) {
+      console.warn('[admin] hero_slides JSON inválido — devolviendo vacío:', e);
+      return { autoplay_ms: HERO_SLIDES_DEFAULT_AUTOPLAY, slides: [] };
+    }
+  }
+
+  /** Guarda la configuración entera en backend. */
+  async function persistHeroSlidesConfig(silent = false) {
+    const payload = JSON.stringify({
+      autoplay_ms: state.hero?.autoplay_ms ?? HERO_SLIDES_DEFAULT_AUTOPLAY,
+      slides:      state.hero?.slides || [],
+    });
+    const { ok, data } = await apiAdmin('set_setting', { key: HERO_SLIDES_KEY, value: payload });
+    if (!ok) {
+      toast('Error guardando los slides' + (data?.message ? ': ' + data.message : ''), true);
+      return false;
+    }
+    if (!silent) toast('✅ Cambios guardados');
+    return true;
+  }
+
+  /** Carga inicial del panel: trae datos + intenta migrar el banner legado. */
   async function loadBanner(opts = {}) {
     const silent = !!opts.silent;
-    const { ok, data } = await apiAdmin('get_setting', { key: BANNER_KEY });
+    state.hero = await fetchHeroSlidesConfig();
 
-    const url = ok ? (data?.value || '') : '';
-    if (!ok && !silent) toast('Error cargando el banner', true);
+    // ── Migración legado → si NO hay slides pero existe hero_banner_url,
+    //    construimos un primer slide a partir de ese valor. El admin verá
+    //    el slide migrado y puede editarlo o eliminarlo. ──
+    if (state.hero.slides.length === 0) {
+      const { ok, data } = await apiAdmin('get_setting', { key: 'hero_banner_url' });
+      const legacyUrl = ok ? (data?.value || '') : '';
+      if (legacyUrl) {
+        state.hero.slides = [{
+          id:         genSlideId(),
+          enabled:    true,
+          orden:      1,
+          label:      'Founder.uy — Uruguay',
+          title_html: 'Protegé<br>lo que <em>importa.</em>',
+          subtitle:   'Billeteras y tarjeteros premium con tecnología RFID. Diseño minimalista, materiales de alta calidad. Tus tarjetas, protegidas.',
+          image_url:  legacyUrl,
+          buttons: [
+            { text: 'Ver colección', url: '#productos',           style: 'primary'   },
+            { text: '¿Qué es RFID?', url: 'tecnologia-rfid.html', style: 'secondary' },
+          ],
+        }];
+        // Guardar la migración para que el sitio público lo levante apenas refresca
+        await persistHeroSlidesConfig(true);
+      }
+    }
 
-    const input = $('bannerInput');
-    if (input) input.value = url;
-    renderBannerPreview(url);
-  }
-
-  /** Refresca el preview visual del banner. */
-  function renderBannerPreview(url) {
-    const prev  = $('bannerPreview');
-    const empty = $('bannerPreviewEmpty');
-    if (!prev) return;
-
-    // Limpiar imagen previa
-    const prevImg = prev.querySelector('img');
-    if (prevImg) prevImg.remove();
-
-    if (url) {
-      if (empty) empty.style.display = 'none';
-      const img = document.createElement('img');
-      img.src = url;
-      img.alt = 'Banner del hero';
-      prev.appendChild(img);
-    } else {
-      if (empty) empty.style.display = 'block';
+    renderHeroSlidesPanel();
+    if (!silent && state.hero.slides.length === 0) {
+      // Sin slides — UI lo deja claro, no es error
     }
   }
 
-  function previewBanner() {
-    const url = ($('bannerInput')?.value || '').trim();
-    if (!url) { toast('Ingresá un link de imagen', true); return; }
-    renderBannerPreview(url);
-    toast('Vista previa cargada');
-  }
+  /** Renderiza la lista completa de slides en el panel. */
+  function renderHeroSlidesPanel() {
+    const container = $('heroSlidesList');
+    if (!container) return;
 
-  /** Guarda la URL del banner en site_settings.hero_banner_url. */
-  async function saveBanner() {
-    const url = ($('bannerInput')?.value || '').trim();
-    if (!url) { toast('Ingresá un link de imagen', true); return; }
-    await persistBannerUrl(url, '✅ Banner guardado — visible en el sitio');
-  }
-
-  async function clearBanner() {
-    if (!confirm('¿Estás seguro de quitar el banner? Se eliminará para todos los visitantes.')) return;
-    await persistBannerUrl('', '✅ Banner eliminado');
-  }
-
-  /** Persistencia del banner: upsert en site_settings vía /api/admin → set_setting.
-   *  Mucho más simple que antes — no tocamos ningún producto. */
-  async function persistBannerUrl(url, okMsg) {
-    const { ok, data } = await apiAdmin('set_setting', { key: BANNER_KEY, value: url });
-    if (!ok) {
-      toast('Error guardando el banner' + (data?.message ? ': ' + data.message : ''), true);
+    const slides = state.hero?.slides || [];
+    if (slides.length === 0) {
+      container.innerHTML = `
+        <div class="hero-slides-empty">
+          <p>No tenés banners configurados todavía.</p>
+          <button class="btn btn-primary" onclick="addHeroSlide()">+ Crear primer banner</button>
+        </div>`;
       return;
     }
-    const input = $('bannerInput');
-    if (input) input.value = url;
-    renderBannerPreview(url);
-    toast(okMsg);
+
+    // Ordenar por `orden` ascendente para mostrar
+    const sorted = [...slides].sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999));
+
+    container.innerHTML = sorted.map((s, displayIdx) => {
+      const isFirst = displayIdx === 0;
+      const isLast  = displayIdx === sorted.length - 1;
+      const enabled = s.enabled !== false;
+      return `
+        <div class="hero-slide-card${enabled ? '' : ' is-paused'}" data-slide-id="${escapeAttr(s.id)}">
+          <div class="hero-slide-card__preview">
+            ${s.image_url
+              ? `<img src="${escapeAttr(s.image_url)}" alt="" loading="lazy">`
+              : `<div class="hero-slide-card__noimg">Sin imagen</div>`}
+          </div>
+          <div class="hero-slide-card__info">
+            <div class="hero-slide-card__row">
+              <div class="hero-slide-card__order">#${displayIdx + 1}</div>
+              <div class="hero-slide-card__title">${escapeAttr(stripHtml(s.title_html || '(sin título)'))}</div>
+              <div class="hero-slide-card__state">${enabled ? '🟢 Activo' : '⏸️ Pausado'}</div>
+            </div>
+            <div class="hero-slide-card__sub">${escapeAttr(s.subtitle || '')}</div>
+            <div class="hero-slide-card__actions">
+              <button class="btn btn-secondary btn-sm" onclick="editHeroSlide('${escapeAttr(s.id)}')">✏️ Editar</button>
+              <button class="btn btn-secondary btn-sm" onclick="toggleHeroSlide('${escapeAttr(s.id)}')">${enabled ? '⏸️ Pausar' : '▶️ Activar'}</button>
+              <button class="btn btn-secondary btn-sm" onclick="moveHeroSlide('${escapeAttr(s.id)}', -1)" ${isFirst ? 'disabled' : ''}>↑</button>
+              <button class="btn btn-secondary btn-sm" onclick="moveHeroSlide('${escapeAttr(s.id)}', 1)" ${isLast ? 'disabled' : ''}>↓</button>
+              <button class="btn btn-secondary btn-sm" onclick="deleteHeroSlide('${escapeAttr(s.id)}')" style="color:var(--danger)">🗑️ Eliminar</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
   }
 
-  
-  /** Subir imagen del banner desde el equipo. */
-  function pickBannerFile() {
+  /** Helper: extrae texto plano de un fragmento HTML (para preview). */
+  function stripHtml(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = String(html ?? '');
+    return tmp.textContent || tmp.innerText || '';
+  }
+  /** Helper: escapa un valor para usar como atributo HTML. */
+  function escapeAttr(s) {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /** Agrega un slide nuevo en blanco y abre el modal de edición. */
+  async function addHeroSlide() {
+    const slides = state.hero?.slides || [];
+    const maxOrden = slides.reduce((m, s) => Math.max(m, s.orden || 0), 0);
+    const newSlide = blankSlide(maxOrden + 1);
+    state.hero.slides = [...slides, newSlide];
+    await persistHeroSlidesConfig(true);
+    renderHeroSlidesPanel();
+    editHeroSlide(newSlide.id);
+  }
+
+  /** Abre el modal de edición de un slide. */
+  function editHeroSlide(id) {
+    const slide = (state.hero?.slides || []).find(s => s.id === id);
+    if (!slide) { toast('Slide no encontrado', true); return; }
+
+    // Rellenar el form
+    $('heroEditId').value        = slide.id;
+    $('heroEditLabel').value     = slide.label || '';
+    $('heroEditTitle').value     = slide.title_html || '';
+    $('heroEditSubtitle').value  = slide.subtitle || '';
+    $('heroEditImage').value     = slide.image_url || '';
+    renderHeroEditImagePreview(slide.image_url || '');
+
+    // Botones (hasta 2)
+    const btns = Array.isArray(slide.buttons) ? slide.buttons : [];
+    $('heroEditBtn1Text').value  = btns[0]?.text || '';
+    $('heroEditBtn1Url').value   = btns[0]?.url || '';
+    $('heroEditBtn1Style').value = btns[0]?.style || 'primary';
+    $('heroEditBtn2Text').value  = btns[1]?.text || '';
+    $('heroEditBtn2Url').value   = btns[1]?.url || '';
+    $('heroEditBtn2Style').value = btns[1]?.style || 'secondary';
+
+    // Abrir modal
+    const modal = $('heroEditModal');
+    if (modal) modal.classList.add('is-open');
+  }
+
+  function closeHeroEditModal() {
+    const modal = $('heroEditModal');
+    if (modal) modal.classList.remove('is-open');
+  }
+
+  function renderHeroEditImagePreview(url) {
+    const prev = $('heroEditImagePreview');
+    if (!prev) return;
+    prev.innerHTML = url
+      ? `<img src="${escapeAttr(url)}" alt="">`
+      : `<div class="hero-edit-noimg">Sin imagen</div>`;
+  }
+
+  /** Vista previa de la imagen del slide en edición. */
+  function previewHeroEditImage() {
+    const url = ($('heroEditImage')?.value || '').trim();
+    renderHeroEditImagePreview(url);
+  }
+
+  /** Sube una imagen del equipo al storage y la pone como image_url. */
+  function pickHeroEditFile() {
     const f = document.createElement('input');
     f.type = 'file'; f.accept = 'image/*';
     f.onchange = async e => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
       toast('⏳ Subiendo imagen...');
-      const publicUrl = await uploadFileToStorage(file, 'banner-' + Date.now() + '.jpg');
-      if (!publicUrl) return;  // uploadFileToStorage ya mostró el error
-      const input = $('bannerInput');
-      if (input) input.value = publicUrl;
-      await persistBannerUrl(publicUrl, '✅ Banner subido y guardado');
+      const publicUrl = await uploadFileToStorage(file, 'hero-slide-' + Date.now() + '.jpg');
+      if (!publicUrl) return;
+      $('heroEditImage').value = publicUrl;
+      renderHeroEditImagePreview(publicUrl);
+      toast('✅ Imagen subida');
     };
     f.click();
+  }
+
+  /** Guarda los cambios del modal de edición. */
+  async function saveHeroSlideEdit() {
+    const id = ($('heroEditId')?.value || '').trim();
+    if (!id) { toast('Error: id de slide vacío', true); return; }
+
+    const slide = (state.hero?.slides || []).find(s => s.id === id);
+    if (!slide) { toast('Slide no encontrado', true); return; }
+
+    // Validaciones mínimas
+    const title = ($('heroEditTitle')?.value || '').trim();
+    if (!title) { toast('El título no puede estar vacío', true); return; }
+
+    // Construir botones (omitir los que tienen texto vacío)
+    const buttons = [];
+    const b1Text = ($('heroEditBtn1Text')?.value || '').trim();
+    if (b1Text) buttons.push({
+      text:  b1Text,
+      url:   ($('heroEditBtn1Url')?.value || '').trim() || '#',
+      style: $('heroEditBtn1Style')?.value === 'secondary' ? 'secondary' : 'primary',
+    });
+    const b2Text = ($('heroEditBtn2Text')?.value || '').trim();
+    if (b2Text) buttons.push({
+      text:  b2Text,
+      url:   ($('heroEditBtn2Url')?.value || '').trim() || '#',
+      style: $('heroEditBtn2Style')?.value === 'secondary' ? 'secondary' : 'primary',
+    });
+
+    // Aplicar cambios al slide existente (preserva id, enabled, orden)
+    slide.label      = ($('heroEditLabel')?.value || '').trim();
+    slide.title_html = title;
+    slide.subtitle   = ($('heroEditSubtitle')?.value || '').trim();
+    slide.image_url  = ($('heroEditImage')?.value || '').trim();
+    slide.buttons    = buttons;
+
+    const okSave = await persistHeroSlidesConfig();
+    if (okSave) {
+      closeHeroEditModal();
+      renderHeroSlidesPanel();
+    }
+  }
+
+  /** Pausa/activa un slide. */
+  async function toggleHeroSlide(id) {
+    const slide = (state.hero?.slides || []).find(s => s.id === id);
+    if (!slide) return;
+    slide.enabled = !(slide.enabled !== false);
+    const ok = await persistHeroSlidesConfig();
+    if (ok) {
+      toast(slide.enabled ? '▶️ Slide activado' : '⏸️ Slide pausado');
+      renderHeroSlidesPanel();
+    }
+  }
+
+  /** Mueve un slide en el orden (delta = -1 sube, +1 baja). */
+  async function moveHeroSlide(id, delta) {
+    const slides = state.hero?.slides || [];
+    const sorted = [...slides].sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999));
+    const idx = sorted.findIndex(s => s.id === id);
+    if (idx < 0) return;
+    const newIdx = idx + delta;
+    if (newIdx < 0 || newIdx >= sorted.length) return;
+
+    // Swap orden con el vecino
+    const a = sorted[idx];
+    const b = sorted[newIdx];
+    const tmp = a.orden;
+    a.orden = b.orden;
+    b.orden = tmp;
+
+    // Re-numerar 1..N para evitar huecos
+    sorted.sort((x, y) => (x.orden ?? 999) - (y.orden ?? 999));
+    sorted.forEach((s, i) => { s.orden = i + 1; });
+
+    state.hero.slides = sorted;
+    const ok = await persistHeroSlidesConfig();
+    if (ok) renderHeroSlidesPanel();
+  }
+
+  /** Elimina un slide con confirmación. */
+  async function deleteHeroSlide(id) {
+    const slide = (state.hero?.slides || []).find(s => s.id === id);
+    if (!slide) return;
+    const preview = stripHtml(slide.title_html || '(sin título)').slice(0, 40);
+    if (!confirm(`¿Eliminar el slide "${preview}"?\n\nEsta acción no se puede deshacer.`)) return;
+
+    state.hero.slides = (state.hero.slides || []).filter(s => s.id !== id);
+    // Re-numerar
+    state.hero.slides
+      .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
+      .forEach((s, i) => { s.orden = i + 1; });
+
+    const ok = await persistHeroSlidesConfig();
+    if (ok) {
+      toast('🗑️ Slide eliminado');
+      renderHeroSlidesPanel();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -3529,11 +3777,16 @@
   window.editCupon           = editCupon;
   window.cancelEditCupon     = cancelEditCupon;
 
-  // Banner
-  window.previewBanner       = previewBanner;
-  window.saveBanner          = saveBanner;
-  window.clearBanner         = clearBanner;
-  window.pickBannerFile      = pickBannerFile;
+  // Banner / Hero slides (Sesión 48)
+  window.addHeroSlide          = addHeroSlide;
+  window.editHeroSlide         = editHeroSlide;
+  window.closeHeroEditModal    = closeHeroEditModal;
+  window.previewHeroEditImage  = previewHeroEditImage;
+  window.pickHeroEditFile      = pickHeroEditFile;
+  window.saveHeroSlideEdit     = saveHeroSlideEdit;
+  window.toggleHeroSlide       = toggleHeroSlide;
+  window.moveHeroSlide         = moveHeroSlide;
+  window.deleteHeroSlide       = deleteHeroSlide;
 
   // Personalización láser (Sesión 28)
   window.loadPersonalizacion = loadPersonalizacion;
