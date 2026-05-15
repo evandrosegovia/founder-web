@@ -429,6 +429,7 @@ select:active,
 .product-card {
   background: var(--color-surface);
   position: relative; overflow: hidden; cursor: pointer;
+  display: flex; flex-direction: column;
   transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 .product-card::after {
@@ -438,6 +439,7 @@ select:active,
   transform: scaleX(0); transform-origin: left center;
   transition: transform var(--transition-slow);
   pointer-events: none;
+  z-index: 3;
 }
 .product-card:hover {
   transform: translateY(-3px);
@@ -445,17 +447,18 @@ select:active,
 }
 .product-card:hover::after { transform: scaleX(1); }
 .product-card__img-wrap {
-  aspect-ratio: 4/3; overflow: hidden; background: #111;
+  aspect-ratio: 5/4; overflow: hidden; background: #111;
   position: relative; display: flex; align-items: center; justify-content: center;
 }
 .product-card__img-wrap img {
   width: 100%; height: 100%; object-fit: cover;
-  transition: transform .8s ease;
-  /* Valor unificado cross-device: sin override en mobile */
+  position: absolute; inset: 0;
+  opacity: 0; transition: opacity .45s ease, transform .8s ease;
   filter: brightness(.92);
 }
-.product-card:hover .product-card__img-wrap img {
-  transform: scale(1.05); filter: brightness(1);
+.product-card__img-wrap img.is-active { opacity: 1; }
+.product-card:hover .product-card__img-wrap img.is-active {
+  transform: scale(1.04); filter: brightness(1);
 }
 .product-card__placeholder {
   width: 100%; height: 100%;
@@ -501,12 +504,14 @@ select:active,
   .hero__label::before { animation: none; }
   .product-card,
   .product-card::after,
+  .product-card__img,
   .rfid-item,
   .rfid-item__icon,
   .rfid-item__title,
   .ship-item__icon { transition: none !important; }
   .product-card:hover { transform: none; box-shadow: none; }
   .product-card:hover::after { transform: scaleX(0); }
+  .product-card:hover .product-card__img-wrap img.is-active { transform: none; filter: brightness(.92); }
   .rfid-item:hover .rfid-item__icon { transform: none; }
   .ship-item:hover .ship-item__icon { transform: none; }
 }
@@ -523,33 +528,61 @@ select:active,
   padding: 6px 12px; font-weight: 600; z-index: 2;
 }
 .product-card__body {
-  padding: 32px 36px 36px;
-  display: flex; flex-direction: column; gap: 20px;
+  padding: 24px 28px 28px;
+  display: flex; flex-direction: column; gap: 14px;
+  flex: 1;
 }
+.product-card__header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px;
+}
+.product-card__header-info { min-width: 0; flex: 1; }
 .product-card__subtitle {
   font-size: 9px; letter-spacing: 3px;
   color: var(--color-muted); text-transform: uppercase;
+  margin-bottom: 4px;
 }
 .product-card__name {
-  font-family: var(--font-serif); font-size: 28px;
+  font-family: var(--font-serif); font-size: 26px;
   font-weight: 400; letter-spacing: 2px;
+  line-height: 1.15;
 }
-.product-card__desc { font-size: var(--text-body-sm); line-height: var(--lh-body-sm); color: var(--color-muted); }
+.product-card__colors {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  flex-shrink: 0;
+}
+.product-card__colors-label {
+  font-size: 8px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--color-muted); white-space: nowrap;
+}
+.product-card__color-dots {
+  display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;
+  max-width: 140px;
+}
+.product-card__desc {
+  font-size: var(--text-body-sm); line-height: var(--lh-body-sm);
+  color: var(--color-muted);
+}
 .product-card__footer {
   display: flex; align-items: center; justify-content: space-between;
-  padding-top: 20px; border-top: 1px solid var(--color-border);
+  padding-top: 14px; border-top: 1px solid var(--color-border);
+  margin-top: auto;
 }
-.price { font-family: var(--font-serif); font-size: 28px; font-weight: 400; }
+.price { font-family: var(--font-serif); font-size: 26px; font-weight: 400; }
 .price-note {
   font-size: 9px; color: var(--color-gold);
   letter-spacing: 2px; text-transform: uppercase; margin-top: 4px;
 }
 .color-dot {
   width: 14px; height: 22px; border-radius: 3px;
-  border: 2px solid transparent; cursor: pointer; transition: all var(--transition-fast);
+  border: 2px solid transparent; cursor: pointer;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
 }
 .color-dot:hover { border-color: var(--color-text); transform: scale(1.15); }
-/* Color dot sin stock en tarjeta — badge rojo superpuesto */
+.color-dot.is-active {
+  border-color: var(--color-gold);
+  transform: scale(1.1);
+}
 /* color-dot sin stock: color visible, borde rojo sutil para indicar estado */
 .color-dot--sin-stock {
   opacity: 1;
@@ -709,6 +742,11 @@ select:active,
   .rfid-grid { grid-template-columns: 1fr 1fr; }
   .products-section { padding: 80px 24px; }
   .products-grid { grid-template-columns: 1fr; }
+  /* En mobile, una columna => alta legibilidad: colores debajo del nombre */
+  .product-card__header { flex-direction: column; gap: 12px; }
+  .product-card__colors { align-items: flex-start; }
+  .product-card__color-dots { justify-content: flex-start; max-width: 100%; }
+  .product-card__body { padding: 22px 24px 24px; }
   .section-header { flex-direction: column; align-items: flex-start; gap: 20px; }
   .shipping-banner { gap: 32px; padding: 32px 24px; }
   .footer { padding: 60px 24px 40px; }
@@ -1222,6 +1260,7 @@ async function init() {
     state.cart = window.founderCart.pruneAndQueue(state.cart);
 
     renderProducts();
+    setupProductCardsInteractivity();
     // Refrescar visualmente el contador del carrito en el header.
     updateCart();
 
@@ -1279,32 +1318,63 @@ function renderProducts() {
 }
 
 function renderProductCard(p, index = 0) {
-  const firstPhoto = Object.values(state.photoMap[p.name] || {}).flat()[0] || null;
   // Las primeras 3 cards están "above the fold" en cualquier viewport
   // (1 col mobile, 2 col tablet, 3 col desktop). Las marcamos como
   // prioridad alta para que se descarguen antes que el resto.
   const isAboveFold = index < 3;
   const imgLoading  = isAboveFold ? 'eager' : 'lazy';
   const imgPriority = isAboveFold ? 'high'  : 'low';
-  const swatches   = p.colors.slice(0, 4).map(c => `
+
+  const swatches = p.colors.slice(0, 4).map(c => `
     <div style="width:36px;height:52px;border-radius:3px;box-shadow:0 4px 20px rgba(0,0,0,.5);background:${
       swatchBackground(c)
     }"></div>`).join('');
 
+  // ── Colores con foto disponible ─────────────────────────────
+  // El primer color con fotos es el activo inicialmente. Si ninguno tiene
+  // foto, no se renderizan imágenes y la card cae al placeholder.
+  const colorsWithPhotos = p.colors
+    .map(c => ({ color: c, photos: getPhotos(p.name, c.name) }))
+    .filter(x => x.photos.length > 0);
+  const initialColor = colorsWithPhotos[0]?.color?.name || null;
+
+  // ── Imágenes apiladas — una por color, con todas sus fotos ──
+  // El JS de auto-rotación intercambia is-active entre <img> del color activo.
+  // Si un color tiene varias fotos, solo la primera está cargada inicialmente
+  // (las demás se cargan lazy al rotar).
+  const imgsHTML = colorsWithPhotos.flatMap(({ color, photos }, colorIdx) =>
+    photos.map((photo, photoIdx) => {
+      const isFirstPhotoOfFirstColor = (colorIdx === 0 && photoIdx === 0);
+      const activeCls = isFirstPhotoOfFirstColor ? ' is-active' : '';
+      // Solo la primera foto del color inicial usa eager loading + fetchpriority
+      // (es la que se ve apenas carga la página).
+      const loadAttr = (isFirstPhotoOfFirstColor && isAboveFold)
+        ? `loading="eager" fetchpriority="${imgPriority}"`
+        : `loading="lazy" fetchpriority="low"`;
+      return `<img class="product-card__img${activeCls}" src="${cld(photo, 'card')}" srcset="${cldSrcset(photo, 'card')}" sizes="${CLD_SIZES.card}" alt="Founder ${p.name} — ${color.name}" data-color="${color.name}" data-photo-index="${photoIdx}" ${loadAttr} decoding="async">`;
+    })
+  ).join('');
+
+  // ── Color dots (interactivos) ───────────────────────────────
   const colorDots = p.colors.map(c => {
     const { estado } = getColorEstado(p, c.name);
     const cls = estado === 'sin_stock' ? ' color-dot--sin-stock' : '';
-    return `<div class="color-dot${cls}" title="${c.name}${estado === 'sin_stock' ? ' (agotado)' : ''}" style="background:${swatchBackground(c)}"></div>`;
+    const activeCls = (c.name === initialColor) ? ' is-active' : '';
+    const hasPhotos = getPhotos(p.name, c.name).length > 0;
+    const dataAttrs = hasPhotos ? ` data-color="${c.name}" data-has-photos="1"` : '';
+    return `<div class="color-dot${cls}${activeCls}"${dataAttrs} title="${c.name}${estado === 'sin_stock' ? ' (agotado)' : ''}" style="background:${swatchBackground(c)}"></div>`;
   }).join('');
 
   const tieneOferta = p.colors.some(c => getColorEstado(p, c.name).estado === 'oferta');
   const todoAgotado = p.colors.length > 0 && p.colors.every(c => getColorEstado(p, c.name).estado === 'sin_stock');
 
+  const productHref = `producto.html?p=${encodeURIComponent(p.name)}`;
+
   return `
-    <article class="product-card" role="listitem">
-      <a class="product-card__img-wrap" href="producto.html?p=${encodeURIComponent(p.name)}" aria-label="Ver Founder ${p.name}">
-        ${firstPhoto
-          ? `<img src="${cld(firstPhoto, 'card')}" srcset="${cldSrcset(firstPhoto, 'card')}" sizes="${CLD_SIZES.card}" alt="Founder ${p.name}" loading="${imgLoading}" fetchpriority="${imgPriority}" decoding="async">`
+    <article class="product-card" role="listitem" data-product="${p.name}"${initialColor ? ` data-active-color="${initialColor}"` : ''}>
+      <a class="product-card__img-wrap" href="${productHref}" aria-label="Ver Founder ${p.name}">
+        ${imgsHTML
+          ? imgsHTML
           : `<div class="product-card__placeholder">
                <div style="font-family:var(--font-serif);font-size:clamp(60px,10vw,120px);font-weight:300;color:rgba(255,255,255,.04);position:absolute;right:-5px;bottom:-15px;line-height:1">${p.name.toUpperCase()}</div>
                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 20px;position:relative;z-index:1">${swatches}</div>
@@ -1313,24 +1383,193 @@ function renderProductCard(p, index = 0) {
         ${todoAgotado ? '<div class="product-card__badge-agotado">Agotado</div>' : (tieneOferta ? '<div class="product-card__badge-oferta">Oferta</div>' : '')}
       </a>
       <div class="product-card__body">
-        <div>
-          <div class="product-card__subtitle">Billetera / Tarjetero RFID</div>
-          <div class="product-card__name">Founder ${p.name}</div>
+        <div class="product-card__header">
+          <div class="product-card__header-info">
+            <div class="product-card__subtitle">Billetera / Tarjetero RFID</div>
+            <div class="product-card__name">Founder ${p.name}</div>
+          </div>
+          <div class="product-card__colors">
+            <div class="product-card__colors-label">Colores disponibles</div>
+            <div class="product-card__color-dots">${colorDots}</div>
+          </div>
         </div>
         <p class="product-card__desc">${p.desc}</p>
-        <div>
-          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--color-muted);margin-bottom:8px">Colores disponibles</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">${colorDots}</div>
-        </div>
         <div class="product-card__footer">
           <div>
             <div class="price">$${p.price.toLocaleString('es-UY')} UYU</div>
             <div class="price-note">10% OFF por transferencia</div>
           </div>
-          <a class="btn btn--primary btn--sm btn-detalle" href="producto.html?p=${encodeURIComponent(p.name)}">Ver detalle de producto</a>
+          <a class="btn btn--primary btn--sm btn-detalle" href="${productHref}">Ver detalle de producto</a>
         </div>
       </div>
     </article>`;
+}
+
+// ── INDEX — Interactividad de cards (color picker + autoplay) ──
+/**
+ * Sistema de interactividad de cards en la home.
+ *
+ * Cada card del catálogo se comporta como una mini-galería:
+ *   - Click en color dot → cambia al color clickeado (foto 0 de ese color).
+ *   - Auto-rotación cada 4s entre fotos del color activo (mismo ritmo que
+ *     producto.html para mantener identidad visual del e-commerce).
+ *   - Pausa al hover en desktop (anti-distracción del usuario).
+ *   - Reset al cambiar de color (vuelve a foto 0 + contador de ciclos).
+ *   - Tope de ciclos (anti-fatiga, como en producto.html).
+ *   - Page Visibility: pausa cuando el tab no está visible.
+ *   - prefers-reduced-motion: no autoplay; el usuario navega con clicks.
+ */
+const HOME_CARD_AUTOPLAY = Object.freeze({
+  INTERVAL_MS:  4000, // ritmo showcase (mismo que producto.html)
+  MAX_CYCLES:   3,    // 3 vueltas completas y se detiene — anti-fatiga
+});
+
+function setupProductCardsInteractivity() {
+  const grid = $('productsGrid');
+  if (!grid) return;
+
+  // Cada card guarda su propio estado de autoplay como un WeakMap
+  // (key: elemento card → value: { timer, cycles, photoIndex }).
+  // WeakMap permite GC automático cuando se re-renderiza el grid.
+  const cardState = new WeakMap();
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function getCardState(card) {
+    let s = cardState.get(card);
+    if (!s) {
+      s = { timer: null, cycles: 0, photoIndex: 0, hovering: false };
+      cardState.set(card, s);
+    }
+    return s;
+  }
+
+  // Cambia la imagen activa de una card al color/index dados.
+  // Si photoIdx no se pasa, usa 0.
+  function setActivePhoto(card, colorName, photoIdx = 0) {
+    const imgs = card.querySelectorAll('.product-card__img');
+    if (!imgs.length) return;
+
+    // Apagar todas las del mismo color que estén activas + encender la nueva.
+    let foundNew = null;
+    imgs.forEach(img => {
+      const matchesColor = img.dataset.color === colorName;
+      const matchesIndex = Number(img.dataset.photoIndex) === photoIdx;
+      if (matchesColor && matchesIndex) foundNew = img;
+      img.classList.remove('is-active');
+    });
+    if (foundNew) {
+      foundNew.classList.add('is-active');
+      card.dataset.activeColor = colorName;
+      const s = getCardState(card);
+      s.photoIndex = photoIdx;
+    } else {
+      // Fallback: si no existe la combinación, reactivar la primera del color
+      const first = card.querySelector(`.product-card__img[data-color="${colorName}"][data-photo-index="0"]`);
+      if (first) {
+        first.classList.add('is-active');
+        card.dataset.activeColor = colorName;
+        const s = getCardState(card);
+        s.photoIndex = 0;
+      }
+    }
+  }
+
+  function countPhotosOfColor(card, colorName) {
+    return card.querySelectorAll(`.product-card__img[data-color="${colorName}"]`).length;
+  }
+
+  function startAutoplay(card) {
+    if (prefersReducedMotion) return;
+    const colorName = card.dataset.activeColor;
+    if (!colorName) return;
+    const total = countPhotosOfColor(card, colorName);
+    if (total <= 1) return; // un solo foto, nada que rotar
+
+    const s = getCardState(card);
+    stopAutoplay(card); // por si acaso
+    s.timer = setInterval(() => {
+      // Si el usuario está hoverando, no avanzar.
+      if (s.hovering) return;
+      // Si alcanzamos max ciclos, parar.
+      if (s.cycles >= HOME_CARD_AUTOPLAY.MAX_CYCLES) {
+        stopAutoplay(card);
+        return;
+      }
+      const currentColor = card.dataset.activeColor;
+      const totalNow = countPhotosOfColor(card, currentColor);
+      if (totalNow <= 1) { stopAutoplay(card); return; }
+      const nextIdx = (s.photoIndex + 1) % totalNow;
+      if (nextIdx === 0) s.cycles += 1;
+      setActivePhoto(card, currentColor, nextIdx);
+    }, HOME_CARD_AUTOPLAY.INTERVAL_MS);
+  }
+
+  function stopAutoplay(card) {
+    const s = getCardState(card);
+    if (s.timer) { clearInterval(s.timer); s.timer = null; }
+  }
+
+  function resetAutoplay(card) {
+    const s = getCardState(card);
+    s.cycles = 0;
+    stopAutoplay(card);
+    startAutoplay(card);
+  }
+
+  // ── Listeners (event delegation en el grid) ─────────────────
+  // Click en color dot → cambia color + reset autoplay.
+  grid.addEventListener('click', (ev) => {
+    const dot = ev.target.closest('.color-dot[data-has-photos="1"]');
+    if (!dot) return;
+    const card = dot.closest('.product-card');
+    if (!card) return;
+    const colorName = dot.dataset.color;
+    if (!colorName) return;
+
+    // Marcar dot activo
+    card.querySelectorAll('.color-dot').forEach(d => d.classList.remove('is-active'));
+    dot.classList.add('is-active');
+
+    // Cambiar foto a la primera del color y reiniciar autoplay
+    setActivePhoto(card, colorName, 0);
+    resetAutoplay(card);
+  });
+
+  // Hover en desktop → pausar el autoplay (sin perder el progreso de ciclos).
+  // No usamos mouseenter directo en cada card; delegación con mouseover/mouseout
+  // y :hover puro de CSS no nos sirve porque necesitamos comunicar pausa al JS.
+  grid.addEventListener('mouseover', (ev) => {
+    const card = ev.target.closest('.product-card');
+    if (!card) return;
+    const s = getCardState(card);
+    s.hovering = true;
+  });
+  grid.addEventListener('mouseout', (ev) => {
+    const card = ev.target.closest('.product-card');
+    if (!card) return;
+    // mouseout dispara también al moverse entre hijos. Filtrar para detectar
+    // salida real de la card usando relatedTarget.
+    if (card.contains(ev.relatedTarget)) return;
+    const s = getCardState(card);
+    s.hovering = false;
+  });
+
+  // Page Visibility API — pausar todos los autoplays cuando el tab está oculto.
+  // Reiniciamos al volver para que arranquen con sus cycles ya acumulados.
+  document.addEventListener('visibilitychange', () => {
+    const cards = grid.querySelectorAll('.product-card');
+    if (document.hidden) {
+      cards.forEach(c => stopAutoplay(c));
+    } else {
+      cards.forEach(c => {
+        const s = getCardState(c);
+        if (s.cycles < HOME_CARD_AUTOPLAY.MAX_CYCLES) startAutoplay(c);
+      });
+    }
+  });
+
+  // Arrancar autoplay para cada card que tenga más de 1 foto en su color activo.
+  grid.querySelectorAll('.product-card').forEach(card => startAutoplay(card));
 }
 
 // ── CARRITO → CHECKOUT ───────────────────────────────────────
