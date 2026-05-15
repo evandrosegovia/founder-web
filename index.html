@@ -291,6 +291,11 @@ select:active,
 .hero__label::before {
   content: ''; display: block; width: 40px; height: 1px;
   background: var(--color-gold);
+  animation: heroLineGrow 1.6s cubic-bezier(.4,0,.2,1) both;
+}
+@keyframes heroLineGrow {
+  0%   { width: 0; opacity: 0; }
+  100% { width: 40px; opacity: 1; }
 }
 .hero__title {
   font-family: var(--font-serif);
@@ -380,11 +385,20 @@ select:active,
 .rfid-item {
   background: var(--color-bg); padding: 28px 36px;
   display: flex; flex-direction: column; gap: 16px;
+  transition: background var(--transition-base);
 }
-.rfid-item__icon { font-size: 28px; }
+.rfid-item:hover { background: #181818; }
+.rfid-item__icon {
+  font-size: 28px;
+  transition: transform var(--transition-base);
+  transform-origin: left center;
+}
+.rfid-item:hover .rfid-item__icon { transform: scale(1.12); }
 .rfid-item__title {
   font-family: var(--font-serif); font-size: 22px; font-weight: 400;
+  transition: color var(--transition-base);
 }
+.rfid-item:hover .rfid-item__title { color: var(--color-gold); }
 .rfid-item__desc { font-size: var(--text-body-sm); line-height: var(--lh-body-sm); color: var(--color-muted); }
 
 /* ── PRODUCTS SECTION ─────────────────────────────────────── */
@@ -415,7 +429,21 @@ select:active,
 .product-card {
   background: var(--color-surface);
   position: relative; overflow: hidden; cursor: pointer;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
+.product-card::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 2px; background: var(--color-gold);
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform var(--transition-slow);
+  pointer-events: none;
+}
+.product-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px -16px rgba(201,169,110,0.28);
+}
+.product-card:hover::after { transform: scaleX(1); }
 .product-card__img-wrap {
   aspect-ratio: 4/3; overflow: hidden; background: #111;
   position: relative; display: flex; align-items: center; justify-content: center;
@@ -470,6 +498,17 @@ select:active,
 @media (prefers-reduced-motion: reduce) {
   .product-skeleton__img,
   .product-skeleton__line { animation: none; }
+  .hero__label::before { animation: none; }
+  .product-card,
+  .product-card::after,
+  .rfid-item,
+  .rfid-item__icon,
+  .rfid-item__title,
+  .ship-item__icon { transition: none !important; }
+  .product-card:hover { transform: none; box-shadow: none; }
+  .product-card:hover::after { transform: scaleX(0); }
+  .rfid-item:hover .rfid-item__icon { transform: none; }
+  .ship-item:hover .ship-item__icon { transform: none; }
 }
 /* Utility para texto solo accesible a lectores de pantalla */
 .visually-hidden {
@@ -564,7 +603,11 @@ select:active,
   font-size: 10px; letter-spacing: 2px;
   text-transform: uppercase; color: var(--color-muted);
 }
-.ship-item__icon { font-size: 20px; }
+.ship-item__icon {
+  font-size: 20px;
+  transition: transform var(--transition-base);
+}
+.ship-item:hover .ship-item__icon { transform: scale(1.12); }
 .ship-item__label { color: var(--color-text); display: block; font-size: 11px; letter-spacing: 2px; }
 
 /* ── INDEX — Color swatches en cards ──────────────────────── */
