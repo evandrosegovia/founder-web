@@ -1,15 +1,18 @@
 # 📊 ESTADO DEL PROYECTO — FOUNDER.UY
 
-**Última actualización:** Sesión 43 — **Combo Opción D + Opción B + UI recompra + Opción C.** Cuádruple sesión: (1) fix del favicon 404 detectado en Sesión 42 — 1 línea agregada a `admin.html`; (2) **feature comercial de alto valor**: email automático de recompra con cupón post-entrega +10 días, integrada como Tarea D del cron semanal existente (mismo patrón que Sesión 42), con backend completo + nuevo template `templateRecompra` + función `sendRecompraEmail` + flag de dedup persistido en DB (`orders.recompra_email_sent_at`) + feature opt-in vía env var `REPURCHASE_COUPON_CODE`; (3) UI dedicada en la página de Cupones del admin para ver pendientes/cupón activo/próximo cron + botón de envío manual; (4) **Admin mobile parte 2** completando lo que Sesión 35 dejó pendiente: editor de productos (form-grid, photo-slots 5→2 cols, color-name-in fluido) y panel de personalización láser (galería 2 cols, checkboxes legibles). Total: 4 archivos JS/HTML + 1 migración SQL + 1 env var nueva. Validado end-to-end: email recibido en producción (cupón `FOUNDER15`, 15% off, vencimiento +30 días). Cero regresiones. (14/05/2026)
+**Última actualización:** Sesión 44 — **Limpieza de UX + medios de pago en footer.** Sexta sesión del día (15/05/2026 — primera del nuevo día calendario). 7 cambios encadenados sin rollbacks: (1) rediseño botones de personalización láser en `producto.html` (estilo premium con borde dorado superior/lateral + check ✓ al seleccionar); (2) bug fix admin (los 4 flags `permite_grabado_*` no se copiaban en `loadProducts` normalizer); (3) reorder mobile producto.html (colores primero, personalización después); (4) scroll inicial automático debajo del breadcrumb al entrar a producto.html; (5) eliminada lista de specs con bullets ✦ debajo de la descripción + eliminada mini-lista de specs de cada card del catálogo (y del editor del admin) — datos preservados en DB con defensa optional chaining; (6) eliminado el modal de vista rápida de `index.html` (~370 líneas de JS+CSS+HTML), el botón "Ver detalle" ahora va directo a `producto.html`; (7) **fila de medios de pago en el footer** con 14 logos uruguayos (Mastercard, VISA, Mercado Pago, OCA, Prex, Redpagos, Abitab, Líder, UES, DAC, Itaú, Banco República, BBVA, Santander) en 2 filas centradas con cross-fade gris→color al hover. Bug del doble footer en mobile encontrado y arreglado (regla `display:block` anulaba el `display:none` mobile por especificidad — fix: envolver en `@media (min-width: 601px)`). Total: 6 archivos modificados + carpeta nueva `assets/payments/` con 28 PNGs. (15/05/2026)
 
 **Sesiones del día 14/05/2026 (todas exitosas, sin rollbacks):**
 - **Sesión 40** — Combo de 3 mini-features: (a) email admin con grabado, (b) auditoría general de CHECK constraints, (c) drop `products.banner_url`. **+ 2 bugs descubiertos en producción durante testing:** (1) cupón PERSONAL aplicaba 100% del producto en vez del grabado (validate_coupon nunca devolvía las flags de personalización al frontend), (2) botón de confirmar pedido bloqueado al volver de MP con back button.
 - **Sesión 41** — Combo Opción 1 + Opción 4: completar Sesión 39 (UPDATE post-RPC con `descuento_cupon` + `descuento_transferencia` + validación de coherencia + migración SQL idempotente para pedidos viejos) **+** dashboard financiero en admin con 4 tarjetas (ventas brutas, ahorros cupones, ahorros transferencia, tasa descuento) + bar chart top 5 cupones + selector de período persistido en localStorage.
 - **Sesión 41b** — Extensión rápida del dashboard: botón "Todo" agregado al selector (6 botones totales) + **el filtro ahora aplica a TODO el dashboard** (no solo al panel financiero), excepto stats del catálogo que son atemporales + fix de bug `$$` doble en tarjetas. Refactor a `state.dashboardPeriod` con compatibilidad backward con `state.financialPeriod` legacy.
 - **Sesión 42** — Cleanup automático de fotos huérfanas de reseñas (Opción G del backlog). Tarea C del cron semanal.
-- **Sesión 43** — Combo Opción D + Opción B + UI recompra + Opción C (este resumen).
+- **Sesión 43** — Combo Opción D + Opción B + UI recompra + Opción C.
 
-**Próxima sesión:** 44 — opciones disponibles, en orden sugerido de prioridad:
+**Sesión del día 15/05/2026:**
+- **Sesión 44** — Limpieza UX + medios de pago en footer (este resumen).
+
+**Próxima sesión:** 45 — opciones disponibles, en orden sugerido de prioridad:
 - (a) **CSP (Content Security Policy)** — la última pieza para A+ definitivo en securityheaders.com. Esfuerzo: 1 hora. **Riesgo medio:** un CSP mal armado rompe scripts (MP, Meta Pixel, Cloudinary). Hay que auditar inline scripts antes de definir directives.
 - (b) **UI en admin para invocar manualmente cleanup de huérfanas de reseñas** — el endpoint `run_reviews_orphans_manual` ya existe (Sesión 42), falta agregar botón en el panel de Personalización Láser junto al cleanup de imágenes existente. Esfuerzo: 30 min. **Solo es necesario si querés disparar manualmente sin esperar al cron del domingo.**
 - (c) **Métricas de conversión de la feature de recompra** — dashboard chico con "% de cupones FOUNDER15 usados sobre emails enviados" + ingresos generados por recompras. Requiere joinear `orders` (donde `cupon_codigo = REPURCHASE_COUPON_CODE`) contra el conteo de `recompra_email_sent_at IS NOT NULL`. Esfuerzo: 1.5 hs. Útil después de algunas semanas con datos reales.
@@ -19,6 +22,220 @@
 **Nota:** El archivo `PLAN-PERSONALIZACION.md` fue archivado en `docs/archive/` tras Sesión 29 (info crítica también consolidada en este `ESTADO.md`, ver Sesión 29 abajo). Se conserva por valor de auditoría histórica de decisiones de diseño y arquitectura del feature.
 
 ---
+
+## ✅ SESIÓN 44 — Limpieza UX + medios de pago en footer [15/05/2026]
+
+**Sesión larga de pulido UX**, sin features nuevas de backend. 7 cambios encadenados sin rollbacks, **2 bugs descubiertos durante el desarrollo y arreglados en la misma sesión** (no llegaron a producción). El cambio más grande visualmente: la fila de 14 logos de medios de pago en el footer, con cross-fade gris→color al hover, presente en TODAS las páginas vía `components/footer.js`.
+
+### 🅐 Rediseño botones personalización láser (producto.html)
+
+**Problema anterior:** los 4 botones de personalización (Adelante / Interior / Atrás / Texto) tenían el "Ver ejemplo" superpuesto al precio en algunos casos, y el estado seleccionado era poco claro.
+
+**Rediseño aplicado:**
+- **Desktop (≥720px):** grid de 4 columnas, cada botón con borde superior dorado de 2px cuando está seleccionado + check ✓ dorado arriba a la derecha. Layout `body > row` que separa título/precio de "Ver ejemplo".
+- **Mobile (<720px):** grid de 1 columna apilada, cada botón con borde **izquierdo** dorado (no superior) cuando seleccionado. Misma estructura interna.
+- CSS refactorizado: `.laser-option`, `.laser-option__body`, `.laser-option__row`. Reemplaza al CSS anterior que mezclaba todo en flex.
+
+### 🅑 Bug fix admin — flags de personalización (founder-admin.js)
+
+**Síntoma reportado:** en el panel de Personalización Láser del admin, los checkboxes de los 4 flags (`permite_grabado_adelante/interior/atras/texto`) aparecían siempre desmarcados, aunque la DB sí tuviera los valores en `true`.
+
+**Causa raíz:** en `loadProducts()` (función que normaliza productos del backend al state del admin), los 4 flags **no se copiaban**. El normalizer hacía solo `nombre, precio, descripcion, capacidad, ...` etc. Cualquier UI que leyera de `state.products[i].permite_grabado_*` veía `undefined` y, por la coerción a boolean en los checkboxes, quedaba `false`.
+
+**Fix:** agregadas las 4 líneas faltantes en el `return` del `.map(...)`, con coerción estricta a boolean:
+```js
+permite_grabado_adelante: p.permite_grabado_adelante === true,
+permite_grabado_interior: p.permite_grabado_interior === true,
+permite_grabado_atras:    p.permite_grabado_atras    === true,
+permite_grabado_texto:    p.permite_grabado_texto    === true,
+```
+
+### 🅒 Reorder mobile producto.html
+
+**Cambio:** en mobile (<900px), el orden visual de la página de producto pasó de:
+
+```
+[Galería] → [Título + Desc] → [Colores] → [Personalización] → [Purchase]
+```
+
+a:
+
+```
+[Galería] → [Colores] → [Personalización] → [Label] → [Título + Desc] → [Purchase]
+```
+
+**Razón:** colores y personalización son las decisiones que el cliente toma primero. Ponerlas arriba del título reduce scroll innecesario y baja el tiempo a "click en comprar". Implementado con `order:` en media query mobile.
+
+### 🅓 Scroll inicial al entrar a producto.html
+
+**Problema:** al entrar a producto.html, el navegador a veces aterrizaba en el medio de la página o en el breadcrumb (no en la foto principal), porque el header fixed de 70px tapaba el contenido.
+
+**Fix doble:**
+1. CSS: `scroll-margin-top: 70px` en `.product-main` — le dice al browser que cualquier scroll-to debe compensar 70px (la altura del header).
+2. JS: tras `show('productContent')`, ejecutar `mainEl.scrollIntoView({ behavior: 'instant', block: 'start' })`. La condición: **solo si no hay hash en la URL** (un link como `producto.html?p=Confort#especificaciones` debe respetar el hash).
+
+Aplica en desktop y mobile, instantáneo (sin animación).
+
+### 🅔 Eliminadas listas de especificaciones (3 lugares)
+
+Decisión arquitectónica grande: el campo `especificaciones` (array de strings con bullets como "RFID|Botón deslizante|5-6 tarjetas") **dejó de mostrarse en frontend público** y **dejó de tener editor en admin**, pero **los datos quedan intactos en DB** por si en el futuro querés restaurar la UI.
+
+**Eliminado en:**
+- **`producto.html`:** lista `.specs-list` con bullets ✦ debajo de la descripción (HTML + CSS + render JS).
+- **`index.html`:** mini-lista `.product-card__specs` con 3 items debajo de la descripción de cada card del catálogo (HTML + CSS + render JS).
+- **`admin.html`:** `<textarea id="editSpecs">` del modal de productos.
+- **`founder-admin.js`:** referencias a `editSpecs` en `openNewProduct()` (limpiar campo), `editProduct()` (prellenado), `saveProduct()` (lectura).
+
+**Preservación de datos en DB — decisión clave:**
+
+El backend (`admin.js` línea 663) hace `especificaciones: Array.isArray(p.especificaciones) ? p.especificaciones : []`. Esto significa que si el frontend NO manda el campo, el backend lo sobrescribe con `[]` y borra los datos viejos. Para evitarlo, en `saveProduct()` agregué:
+
+```js
+const especificaciones = Array.isArray(existing?.especificaciones)
+  ? existing.especificaciones
+  : [];
+```
+
+Cuando se edita un producto existente, se manda al backend exactamente lo que ya estaba (preservado en `state.products[i].especificaciones`, que SÍ se carga desde DB en el normalizer). Cuando es un producto nuevo, va `[]`. Cero pérdida de datos.
+
+**Mantenimiento del campo `specs` en `supabase-client.js`:** después de remover `specs` se descubrió que 4 lugares en `producto.html` lo usaban como fallback (subtítulo del producto, capacidad por defecto, related-card, schema.org). Solución: **se restauró el mapeo `specs` en supabase-client.js** como utilidad interna (no se muestra como lista, pero queda disponible para los fallbacks legacy). En `producto.html` se blindaron los 4 usos con optional chaining (`p.specs?.[0]` en lugar de `p.specs[0]`) para defensa en profundidad.
+
+### 🅕 Eliminado modal de vista rápida (index.html)
+
+**Decisión:** el modal de vista rápida del catálogo (que se abría al clickear "Ver detalle" en una card) duplicaba funcionalidad con `producto.html` y agregaba complejidad innecesaria (~370 líneas combinadas).
+
+**Eliminado:**
+- HTML del modal completo (~25 líneas) con `id="modal"`, `.modal__gallery`, `.modal__info`, `.modal__thumbs`, etc.
+- ~250 líneas de JS: funciones `openModal`, `closeModal`, `renderModalColors`, `selectColor`, `updateModalGallery`, `setModalMainPhoto`, `scrollThumbs`, `updateThumbArrows`, `handleModalOverlayClick`, `addFromModal`. Más event delegation y state (`currentProduct`, `currentColor`, `thumbOffset`, `THUMBS_VISIBLE`).
+- ~95 líneas de CSS de `.modal-*` y `.thumb-arrow`.
+
+**Reemplazo:** el botón "Ver detalle de producto" ahora es un `<a>` directo a `producto.html?p=<nombre>`, con clase renombrada `quick-view-btn` → `btn-detalle`. Una sola fuente de verdad para el detalle del producto. El CSS de `.color-option*` se mantuvo intacto porque se comparte con otros usos del sitio.
+
+### 🅖 Fila de medios de pago en el footer
+
+**Feature comercial:** muchos e-commerces tienen una fila de logos de medios de pago en el footer para generar confianza ("estos son los medios reconocidos que aceptamos"). Implementado vía componente compartido `components/footer.js` → presente en TODAS las páginas con cero esfuerzo de mantenimiento por página.
+
+**Decisiones de diseño:**
+
+- **Ubicación:** dentro de `footer__bottom`, **arriba del copyright** (no como fila independiente entre la grilla y el bottom). Esto evita romper la jerarquía visual existente.
+- **Estilo:** **monocromático/gris por defecto + cross-fade a color al hover** (estilo 3 del mockup, el más elegante para sitio premium). El usuario probó las 6 combinaciones (2 ubicaciones × 3 estilos) en widgets de visualización antes de elegir.
+- **Hover individual:** cada logo se ilumina solo (no toda la fila a la vez). Más feedback claro al cursor.
+- **Listado:** 14 logos uruguayos en este orden: Mastercard, VISA, Mercado Pago, OCA, Prex, Redpagos, Abitab, Líder, UES, DAC, Itaú, Banco República, BBVA, Santander.
+- **Sin Creditel:** estaba en la lista inicial pero se quitó cuando el usuario actualizó la selección.
+
+**Cómo se hicieron los logos:**
+
+Iteración larga (~5 rondas) hasta llegar al resultado final. Resumen:
+1. Primer intento: representaciones CSS con texto estilizado → descartado por baja fidelidad.
+2. Búsqueda de SVG oficiales → engorroso, muchas marcas no tienen kit público.
+3. Usuario diseñó **todas las imágenes a mano en Canva**, las exportó en pack y las subió.
+4. Primer pack: 28 PNGs 200×64 px en formato RGB (sin alpha) → fondo blanco visible sobre el fondo oscuro del footer.
+5. Segundo pack: mismo 200×64 px pero RGBA con transparencia → ya integraban bien con el fondo, pero quedaba mucho aire en blanco interno (logos chicos dentro del rectángulo).
+6. **Tercer y final pack: 125×64 px, RGBA, transparente, logos compactos** — máximo aprovechamiento del espacio. Este es el que quedó en producción.
+
+**Estructura técnica:**
+
+```js
+// components/footer.js
+const FOOTER_PAYMENTS = [
+  { id: 'mastercard',     alt: 'Mastercard' },
+  { id: 'visa',           alt: 'VISA' },
+  // ... 14 entradas total
+  { id: 'santander',      alt: 'Santander' }
+];
+```
+
+Cada logo se renderiza con **2 imágenes superpuestas** (`position: absolute`):
+- `assets/payments/{id}_gray.png` — visible por defecto, `opacity: 1`
+- `assets/payments/{id}_color.png` — invisible, `opacity: 0`, encima
+
+Al `:hover`, `:active` o `:focus`, las opacidades se invierten con `transition: opacity 0.25s ease` → cross-fade suave. **No es filtro CSS grayscale** (intento inicial descartado) sino **dos imágenes reales**, lo que asegura que las versiones gris no se distorsionen.
+
+**Defensa anti-error:** cada `<img class="--gray">` tiene `onerror="this.parentNode.style.display='none'"`. Si un archivo falla en cargar (ej: te olvidás de subir uno), ese logo individual desaparece silenciosamente — no se ve un ícono roto, no se rompe el layout.
+
+**Refactor visual del footer__bottom:**
+
+El layout original del `footer__bottom` era `display: flex; justify-content: space-between` (todo horizontal: logos | copyright | links). Con 14 logos no entraban en una fila ni así. **Solución:**
+
+1. Refactor del HTML: agrupar copyright + legal en un nuevo wrapper `<div class="footer__bottom-info">` separado.
+2. Inyectar overrides desde `footer.js` (no tocar los HTML de cada página):
+   ```css
+   .footer__bottom { display: block; text-align: center; }
+   .footer__bottom-info { /* flex con space-between, copyright izq + links der */ }
+   ```
+3. La grilla del footer pasó de `margin-bottom: 60px` a `28px` para acercarla a los logos.
+
+**Tamaños finales tras 3 iteraciones de feedback:**
+- **Desktop:** logos `38px × 74px` (ratio 1.95 del nuevo PNG 125×64). Gap entre logos: `14px 16px`. Cálculo: 7 logos × 74px + 6 gaps × 16px = 614px ancho por fila → entran 7 por fila con margen.
+- **Mobile:** logos `28px × 55px`. Gap: `12px 18px`. Se acomodan en 3-4 filas naturalmente con `flex-wrap`.
+
+### 🐛 BUG: Doble footer en mobile (encontrado y arreglado en la misma sesión)
+
+**Síntoma:** tras aplicar los overrides del `footer__bottom`, en mobile aparecían **dos footers a la vez**:
+1. El `footer__bottom` desktop (logos grandes 4×4×2 + copyright + links apilados vertical).
+2. El `footer__mobile` minimalista (FOUNDER + WhatsApp + links inline + logos chicos + copyright).
+
+**Causa raíz:** la regla nueva `.footer__bottom { display: block; }` se aplicaba en TODAS las resoluciones. Las páginas HTML ya tenían dentro de su `@media (max-width: 600px)` la regla `.footer__bottom { display: none; }`. Mismo selector, misma especificidad (1 clase) → **gana el que viene después en el CSS**. Mi regla nueva, al estar inyectada por `footer.js` DESPUÉS del `<style>` de cada página, anulaba la regla mobile.
+
+**Fix:** envolver los overrides en un media query desktop-first:
+```css
+@media (min-width: 601px) {
+  .footer__bottom { display: block; text-align: center; }
+  .footer__bottom-info { ... }
+  .footer__copy { ... }
+}
+@media (min-width: 601px) {
+  .footer__grid { margin-bottom: 28px !important; }
+}
+```
+
+Así las reglas SOLO aplican en pantallas ≥601px y el `display: none` mobile del HTML original sigue funcionando intacto.
+
+**Bug bonus encontrado y arreglado en el camino:** al hacer el fix anterior, agregué un comentario con backticks dentro del template literal de `COMPONENT_CSS`:
+```js
+const COMPONENT_CSS = `
+  /* ... el `display: none` que aplica ... */
+`;
+```
+
+Los backticks **cerraron el template string** y JS interpretó `display: none` como código suelto → `SyntaxError: Unexpected identifier 'display'`. Fix: reemplazar los backticks por comillas simples en el comentario.
+
+### 🐛 BUG: TypeError tras eliminar mini-lista de specs (encontrado y arreglado en producción)
+
+**Síntoma:** después de subir los cambios del modal de vista rápida + `supabase-client.js` (que removía el mapeo `specs:`), los productos NO cargaban en el catálogo. DevTools mostraba:
+
+```
+TypeError: Cannot read properties of undefined (reading 'slice')
+  at renderProductCard (index:1281:52)
+```
+
+**Causa raíz:** olvidé un uso de `p.specs.slice(0,3)` en `renderProductCard()` de `index.html` (línea 1281). Cuando removí `specs` del mapeo en `supabase-client.js`, ese acceso quedó como `undefined.slice(...)` → TypeError → el render entero rompía → "Error al cargar. Recargá la página."
+
+**Fix:** eliminé la mini-lista de specs de cada card del catálogo (consistente con la decisión global de quitar especificaciones del frontend), restauré el mapeo `specs:` en `supabase-client.js` como utilidad interna para los 4 fallbacks legacy en `producto.html`, y blindé esos 4 accesos con optional chaining.
+
+**Lección registrada:** al eliminar un campo de un mapeo central (como `supabase-client.js`), siempre hacer un `grep -rn "<campo>" *.html *.js` ANTES de confirmar el cambio. Probar un solo flujo (modal de vista rápida) no garantiza cobertura de otros (cards del grid).
+
+### 📦 Archivos modificados (Sesión 44)
+
+1. **`producto.html`** — rediseño botones láser, reorder mobile, scroll inicial, eliminada specs-list, blindaje optional chaining en 4 lugares.
+2. **`index.html`** — modal de vista rápida eliminado, mini-lista specs de cards eliminada, residuos CSS limpiados.
+3. **`admin.html`** — campo Especificaciones eliminado del modal de productos.
+4. **`founder-admin.js`** — bug fix de los 4 flags `permite_grabado_*` en `loadProducts`, eliminación de referencias a `editSpecs`, preservación de `especificaciones` legacy en `saveProduct`.
+5. **`supabase-client.js`** — mapeo `specs:` restaurado como utilidad interna (con comentario explicativo).
+6. **`components/footer.js`** — nueva constante `FOOTER_PAYMENTS` (14 logos), render con 2 imgs por logo + onerror defense, nuevo wrapper `footer__bottom-info`, CSS de pagos con cross-fade gris→color + 2 media queries (`min-width: 601px` para desktop, `max-width: 900px` para tablet).
+7. **`assets/payments/`** — carpeta nueva con 28 PNGs (14 logos × 2 versiones gris/color, 125×64 px RGBA).
+
+### 🎓 Lecciones de Sesión 44
+
+1. **Grep antes de remover:** al eliminar un campo de un mapeo central, hacer `grep -rn "<campo>"` en TODOS los archivos consumidores antes de confirmar. La sesión incluyó 2 bugs por no hacerlo bien la primera vez.
+2. **Defensa en profundidad con optional chaining:** los accesos a campos opcionales (`p.specs?.[0]`) son baratos y previenen TypeErrors si el shape cambia.
+3. **Backticks en comentarios dentro de template literals:** **no usar nunca.** Romper el string es trivial. Usar comillas simples o quitar las backticks del comentario.
+4. **Cuidado con override de reglas en media queries:** si una regla global del componente CSS anula una regla específica de un media query, **envolver la regla global en su propio media query** (desktop-first si el componente apunta a desktop).
+5. **Preservar datos en DB al cambiar UI:** una columna que deja de tener editor en admin NO implica borrar la columna. Los datos se conservan, el código frontend cambia. Si en el futuro querés restaurar la UI, los datos están esperando.
+
+---
+
+
 
 ## ✅ SESIÓN 43 — Combo Opción D + Opción B + UI recompra + Opción C [14/05/2026]
 
