@@ -536,7 +536,9 @@ select:active,
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 16px;
 }
-.product-card__header-info { min-width: 0; flex: 1; }
+.product-card__header-info {
+  min-width: 0; flex: 1 1 auto;
+}
 .product-card__subtitle {
   font-size: 9px; letter-spacing: 3px;
   color: var(--color-muted); text-transform: uppercase;
@@ -546,6 +548,8 @@ select:active,
   font-family: var(--font-serif); font-size: 26px;
   font-weight: 400; letter-spacing: 2px;
   line-height: 1.15;
+  /* Evita que un nombre largo empuje los color-dots fuera de su línea. */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .product-card__colors {
   display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
@@ -555,9 +559,13 @@ select:active,
   font-size: 8px; letter-spacing: 2px; text-transform: uppercase;
   color: var(--color-muted); white-space: nowrap;
 }
+/* Los color-dots se mantienen SIEMPRE en una sola línea (sin wrap).
+   Cuando hay muchos colores, el gap se reduce automáticamente. El layout
+   del header (info + colors) maneja el min-width=0 del info para que el
+   nombre tipográfico se trunque con ellipsis si hiciera falta, pero nunca
+   empuje a los colores a saltar de línea. */
 .product-card__color-dots {
-  display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;
-  max-width: 140px;
+  display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end;
 }
 .product-card__desc {
   font-size: var(--text-body-sm); line-height: var(--lh-body-sm);
@@ -577,29 +585,32 @@ select:active,
   width: 14px; height: 22px; border-radius: 3px;
   border: 2px solid transparent; cursor: pointer;
   transition: border-color var(--transition-fast), transform var(--transition-fast);
+  flex-shrink: 0;
 }
 .color-dot:hover { border-color: var(--color-text); transform: scale(1.15); }
 .color-dot.is-active {
   border-color: var(--color-gold);
   transform: scale(1.1);
 }
-/* color-dot sin stock: color visible, borde rojo sutil para indicar estado */
-.color-dot--sin-stock {
-  opacity: 1;
-  position: relative;
-  box-shadow: 0 0 0 2px rgba(255,59,48,0.75);
-}
+/* Sesión 47c: el dot agotado mantiene el mismo look que los demás.
+   El estado "agotado" se comunica vía badge dinámico (top-right) cuando
+   el usuario lo selecciona, no con un contorno rojo permanente. */
+.color-dot--sin-stock { opacity: 1; position: relative; }
 
-/* Badge de oferta / agotado sobre imagen de tarjeta */
-.product-card__badge-oferta,
-.product-card__badge-agotado {
+/* Badge de oferta / agotado sobre imagen de tarjeta.
+   Sesión 47c: ahora es un único elemento por card que el JS actualiza según
+   el color seleccionado (data-state="oferta" o "agotado"). Se oculta por
+   defecto y aparece solo cuando el color activo lo amerita. */
+.product-card__badge-estado {
   position: absolute; top: 12px; right: 12px;
   font-family: var(--font-sans); font-size: 8px; font-weight: 700;
   letter-spacing: 2px; text-transform: uppercase;
   padding: 5px 10px; border-radius: 2px; z-index: 2; pointer-events: none;
+  opacity: 0; transition: opacity var(--transition-base);
 }
-.product-card__badge-oferta  { background: var(--color-gold);   color: #141414; }
-.product-card__badge-agotado { background: var(--color-danger); color: #fff; }
+.product-card__badge-estado.is-visible { opacity: 1; }
+.product-card__badge-estado[data-state="oferta"]   { background: var(--color-gold);   color: #141414; }
+.product-card__badge-estado[data-state="agotado"]  { background: var(--color-danger); color: #fff; }
 
 /* Estados de color en modal — badges alineados con producto.html */
 .color-option--sin-stock { position: relative; opacity: 1; cursor: pointer; pointer-events: auto; }
@@ -744,8 +755,9 @@ select:active,
   .products-grid { grid-template-columns: 1fr; }
   /* En mobile, una columna => alta legibilidad: colores debajo del nombre */
   .product-card__header { flex-direction: column; gap: 12px; }
+  .product-card__name { white-space: normal; overflow: visible; text-overflow: clip; }
   .product-card__colors { align-items: flex-start; }
-  .product-card__color-dots { justify-content: flex-start; max-width: 100%; }
+  .product-card__color-dots { justify-content: flex-start; flex-wrap: wrap; }
   .product-card__body { padding: 22px 24px 24px; }
   .section-header { flex-direction: column; align-items: flex-start; gap: 20px; }
   .shipping-banner { gap: 32px; padding: 32px 24px; }
@@ -1322,7 +1334,6 @@ function renderProductCard(p, index = 0) {
   // (1 col mobile, 2 col tablet, 3 col desktop). Las marcamos como
   // prioridad alta para que se descarguen antes que el resto.
   const isAboveFold = index < 3;
-  const imgLoading  = isAboveFold ? 'eager' : 'lazy';
   const imgPriority = isAboveFold ? 'high'  : 'low';
 
   const swatches = p.colors.slice(0, 4).map(c => `
@@ -1338,35 +1349,48 @@ function renderProductCard(p, index = 0) {
     .filter(x => x.photos.length > 0);
   const initialColor = colorsWithPhotos[0]?.color?.name || null;
 
-  // ── Imágenes apiladas — una por color, con todas sus fotos ──
-  // El JS de auto-rotación intercambia is-active entre <img> del color activo.
-  // Si un color tiene varias fotos, solo la primera está cargada inicialmente
-  // (las demás se cargan lazy al rotar).
-  const imgsHTML = colorsWithPhotos.flatMap(({ color, photos }, colorIdx) =>
-    photos.map((photo, photoIdx) => {
-      const isFirstPhotoOfFirstColor = (colorIdx === 0 && photoIdx === 0);
-      const activeCls = isFirstPhotoOfFirstColor ? ' is-active' : '';
-      // Solo la primera foto del color inicial usa eager loading + fetchpriority
-      // (es la que se ve apenas carga la página).
-      const loadAttr = (isFirstPhotoOfFirstColor && isAboveFold)
-        ? `loading="eager" fetchpriority="${imgPriority}"`
-        : `loading="lazy" fetchpriority="low"`;
-      return `<img class="product-card__img${activeCls}" src="${cld(photo, 'card')}" srcset="${cldSrcset(photo, 'card')}" sizes="${CLD_SIZES.card}" alt="Founder ${p.name} — ${color.name}" data-color="${color.name}" data-photo-index="${photoIdx}" ${loadAttr} decoding="async">`;
-    })
-  ).join('');
+  // ── Imágenes apiladas — solo la PRIMERA foto de cada color ──
+  // Sesión 47c: el autoplay de la home rota entre COLORES (no entre fotos),
+  // así que basta con la primera foto de cada color. Esto reduce el bundle
+  // de fotos del index a ~50% (un solo asset por color) y mantiene el LCP
+  // óptimo en mobile.
+  const imgsHTML = colorsWithPhotos.map(({ color, photos }, colorIdx) => {
+    const isFirstColor = (colorIdx === 0);
+    const activeCls = isFirstColor ? ' is-active' : '';
+    const loadAttr = (isFirstColor && isAboveFold)
+      ? `loading="eager" fetchpriority="${imgPriority}"`
+      : `loading="lazy" fetchpriority="low"`;
+    const photo = photos[0];
+    return `<img class="product-card__img${activeCls}" src="${cld(photo, 'card')}" srcset="${cldSrcset(photo, 'card')}" sizes="${CLD_SIZES.card}" alt="Founder ${p.name} — ${color.name}" data-color="${color.name}" ${loadAttr} decoding="async">`;
+  }).join('');
 
   // ── Color dots (interactivos) ───────────────────────────────
+  // Sesión 47c: TODOS los colores son clickeables (incluso agotados).
+  // El estado se comunica con un badge dinámico arriba a la derecha,
+  // no con un contorno rojo en el dot.
   const colorDots = p.colors.map(c => {
     const { estado } = getColorEstado(p, c.name);
     const cls = estado === 'sin_stock' ? ' color-dot--sin-stock' : '';
     const activeCls = (c.name === initialColor) ? ' is-active' : '';
     const hasPhotos = getPhotos(p.name, c.name).length > 0;
-    const dataAttrs = hasPhotos ? ` data-color="${c.name}" data-has-photos="1"` : '';
+    const dataAttrs = hasPhotos
+      ? ` data-color="${c.name}" data-has-photos="1" data-estado="${estado}"`
+      : ` data-estado="${estado}"`;
     return `<div class="color-dot${cls}${activeCls}"${dataAttrs} title="${c.name}${estado === 'sin_stock' ? ' (agotado)' : ''}" style="background:${swatchBackground(c)}"></div>`;
   }).join('');
 
-  const tieneOferta = p.colors.some(c => getColorEstado(p, c.name).estado === 'oferta');
-  const todoAgotado = p.colors.length > 0 && p.colors.every(c => getColorEstado(p, c.name).estado === 'sin_stock');
+  // ── Badge de estado inicial (oferta / agotado del color activo) ──
+  // Renderizamos siempre el elemento (1 por card). El JS lo actualiza
+  // cuando cambia el color seleccionado. Si el color inicial no tiene
+  // estado especial, queda invisible (opacity: 0).
+  const initialEstado = initialColor
+    ? getColorEstado(p, initialColor).estado
+    : 'activo';
+  const badgeInitState = initialEstado === 'oferta'
+    ? { state: 'oferta',  text: 'Oferta',  visible: true }
+    : initialEstado === 'sin_stock'
+      ? { state: 'agotado', text: 'Agotado', visible: true }
+      : { state: 'oferta',  text: '',         visible: false };
 
   const productHref = `producto.html?p=${encodeURIComponent(p.name)}`;
 
@@ -1380,7 +1404,7 @@ function renderProductCard(p, index = 0) {
                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:0 20px;position:relative;z-index:1">${swatches}</div>
              </div>`}
         <div class="product-card__badge">RFID</div>
-        ${todoAgotado ? '<div class="product-card__badge-agotado">Agotado</div>' : (tieneOferta ? '<div class="product-card__badge-oferta">Oferta</div>' : '')}
+        <div class="product-card__badge-estado${badgeInitState.visible ? ' is-visible' : ''}" data-state="${badgeInitState.state}">${badgeInitState.text}</div>
       </a>
       <div class="product-card__body">
         <div class="product-card__header">
@@ -1409,15 +1433,17 @@ function renderProductCard(p, index = 0) {
 /**
  * Sistema de interactividad de cards en la home.
  *
- * Cada card del catálogo se comporta como una mini-galería:
- *   - Click en color dot → cambia al color clickeado (foto 0 de ese color).
- *   - Auto-rotación cada 4s entre fotos del color activo (mismo ritmo que
- *     producto.html para mantener identidad visual del e-commerce).
+ * Cada card del catálogo se comporta como una mini-galería de COLORES:
+ *   - Click en color dot → cambia al color clickeado (con su primera foto).
+ *   - Auto-rotación cada 4s entre COLORES (no entre fotos del mismo color).
+ *     Cada color muestra su primera foto representativa, similar a cómo
+ *     funciona un swatch picker premium.
  *   - Pausa al hover en desktop (anti-distracción del usuario).
- *   - Reset al cambiar de color (vuelve a foto 0 + contador de ciclos).
- *   - Tope de ciclos (anti-fatiga, como en producto.html).
+ *   - Reset al click (vuelve al color clickeado + contador de ciclos a 0).
+ *   - Tope de 3 ciclos completos (anti-fatiga, como en producto.html).
  *   - Page Visibility: pausa cuando el tab no está visible.
  *   - prefers-reduced-motion: no autoplay; el usuario navega con clicks.
+ *   - Badge de estado (oferta / agotado) se actualiza dinámicamente.
  */
 const HOME_CARD_AUTOPLAY = Object.freeze({
   INTERVAL_MS:  4000, // ritmo showcase (mismo que producto.html)
@@ -1428,79 +1454,87 @@ function setupProductCardsInteractivity() {
   const grid = $('productsGrid');
   if (!grid) return;
 
-  // Cada card guarda su propio estado de autoplay como un WeakMap
-  // (key: elemento card → value: { timer, cycles, photoIndex }).
-  // WeakMap permite GC automático cuando se re-renderiza el grid.
+  // Estado por card en WeakMap (GC automático al re-renderizar el grid).
+  // - colors: array de nombres de color con foto disponible.
+  // - colorIdx: índice del color actualmente activo.
+  // - timer: setInterval id (null si parado).
+  // - cycles: ciclos completos recorridos.
+  // - hovering: true mientras el mouse está sobre la card.
   const cardState = new WeakMap();
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function getCardState(card) {
     let s = cardState.get(card);
     if (!s) {
-      s = { timer: null, cycles: 0, photoIndex: 0, hovering: false };
+      const colorImgs = card.querySelectorAll('.product-card__img[data-color]');
+      const colors = Array.from(colorImgs).map(img => img.dataset.color);
+      s = { colors, colorIdx: 0, timer: null, cycles: 0, hovering: false };
+      // Sincronizar colorIdx con el color activo inicial
+      const activeColor = card.dataset.activeColor;
+      if (activeColor) {
+        const idx = colors.indexOf(activeColor);
+        if (idx >= 0) s.colorIdx = idx;
+      }
       cardState.set(card, s);
     }
     return s;
   }
 
-  // Cambia la imagen activa de una card al color/index dados.
-  // Si photoIdx no se pasa, usa 0.
-  function setActivePhoto(card, colorName, photoIdx = 0) {
-    const imgs = card.querySelectorAll('.product-card__img');
-    if (!imgs.length) return;
+  // Cambia el color activo de una card → muestra su primera foto + actualiza
+  // dot activo + actualiza badge de estado (oferta / agotado) si aplica.
+  function setActiveColor(card, colorName) {
+    if (!colorName) return;
 
-    // Apagar todas las del mismo color que estén activas + encender la nueva.
-    let foundNew = null;
-    imgs.forEach(img => {
-      const matchesColor = img.dataset.color === colorName;
-      const matchesIndex = Number(img.dataset.photoIndex) === photoIdx;
-      if (matchesColor && matchesIndex) foundNew = img;
-      img.classList.remove('is-active');
+    // Cambiar la imagen activa
+    card.querySelectorAll('.product-card__img').forEach(img => {
+      img.classList.toggle('is-active', img.dataset.color === colorName);
     });
-    if (foundNew) {
-      foundNew.classList.add('is-active');
-      card.dataset.activeColor = colorName;
-      const s = getCardState(card);
-      s.photoIndex = photoIdx;
-    } else {
-      // Fallback: si no existe la combinación, reactivar la primera del color
-      const first = card.querySelector(`.product-card__img[data-color="${colorName}"][data-photo-index="0"]`);
-      if (first) {
-        first.classList.add('is-active');
-        card.dataset.activeColor = colorName;
-        const s = getCardState(card);
-        s.photoIndex = 0;
+
+    // Marcar el dot activo
+    card.querySelectorAll('.color-dot').forEach(d => {
+      d.classList.toggle('is-active', d.dataset.color === colorName);
+    });
+
+    // Actualizar el badge de estado según el color
+    const activeDot = card.querySelector(`.color-dot[data-color="${colorName}"]`);
+    const estado = activeDot?.dataset.estado || 'activo';
+    const badge = card.querySelector('.product-card__badge-estado');
+    if (badge) {
+      if (estado === 'oferta') {
+        badge.dataset.state = 'oferta';
+        badge.textContent = 'Oferta';
+        badge.classList.add('is-visible');
+      } else if (estado === 'sin_stock') {
+        badge.dataset.state = 'agotado';
+        badge.textContent = 'Agotado';
+        badge.classList.add('is-visible');
+      } else {
+        badge.classList.remove('is-visible');
       }
     }
-  }
 
-  function countPhotosOfColor(card, colorName) {
-    return card.querySelectorAll(`.product-card__img[data-color="${colorName}"]`).length;
+    // Actualizar dataset y estado interno
+    card.dataset.activeColor = colorName;
+    const s = getCardState(card);
+    const idx = s.colors.indexOf(colorName);
+    if (idx >= 0) s.colorIdx = idx;
   }
 
   function startAutoplay(card) {
     if (prefersReducedMotion) return;
-    const colorName = card.dataset.activeColor;
-    if (!colorName) return;
-    const total = countPhotosOfColor(card, colorName);
-    if (total <= 1) return; // un solo foto, nada que rotar
-
     const s = getCardState(card);
-    stopAutoplay(card); // por si acaso
+    if (s.colors.length <= 1) return; // 1 solo color, nada que rotar
+
+    stopAutoplay(card);
     s.timer = setInterval(() => {
-      // Si el usuario está hoverando, no avanzar.
       if (s.hovering) return;
-      // Si alcanzamos max ciclos, parar.
       if (s.cycles >= HOME_CARD_AUTOPLAY.MAX_CYCLES) {
         stopAutoplay(card);
         return;
       }
-      const currentColor = card.dataset.activeColor;
-      const totalNow = countPhotosOfColor(card, currentColor);
-      if (totalNow <= 1) { stopAutoplay(card); return; }
-      const nextIdx = (s.photoIndex + 1) % totalNow;
+      const nextIdx = (s.colorIdx + 1) % s.colors.length;
       if (nextIdx === 0) s.cycles += 1;
-      setActivePhoto(card, currentColor, nextIdx);
+      setActiveColor(card, s.colors[nextIdx]);
     }, HOME_CARD_AUTOPLAY.INTERVAL_MS);
   }
 
@@ -1517,7 +1551,6 @@ function setupProductCardsInteractivity() {
   }
 
   // ── Listeners (event delegation en el grid) ─────────────────
-  // Click en color dot → cambia color + reset autoplay.
   grid.addEventListener('click', (ev) => {
     const dot = ev.target.closest('.color-dot[data-has-photos="1"]');
     if (!dot) return;
@@ -1525,37 +1558,24 @@ function setupProductCardsInteractivity() {
     if (!card) return;
     const colorName = dot.dataset.color;
     if (!colorName) return;
-
-    // Marcar dot activo
-    card.querySelectorAll('.color-dot').forEach(d => d.classList.remove('is-active'));
-    dot.classList.add('is-active');
-
-    // Cambiar foto a la primera del color y reiniciar autoplay
-    setActivePhoto(card, colorName, 0);
+    setActiveColor(card, colorName);
     resetAutoplay(card);
   });
 
-  // Hover en desktop → pausar el autoplay (sin perder el progreso de ciclos).
-  // No usamos mouseenter directo en cada card; delegación con mouseover/mouseout
-  // y :hover puro de CSS no nos sirve porque necesitamos comunicar pausa al JS.
   grid.addEventListener('mouseover', (ev) => {
     const card = ev.target.closest('.product-card');
     if (!card) return;
-    const s = getCardState(card);
-    s.hovering = true;
+    getCardState(card).hovering = true;
   });
   grid.addEventListener('mouseout', (ev) => {
     const card = ev.target.closest('.product-card');
     if (!card) return;
-    // mouseout dispara también al moverse entre hijos. Filtrar para detectar
-    // salida real de la card usando relatedTarget.
+    // mouseout dispara también al moverse entre hijos. Filtrar con relatedTarget.
     if (card.contains(ev.relatedTarget)) return;
-    const s = getCardState(card);
-    s.hovering = false;
+    getCardState(card).hovering = false;
   });
 
-  // Page Visibility API — pausar todos los autoplays cuando el tab está oculto.
-  // Reiniciamos al volver para que arranquen con sus cycles ya acumulados.
+  // Page Visibility API — pausar autoplays cuando el tab está oculto.
   document.addEventListener('visibilitychange', () => {
     const cards = grid.querySelectorAll('.product-card');
     if (document.hidden) {
@@ -1568,7 +1588,7 @@ function setupProductCardsInteractivity() {
     }
   });
 
-  // Arrancar autoplay para cada card que tenga más de 1 foto en su color activo.
+  // Arrancar autoplay para cada card que tenga más de 1 color.
   grid.querySelectorAll('.product-card').forEach(card => startAutoplay(card));
 }
 
