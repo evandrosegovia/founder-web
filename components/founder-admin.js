@@ -2012,7 +2012,7 @@
     state.colorRows = [];
 
     setText('modalTitle', 'Nuevo producto');
-    ['editNombre', 'editPrecio', 'editDesc', 'editSpecs',
+    ['editNombre', 'editPrecio', 'editDesc',
      'editCapacidad', 'editDimensiones', 'editMaterial', 'editNota',
      'editBilletes', 'editMonedas']
       .forEach(id => { const el = $(id); if (el) el.value = ''; });
@@ -2041,7 +2041,6 @@
     $('editNombre').value      = p.nombre;
     $('editPrecio').value      = p.precio;
     $('editDesc').value        = p.descripcion;
-    $('editSpecs').value       = (p.especificaciones || []).join('|');
     $('editCapacidad').value   = p.capacidad;
     $('editDimensiones').value = p.dimensiones;
     $('editMaterial').value    = p.material;
@@ -2318,8 +2317,6 @@
     if (!precio || precio <= 0) { toast('El precio debe ser mayor a 0', true); return; }
 
     const descripcion      = ($('editDesc')?.value  || '').trim();
-    const especificaciones = ($('editSpecs')?.value || '').split('|')
-                              .map(s => s.trim()).filter(Boolean);
     const capacidad   = ($('editCapacidad')?.value   || '').trim();
     const dimensiones = ($('editDimensiones')?.value || '').trim();
     const material    = ($('editMaterial')?.value    || '').trim();
@@ -2348,6 +2345,15 @@
     const existing = state.editingProductId
       ? state.products.find(p => p.id === state.editingProductId)
       : null;
+
+    // Especificaciones legacy: el campo dejó de tener UI editable en
+    // Sesión 44, pero la columna se conserva en DB. Para no borrar los
+    // datos históricos al hacer upsert, preservamos lo que ya estaba
+    // en el state (que vino del list_products). Para productos nuevos
+    // arranca en [] que es el default seguro.
+    const especificaciones = Array.isArray(existing?.especificaciones)
+      ? existing.especificaciones
+      : [];
 
     const product = {
       nombre,
