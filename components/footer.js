@@ -37,6 +37,23 @@
     { href: 'contacto.html',        label: 'Contacto' }
   ];
 
+  // ── CONFIG: medios de pago (Sesión 44) ─────────────────────
+  // Orden visual del array = orden en pantalla. Cada entrada lleva
+  // la imagen del logo en assets/payments/ y el `alt` para accesibilidad.
+  // Estilo por defecto: escala de grises sutil. Al hover: a color.
+  // Para agregar / quitar / reordenar: editar este array.
+  const FOOTER_PAYMENTS = [
+    { src: 'assets/payments/mastercard.svg',  alt: 'Mastercard' },
+    { src: 'assets/payments/visa.svg',        alt: 'VISA' },
+    { src: 'assets/payments/mercadopago.svg', alt: 'Mercado Pago' },
+    { src: 'assets/payments/oca.svg',         alt: 'OCA' },
+    { src: 'assets/payments/prex.svg',        alt: 'Prex' },
+    { src: 'assets/payments/redpagos.svg',    alt: 'Redpagos' },
+    { src: 'assets/payments/abitab.svg',      alt: 'Abitab' },
+    { src: 'assets/payments/creditel.svg',    alt: 'Creditel' },
+    { src: 'assets/payments/lider.svg',       alt: 'Líder' }
+  ];
+
   // ── CONTENIDO LEGAL (editable) ─────────────────────────────
   const LEGAL_PRIVACY = `
     <h1>Política de Privacidad</h1><p class="legal-date">Vigente desde: Enero 2026</p>
@@ -76,6 +93,17 @@
       `<li><a href="${l.href}">${l.label}</a></li>`
     ).join('');
 
+    // Sesión 44: logos de medios de pago. Cada uno es un <img> con
+    // loading="lazy" (no son above the fold) y alt para accesibilidad.
+    // Si un archivo falla en cargar, el onerror oculta el contenedor
+    // de ESE logo (defensa: si el repo aún no tiene el SVG, no se ve
+    // un ícono roto).
+    const paymentLogos = FOOTER_PAYMENTS.map(p =>
+      `<span class="footer__pay-item" title="${p.alt}">
+        <img src="${p.src}" alt="${p.alt}" loading="lazy" onerror="this.parentNode.style.display='none'">
+      </span>`
+    ).join('');
+
     return `
 <!-- ── FOOTER ──────────────────────────────────────────────── -->
 <footer class="footer" role="contentinfo">
@@ -94,6 +122,10 @@
     </ul></div>
   </div>
   <div class="footer__bottom">
+    <!-- Sesión 44: medios de pago (Ubicación B + Estilo 3 con hover a color) -->
+    <div class="footer__payments" aria-label="Medios de pago aceptados">
+      ${paymentLogos}
+    </div>
     <p>© 2026 Founder.uy — Todos los derechos reservados</p>
     <div class="footer__legal">
       <a href="#" onclick="showLegal('privacy');return false">Privacidad</a>
@@ -113,6 +145,10 @@
       <a href="#" onclick="showLegal('privacy');return false">Privacidad</a>
       <span class="footer__mobile-sep">·</span>
       <a href="#" onclick="showLegal('terms');return false">Términos</a>
+    </div>
+    <!-- Sesión 44: medios de pago en mobile (versión compacta) -->
+    <div class="footer__payments footer__payments--mobile" aria-label="Medios de pago aceptados">
+      ${paymentLogos}
     </div>
     <p class="footer__mobile-copy">© 2026 Founder.uy</p>
   </div>
@@ -271,6 +307,64 @@
 body.cart-open .wa-bubble { transform: translateX(-440px); }
 @media (max-width: 900px) {
   body.cart-open .wa-bubble { transform: none; opacity: 0; pointer-events: none; }
+}
+
+/* ── MEDIOS DE PAGO (Sesión 44) ──────────────────────────────
+   Fila de logos en el bottom del footer. Estilo: por defecto
+   monocromáticos (filtro grayscale + opacidad reducida); al pasar
+   el mouse o tap, cada logo recupera su color original.
+   Layout: flex centrado con wrap automático. Responsive natural. */
+.footer__payments {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 4px 0 18px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+.footer__pay-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  /* Defensa: si el SVG tiene fondo blanco, este filtro lo respeta;
+     si es transparente con trazos oscuros, queda menos visible (a
+     resolver subiendo SVG con trazos claros o reemplazando con PNG). */
+  filter: grayscale(1) brightness(1.1) opacity(0.55);
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+.footer__pay-item:hover,
+.footer__pay-item:active,
+.footer__pay-item:focus {
+  filter: none;
+  transform: scale(1.05);
+}
+.footer__pay-item img {
+  height: 100%;
+  width: auto;
+  max-width: 80px;
+  object-fit: contain;
+  display: block;
+  /* Defensa: si el SVG es muy ancho, lo limitamos al max-width */
+}
+
+/* Versión mobile: logos un poco más chicos y gap menor */
+.footer__payments--mobile {
+  gap: 12px;
+  padding: 12px 0 14px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: none;
+}
+.footer__payments--mobile .footer__pay-item {
+  height: 22px;
+}
+.footer__payments--mobile .footer__pay-item img {
+  max-width: 60px;
 }
 `;
 
