@@ -143,11 +143,14 @@
     <div class="footer__payments" aria-label="Medios de pago aceptados">
       ${paymentLogos}
     </div>
-    <p>© 2026 Founder.uy — Todos los derechos reservados</p>
-    <div class="footer__legal">
-      <a href="#" onclick="showLegal('privacy');return false">Privacidad</a>
-      <a href="#" onclick="showLegal('terms');return false">Términos</a>
-      <a href="#" onclick="showLegal('returns');return false">Devoluciones</a>
+    <!-- Sesión 44: copyright + links legales en una línea separada DEBAJO de los logos -->
+    <div class="footer__bottom-info">
+      <p class="footer__copy">© 2026 Founder.uy — Todos los derechos reservados</p>
+      <div class="footer__legal">
+        <a href="#" onclick="showLegal('privacy');return false">Privacidad</a>
+        <a href="#" onclick="showLegal('terms');return false">Términos</a>
+        <a href="#" onclick="showLegal('returns');return false">Devoluciones</a>
+      </div>
     </div>
   </div>
   <!-- MOBILE: versión minimalista (logo + 4 links inline + copyright).
@@ -331,28 +334,60 @@ body.cart-open .wa-bubble { transform: translateX(-440px); }
    superpuestas: la gris (visible por defecto) y la color (visible
    al hover/tap). La transición es un cross-fade suave. Las imágenes
    color están con position:absolute para perfecto overlap.
-   Layout: flex centrado con wrap automático. Con 14 logos suele
-   acomodarse en 2 filas en desktop, 3-4 en mobile.
+   Layout: 2 filas centradas con flex + wrap. El ancho/gap está
+   calculado para que entren 7 logos por fila en desktop ≥900px.
    Todos los PNGs son 200x64 px (ratio 3.125:1). */
+
+/* Sesión 44: override del footer__bottom para layout vertical.
+   Antes era flex horizontal (logos | copyright | legal). Ahora apilamos:
+   logos arriba, copyright+legal en una línea separada debajo. */
+.footer__bottom {
+  display: block;
+  text-align: center;
+}
+.footer__bottom-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+  font-size: 10px;
+  color: var(--color-muted);
+  letter-spacing: 1px;
+}
+.footer__copy {
+  margin: 0;
+  text-align: left;
+}
+
+/* Sesión 44: achicar la separación entre la grilla del footer
+   (FOUNDER / Productos / Info / Legal) y la fila de logos. */
+.footer__grid {
+  margin-bottom: 28px !important;
+}
+
 .footer__payments {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 18px 22px;
+  gap: 16px 28px;
   flex-wrap: wrap;
   width: 100%;
-  padding: 4px 0 18px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--color-border);
+  padding: 0 0 22px;
+  margin-bottom: 0;
+  /* Sin border-bottom: el separador ahora lo da footer__bottom-info */
 }
 .footer__pay-item {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 28px;
-  /* Ancho fijo proporcional al ratio 200:64 — todos parejos */
-  width: 88px;
+  /* Logos más grandes en desktop para mejor legibilidad */
+  height: 34px;
+  width: 108px;
+  flex: 0 0 108px;
   transition: transform 0.25s ease;
 }
 .footer__pay-item:hover,
@@ -367,8 +402,7 @@ body.cart-open .wa-bubble { transform: translateX(-440px); }
   display: block;
   transition: opacity 0.25s ease;
 }
-/* La versión a color se posiciona encima de la gris,
-   invisible por defecto */
+/* La versión a color se posiciona encima de la gris, invisible por defecto */
 .footer__pay-img--color {
   position: absolute;
   top: 0;
@@ -388,18 +422,31 @@ body.cart-open .wa-bubble { transform: translateX(-440px); }
   opacity: 0;
 }
 
-/* Versión mobile: logos un poco más chicos y gap menor */
+/* Tablet (≤900px): el footer__bottom-info se apila vertical */
+@media (max-width: 900px) {
+  .footer__bottom-info {
+    flex-direction: column;
+    gap: 14px;
+  }
+  .footer__copy {
+    text-align: center;
+  }
+}
+
+/* Versión mobile (<600px): logos más chicos pero levemente más grandes
+   que antes para mejor legibilidad. */
 .footer__payments--mobile {
-  gap: 12px 16px;
-  padding: 12px 0 14px;
+  gap: 12px 18px;
+  padding: 14px 0 14px;
   margin-top: 4px;
   margin-bottom: 4px;
   border-top: 1px solid var(--color-border);
   border-bottom: none;
 }
 .footer__payments--mobile .footer__pay-item {
-  height: 22px;
-  width: 70px;
+  height: 24px;
+  width: 76px;
+  flex: 0 0 76px;
 }
 `;
 
