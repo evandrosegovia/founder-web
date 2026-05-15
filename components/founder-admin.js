@@ -2985,9 +2985,43 @@
     $('heroEditBtn2Url').value   = btns[1]?.url || '';
     $('heroEditBtn2Style').value = btns[1]?.style || 'secondary';
 
-    // Abrir modal
+    // Abrir modal + enganchar listeners (una sola vez)
     const modal = $('heroEditModal');
-    if (modal) modal.classList.add('open');
+    if (modal) {
+      modal.classList.add('open');
+      bindHeroEditModalListeners();
+    }
+  }
+
+  /** Engancha listeners del modal heroEdit una sola vez por sesión.
+   *  El cierre por "click fuera" se hace con mousedown+mouseup AMBOS sobre
+   *  el overlay. Esto evita el bug de cierre accidental cuando el usuario
+   *  selecciona texto dentro de un <textarea> (mousedown adentro, mouseup
+   *  fuera) y el evento click final cae sobre el overlay. */
+  let heroEditListenersBound = false;
+  function bindHeroEditModalListeners() {
+    if (heroEditListenersBound) return;
+    const modal = $('heroEditModal');
+    if (!modal) return;
+
+    let pressStartedOnOverlay = false;
+    modal.addEventListener('mousedown', (ev) => {
+      pressStartedOnOverlay = (ev.target === modal);
+    });
+    modal.addEventListener('mouseup', (ev) => {
+      if (pressStartedOnOverlay && ev.target === modal) {
+        closeHeroEditModal();
+      }
+      pressStartedOnOverlay = false;
+    });
+    // ESC cierra el modal
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && modal.classList.contains('open')) {
+        closeHeroEditModal();
+      }
+    });
+
+    heroEditListenersBound = true;
   }
 
   function closeHeroEditModal() {
