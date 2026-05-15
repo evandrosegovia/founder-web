@@ -151,7 +151,16 @@ select:active,
 .error-screen__btn:hover { background: var(--color-gold); }
 
 /* ── PRODUCTO — Layout principal ───────────────────────────── */
-.product-main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 20px var(--space-lg) 0; min-height: 90vh; }
+.product-main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 20px var(--space-lg) 0;
+  min-height: 90vh;
+  /* Compensación para scrollIntoView: el header fixed (70px) no debe
+     tapar el contenido cuando se hace scroll automático al entrar. */
+  scroll-margin-top: 70px;
+}
 
 /* ── PRODUCTO — Galería de fotos ───────────────────────────── */
 .gallery { position: sticky; top: 76px; height: calc(100vh - 70px); display: flex; flex-direction: column; gap: 2px; padding-right: 40px; }
@@ -1254,11 +1263,12 @@ select:active,
     flex-direction: column;
   }
   .color-section        { order: 1; padding-top: 24px; border-top: 1px solid var(--color-border); }
-  .product-info__label  { order: 2; padding-top: 24px; }
-  .product-info > div:first-of-type { order: 3; }
-  .product-info__desc   { order: 4; }
-  .specs-list           { order: 5; }
-  .purchase             { order: 6; }
+  .laser-section        { order: 2; }
+  .product-info__label  { order: 3; padding-top: 24px; }
+  .product-info > div:first-of-type { order: 4; }
+  .product-info__desc   { order: 5; }
+  .specs-list           { order: 6; }
+  .purchase             { order: 7; }
   /* Mobile: info-row se apila (shipping arriba, botón compartir debajo). */
   .purchase__info-row  { flex-direction: column; align-items: stretch; gap: 12px; }
   .purchase__share-row { justify-content: stretch; }
@@ -2042,6 +2052,18 @@ async function init() {
     renderProduct();
     hide('loadingScreen');
     show('productContent');
+    // Scroll inicial: al entrar a producto.html, posicionar el viewport
+    // justo donde empieza la foto/info, dejando el breadcrumb arriba
+    // (sigue accesible si el usuario scrollea hacia arriba). Aplica en
+    // mobile y desktop. Se respeta si el usuario llegó con un hash en
+    // la URL (ej. ...#reviews) para no romper deep-links.
+    if (!window.location.hash) {
+      const mainEl = document.querySelector('.product-main');
+      if (mainEl) {
+        // 'instant' evita la animación de scroll (sería distracción al cargar)
+        mainEl.scrollIntoView({ behavior: 'instant', block: 'start' });
+      }
+    }
     // Refrescar el contador del carrito y la vista del drawer.
     updateCart();
     // Enganchar listeners del autoplay de la galería (hover + visibility).
