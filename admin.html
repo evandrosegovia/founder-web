@@ -1762,36 +1762,7 @@ textarea.fi{resize:vertical;min-height:70px}
           </div>
         </div>
 
-        <!-- Limpieza de fotos de reseñas (Sesión 42 — UI manual en Sesión 49) -->
-        <div class="card" style="margin-top:14px">
-          <div class="card-head">
-            <div class="card-title">📸 Limpieza de fotos de reseñas</div>
-            <button class="btn btn-secondary btn-sm" onclick="loadReviewsOrphansStatus()">↻ Actualizar</button>
-          </div>
-          <div class="card-body">
-            <div class="info-box" style="margin-bottom:14px">
-              <strong>¿Qué hace esto?</strong><br>
-              Cuando un cliente sube fotos a una reseña y después se borra la reseña (o se cancela la subida antes de publicarla), las fotos quedan huérfanas en el almacenamiento. Este panel las detecta y las borra.<br>
-              • <strong>Huérfanas</strong> (sin reseña que las referencie) con más de <strong>24h</strong>: borrables.<br>
-              • <strong>Huérfanas recientes</strong> (&lt;24h): se preservan por seguridad — pueden estar en pleno upload.<br>
-              • <strong>Vivas</strong> (atadas a una reseña): nunca se borran.<br><br>
-              También corre <strong>automáticamente todos los domingos a las 3am</strong>. Este botón es para hacerlo manualmente cuando quieras.
-            </div>
-            <div id="reviewsOrphansStatusBox" style="font-size:12px;line-height:1.8;color:var(--muted);background:var(--mid);padding:14px;border:1px solid var(--border);margin-bottom:14px">
-              Cargando estado de fotos de reseñas...
-            </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <button class="btn btn-danger" id="reviewsOrphansRunBtn" onclick="runReviewsOrphansCleanup()" disabled>
-                🗑 Ejecutar limpieza ahora
-              </button>
-            </div>
-            <div class="fhint" style="margin-top:8px">
-              💡 Las fotos de reseñas son aportes públicos de clientes — si una se borra por error, no es crítico. Por eso no hay ZIP de backup acá.
-            </div>
-          </div>
-        </div>
-
-        <!-- Historial de limpiezas -->
+        <!-- Historial de limpiezas — solo limpiezas de imágenes de personalización -->
         <div class="card" style="margin-top:14px">
           <div class="card-head"><div class="card-title">📋 Últimas limpiezas</div></div>
           <div class="card-body">
@@ -1867,6 +1838,45 @@ textarea.fi{resize:vertical;min-height:70px}
         <div id="reviewsListContainer">
           <div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">
             Cargando reseñas…
+          </div>
+        </div>
+
+        <!-- Limpieza de fotos huérfanas de reseñas (Sesión 42 backend + Sesión 49 UI + Sesión 50 ubicación) -->
+        <div class="card" style="margin-top:24px">
+          <div class="card-head">
+            <div class="card-title">📸 Limpieza de fotos huérfanas</div>
+            <button class="btn btn-secondary btn-sm" onclick="loadReviewsOrphansStatus()">↻ Actualizar</button>
+          </div>
+          <div class="card-body">
+            <div class="info-box" style="margin-bottom:14px">
+              <strong>¿Qué hace esto?</strong><br>
+              Cuando un cliente sube fotos a una reseña y después se borra la reseña (o se cancela la subida antes de publicarla), las fotos quedan huérfanas en el almacenamiento. Este panel las detecta y las borra.<br>
+              • <strong>Huérfanas</strong> (sin reseña que las referencie) con más de <strong>24h</strong>: borrables.<br>
+              • <strong>Huérfanas recientes</strong> (&lt;24h): se preservan por seguridad — pueden estar en pleno upload.<br>
+              • <strong>Vivas</strong> (atadas a una reseña): nunca se borran.<br><br>
+              También corre <strong>automáticamente todos los domingos a las 3am</strong>. Este botón es para hacerlo manualmente cuando quieras.
+            </div>
+            <div id="reviewsOrphansStatusBox" style="font-size:12px;line-height:1.8;color:var(--muted);background:var(--mid);padding:14px;border:1px solid var(--border);margin-bottom:14px">
+              Cargando estado de fotos de reseñas...
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-danger" id="reviewsOrphansRunBtn" onclick="runReviewsOrphansCleanup()" disabled>
+                🗑 Ejecutar limpieza ahora
+              </button>
+            </div>
+            <div class="fhint" style="margin-top:8px">
+              💡 Las fotos de reseñas son aportes públicos de clientes — si una se borra por error, no es crítico. Por eso no hay ZIP de backup acá.
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial específico de limpiezas de fotos de reseñas -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-head"><div class="card-title">📋 Últimas limpiezas de fotos</div></div>
+          <div class="card-body">
+            <div id="reviewsCleanupLogsList" style="font-size:11px;color:var(--muted)">
+              Cargando historial...
+            </div>
           </div>
         </div>
       </div>
