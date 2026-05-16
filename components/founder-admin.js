@@ -307,6 +307,7 @@
     if (page === 'personalizacion') {
       loadPersonalizacion();
       loadCleanupStatus();
+      loadReviewsOrphansStatus();
     }
     // Sesión 38: cargar reseñas al entrar a la sección
     if (page === 'resenas' && typeof window.loadReviews === 'function') {
@@ -1657,6 +1658,11 @@
 
   /**
    * Carga el historial de limpiezas en la card de abajo.
+   *
+   * Los logs vienen de cleanup_logs (tabla unificada) y mezclan dos tipos:
+   *   • Tipo "imágenes de personalización" → detalle.tipo es undefined o cualquier cosa que NO sea 'reviews_orphans'.
+   *   • Tipo "fotos de reseñas" → detalle.tipo === 'reviews_orphans' (escrito por Sesión 42).
+   * Usamos esa distinción para mostrar ícono + categoría correctos a la vista.
    */
   async function loadCleanupLogs() {
     const list = $('cleanupLogsList');
@@ -1679,14 +1685,20 @@
           ? new Date(l.ejecutado_at).toLocaleString('es-UY')
           : '—';
         const triggerLabel = l.trigger === 'auto' ? '🤖 Automática' : '👤 Manual';
+        // Distinguir limpieza de imágenes vs limpieza de fotos de reseñas.
+        // El backend etiqueta el log con detalle.tipo === 'reviews_orphans'
+        // cuando es del cron C (Sesión 42); sin esa key es del cron A (Sesión 29).
+        const isReviewLog = (l.detalle && l.detalle.tipo === 'reviews_orphans');
+        const tipoIcon  = isReviewLog ? '📸' : '🎨';
+        const tipoLabel = isReviewLog ? 'Fotos de reseñas' : 'Imágenes de personalización';
         return `
           <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
             <div>
-              <div style="font-size:11px;color:var(--white)">${triggerLabel}</div>
+              <div style="font-size:11px;color:var(--white)">${triggerLabel} <span style="color:var(--muted);font-weight:300">· ${tipoIcon} ${tipoLabel}</span></div>
               <div style="font-size:9px;color:var(--muted);letter-spacing:1px">${esc(fecha)}</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:11px;color:var(--gold)">${l.borradas || 0} imágenes</div>
+              <div style="font-size:11px;color:var(--gold)">${l.borradas || 0} archivos</div>
               <div style="font-size:9px;color:var(--muted);letter-spacing:1px">${(l.liberados_mb || 0).toFixed(2)} MB liberados</div>
             </div>
           </div>`;
@@ -1751,6 +1763,118 @@
       }
       toast(`✓ Limpieza completada: ${data.borradas || 0} imágenes borradas (${(data.liberados_mb || 0).toFixed(2)} MB)`);
       loadCleanupStatus();
+    } catch (err) {
+      toast('Error de red ejecutando limpieza', true);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🗑 Ejecutar limpieza ahora'; }
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════
+  // CLEANUP FOTOS HUÉRFANAS DE RESEÑAS (Sesión 42 — UI en Sesión 49)
+  // ─────────────────────────────────────────────────────────────────
+  // Card al lado del cleanup de imágenes de personalización. Permite
+  // invocar manualmente el cron Tarea C, que ya corría automáticamente
+  // todos los domingos pero no tenía botón en el admin. Útil cuando
+  // detectás muchas reseñas borradas y querés liberar storage al toque.
+  //
+  // Backend: /api/cleanup-personalizacion
+  //   get_reviews_orphans_status  → dryRun: cuántas huérfanas hay.
+  //   run_reviews_orphans_manual  → borra huérfanas (>24h) ahora.
+  //
+  // Patrón idéntico al cleanup de imágenes (loadCleanupStatus +
+  // runCleanupManual) para mantener consistencia visual y de código.
+  // ═════════════════════════════════════════════════════════════════
+
+  /**
+   * Carga el estado del bucket reviews-photos y habilita/deshabilita
+   * el botón de limpieza manual según haya huérfanas o no.
+   */
+  async function loadReviewsOrphansStatus() {
+    const statusBox = $('reviewsOrphansStatusBox');
+    const runBtn    = $('reviewsOrphansRunBtn');
+    if (!statusBox) return;
+
+    statusBox.textContent = 'Cargando estado de fotos de reseñas...';
+    if (runBtn) runBtn.disabled = true;
+
+    let data = null;
+    try {
+      const resp = await apiAdminFetch('/api/cleanup-personalizacion', 'get_reviews_orphans_status');
+      data = await resp.json();
+      if (!resp.ok || !data?.ok) {
+        statusBox.innerHTML = `<span style="color:var(--red,#e57373)">Error cargando status: ${esc(data?.error || resp.status)}</span>`;
+        return;
+      }
+    } catch (err) {
+      statusBox.innerHTML = `<span style="color:var(--red,#e57373)">Error de red: ${esc(String(err?.message || err))}</span>`;
+      return;
+    }
+
+    const total      = data.total_fotos_bucket || 0;
+    const vivas      = data.vivas_count        || 0;
+    const huerfanas  = data.huerfanas_count    || 0;
+    const recientes  = data.recientes_count    || 0;
+    const huerfMb    = data.huerfanas_mb       || 0;
+
+    statusBox.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+        <div>
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase">Total en bucket</div>
+          <div style="font-size:16px;color:var(--white);margin-top:2px">${total}</div>
+        </div>
+        <div>
+          <div style="font-size:9px;letter-spacing:2px;color:var(--green);text-transform:uppercase">🟢 Vivas (en uso)</div>
+          <div style="font-size:16px;color:var(--white);margin-top:2px">${vivas}</div>
+        </div>
+        <div>
+          <div style="font-size:9px;letter-spacing:2px;color:var(--gold);text-transform:uppercase">🟡 Huérfanas borrables</div>
+          <div style="font-size:16px;color:var(--gold);margin-top:2px">${huerfanas} <span style="font-size:11px;color:var(--muted)">(${huerfMb.toFixed(2)} MB)</span></div>
+        </div>
+        ${recientes > 0 ? `
+        <div>
+          <div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase">⏳ Recientes (&lt;24h, no se tocan)</div>
+          <div style="font-size:16px;color:var(--white);margin-top:2px">${recientes}</div>
+        </div>` : ''}
+      </div>`;
+
+    if (runBtn) runBtn.disabled = huerfanas === 0;
+  }
+
+  /**
+   * Ejecuta la limpieza manual de fotos huérfanas de reseñas.
+   * No requiere descargar ZIP previo: a diferencia de las imágenes de
+   * personalización (que el cliente sube y son únicas), las fotos de
+   * reseñas son aportes del cliente con bajo valor de recuperación.
+   * Igual mantenemos doble confirmación porque el borrado es irreversible.
+   */
+  async function runReviewsOrphansCleanup() {
+    if (!confirm('¿Borrar las fotos huérfanas de reseñas?\n\nSon fotos del bucket que NO están referenciadas por ninguna reseña activa, y tienen más de 24h de antigüedad. La operación es irreversible.')) return;
+    if (!confirm('Última confirmación: borrar archivos no se puede deshacer. ¿Continuar?')) return;
+
+    const btn = $('reviewsOrphansRunBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '🗑 Borrando...'; }
+
+    try {
+      const resp = await apiAdminFetch('/api/cleanup-personalizacion', 'run_reviews_orphans_manual');
+      const data = await resp.json();
+      if (!resp.ok || !data?.ok) {
+        toast('Error ejecutando limpieza: ' + (data?.error || resp.status), true);
+        return;
+      }
+      const borradas    = data.borradas    || 0;
+      const liberadosMb = data.liberados_mb || 0;
+      if (data.capped) {
+        toast(`✓ ${borradas} fotos borradas (${liberadosMb.toFixed(2)} MB). Quedan más para la próxima corrida (tope: ${data.cap_limit}).`);
+      } else if (data.delete_error) {
+        toast(`⚠ Borrado parcial — error: ${data.delete_error}`, true);
+      } else {
+        toast(`✓ Limpieza completada: ${borradas} foto${borradas === 1 ? '' : 's'} borrada${borradas === 1 ? '' : 's'} (${liberadosMb.toFixed(2)} MB)`);
+      }
+      // Refrescamos el status para reflejar el estado post-limpieza,
+      // y los logs para que aparezca la nueva entrada de "Manual · Fotos de reseñas".
+      loadReviewsOrphansStatus();
+      loadCleanupLogs();
     } catch (err) {
       toast('Error de red ejecutando limpieza', true);
     } finally {
@@ -3082,6 +3206,12 @@
     $('heroEditBtn2Url').value   = btns[1]?.url || '';
     $('heroEditBtn2Style').value = btns[1]?.style || 'secondary';
 
+    // Snapshot del estado limpio (Sesión 49 — detección de cambios sin guardar).
+    // Tomamos el snapshot DESPUÉS de rellenar y ANTES de mostrar el modal
+    // para que cualquier modificación posterior se detecte como "dirty".
+    heroEditSnapshot = snapshotHeroEditForm();
+    setHeroEditDirty(false);
+
     // Abrir modal + enganchar listeners (una sola vez)
     const modal = $('heroEditModal');
     if (modal) {
@@ -3094,7 +3224,10 @@
    *  El cierre por "click fuera" se hace con mousedown+mouseup AMBOS sobre
    *  el overlay. Esto evita el bug de cierre accidental cuando el usuario
    *  selecciona texto dentro de un <textarea> (mousedown adentro, mouseup
-   *  fuera) y el evento click final cae sobre el overlay. */
+   *  fuera) y el evento click final cae sobre el overlay.
+   *
+   *  También engancha listeners de "input"/"change" sobre el modal entero
+   *  (event delegation) para detectar cambios sin guardar — Sesión 49. */
   let heroEditListenersBound = false;
   function bindHeroEditModalListeners() {
     if (heroEditListenersBound) return;
@@ -3118,12 +3251,76 @@
       }
     });
 
+    // Sesión 49 — Detección de cambios sin guardar.
+    // Event delegation sobre el modal: cualquier input/select/textarea
+    // que cambie dispara el check. Los listeners viven en el contenedor,
+    // no en cada campo — más liviano y robusto.
+    modal.addEventListener('input',  checkHeroEditDirty);
+    modal.addEventListener('change', checkHeroEditDirty);
+
     heroEditListenersBound = true;
   }
 
+  // ── Indicador de cambios sin guardar (Sesión 49) ──────────────
+  // El patrón es simple: al abrir el modal tomamos un "snapshot" del
+  // estado del form. Cada vez que cambia un campo, comparamos el form
+  // actual contra el snapshot. Si difiere → dirty. Al guardar exitoso
+  // o cerrar, reseteamos. Es deliberadamente simple — no usamos un
+  // dirty-flag local porque snapshot comparison es más confiable (sigue
+  // funcionando aunque el usuario "deshaga" un cambio escribiendo y
+  // borrando hasta volver al original).
+
+  let heroEditSnapshot = '';
+
+  /** Captura el estado actual del form como string serializable.
+   *  Cualquier diferencia byte-a-byte se considera "cambio". */
+  function snapshotHeroEditForm() {
+    return JSON.stringify({
+      label:    $('heroEditLabel')?.value     || '',
+      title:    $('heroEditTitle')?.value     || '',
+      subtitle: $('heroEditSubtitle')?.value  || '',
+      image:    $('heroEditImage')?.value     || '',
+      b1t:      $('heroEditBtn1Text')?.value  || '',
+      b1u:      $('heroEditBtn1Url')?.value   || '',
+      b1s:      $('heroEditBtn1Style')?.value || '',
+      b2t:      $('heroEditBtn2Text')?.value  || '',
+      b2u:      $('heroEditBtn2Url')?.value   || '',
+      b2s:      $('heroEditBtn2Style')?.value || '',
+    });
+  }
+
+  /** Compara el estado actual del form contra el snapshot y actualiza el
+   *  indicador visual (puntito dorado al lado del título del modal). */
+  function checkHeroEditDirty() {
+    const now = snapshotHeroEditForm();
+    setHeroEditDirty(now !== heroEditSnapshot);
+  }
+
+  /** Aplica o quita la clase is-dirty al título del modal. Centralizado
+   *  para que cualquier punto del flujo que necesite setear el estado
+   *  pase por acá (consistencia). */
+  function setHeroEditDirty(isDirty) {
+    const titleEl = $('heroEditModal')?.querySelector('.modal-title');
+    if (!titleEl) return;
+    titleEl.classList.toggle('is-dirty', !!isDirty);
+  }
+
+  /** Devuelve true si hay cambios sin guardar. Usado por closeHeroEditModal
+   *  para preguntar confirmación antes de cerrar. */
+  function hasUnsavedHeroEditChanges() {
+    return snapshotHeroEditForm() !== heroEditSnapshot;
+  }
+
   function closeHeroEditModal() {
+    // Si hay cambios sin guardar, confirmar antes de descartar.
+    if (hasUnsavedHeroEditChanges()) {
+      if (!confirm('Tenés cambios sin guardar.\n\n¿Querés descartarlos?')) return;
+    }
     const modal = $('heroEditModal');
     if (modal) modal.classList.remove('open');
+    // Reseteamos el snapshot para que el próximo abrir arranque limpio.
+    heroEditSnapshot = '';
+    setHeroEditDirty(false);
   }
 
   // ── Vista previa del slide en edición (Sesión 49) ─────────────
@@ -3268,6 +3465,8 @@
       if (!publicUrl) return;
       $('heroEditImage').value = publicUrl;
       renderHeroEditImagePreview(publicUrl);
+      // Setear .value por JS no dispara el evento 'input' → forzar dirty check manualmente.
+      checkHeroEditDirty();
       toast('✅ Imagen subida');
     };
     f.click();
@@ -3309,6 +3508,11 @@
 
     const okSave = await persistHeroSlidesConfig();
     if (okSave) {
+      // Sesión 49 — Sincronizamos el snapshot ANTES de cerrar para que
+      // closeHeroEditModal no detecte un falso "dirty" y pida confirmación
+      // de descartar cambios que ya fueron guardados.
+      heroEditSnapshot = snapshotHeroEditForm();
+      setHeroEditDirty(false);
       closeHeroEditModal();
       renderHeroSlidesPanel();
     }
@@ -3979,6 +4183,9 @@
   window.loadCleanupStatus       = loadCleanupStatus;
   window.downloadBorrablesZip    = downloadBorrablesZip;
   window.runCleanupManual        = runCleanupManual;
+  // Sesión 49 — UI de cleanup manual de fotos de reseñas (cron Tarea C)
+  window.loadReviewsOrphansStatus = loadReviewsOrphansStatus;
+  window.runReviewsOrphansCleanup = runReviewsOrphansCleanup;
   // Sesión 43 — UI de emails de recompra (cron Tarea D)
   window.loadRecompraStatus      = loadRecompraStatus;
   window.runRecompraManual       = runRecompraManual;
