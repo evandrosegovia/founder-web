@@ -288,10 +288,17 @@ textarea.fi{resize:vertical;min-height:70px}
 
 /* HERO SLIDES (Sesión 48) */
 .hero-slides-empty{background:var(--gray);border:1px solid var(--border);padding:40px;text-align:center;color:var(--muted);font-size:12px;display:flex;flex-direction:column;gap:14px;align-items:center}
-.hero-slide-card{background:var(--gray);border:1px solid var(--border);display:flex;gap:18px;padding:14px;margin-bottom:12px;transition:border-color 0.2s ease,opacity 0.2s ease}
+.hero-slide-card{background:var(--gray);border:1px solid var(--border);display:flex;gap:18px;padding:14px;margin-bottom:12px;transition:border-color 0.2s ease,opacity 0.2s ease,transform 0.15s ease;cursor:grab}
+.hero-slide-card:active{cursor:grabbing}
 .hero-slide-card:hover{border-color:rgba(201,169,110,0.4)}
 .hero-slide-card.is-paused{opacity:0.55}
 .hero-slide-card.is-paused .hero-slide-card__preview{filter:grayscale(80%)}
+.hero-slide-card.is-dragging{opacity:0.35;transform:scale(0.98)}
+.hero-slide-card.is-drop-target-before{box-shadow:0 -3px 0 0 var(--gold)}
+.hero-slide-card.is-drop-target-after{box-shadow:0 3px 0 0 var(--gold)}
+/* En mobile el drag-and-drop nativo no funciona bien — el cursor grab se vuelve confuso.
+   Los botones ↑↓ siguen siendo el camino primario en pantallas chicas. */
+@media (max-width:700px){.hero-slide-card{cursor:default}.hero-slide-card:active{cursor:default}}
 .hero-slide-card__preview{flex-shrink:0;width:180px;aspect-ratio:16/9;background:var(--black);border:1px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center}
 .hero-slide-card__preview img{width:100%;height:100%;object-fit:cover}
 .hero-slide-card__noimg{color:var(--muted);font-size:9px;letter-spacing:2px;text-transform:uppercase}
@@ -314,6 +321,37 @@ textarea.fi{resize:vertical;min-height:70px}
 .hero-edit-btn-row:last-of-type{margin-bottom:8px}
 .hero-edit-btn-num{flex-shrink:0;width:28px;height:28px;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.25);color:var(--gold);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:2px}
 .hero-edit-btn-fields{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+
+/* HERO PREVIEW MODAL (Sesión 49) — replica visual del hero del sitio público.
+   Usa los mismos tokens tipográficos / colores que index.html para que la
+   vista previa sea pixel-perfect respecto al render real. */
+.hero-preview-overlay{padding:0;align-items:stretch;justify-content:stretch}
+.hero-preview-overlay.open{display:flex}
+.hero-preview-shell{background:var(--black);width:100%;height:100%;max-width:none;max-height:none;display:flex;flex-direction:column;overflow:hidden;border:none;transform:translateY(0)}
+.hero-preview-bar{padding:14px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--gray);flex-shrink:0}
+.hero-preview-bar__title{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--white)}
+.hero-preview-stage{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;padding:0 64px;background:var(--black);min-height:0}
+.hero-preview-stage::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 70% 50%, rgba(201,169,110,.06) 0%, transparent 60%);pointer-events:none}
+.hero-preview-stage::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);background-size:80px 80px;mask-image:radial-gradient(ellipse at center, black 30%, transparent 80%);pointer-events:none}
+.hero-preview-bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.50;pointer-events:none;z-index:0}
+.hero-preview-content{position:relative;z-index:2;max-width:700px}
+.hero-preview-label{font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);margin-bottom:32px;display:flex;align-items:center;gap:16px}
+.hero-preview-label::before{content:'';display:block;width:40px;height:1px;background:var(--gold)}
+.hero-preview-title{font-family:'Cormorant Garamond',serif;font-size:clamp(48px,6vw,90px);font-weight:300;line-height:.95;margin-bottom:32px;letter-spacing:-2px;color:var(--white)}
+.hero-preview-title em{font-style:italic;color:var(--gold)}
+.hero-preview-desc{font-size:14px;line-height:1.7;color:rgba(255,255,255,.6);max-width:440px;margin-bottom:48px;letter-spacing:.5px}
+.hero-preview-ctas{display:flex;gap:16px;flex-wrap:wrap}
+.hero-preview-btn{display:inline-block;padding:14px 32px;font-size:10px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;border:1px solid;transition:all .3s;cursor:default}
+.hero-preview-btn--primary{background:var(--white);color:var(--black);border-color:var(--white)}
+.hero-preview-btn--secondary{background:transparent;color:var(--white);border-color:rgba(255,255,255,.4)}
+.hero-preview-letter{position:absolute;right:-60px;top:50%;transform:translateY(-50%);font-family:'Cormorant Garamond',serif;font-size:clamp(140px,18vw,260px);font-weight:300;color:rgba(255,255,255,.04);pointer-events:none;line-height:1;z-index:1}
+.hero-preview-foot{padding:12px 22px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--gray);flex-shrink:0}
+.hero-preview-foot__hint{font-size:11px;color:var(--muted);letter-spacing:1px}
+@media (max-width:700px){
+  .hero-preview-stage{padding:0 24px}
+  .hero-preview-foot{flex-direction:column;align-items:stretch;gap:10px}
+  .hero-preview-foot__hint{text-align:center}
+}
 
 @media (max-width:700px){
   .hero-slide-card{flex-direction:column}
@@ -1299,6 +1337,7 @@ textarea.fi{resize:vertical;min-height:70px}
           <strong>💡 Cómo funciona:</strong> Podés crear varios banners y se irán mostrando uno después de otro (cada <strong>8 segundos</strong>) en la home.<br>
           • <strong>Pausar</strong> un banner lo oculta del sitio pero queda guardado para reactivarlo cuando quieras (no consume rendimiento mientras está pausado).<br>
           • Si dejás <strong>solo 1 activo</strong>, no rota — se muestra fijo.<br>
+          • <strong>Reordenar:</strong> arrastrá una tarjeta hacia arriba o abajo para cambiar el orden, o usá los botones ↑ ↓.<br>
           • <strong>Formato de imagen:</strong> apaisada 1920×600px, oscura o con espacio para texto blanco a la izquierda.
         </div>
         <div id="heroSlidesList">
@@ -1380,7 +1419,25 @@ textarea.fi{resize:vertical;min-height:70px}
           </div>
           <div class="modal-foot">
             <button class="btn btn-secondary" onclick="closeHeroEditModal()">Cancelar</button>
+            <button class="btn btn-secondary" onclick="openHeroPreviewModal()">👁 Vista previa</button>
             <button class="btn btn-primary" onclick="saveHeroSlideEdit()">💾 Guardar cambios</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal de vista previa del slide (lee el form en vivo, no la DB) -->
+      <div class="modal-overlay hero-preview-overlay" id="heroPreviewModal">
+        <div class="hero-preview-shell">
+          <div class="hero-preview-bar">
+            <div class="hero-preview-bar__title">Vista previa — así se verá en el sitio</div>
+            <button class="modal-x" onclick="closeHeroPreviewModal()" aria-label="Cerrar vista previa">✕</button>
+          </div>
+          <div class="hero-preview-stage" id="heroPreviewStage" aria-hidden="true">
+            <!-- El JS inyecta acá el slide renderizado -->
+          </div>
+          <div class="hero-preview-foot">
+            <div class="hero-preview-foot__hint">Esta es la imagen y los textos tal cual aparecerán en la portada del sitio.</div>
+            <button class="btn btn-secondary btn-sm" onclick="closeHeroPreviewModal()">Volver a editar</button>
           </div>
         </div>
       </div>
