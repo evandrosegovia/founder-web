@@ -252,6 +252,10 @@ textarea.fi{resize:vertical;min-height:70px}
 .modal-overlay.open .modal{transform:translateY(0)}
 .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--gray);z-index:1}
 .modal-title{font-family:'Cormorant Garamond',serif;font-size:22px}
+/* Indicador de cambios sin guardar (Sesión 49) — puntito dorado al lado del título.
+   Se aplica vía JS poniendo la clase 'is-dirty' en el contenedor del título. */
+.modal-title.is-dirty::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-left:10px;vertical-align:middle;animation:dirtyPulse 1.8s ease-in-out infinite}
+@keyframes dirtyPulse{0%,100%{opacity:0.6}50%{opacity:1}}
 .modal-x{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;transition:color .2s}.modal-x:hover{color:var(--white)}
 .modal-body{padding:22px;display:flex;flex-direction:column;gap:18px}
 .modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;gap:9px;justify-content:flex-end;position:sticky;bottom:0;background:var(--gray)}
@@ -1754,6 +1758,35 @@ textarea.fi{resize:vertical;min-height:70px}
             </div>
             <div class="fhint" style="margin-top:8px">
               💡 <strong>Recomendado:</strong> primero descargá el ZIP (backup local) y después ejecutá la limpieza.
+            </div>
+          </div>
+        </div>
+
+        <!-- Limpieza de fotos de reseñas (Sesión 42 — UI manual en Sesión 49) -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-head">
+            <div class="card-title">📸 Limpieza de fotos de reseñas</div>
+            <button class="btn btn-secondary btn-sm" onclick="loadReviewsOrphansStatus()">↻ Actualizar</button>
+          </div>
+          <div class="card-body">
+            <div class="info-box" style="margin-bottom:14px">
+              <strong>¿Qué hace esto?</strong><br>
+              Cuando un cliente sube fotos a una reseña y después se borra la reseña (o se cancela la subida antes de publicarla), las fotos quedan huérfanas en el almacenamiento. Este panel las detecta y las borra.<br>
+              • <strong>Huérfanas</strong> (sin reseña que las referencie) con más de <strong>24h</strong>: borrables.<br>
+              • <strong>Huérfanas recientes</strong> (&lt;24h): se preservan por seguridad — pueden estar en pleno upload.<br>
+              • <strong>Vivas</strong> (atadas a una reseña): nunca se borran.<br><br>
+              También corre <strong>automáticamente todos los domingos a las 3am</strong>. Este botón es para hacerlo manualmente cuando quieras.
+            </div>
+            <div id="reviewsOrphansStatusBox" style="font-size:12px;line-height:1.8;color:var(--muted);background:var(--mid);padding:14px;border:1px solid var(--border);margin-bottom:14px">
+              Cargando estado de fotos de reseñas...
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-danger" id="reviewsOrphansRunBtn" onclick="runReviewsOrphansCleanup()" disabled>
+                🗑 Ejecutar limpieza ahora
+              </button>
+            </div>
+            <div class="fhint" style="margin-top:8px">
+              💡 Las fotos de reseñas son aportes públicos de clientes — si una se borra por error, no es crítico. Por eso no hay ZIP de backup acá.
             </div>
           </div>
         </div>
