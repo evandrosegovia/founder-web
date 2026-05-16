@@ -354,6 +354,107 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // DIRTY TRACKER — utilidad genérica para "cambios sin guardar"
+  // (Sesión 52 — generaliza el patrón creado en Sesión 49 para el
+  // modal de banners). Funciona en cualquier formulario o modal con
+  // un set fijo de campos.
+  //
+  // Uso:
+  //   const tracker = createDirtyTracker({
+  //     fieldIds:    ['inputX', 'selectY', 'checkboxZ'],
+  //     dirtyMarker: '.modal-title',   // selector CSS del elemento que recibe la clase 'is-dirty'
+  //     containerEl: $('miModal'),     // dónde enganchar los listeners (event delegation)
+  //   });
+  //   tracker.captureSnapshot();           // al abrir el editor (form ya rellenado)
+  //   tracker.bindAutoCheck();             // engancha input/change listeners (idempotente)
+  //   tracker.isDirty();                   // → boolean
+  //   tracker.confirmDiscardIfDirty();     // → true si OK proceder, false si user canceló
+  //   tracker.reset();                     // post-save exitoso: limpia snapshot
+  //
+  // Diseño:
+  //   - Snapshot serializado a JSON para comparación exacta.
+  //   - Listener de input/change vive UNA SOLA VEZ en el containerEl
+  //     (event delegation) — re-renders no duplican.
+  //   - dirtyMarker queda con clase 'is-dirty' aplicada o no, según
+  //     el resultado de la comparación.
+  // ═══════════════════════════════════════════════════════════════
+  function createDirtyTracker(cfg) {
+    const fieldIds    = Array.isArray(cfg?.fieldIds) ? cfg.fieldIds : [];
+    const containerEl = cfg?.containerEl || null;
+    const markerSel   = cfg?.dirtyMarker || '.modal-title';
+    const message     = cfg?.discardMessage || 'Tenés cambios sin guardar.\n\n¿Querés descartarlos?';
+
+    let snapshot       = '';
+    let listenersBound = false;
+
+    /** Serializa el estado actual de todos los campos rastreados. */
+    function takeSnapshot() {
+      const obj = {};
+      fieldIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) { obj[id] = ''; return; }
+        if (el.type === 'checkbox' || el.type === 'radio') {
+          obj[id] = el.checked ? '1' : '0';
+        } else {
+          obj[id] = el.value || '';
+        }
+      });
+      return JSON.stringify(obj);
+    }
+
+    /** Marca/desmarca visualmente el indicador de cambios. */
+    function setDirtyClass(isDirty) {
+      if (!containerEl) return;
+      const marker = containerEl.querySelector(markerSel);
+      if (marker) marker.classList.toggle('is-dirty', !!isDirty);
+    }
+
+    /** Comparación reactiva: actualiza la clase según el estado actual. */
+    function check() {
+      setDirtyClass(takeSnapshot() !== snapshot);
+    }
+
+    return {
+      /** Toma snapshot del estado actual (limpio). Llamar al abrir el editor. */
+      captureSnapshot() {
+        snapshot = takeSnapshot();
+        setDirtyClass(false);
+      },
+
+      /** Engancha listeners input/change al containerEl (idempotente). */
+      bindAutoCheck() {
+        if (listenersBound || !containerEl) return;
+        containerEl.addEventListener('input',  check);
+        containerEl.addEventListener('change', check);
+        listenersBound = true;
+      },
+
+      /** Devuelve true si hay cambios respecto al snapshot. */
+      isDirty() {
+        return takeSnapshot() !== snapshot;
+      },
+
+      /** Si hay cambios sin guardar, pregunta al usuario. Devuelve:
+       *   - true  si NO hay cambios, o el usuario confirma descartar
+       *   - false si hay cambios y el usuario canceló (no debe cerrar). */
+      confirmDiscardIfDirty() {
+        if (takeSnapshot() === snapshot) return true;
+        return confirm(message);
+      },
+
+      /** Resetea el snapshot al estado actual + limpia el indicador.
+       *  Llamar post-save exitoso. */
+      reset() {
+        snapshot = takeSnapshot();
+        setDirtyClass(false);
+      },
+
+      /** Fuerza un check (útil cuando se setea un campo programáticamente). */
+      check,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // BOOTSTRAP — carga inicial al entrar al panel
   // ═══════════════════════════════════════════════════════════════
   /**
@@ -993,15 +1094,103 @@
   }
 
   /** Dibuja las tarjetas de pedidos en la grilla. */
+  /** Construye el HTML del empty state de la grilla de pedidos.
+   *  Adapta el mensaje y el ícono según `state.currentFilter` para que
+   *  comunique mejor lo que está pasando (Sesión 52).
+   *
+   *  Casos:
+   *   - 'todos'                  → "Todavía no hay pedidos" (estado inicial del negocio)
+   *   - 'Pendiente pago'         → "✨ Todo al día — no hay pagos pendientes"
+   *   - 'Pendiente confirmación' → "✨ Sin pedidos esperando confirmación de MP"
+   *   - 'Confirmado'             → "Sin pedidos confirmados todavía"
+   *   - 'Entregado'              → "Todavía no entregaste ningún pedido"
+   *   - 'Pago rechazado'         → "✨ Sin pagos rechazados — buena señal"
+   *   - 'Cancelado'              → "Sin pedidos cancelados"
+   *   - 'con_grabado'            → "Sin pedidos con personalización láser"
+   *   - 'archivados'             → "Sin pedidos archivados"
+   *
+   *  El tono celebratorio (✨ + verde) aplica donde "vacío" es algo BUENO.
+   *  El tono informativo (icono neutro + muted) aplica donde solo significa
+   *  "todavía no pasó nada de ese tipo". */
+  function renderOrdersEmptyState() {
+    const filter = state.currentFilter || 'todos';
+
+    // Mapa de configuración por filtro.
+    // tone: 'celebratory' | 'neutral'
+    const config = {
+      'todos': {
+        icon:  '📋',
+        title: 'Todavía no hay pedidos',
+        sub:   'Cuando llegue la primera compra va a aparecer acá.',
+        tone:  'neutral',
+      },
+      'Pendiente pago': {
+        icon:  '✨',
+        title: 'Todo al día',
+        sub:   'No hay pagos pendientes de confirmación manual.',
+        tone:  'celebratory',
+      },
+      'Pendiente confirmación': {
+        icon:  '✨',
+        title: 'Sin pedidos esperando Mercado Pago',
+        sub:   'Todos los pagos con MP fueron procesados.',
+        tone:  'celebratory',
+      },
+      'Confirmado': {
+        icon:  '📦',
+        title: 'Sin pedidos confirmados todavía',
+        sub:   'Acá vas a ver los pedidos pagados que estás preparando.',
+        tone:  'neutral',
+      },
+      'Entregado': {
+        icon:  '📦',
+        title: 'Sin entregas todavía',
+        sub:   'Cuando marques pedidos como entregados, van a quedar acá como historial.',
+        tone:  'neutral',
+      },
+      'Pago rechazado': {
+        icon:  '✨',
+        title: 'Sin pagos rechazados',
+        sub:   'Buena señal — ningún pedido falló en el pago.',
+        tone:  'celebratory',
+      },
+      'Cancelado': {
+        icon:  '✨',
+        title: 'Sin pedidos cancelados',
+        sub:   'No hubo cancelaciones todavía.',
+        tone:  'celebratory',
+      },
+      'con_grabado': {
+        icon:  '✦',
+        title: 'Sin pedidos con personalización láser',
+        sub:   'Cuando un cliente compre con grabado, vas a verlo acá.',
+        tone:  'neutral',
+      },
+      'archivados': {
+        icon:  '📁',
+        title: 'Sin pedidos archivados',
+        sub:   'Los pedidos que archives desde la vista principal van a aparecer acá.',
+        tone:  'neutral',
+      },
+    };
+
+    const cfg = config[filter] || config['todos'];
+    const titleColor = cfg.tone === 'celebratory' ? 'var(--green)' : 'var(--white)';
+
+    return `
+      <div style="grid-column:1/-1;padding:64px 24px;text-align:center;color:var(--muted)">
+        <div style="font-size:48px;line-height:1;margin-bottom:18px;opacity:0.85">${cfg.icon}</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;color:${titleColor};margin-bottom:8px">${cfg.title}</div>
+        <div style="font-size:11px;letter-spacing:1px;line-height:1.7;max-width:360px;margin:0 auto">${cfg.sub}</div>
+      </div>`;
+  }
+
   function renderOrders(orders) {
     const g = $('ordersGrid');
     if (!g) return;
 
     if (!orders.length) {
-      g.innerHTML = `<div style="grid-column:1/-1;padding:48px;text-align:center;color:var(--muted)">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:6px">No hay pedidos</div>
-        <div style="font-size:10px;letter-spacing:2px">Aplicá otro filtro o esperá nuevas compras</div>
-      </div>`;
+      g.innerHTML = renderOrdersEmptyState();
       return;
     }
 
@@ -1348,7 +1537,10 @@
     setHTML('orderDetailContent', `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
         <div style="font-family:'Cormorant Garamond',serif;font-size:28px">Pedido #${esc(numero)}</div>
-        <div class="order-status ${cls}" style="font-size:12px;padding:6px 14px">${esc(o.estado || 'Pendiente')}</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="copyOrderSummary('${esc(o.id)}')" title="Copiar resumen del pedido para pegar en WhatsApp, email, etc.">📋 Copiar resumen</button>
+          <div class="order-status ${cls}" style="font-size:12px;padding:6px 14px">${esc(o.estado || 'Pendiente')}</div>
+        </div>
       </div>
 
       ${progressHTML}
@@ -1427,6 +1619,94 @@
 
     const modal = $('orderDetailModal');
     if (modal) modal.classList.add('open');
+  }
+
+  /** Copia un resumen del pedido al portapapeles, listo para pegar en WhatsApp,
+   *  email, o transcripción para el servicio de envío (Sesión 52).
+   *
+   *  Formato pensado para lectura humana — bloques separados con saltos de
+   *  línea simples, sin markdown ni emojis decorativos (los emojis se mantienen
+   *  como íconos semánticos: 👤 cliente, 📍 entrega, etc.).
+   *
+   *  Detecta si la Clipboard API está disponible y cae a textarea+execCommand
+   *  como fallback (Safari iOS antes de 13.1 + algunos contextos http://).
+   */
+  async function copyOrderSummary(id) {
+    const o = state.allOrders.find(x => x.id === id);
+    if (!o) { toast('Pedido no encontrado', true); return; }
+
+    const numero       = o.numero || o.id;
+    const fechaMostrar = o.fecha || (o.created_at
+      ? new Date(o.created_at).toLocaleString('es-UY')
+      : '—');
+    const nombre   = `${o.nombre || ''} ${o.apellido || ''}`.trim() || '—';
+    const entrega  = o.entrega   || '—';
+    const direccion = o.direccion || '—';
+    const productos = o.productos || '—';
+    const subtotal  = fmtUYU(o.subtotal);
+    const descuento = o.descuento ? `\nDescuento${o.cupon_codigo ? ' (' + o.cupon_codigo + ')' : ''}: -${fmtUYU(o.descuento)} UYU` : '';
+    const envio     = o.envio ? `${fmtUYU(o.envio)} UYU` : 'Gratis';
+    const total     = `${fmtUYU(o.total)} UYU`;
+    const nroTrack  = o.nro_seguimiento ? `\nN° seguimiento: ${o.nro_seguimiento}` : '';
+    const urlTrack  = o.url_seguimiento ? `\nLink seguimiento: ${o.url_seguimiento}` : '';
+
+    const resumen = [
+      `Pedido #${numero}`,
+      `Estado: ${o.estado || 'Pendiente'}`,
+      `Fecha: ${fechaMostrar}`,
+      '',
+      '👤 Cliente',
+      nombre,
+      `Tel: ${o.celular || '—'}`,
+      `Email: ${o.email || '—'}`,
+      '',
+      '📍 Entrega',
+      entrega,
+      direccion,
+      '',
+      '🛍️ Productos',
+      productos,
+      '',
+      '💰 Pago',
+      `Subtotal: ${subtotal} UYU${descuento}`,
+      `Envío: ${envio}`,
+      `Total: ${total}`,
+      `Método: ${o.pago || '—'}${nroTrack}${urlTrack}`,
+    ].join('\n');
+
+    // Intento 1: Clipboard API moderna (preferida)
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(resumen);
+        toast('📋 Resumen copiado al portapapeles');
+        return;
+      }
+    } catch (err) {
+      // Caemos al fallback
+      console.warn('[copyOrderSummary] Clipboard API falló, usando fallback:', err);
+    }
+
+    // Intento 2: textarea + execCommand (fallback histórico, funciona en
+    // contextos http:// o navegadores viejos).
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = resumen;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'absolute';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      const okExec = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (okExec) {
+        toast('📋 Resumen copiado al portapapeles');
+        return;
+      }
+    } catch (err) {
+      console.error('[copyOrderSummary] fallback falló:', err);
+    }
+
+    toast('No se pudo copiar — revisá los permisos del navegador', true);
   }
 // ═══════════════════════════════════════════════════════════════
   // PERSONALIZACIÓN — vista admin de pedidos (Sesión 29 — Bloque C)
@@ -2698,6 +2978,30 @@
   // o update_coupon. cancelEditCupon() lo resetea.
   let editingCouponId = null;
 
+  // Sesión 52 — Dirty tracker del formulario de cupones.
+  // Inicializado lazy (la primera vez que se usa) porque la página del
+  // panel puede no haber renderizado el form al cargar el script.
+  let cuponDirtyTracker = null;
+  function ensureCuponDirtyTracker() {
+    if (cuponDirtyTracker) return cuponDirtyTracker;
+    const formCard = document.querySelector('.cupon-form-card');
+    if (!formCard) return null;
+    cuponDirtyTracker = createDirtyTracker({
+      fieldIds: [
+        'cpCodigo', 'cpTipo', 'cpValor', 'cpUso', 'cpMinCompra',
+        'cpDesde',  'cpHasta', 'cpActivo',
+        'cpSoloRepetidos', 'cpSoloNuevos',
+        'cpDescuentaPers', 'cpEsRecompensaResena',
+        'cpSlotsCubiertos',
+      ],
+      dirtyMarker:    '.cupon-form-title',
+      containerEl:    formCard,
+      discardMessage: 'Tenés cambios sin guardar en este cupón.\n\n¿Querés descartarlos?',
+    });
+    cuponDirtyTracker.bindAutoCheck();
+    return cuponDirtyTracker;
+  }
+
   /** Sesión 39: abre el formulario en modo edición pre-llenado con el cupón. */
   function editCupon(id) {
     const c = state.coupons.find(x => x.id === id);
@@ -2740,10 +3044,16 @@
     // Scroll suave al formulario para que el admin lo vea
     const formCard = document.querySelector('.cupon-form-card');
     if (formCard) formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Sesión 52 — snapshot del estado limpio (ya con datos pre-cargados).
+    ensureCuponDirtyTracker()?.captureSnapshot();
   }
 
-  /** Sesión 39: cancela la edición y limpia el formulario (vuelve a modo crear). */
+  /** Sesión 39: cancela la edición y limpia el formulario (vuelve a modo crear).
+   *  Sesión 52: pregunta confirmación si hay cambios sin guardar. */
   function cancelEditCupon() {
+    // Si hay cambios sin guardar, pedir confirmación antes de descartar.
+    if (!ensureCuponDirtyTracker()?.confirmDiscardIfDirty()) return;
     editingCouponId = null;
     resetCuponForm();
   }
@@ -2775,6 +3085,9 @@
     // Re-sync visual de campos clásicos
     const classicWrap = $('cuponClassicFields');
     if (classicWrap) classicWrap.classList.remove('is-disabled');
+
+    // Sesión 52 — resetear el dirty tracker tras dejar el form limpio.
+    ensureCuponDirtyTracker()?.captureSnapshot();
   }
 
   /** Sesión 39: guarda el cupón. Bifurca entre crear y editar según editingCouponId. */
@@ -2880,6 +3193,10 @@
 
     // Éxito → mensaje + limpiar form + recargar tabla
     toast(`✅ Cupón ${codigo} ${isEdit ? 'actualizado' : 'creado'}`);
+    // Sesión 52 — sincronizar el snapshot antes de cancelar la edición
+    // para que cancelEditCupon NO detecte un falso "dirty" y pida
+    // confirmación de descarte de cambios que ya fueron guardados.
+    ensureCuponDirtyTracker()?.reset();
     cancelEditCupon();  // resetea form y editingCouponId
     await loadCoupons();
   }
@@ -3053,6 +3370,7 @@
             <div class="hero-slide-card__actions">
               <button class="btn btn-secondary btn-sm" onclick="editHeroSlide('${escapeAttr(s.id)}')">✏️ Editar</button>
               <button class="btn btn-secondary btn-sm" onclick="toggleHeroSlide('${escapeAttr(s.id)}')">${enabled ? '⏸️ Pausar' : '▶️ Activar'}</button>
+              <button class="btn btn-secondary btn-sm" onclick="duplicateHeroSlide('${escapeAttr(s.id)}')">📋 Duplicar</button>
               <button class="btn btn-secondary btn-sm" onclick="moveHeroSlide('${escapeAttr(s.id)}', -1)" ${isFirst ? 'disabled' : ''}>↑</button>
               <button class="btn btn-secondary btn-sm" onclick="moveHeroSlide('${escapeAttr(s.id)}', 1)" ${isLast ? 'disabled' : ''}>↓</button>
               <button class="btn btn-secondary btn-sm" onclick="deleteHeroSlide('${escapeAttr(s.id)}')" style="color:var(--danger)">🗑️ Eliminar</button>
@@ -3595,6 +3913,46 @@
       toast('🗑️ Slide eliminado');
       renderHeroSlidesPanel();
     }
+  }
+
+  /** Duplica un slide existente (Sesión 52).
+   *
+   *  El nuevo slide:
+   *   - Recibe un id nuevo (NO comparte con el original).
+   *   - Queda PAUSADO por defecto — evita que aparezca accidentalmente
+   *     en producción mientras lo terminás de ajustar.
+   *   - Se inserta al final del orden visual.
+   *   - Conserva título, subtítulo, imagen, label y todos los botones.
+   *
+   *  Después de duplicar, se abre el modal de edición directamente
+   *  para que puedas hacer los cambios y activarlo cuando esté listo. */
+  async function duplicateHeroSlide(id) {
+    const original = (state.hero?.slides || []).find(s => s.id === id);
+    if (!original) { toast('Slide no encontrado', true); return; }
+
+    const slides   = state.hero.slides;
+    const maxOrden = slides.reduce((m, s) => Math.max(m, s.orden || 0), 0);
+
+    // Deep-copy del original con cambios: id nuevo, pausado, orden al final.
+    const copy = {
+      ...original,
+      id:      genSlideId(),
+      enabled: false,                      // pausado por seguridad
+      orden:   maxOrden + 1,
+      // Los botones son objetos — deep copy con map para no compartir refs.
+      buttons: Array.isArray(original.buttons)
+        ? original.buttons.map(b => ({ ...b }))
+        : [],
+    };
+
+    state.hero.slides = [...slides, copy];
+    const ok = await persistHeroSlidesConfig(true);
+    if (!ok) return;
+
+    toast('📋 Slide duplicado — quedó pausado para que lo revises');
+    renderHeroSlidesPanel();
+    // Abrimos directo el editor sobre la copia para que el usuario lo ajuste.
+    editHeroSlide(copy.id);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -4198,6 +4556,7 @@
   window.loadOrders          = loadOrders;
   window.filterOrders        = filterOrders;
   window.viewOrder           = viewOrder;
+  window.copyOrderSummary    = copyOrderSummary;
    // Sesión 29 (C): personalización en pedidos + panel limpieza
   window.viewPersonalizImage     = viewPersonalizImage;
   window.downloadPersonalizImage = downloadPersonalizImage;
@@ -4267,6 +4626,7 @@
   window.toggleHeroSlide       = toggleHeroSlide;
   window.moveHeroSlide         = moveHeroSlide;
   window.deleteHeroSlide       = deleteHeroSlide;
+  window.duplicateHeroSlide    = duplicateHeroSlide;
 
   // Personalización láser (Sesión 28)
   window.loadPersonalizacion = loadPersonalizacion;

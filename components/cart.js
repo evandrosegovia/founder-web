@@ -34,6 +34,36 @@
   const NOTICE_KEY = 'founder_removed_notice';
   const PHOTOS_READY_EVENT = 'founder-cart-photos-ready';
 
+  /** Lee el carrito guardado en localStorage. Devuelve un array vacío si
+   *  no hay nada o si el JSON está corrupto. Idempotente y seguro. */
+  function readCartFromStorage() {
+    try {
+      const raw = localStorage.getItem(CART_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /** Actualiza el badge numérico del carrito en el header (#cartCount).
+   *  Funciona en CUALQUIER página que tenga el header con carrito, no solo
+   *  en las que invocan updateCart() (Sesión 52).
+   *
+   *  Si el carrito tiene 0 items, oculta el badge. Si >0, lo muestra con el
+   *  número (cap visual a "9+" para no romper el círculo si hay 10+ items).
+   *  Lectura directa de localStorage para que pueda llamarse sin tener
+   *  state local — útil tras header.js terminar de renderizar. */
+  function refreshCartCountBadge() {
+    const badge = document.getElementById('cartCount');
+    if (!badge) return;  // página sin carrito (ej: seguimiento) — no hace nada
+    const cart  = readCartFromStorage();
+    const count = cart.reduce((s, i) => s + (parseInt(i.qty, 10) || 0), 0);
+    badge.textContent = count > 9 ? '9+' : String(count);
+    badge.classList.toggle('is-visible', count > 0);
+  }
+
   // ── Mapa de fotos compartido ─────────────────────────────────
   // Se carga UNA vez por carga de página desde Supabase y queda en memoria
   // para que el carrito (en cualquier página) pueda mostrar las fotos reales
@@ -330,6 +360,8 @@
     // Personalización láser (Sesión 28 Bloque B)
     itemKey,
     personalizacionFingerprint,
+    // Sesión 52 — badge numérico del carrito en el header (todas las páginas)
+    refreshCartCountBadge,
   };
 
   // ── Markup del drawer ────────────────────────────────────────
@@ -412,4 +444,10 @@
   }
 
   render();
+
+  // Sesión 52 — inicializar el badge numérico del carrito apenas el DOM tiene
+  // el header montado. Esto hace que TODAS las páginas con header lo muestren
+  // correctamente, no solo las que invocan updateCart() (index/producto).
+  // El render() de arriba se ejecutó sync — DOM ya está listo.
+  refreshCartCountBadge();
 })();
