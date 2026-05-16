@@ -252,9 +252,13 @@ textarea.fi{resize:vertical;min-height:70px}
 .modal-overlay.open .modal{transform:translateY(0)}
 .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--gray);z-index:1}
 .modal-title{font-family:'Cormorant Garamond',serif;font-size:22px}
-/* Indicador de cambios sin guardar (Sesión 49) — puntito dorado al lado del título.
-   Se aplica vía JS poniendo la clase 'is-dirty' en el contenedor del título. */
-.modal-title.is-dirty::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-left:10px;vertical-align:middle;animation:dirtyPulse 1.8s ease-in-out infinite}
+/* Indicador de cambios sin guardar (Sesión 49 — generalizado en Sesión 52).
+   Cualquier elemento con la clase 'is-dirty' muestra un puntito dorado pulsante.
+   Aplicable a: .modal-title (modales) y .cupon-form-title / .form-section-title
+   (formularios inline). Se aplica vía JS poniendo la clase 'is-dirty'. */
+.modal-title.is-dirty::after,
+.cupon-form-title.is-dirty::after,
+.form-section-title.is-dirty::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-left:10px;vertical-align:middle;animation:dirtyPulse 1.8s ease-in-out infinite}
 @keyframes dirtyPulse{0%,100%{opacity:0.6}50%{opacity:1}}
 .modal-x{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;transition:color .2s}.modal-x:hover{color:var(--white)}
 .modal-body{padding:22px;display:flex;flex-direction:column;gap:18px}
@@ -1941,19 +1945,6 @@ textarea.fi{resize:vertical;min-height:70px}
       <button class="btn btn-danger" id="lpExDeleteBtn" onclick="deleteLpExample()">🗑️ Eliminar</button>
       <button class="btn btn-secondary" onclick="closeLpExampleModal()">Cancelar</button>
       <button class="btn btn-primary" id="lpExSaveBtn" onclick="saveLpExample()">💾 Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: Detalle de reseña (Sesión 38) -->
-<div class="modal-overlay" id="reviewDetailModal">
-  <div class="modal" style="max-width:620px;display:block;padding:0">
-    <div class="modal-head">
-      <div class="modal-title">Detalle de la reseña</div>
-      <button class="modal-x" onclick="closeReviewDetail()">✕</button>
-    </div>
-    <div class="modal-body" id="reviewDetailContent" style="max-height:80vh;overflow-y:auto">
-      <!-- Se llena dinámicamente desde renderReviewDetail() -->
     </div>
   </div>
 </div>

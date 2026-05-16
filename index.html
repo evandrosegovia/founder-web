@@ -2058,11 +2058,14 @@ function updateCart() {
   const itemEffectivePrice = (i) => i.price + (i.personalizacion?.extra || 0);
 
   const total  = state.cart.reduce((s, i) => s + itemEffectivePrice(i) * i.qty, 0);
-  const count  = state.cart.reduce((s, i) => s + i.qty, 0);
-  const badge  = $('cartCount');
   const footer = $('cartFooter');
 
-  if (badge) { badge.textContent = count; toggle(badge, 'is-visible', count > 0); }
+  // Badge del carrito: una sola fuente de verdad en cart.js → refreshCartCountBadge().
+  // Sesión 52 — antes acá había código inline duplicado; ahora delegamos al helper
+  // compartido para que index/producto/contacto/etc. muestren todos lo mismo.
+  if (window.founderCart && typeof window.founderCart.refreshCartCountBadge === 'function') {
+    window.founderCart.refreshCartCountBadge();
+  }
 
   if (!state.cart.length) {
     setHTML('cartItems', '<div class="cart__empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>');
