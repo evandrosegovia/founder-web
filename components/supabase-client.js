@@ -7,9 +7,11 @@
    Responsabilidades:
    1) Guardar URL + anon key del proyecto (única fuente de verdad).
    2) Exponer la API global window.founderDB con:
-        - fetchProducts()  → lista de productos con colores y extras.
-        - fetchPhotoMap()  → { modelo: { color: [urls] } }
-        - fetchBannerUrl() → string | null
+        - fetchProducts()    → lista de productos con colores y extras.
+        - fetchPhotoMap()    → { modelo: { color: [urls] } }
+        - fetchHeroSlides()  → { autoplay_ms, slides: [...] }
+        - fetchPersonalizacionConfig()   → config de personalización láser
+        - fetchPersonalizacionExamples() → fotos de ejemplos de grabado
    3) Devolver objetos con la MISMA forma que producían las
       funciones parseProducts/parsePhotoMap del código viejo.
       Esto permite migrar sin tocar el render del sitio.
@@ -147,18 +149,6 @@
     return map;
   }
 
-  /** Devuelve la URL del banner del hero desde `site_settings.hero_banner_url`.
-   *  Antes leía `products.banner_url` del primer producto activo, lo cual
-   *  obligaba a traer la tabla `products` solo para una URL. Ahora pega a una
-   *  fila de `site_settings` (key, value) — query mucho más liviana y rápida.
-   *  (Columna legacy `products.banner_url` dropeada en Sesión 40.)
-   *  Devuelve string | null si no hay banner configurado. */
-  async function fetchBannerUrl() {
-    const path = '/site_settings?select=value&key=eq.hero_banner_url&limit=1';
-    const rows = await supaGet(path);
-    return rows[0]?.value || null;
-  }
-
   // ─────────────────────────────────────────────────────────────
   // HERO SLIDES (Sesión 48) — múltiples slides rotatorios
   // ─────────────────────────────────────────────────────────────
@@ -188,10 +178,12 @@
   // viven en la DB pero NO consumen recursos del cliente (no se renderizan,
   // no se descargan sus imágenes, no entran al carrusel).
   //
-  // FALLBACK / MIGRACIÓN: si la fila `hero_slides` no existe todavía,
-  // construimos automáticamente un único slide a partir del banner legado
-  // (`hero_banner_url`) + los textos hardcoded de Sesión 25. Así el sitio
-  // nunca se ve "vacío" durante la transición.
+  // Nota histórica: hasta Sesión 49 existía un fallback legacy a
+  // `hero_banner_url` (banner único de Sesión 26) para visitantes que
+  // llegaran antes de la primera ejecución del admin. Tras la migración
+  // automática a `hero_slides`, ese fallback dejó de tener sentido y se
+  // eliminó. La fila `hero_banner_url` de site_settings puede borrarse
+  // del dashboard de Supabase sin afectar al sitio.
 
   const HERO_SLIDES_DEFAULTS = Object.freeze({
     autoplay_ms: 8000,
@@ -200,8 +192,9 @@
 
   /** Devuelve la configuración de hero slides para el SITIO PÚBLICO.
    *  - Solo incluye slides con `enabled: true`, ordenados por `orden` ASC.
-   *  - Si la key no existe, fabrica un slide legado a partir del banner viejo.
-   *  - Siempre devuelve `{ autoplay_ms, slides: [] }` válido (nunca null).
+   *  - Si la key no existe, devuelve `{ autoplay_ms, slides: [] }`. El
+   *    index.html mantiene un slide hardcoded como fallback final, así
+   *    que el sitio nunca queda "vacío".
    *  - Acceso anon read-only vía RLS (site_settings tiene SELECT público). */
   async function fetchHeroSlides() {
     try {
@@ -222,24 +215,8 @@
         };
       }
 
-      // ── Fallback legacy: usar hero_banner_url solo ──
-      const legacyUrl = await fetchBannerUrl();
-      return {
-        autoplay_ms: HERO_SLIDES_DEFAULTS.autoplay_ms,
-        slides: [{
-          id:         'legacy',
-          enabled:    true,
-          orden:      1,
-          label:      'Founder.uy — Uruguay',
-          title_html: 'Protegé<br>lo que <em>importa.</em>',
-          subtitle:   'Billeteras y tarjeteros premium con tecnología RFID. Diseño minimalista, materiales de alta calidad. Tus tarjetas, protegidas.',
-          image_url:  legacyUrl || '',
-          buttons: [
-            { text: 'Ver colección', url: '#productos',           style: 'primary'   },
-            { text: '¿Qué es RFID?', url: 'tecnologia-rfid.html', style: 'secondary' },
-          ],
-        }],
-      };
+      // Sin config: el HTML hardcoded del fallback queda visible
+      return { autoplay_ms: HERO_SLIDES_DEFAULTS.autoplay_ms, slides: [] };
     } catch (e) {
       console.warn('[founderDB] No se pudo leer hero_slides — devolviendo defaults vacíos:', e);
       return { autoplay_ms: HERO_SLIDES_DEFAULTS.autoplay_ms, slides: [] };
@@ -384,7 +361,6 @@
   window.founderDB = {
     fetchProducts,
     fetchPhotoMap,
-    fetchBannerUrl,
     fetchHeroSlides,
     fetchPersonalizacionConfig,
     fetchPersonalizacionExamples,

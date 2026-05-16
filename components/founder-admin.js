@@ -2855,40 +2855,17 @@
     return true;
   }
 
-  /** Carga inicial del panel: trae datos + intenta migrar el banner legado. */
-  async function loadBanner(opts = {}) {
-    const silent = !!opts.silent;
+  /** Carga inicial del panel de banners. Trae el JSON serializado de
+   *  `site_settings.hero_slides` y lo deja en `state.hero` para que las
+   *  funciones de render/edición operen sobre él.
+   *
+   *  Nota: hasta Sesión 49 había acá un bloque de migración automática
+   *  desde el banner único legacy (`hero_banner_url`) — se eliminó cuando
+   *  todos los entornos quedaron migrados al nuevo formato. El parámetro
+   *  `opts` se conserva para compatibilidad con el bootstrap inicial. */
+  async function loadBanner(_opts = {}) {
     state.hero = await fetchHeroSlidesConfig();
-
-    // ── Migración legado → si NO hay slides pero existe hero_banner_url,
-    //    construimos un primer slide a partir de ese valor. El admin verá
-    //    el slide migrado y puede editarlo o eliminarlo. ──
-    if (state.hero.slides.length === 0) {
-      const { ok, data } = await apiAdmin('get_setting', { key: 'hero_banner_url' });
-      const legacyUrl = ok ? (data?.value || '') : '';
-      if (legacyUrl) {
-        state.hero.slides = [{
-          id:         genSlideId(),
-          enabled:    true,
-          orden:      1,
-          label:      'Founder.uy — Uruguay',
-          title_html: 'Protegé<br>lo que <em>importa.</em>',
-          subtitle:   'Billeteras y tarjeteros premium con tecnología RFID. Diseño minimalista, materiales de alta calidad. Tus tarjetas, protegidas.',
-          image_url:  legacyUrl,
-          buttons: [
-            { text: 'Ver colección', url: '#productos',           style: 'primary'   },
-            { text: '¿Qué es RFID?', url: 'tecnologia-rfid.html', style: 'secondary' },
-          ],
-        }];
-        // Guardar la migración para que el sitio público lo levante apenas refresca
-        await persistHeroSlidesConfig(true);
-      }
-    }
-
     renderHeroSlidesPanel();
-    if (!silent && state.hero.slides.length === 0) {
-      // Sin slides — UI lo deja claro, no es error
-    }
   }
 
   /** Renderiza la lista completa de slides en el panel. */
@@ -2914,10 +2891,10 @@
       const isLast  = displayIdx === sorted.length - 1;
       const enabled = s.enabled !== false;
       return `
-        <div class="hero-slide-card${enabled ? '' : ' is-paused'}" data-slide-id="${escapeAttr(s.id)}">
+        <div class="hero-slide-card${enabled ? '' : ' is-paused'}" data-slide-id="${escapeAttr(s.id)}" data-slide-index="${displayIdx}" draggable="true">
           <div class="hero-slide-card__preview">
             ${s.image_url
-              ? `<img src="${escapeAttr(s.image_url)}" alt="" loading="lazy">`
+              ? `<img src="${escapeAttr(s.image_url)}" alt="" loading="lazy" draggable="false">`
               : `<div class="hero-slide-card__noimg">Sin imagen</div>`}
           </div>
           <div class="hero-slide-card__info">
@@ -2937,6 +2914,11 @@
           </div>
         </div>`;
     }).join('');
+
+    // Engancha el drag-and-drop tras cada render. Los listeners viven en el
+    // contenedor (event delegation) por lo que solo se setean UNA vez por
+    // sesión — los re-renders no los duplican.
+    bindHeroSlidesDragAndDrop();
   }
 
   /** Helper: extrae texto plano de un fragmento HTML (para preview). */
@@ -2950,6 +2932,121 @@
     return String(s ?? '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // ── Drag-and-drop para reordenar slides (Sesión 49) ──────────
+  // Implementación nativa HTML5 sin dependencias. Los listeners viven en
+  // el contenedor (event delegation) para que NO se dupliquen al re-render.
+  // Los botones ↑↓ siguen siendo el camino primario en mobile y para
+  // accesibilidad por teclado — el drag solo se activa con mouse/touch
+  // sobre la card completa.
+
+  let heroDragListenersBound = false;
+  let heroDragSourceId = null;     // id del slide que se está arrastrando
+
+  function bindHeroSlidesDragAndDrop() {
+    if (heroDragListenersBound) return;
+    const container = $('heroSlidesList');
+    if (!container) return;
+
+    // dragstart: marcar la card de origen
+    container.addEventListener('dragstart', (ev) => {
+      const card = ev.target.closest('.hero-slide-card');
+      if (!card) return;
+      heroDragSourceId = card.dataset.slideId || null;
+      card.classList.add('is-dragging');
+      // Permitir "move" como efecto de drag
+      try {
+        ev.dataTransfer.effectAllowed = 'move';
+        // Firefox requiere setData para iniciar el drag — usamos el id
+        ev.dataTransfer.setData('text/plain', heroDragSourceId || '');
+      } catch (e) { /* algunos navegadores tiran si no hay dataTransfer */ }
+    });
+
+    container.addEventListener('dragend', (ev) => {
+      const card = ev.target.closest('.hero-slide-card');
+      if (card) card.classList.remove('is-dragging');
+      clearDropTargets();
+      heroDragSourceId = null;
+    });
+
+    // dragover: pintar la línea dorada arriba/abajo del card sobre el que pasa
+    container.addEventListener('dragover', (ev) => {
+      const card = ev.target.closest('.hero-slide-card');
+      if (!card || !heroDragSourceId) return;
+      if (card.dataset.slideId === heroDragSourceId) {
+        clearDropTargets();
+        return;
+      }
+      ev.preventDefault();             // habilita el drop
+      ev.dataTransfer.dropEffect = 'move';
+
+      // Decidir si el drop va ANTES o DESPUÉS de la card hover, según
+      // si el mouse está por encima o por debajo de su centro vertical.
+      const rect = card.getBoundingClientRect();
+      const isBefore = (ev.clientY - rect.top) < rect.height / 2;
+
+      clearDropTargets();
+      card.classList.add(isBefore ? 'is-drop-target-before' : 'is-drop-target-after');
+    });
+
+    container.addEventListener('dragleave', (ev) => {
+      // Solo limpiamos si el cursor salió del contenedor entero, no de una card a la vecina.
+      if (!container.contains(ev.relatedTarget)) clearDropTargets();
+    });
+
+    container.addEventListener('drop', async (ev) => {
+      ev.preventDefault();
+      const card = ev.target.closest('.hero-slide-card');
+      const sourceId = heroDragSourceId;
+      clearDropTargets();
+      heroDragSourceId = null;
+      if (!card || !sourceId) return;
+      const targetId = card.dataset.slideId;
+      if (!targetId || targetId === sourceId) return;
+
+      const rect = card.getBoundingClientRect();
+      const dropBefore = (ev.clientY - rect.top) < rect.height / 2;
+      await reorderHeroSlidesByDrop(sourceId, targetId, dropBefore);
+    });
+
+    heroDragListenersBound = true;
+  }
+
+  function clearDropTargets() {
+    document.querySelectorAll('.hero-slide-card.is-drop-target-before, .hero-slide-card.is-drop-target-after')
+      .forEach(el => el.classList.remove('is-drop-target-before', 'is-drop-target-after'));
+  }
+
+  /** Reordena los slides ubicando `sourceId` antes o después de `targetId`.
+   *  Re-numera todos los `orden` 1..N para evitar huecos. Persiste y re-renderiza. */
+  async function reorderHeroSlidesByDrop(sourceId, targetId, dropBefore) {
+    const slides = state.hero?.slides || [];
+    if (slides.length < 2) return;
+
+    // Trabajamos sobre una copia ordenada visualmente (1..N)
+    const sorted = [...slides].sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999));
+    const srcIdx = sorted.findIndex(s => s.id === sourceId);
+    const tgtIdx = sorted.findIndex(s => s.id === targetId);
+    if (srcIdx < 0 || tgtIdx < 0 || srcIdx === tgtIdx) return;
+
+    // Quitamos el source de su posición actual
+    const [moved] = sorted.splice(srcIdx, 1);
+
+    // Recalculamos el target después del splice (puede haber cambiado de índice)
+    const newTgtIdx = sorted.findIndex(s => s.id === targetId);
+    const insertAt = dropBefore ? newTgtIdx : newTgtIdx + 1;
+    sorted.splice(insertAt, 0, moved);
+
+    // Re-numerar 1..N
+    sorted.forEach((s, i) => { s.orden = i + 1; });
+
+    state.hero.slides = sorted;
+    const ok = await persistHeroSlidesConfig(true);
+    if (ok) {
+      toast('✅ Orden actualizado');
+      renderHeroSlidesPanel();
+    }
   }
 
   /** Agrega un slide nuevo en blanco y abre el modal de edición. */
@@ -3027,6 +3124,122 @@
   function closeHeroEditModal() {
     const modal = $('heroEditModal');
     if (modal) modal.classList.remove('open');
+  }
+
+  // ── Vista previa del slide en edición (Sesión 49) ─────────────
+  // Lee el estado ACTUAL del formulario (no del state.hero) para que el
+  // usuario vea cómo queda el slide ANTES de guardar. Reutiliza las
+  // mismas helpers del sitio público (sanitizeTitleHTML / sanitizeUrl /
+  // escapeText) — replicadas localmente para mantener este módulo
+  // autosuficiente respecto a index.html.
+
+  /** Escapado mínimo para texto plano. */
+  function escText(s) {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /** Sanitiza HTML del título: solo permite <br> y <em>. Mismo criterio
+   *  que sanitizeTitleHTML() en index.html — defensa en profundidad
+   *  para que el preview no ejecute scripts pegados a mano. */
+  function sanitizePreviewTitle(raw) {
+    const s = String(raw ?? '');
+    const cleaned = s
+      .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
+      .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
+      .replace(/javascript:/gi, '');
+    return cleaned.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (match, tag) => {
+      const t = tag.toLowerCase();
+      if (t === 'br') return '<br>';
+      if (t === 'em') return match.toLowerCase().startsWith('</') ? '</em>' : '<em>';
+      return '';
+    });
+  }
+
+  /** Renderiza el slide en vivo desde los campos del formulario de edición. */
+  function renderHeroPreviewStage() {
+    const stage = $('heroPreviewStage');
+    if (!stage) return;
+
+    const imageUrl = ($('heroEditImage')?.value || '').trim();
+    const label    = ($('heroEditLabel')?.value || '').trim();
+    const titleRaw = ($('heroEditTitle')?.value || '').trim();
+    const subtitle = ($('heroEditSubtitle')?.value || '').trim();
+
+    // Botones (mismo criterio que saveHeroSlideEdit: vacíos se omiten)
+    const buttons = [];
+    const b1Text = ($('heroEditBtn1Text')?.value || '').trim();
+    if (b1Text) buttons.push({
+      text:  b1Text,
+      style: $('heroEditBtn1Style')?.value === 'secondary' ? 'secondary' : 'primary',
+    });
+    const b2Text = ($('heroEditBtn2Text')?.value || '').trim();
+    if (b2Text) buttons.push({
+      text:  b2Text,
+      style: $('heroEditBtn2Style')?.value === 'secondary' ? 'secondary' : 'primary',
+    });
+
+    const imgHTML = imageUrl
+      ? `<img class="hero-preview-bgimg" src="${escText(imageUrl)}" alt="">`
+      : '';
+
+    const btnsHTML = buttons.map(b => {
+      const cls = b.style === 'secondary' ? 'hero-preview-btn--secondary' : 'hero-preview-btn--primary';
+      return `<span class="hero-preview-btn ${cls}">${escText(b.text)}</span>`;
+    }).join('');
+
+    const titleHTML = titleRaw
+      ? sanitizePreviewTitle(titleRaw)
+      : '<span style="color:rgba(255,255,255,.3)">(sin título)</span>';
+
+    stage.innerHTML = `
+      ${imgHTML}
+      <div class="hero-preview-content">
+        ${label ? `<div class="hero-preview-label">${escText(label)}</div>` : ''}
+        <h1 class="hero-preview-title">${titleHTML}</h1>
+        ${subtitle ? `<p class="hero-preview-desc">${escText(subtitle)}</p>` : ''}
+        ${btnsHTML ? `<div class="hero-preview-ctas">${btnsHTML}</div>` : ''}
+      </div>
+      <div class="hero-preview-letter" aria-hidden="true">F</div>
+    `;
+  }
+
+  /** Abre el modal de vista previa con los datos del formulario actual. */
+  function openHeroPreviewModal() {
+    renderHeroPreviewStage();
+    const modal = $('heroPreviewModal');
+    if (modal) {
+      modal.classList.add('open');
+      bindHeroPreviewModalListeners();
+    }
+  }
+
+  function closeHeroPreviewModal() {
+    const modal = $('heroPreviewModal');
+    if (modal) modal.classList.remove('open');
+  }
+
+  /** Listeners del modal de preview (idempotentes, mismo patrón que el de edición). */
+  let heroPreviewListenersBound = false;
+  function bindHeroPreviewModalListeners() {
+    if (heroPreviewListenersBound) return;
+    const modal = $('heroPreviewModal');
+    if (!modal) return;
+
+    let pressStartedOnOverlay = false;
+    modal.addEventListener('mousedown', (ev) => {
+      pressStartedOnOverlay = (ev.target === modal);
+    });
+    modal.addEventListener('mouseup', (ev) => {
+      if (pressStartedOnOverlay && ev.target === modal) closeHeroPreviewModal();
+      pressStartedOnOverlay = false;
+    });
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && modal.classList.contains('open')) closeHeroPreviewModal();
+    });
+
+    heroPreviewListenersBound = true;
   }
 
   function renderHeroEditImagePreview(url) {
@@ -3815,6 +4028,8 @@
   window.addHeroSlide          = addHeroSlide;
   window.editHeroSlide         = editHeroSlide;
   window.closeHeroEditModal    = closeHeroEditModal;
+  window.openHeroPreviewModal  = openHeroPreviewModal;
+  window.closeHeroPreviewModal = closeHeroPreviewModal;
   window.previewHeroEditImage  = previewHeroEditImage;
   window.pickHeroEditFile      = pickHeroEditFile;
   window.saveHeroSlideEdit     = saveHeroSlideEdit;
