@@ -36,13 +36,33 @@
   };
 
   // ── Fetch helper ─────────────────────────────────────────────
+  // Sesión 51 — agregamos timeout para que un fetch lento de Supabase
+  // no deje la página colgada para siempre. Si pasa el tope (15s default),
+  // abortamos la request y dejamos que el catch de quien llamó decida qué
+  // mostrar (típicamente: botón de reintentar).
+  const SUPA_FETCH_TIMEOUT_MS = 15000;
+
   async function supaGet(path) {
-    const res = await fetch(`${API}${path}`, { headers: HEADERS });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`Supabase ${res.status}: ${body || res.statusText}`);
+    const ctrl    = new AbortController();
+    const timerId = setTimeout(() => ctrl.abort(), SUPA_FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${API}${path}`, { headers: HEADERS, signal: ctrl.signal });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`Supabase ${res.status}: ${body || res.statusText}`);
+      }
+      return await res.json();
+    } catch (err) {
+      // AbortController dispara DOMException name='AbortError'. Reescribimos
+      // el mensaje para que el catch del caller pueda distinguirlo y mostrar
+      // un mensaje específico ("La conexión tardó demasiado") si quiere.
+      if (err && err.name === 'AbortError') {
+        throw new Error(`Supabase timeout (>${SUPA_FETCH_TIMEOUT_MS}ms): ${path}`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timerId);
     }
-    return res.json();
   }
 
   // ── Conversor: fila de products (Supabase) → objeto UI ───────
