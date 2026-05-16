@@ -307,11 +307,13 @@
     if (page === 'personalizacion') {
       loadPersonalizacion();
       loadCleanupStatus();
-      loadReviewsOrphansStatus();
     }
     // Sesión 38: cargar reseñas al entrar a la sección
+    // Sesión 50: + cargar status de cleanup de fotos huérfanas y su historial
     if (page === 'resenas' && typeof window.loadReviews === 'function') {
       window.loadReviews();
+      loadReviewsOrphansStatus();
+      loadReviewsCleanupLogs();
     }
 
     // Sesión 35: en mobile, al navegar, cerrar el sidebar drawer
@@ -1658,43 +1660,52 @@
 
   /**
    * Carga el historial de limpiezas en la card de abajo.
+  /**
+   * Renderiza un historial de limpiezas filtrado por tipo en un contenedor dado.
    *
-   * Los logs vienen de cleanup_logs (tabla unificada) y mezclan dos tipos:
-   *   • Tipo "imágenes de personalización" → detalle.tipo es undefined o cualquier cosa que NO sea 'reviews_orphans'.
-   *   • Tipo "fotos de reseñas" → detalle.tipo === 'reviews_orphans' (escrito por Sesión 42).
-   * Usamos esa distinción para mostrar ícono + categoría correctos a la vista.
+   * Los logs vienen de cleanup_logs (tabla unificada). El backend escribe el
+   * campo `detalle.tipo` cuando el log es de fotos de reseñas (Sesión 42);
+   * los logs antiguos de imágenes de personalización (Sesión 29) NO tienen
+   * esa key.
+   *
+   * @param {string} listElId  - ID del <div> contenedor donde renderizar.
+   * @param {string} filterTipo - 'imagenes' | 'reviews_orphans' — qué tipo mostrar.
+   * @param {number} limit     - Cuántos logs pedir al backend (default 20).
    */
-  async function loadCleanupLogs() {
-    const list = $('cleanupLogsList');
+  async function renderCleanupLogs(listElId, filterTipo, limit = 20) {
+    const list = $(listElId);
     if (!list) return;
 
     try {
-      const resp = await apiAdminFetch('/api/cleanup-personalizacion', 'list_cleanup_logs', { limit: 10 });
+      const resp = await apiAdminFetch('/api/cleanup-personalizacion', 'list_cleanup_logs', { limit });
       const data = await resp.json();
       if (!resp.ok || !data?.ok) {
         list.innerHTML = '<div style="color:var(--muted)">Sin historial todavía.</div>';
         return;
       }
-      const logs = data.logs || [];
-      if (!logs.length) {
-        list.innerHTML = '<div style="color:var(--muted);font-size:11px">Todavía no se ejecutó ninguna limpieza.</div>';
+      const allLogs = data.logs || [];
+
+      // Filtrar por tipo: 'reviews_orphans' usan detalle.tipo, 'imagenes' es todo lo demás.
+      const filtered = allLogs.filter(l => {
+        const isReviewLog = (l.detalle && l.detalle.tipo === 'reviews_orphans');
+        return filterTipo === 'reviews_orphans' ? isReviewLog : !isReviewLog;
+      });
+
+      if (!filtered.length) {
+        list.innerHTML = '<div style="color:var(--muted);font-size:11px">Todavía no se ejecutó ninguna limpieza de este tipo.</div>';
         return;
       }
-      list.innerHTML = logs.map(l => {
+
+      // Mostrar máximo 10 entradas (las más recientes ya vienen primero del backend).
+      list.innerHTML = filtered.slice(0, 10).map(l => {
         const fecha = l.ejecutado_at
           ? new Date(l.ejecutado_at).toLocaleString('es-UY')
           : '—';
         const triggerLabel = l.trigger === 'auto' ? '🤖 Automática' : '👤 Manual';
-        // Distinguir limpieza de imágenes vs limpieza de fotos de reseñas.
-        // El backend etiqueta el log con detalle.tipo === 'reviews_orphans'
-        // cuando es del cron C (Sesión 42); sin esa key es del cron A (Sesión 29).
-        const isReviewLog = (l.detalle && l.detalle.tipo === 'reviews_orphans');
-        const tipoIcon  = isReviewLog ? '📸' : '🎨';
-        const tipoLabel = isReviewLog ? 'Fotos de reseñas' : 'Imágenes de personalización';
         return `
           <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
             <div>
-              <div style="font-size:11px;color:var(--white)">${triggerLabel} <span style="color:var(--muted);font-weight:300">· ${tipoIcon} ${tipoLabel}</span></div>
+              <div style="font-size:11px;color:var(--white)">${triggerLabel}</div>
               <div style="font-size:9px;color:var(--muted);letter-spacing:1px">${esc(fecha)}</div>
             </div>
             <div style="text-align:right">
@@ -1706,6 +1717,17 @@
     } catch (err) {
       list.innerHTML = '<div style="color:var(--muted)">Error cargando historial.</div>';
     }
+  }
+
+  /** Wrapper compatibilidad: el historial del panel de Personalización solo muestra
+   *  limpiezas de IMÁGENES de personalización (no las de reseñas). */
+  async function loadCleanupLogs() {
+    return renderCleanupLogs('cleanupLogsList', 'imagenes');
+  }
+
+  /** Historial del panel de Reseñas: solo limpiezas de FOTOS de reseñas. */
+  async function loadReviewsCleanupLogs() {
+    return renderCleanupLogs('reviewsCleanupLogsList', 'reviews_orphans');
   }
 
   /**
@@ -1872,9 +1894,9 @@
         toast(`✓ Limpieza completada: ${borradas} foto${borradas === 1 ? '' : 's'} borrada${borradas === 1 ? '' : 's'} (${liberadosMb.toFixed(2)} MB)`);
       }
       // Refrescamos el status para reflejar el estado post-limpieza,
-      // y los logs para que aparezca la nueva entrada de "Manual · Fotos de reseñas".
+      // y el historial específico de reseñas para que aparezca la nueva entrada manual.
       loadReviewsOrphansStatus();
-      loadCleanupLogs();
+      loadReviewsCleanupLogs();
     } catch (err) {
       toast('Error de red ejecutando limpieza', true);
     } finally {
@@ -4184,8 +4206,10 @@
   window.downloadBorrablesZip    = downloadBorrablesZip;
   window.runCleanupManual        = runCleanupManual;
   // Sesión 49 — UI de cleanup manual de fotos de reseñas (cron Tarea C)
+  // Sesión 50 — re-ubicado al panel de Reseñas + historial filtrado por tipo
   window.loadReviewsOrphansStatus = loadReviewsOrphansStatus;
   window.runReviewsOrphansCleanup = runReviewsOrphansCleanup;
+  window.loadReviewsCleanupLogs   = loadReviewsCleanupLogs;
   // Sesión 43 — UI de emails de recompra (cron Tarea D)
   window.loadRecompraStatus      = loadRecompraStatus;
   window.runRecompraManual       = runRecompraManual;
