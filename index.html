@@ -1603,7 +1603,22 @@ function stopHeroAutoplay() {
 }
 
 // ── INDEX — Inicialización ───────────────────────────────────────
+// Sesión 51 — robustez ante navegación con back/forward (bfcache).
+// `initState` rastrea si la inicialización está corriendo y si
+// terminó OK. El listener `pageshow` se apoya en estas banderas
+// para decidir si re-ejecutar init() cuando el navegador devuelve
+// la página desde bfcache sin recargarla.
+const initState = {
+  inProgress: false,  // hay un init() corriendo ahora mismo
+  lastOkAt:   0,      // timestamp ms de la última inicialización exitosa
+  retryCount: 0,      // cuántas veces se reintentó en esta sesión
+};
+
 async function init() {
+  // Idempotencia: si ya hay un init() corriendo, no lanzar otro en paralelo.
+  if (initState.inProgress) return;
+  initState.inProgress = true;
+
   try {
     // Disparamos las queries en paralelo. El hero se aplica apenas
     // resuelve su promesa para acelerar el LCP (no espera al photoMap).
@@ -1635,15 +1650,75 @@ async function init() {
     // Refrescar visualmente el contador del carrito en el header.
     updateCart();
 
+    initState.lastOkAt = Date.now();
+
   } catch (err) {
     console.error('[Founder] Error cargando datos:', err);
-    const grid = $('productsGrid');
-    if (grid) grid.removeAttribute('aria-busy');
+    renderProductsGridError(err);
+  } finally {
+    initState.inProgress = false;
+  }
+}
+
+/** Pinta un error con botón "Reintentar" en la grilla de productos.
+ *  El botón llama a init() de nuevo sin recargar toda la página. */
+function renderProductsGridError(err) {
+  const grid = $('productsGrid');
+  if (!grid) return;
+  grid.removeAttribute('aria-busy');
+  // Mensaje contextual: si fue timeout, lo decimos explícito.
+  const isTimeout = err && /timeout/i.test(String(err.message || ''));
+  const headline  = isTimeout
+    ? 'La conexión está lenta'
+    : 'No pudimos cargar los productos';
+  const hint = isTimeout
+    ? 'Tu internet o nuestros servidores están respondiendo lento. Probá reintentar.'
+    : 'Hubo un problema al traer el catálogo. Probá reintentar o recargar la página.';
+  setHTML('productsGrid', `
+    <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--color-muted)">
+      <div style="font-family:var(--font-serif);font-size:28px;color:var(--color-white);margin-bottom:12px">${headline}</div>
+      <div style="font-size:14px;line-height:1.6;max-width:420px;margin:0 auto 28px">${hint}</div>
+      <button type="button" onclick="retryInit()" class="btn btn--primary">↻ Reintentar</button>
+    </div>`);
+}
+
+/** Wrapper expuesto al onclick del botón. Marca un retry en el estado y
+ *  vuelve a poner los skeletons antes de relanzar init(). */
+function retryInit() {
+  initState.retryCount += 1;
+  const grid = $('productsGrid');
+  if (grid) {
+    grid.setAttribute('aria-busy', 'true');
     setHTML('productsGrid', `
-      <div style="grid-column:1/-1;text-align:center;padding:80px;color:var(--color-muted)">
-        <div style="font-family:var(--font-serif);font-size:28px">Error al cargar. Recargá la página.</div>
+      <div class="product-skeleton" aria-hidden="true">
+        <div class="product-skeleton__img"></div>
+        <div class="product-skeleton__body">
+          <div class="product-skeleton__line product-skeleton__line--short"></div>
+          <div class="product-skeleton__line product-skeleton__line--med"></div>
+          <div class="product-skeleton__line product-skeleton__line--long"></div>
+          <div class="product-skeleton__line product-skeleton__line--price"></div>
+        </div>
+      </div>
+      <div class="product-skeleton" aria-hidden="true">
+        <div class="product-skeleton__img"></div>
+        <div class="product-skeleton__body">
+          <div class="product-skeleton__line product-skeleton__line--short"></div>
+          <div class="product-skeleton__line product-skeleton__line--med"></div>
+          <div class="product-skeleton__line product-skeleton__line--long"></div>
+          <div class="product-skeleton__line product-skeleton__line--price"></div>
+        </div>
+      </div>
+      <div class="product-skeleton" aria-hidden="true">
+        <div class="product-skeleton__img"></div>
+        <div class="product-skeleton__body">
+          <div class="product-skeleton__line product-skeleton__line--short"></div>
+          <div class="product-skeleton__line product-skeleton__line--med"></div>
+          <div class="product-skeleton__line product-skeleton__line--long"></div>
+          <div class="product-skeleton__line product-skeleton__line--price"></div>
+        </div>
       </div>`);
   }
+  init();
 }
 
 function getPhotos(model, color) {
@@ -2124,6 +2199,28 @@ function showToast(msg, variant) {
 // ── BOOT ────────────────────────────────────────────────────────
 updateCart(); // reflejar carrito persistido (puede venir de producto.html)
 init();
+
+// Sesión 51 — Fix bfcache (back/forward cache).
+// Cuando el visitante navega a otra página y vuelve con el botón "Atrás",
+// el navegador puede restaurar la página entera desde memoria SIN volver
+// a ejecutar el script. Si la primera vez init() falló o se quedó a medias,
+// el visitante ve la grilla vacía / skeletons sin que pase nada más.
+//
+// `pageshow` se dispara en CADA aparición (carga normal + vuelta del bfcache).
+// `event.persisted === true` significa que vino del bfcache.
+// En ese caso, si state.products está vacío, re-ejecutamos init().
+window.addEventListener('pageshow', (ev) => {
+  if (!ev.persisted) return;  // carga normal — ya corrió init() al final del script
+  const hasProducts = Array.isArray(state.products) && state.products.length > 0;
+  if (!hasProducts && !initState.inProgress) {
+    console.log('[Founder] Restaurado desde bfcache sin productos — re-ejecutando init()');
+    init();
+  } else {
+    // Llegamos del bfcache con productos ya cargados → solo refrescamos el
+    // contador del carrito por si el usuario agregó/quitó items en otra página.
+    updateCart();
+  }
+});
 </script>
 
 

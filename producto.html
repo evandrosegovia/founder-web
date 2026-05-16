@@ -1484,9 +1484,11 @@ body.cart-open .wa-bubble {
 </div>
 
 <div id="errorScreen" class="error-screen">
-  <div class="error-screen__title">Producto no encontrado</div>
-  <p class="error-screen__msg">El producto que buscás no existe o fue eliminado.<br>Volvé al catálogo para ver todos los modelos disponibles.</p>
-  <a href="index.html#productos" class="error-screen__btn">Ver catálogo</a>
+  <div class="error-screen__title" id="errorScreenTitle">Producto no encontrado</div>
+  <p class="error-screen__msg" id="errorScreenMsg">El producto que buscás no existe o fue eliminado.<br>Volvé al catálogo para ver todos los modelos disponibles.</p>
+  <div id="errorScreenActions" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center">
+    <a href="index.html#productos" class="error-screen__btn">Ver catálogo</a>
+  </div>
 </div>
 
 <div id="productContent" style="display:none">
@@ -2032,11 +2034,26 @@ async function recoverCartPhoto(imgEl, name, color) {
 }
 
 // ── PRODUCTO — Inicialización ───────────────────────────────────
+// Sesión 51 — robustez ante navegación con back/forward (bfcache).
+// initState rastrea si la inicialización está corriendo y si terminó OK.
+// El listener pageshow del final del archivo se apoya en estas banderas
+// para decidir si re-ejecutar init() al volver desde otra página.
+const initState = {
+  inProgress: false,
+  lastOkAt:   0,
+  retryCount: 0,
+};
+
 async function init() {
+  // Idempotencia: si ya hay un init() corriendo, no lanzar otro en paralelo.
+  if (initState.inProgress) return;
+  initState.inProgress = true;
+
   const productName = getProductNameFromURL();
 
   if (!productName) {
-    showError();
+    showError('not_found');
+    initState.inProgress = false;
     return;
   }
 
@@ -2054,7 +2071,8 @@ async function init() {
     );
 
     if (!state.product) {
-      showError();
+      // El fetch funcionó pero el slug no matchea ningún producto → 404 real
+      showError('not_found');
       return;
     }
 
@@ -2066,6 +2084,7 @@ async function init() {
 
     renderProduct();
     hide('loadingScreen');
+    hide('errorScreen');
     show('productContent');
     // Scroll inicial: al entrar a producto.html, posicionar el viewport
     // justo donde empieza la foto/info, dejando el breadcrumb arriba
@@ -2106,15 +2125,63 @@ async function init() {
     // bloque queda oculto (estado por defecto seguro).
     initLaserSection();
 
+    initState.lastOkAt = Date.now();
+
   } catch (err) {
     console.error('[Founder] Error cargando producto:', err);
-    showError();
+    // Distinguimos timeout vs error genérico para mostrar mensaje específico.
+    const isTimeout = err && /timeout/i.test(String(err.message || ''));
+    showError(isTimeout ? 'timeout' : 'fetch_error');
+  } finally {
+    initState.inProgress = false;
   }
 }
 
-function showError() {
+/** Muestra el error-screen con contenido contextual al tipo de error.
+ *
+ *  Tres casos:
+ *   - 'not_found'    → URL sin product name, o nombre que no matchea catálogo.
+ *                       Sin botón de reintentar (no tiene sentido — la URL es la mala).
+ *   - 'timeout'      → Supabase no respondió en 15s. Botón "Reintentar".
+ *   - 'fetch_error'  → Otro error de red. Botón "Reintentar".
+ */
+function showError(kind = 'not_found') {
   hide('loadingScreen');
+  hide('productContent');
+
+  const titleEl   = $('errorScreenTitle');
+  const msgEl     = $('errorScreenMsg');
+  const actionsEl = $('errorScreenActions');
+
+  if (kind === 'timeout') {
+    if (titleEl)   titleEl.textContent = 'La conexión está lenta';
+    if (msgEl)     msgEl.innerHTML = 'Tu internet o nuestros servidores están respondiendo lento.<br>Probá reintentar o volvé al catálogo.';
+    if (actionsEl) actionsEl.innerHTML = `
+      <button type="button" onclick="retryInit()" class="error-screen__btn">↻ Reintentar</button>
+      <a href="index.html#productos" class="error-screen__btn" style="background:transparent;color:var(--color-text);border:1px solid var(--color-text)">Ver catálogo</a>`;
+  } else if (kind === 'fetch_error') {
+    if (titleEl)   titleEl.textContent = 'No pudimos cargar el producto';
+    if (msgEl)     msgEl.innerHTML = 'Hubo un problema al traer la información.<br>Probá reintentar o volvé al catálogo.';
+    if (actionsEl) actionsEl.innerHTML = `
+      <button type="button" onclick="retryInit()" class="error-screen__btn">↻ Reintentar</button>
+      <a href="index.html#productos" class="error-screen__btn" style="background:transparent;color:var(--color-text);border:1px solid var(--color-text)">Ver catálogo</a>`;
+  } else {
+    // 'not_found' → mensaje y botón originales.
+    if (titleEl)   titleEl.textContent = 'Producto no encontrado';
+    if (msgEl)     msgEl.innerHTML = 'El producto que buscás no existe o fue eliminado.<br>Volvé al catálogo para ver todos los modelos disponibles.';
+    if (actionsEl) actionsEl.innerHTML = `<a href="index.html#productos" class="error-screen__btn">Ver catálogo</a>`;
+  }
+
   $('errorScreen').style.display = 'flex';
+}
+
+/** Re-intenta init() sin recargar toda la página. Llamado por el botón
+ *  "↻ Reintentar" del error-screen. */
+function retryInit() {
+  initState.retryCount += 1;
+  hide('errorScreen');
+  show('loadingScreen');
+  init();
 }
 
 // ── PRODUCTO — SEO dinámico (Schema.org + Open Graph) ──────────
@@ -4106,6 +4173,21 @@ function showToast(msg, variant) {
 // ── BOOT ────────────────────────────────────────────────────────
 updateCart(); // reflejar carrito persistido (puede venir de index.html)
 init();
+
+// Sesión 51 — Fix bfcache. Mismo patrón que index.html.
+// Si el visitante vuelve a producto.html desde otra página y el navegador
+// restauró la página desde bfcache pero state.product está vacío, re-init.
+window.addEventListener('pageshow', (ev) => {
+  if (!ev.persisted) return;  // carga normal — init() ya corrió al final del script
+  const hasProduct = state.product && state.product.name;
+  if (!hasProduct && !initState.inProgress) {
+    console.log('[Founder] producto.html restaurado desde bfcache sin datos — re-ejecutando init()');
+    init();
+  } else {
+    // Llegamos del bfcache con producto cargado → refrescar contador del carrito.
+    updateCart();
+  }
+});
 </script>
 
 
