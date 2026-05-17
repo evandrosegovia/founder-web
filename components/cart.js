@@ -658,19 +658,61 @@
     div.className = 'cart-urgency';
     div.setAttribute('role', 'status');
     div.setAttribute('aria-live', 'polite');
-    div.innerHTML = '<span class="cart-urgency__icon" aria-hidden="true">⏱</span><span class="cart-urgency__text"></span>';
+    // Sesión 53 Bloque 1 (Opción D — barra fina arriba + texto abajo):
+    //   - .cart-urgency__bar:    track horizontal de 3px arriba del bloque
+    //   - .cart-urgency__bar-fill: relleno dorado que se va achicando
+    //   - .cart-urgency__body:   contenido textual con ícono + label + MM:SS
+    div.innerHTML =
+      '<div class="cart-urgency__bar"><div class="cart-urgency__bar-fill"></div></div>' +
+      '<div class="cart-urgency__body">' +
+        '<span class="cart-urgency__icon" aria-hidden="true">⏱</span>' +
+        '<span class="cart-urgency__text"></span>' +
+      '</div>';
     itemsEl.parentNode.insertBefore(div, itemsEl);
     return true;
   }
 
-  /** Pinta el texto del countdown reemplazando {tiempo} por MM:SS. */
+  /** Pinta el texto del countdown reemplazando {tiempo} por MM:SS,
+   *  y actualiza el ancho del relleno de la barra de progreso.
+   *
+   *  El porcentaje restante = (tiempo_restante / duracion_total_seg) * 100.
+   *  Cuando arranca el timer, la barra está al 100% y se va vaciando
+   *  hasta 0% al expirar. */
   function paintUrgencyText(secondsLeft) {
     const block = document.getElementById(URGENCY_BLOCK_ID);
     if (!block) return;
+
+    // Texto MM:SS
     const textEl = block.querySelector('.cart-urgency__text');
-    if (!textEl) return;
-    const tpl = (urgencyConfig?.contador?.texto || 'Carrito reservado por {tiempo}');
-    textEl.textContent = tpl.replace('{tiempo}', formatUrgencyTime(secondsLeft));
+    if (textEl) {
+      const tpl = (urgencyConfig?.contador?.texto || 'Carrito reservado por {tiempo}');
+      textEl.textContent = tpl.replace('{tiempo}', formatUrgencyTime(secondsLeft));
+    }
+
+    // Barra de progreso (Opción D): % restante sobre la duración total.
+    const fillEl = block.querySelector('.cart-urgency__bar-fill');
+    if (fillEl) {
+      const totalMin = Math.max(1, Number(urgencyConfig?.contador?.duracion_min) || 7);
+      const totalSec = totalMin * 60;
+      const pct = Math.max(0, Math.min(100, (secondsLeft / totalSec) * 100));
+
+      // Primer pintado: aplicar sin transición para que la barra arranque
+      // en la posición correcta sin animarse desde 100%. A partir del
+      // segundo pintado, la transition CSS toma efecto y se anima suave
+      // entre ticks de 1s.
+      if (!fillEl.dataset._inited) {
+        const prev = fillEl.style.transition;
+        fillEl.style.transition = 'none';
+        fillEl.style.width = pct.toFixed(2) + '%';
+        // Forzar reflow para que el browser aplique el width sin transition.
+        // Después restaurar la transition para los próximos paints.
+        void fillEl.offsetWidth;
+        fillEl.style.transition = prev || '';
+        fillEl.dataset._inited = '1';
+      } else {
+        fillEl.style.width = pct.toFixed(2) + '%';
+      }
+    }
   }
 
   /** Tick principal del contador. Se llama una vez por segundo.
@@ -1167,19 +1209,40 @@
 }
 .cart-removed-notice__close:hover { opacity: 1; }
 
-/* ── Sesión 53 Bloque 1 — Contador de urgencia ─────────────────────
+/* ── Sesión 53 Bloque 1 — Contador de urgencia (Opción D) ──────────
    Bloque que aparece arriba de los items del carrito cuando está
-   habilitado desde el admin. Look discreto, sin alarmas — es solo
-   un nudge visual de "tu carrito está esperándote". */
+   habilitado desde el admin. Layout: barra fina arriba de 3px que se
+   va vaciando + cuerpo abajo con ícono + texto + MM:SS.
+
+   Look discreto, sin alarmas — es solo un nudge visual.
+   El overflow:hidden + el border-radius del contenedor "recortan" la
+   barra superior para que no sobresalga de las esquinas redondeadas. */
 .cart-urgency {
+  margin: 12px 16px 0;
+  border: 1px solid rgba(201, 169, 110, 0.35);
+  border-radius: 3px;
+  overflow: hidden;
+  background: transparent;
+}
+.cart-urgency__bar {
+  height: 3px;
+  background: rgba(201, 169, 110, 0.15);
+  position: relative;
+}
+.cart-urgency__bar-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--color-gold);
+  /* Transición suave entre ticks. 1s lineal para que coincida con el
+     ritmo del setInterval (1Hz) y no parezca "saltar" o "anticipar". */
+  transition: width 1s linear;
+}
+.cart-urgency__body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 12px 16px 0;
-  padding: 10px 14px;
-  background: rgba(201, 169, 110, 0.08);
-  border: 1px solid rgba(201, 169, 110, 0.35);
-  border-radius: 3px;
+  padding: 9px 14px;
+  background: rgba(201, 169, 110, 0.04);
   color: var(--color-gold);
   font-size: 11px;
   letter-spacing: 1px;
