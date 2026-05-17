@@ -1560,8 +1560,9 @@ function openCheckout() {
 // Boot centralizado: espera al DOM listo, purga items agotados
 // del carrito y llama a updateCartUI para renderizar.
 window.founderCart.bootPage(updateCartUI);
-// Re-renderiza el carrito cuando lleguen las fotos desde Supabase (auto-update)
-window.addEventListener('founder-cart-photos-ready', updateCartUI);
+// Sesión 53 Bloque 0 — el listener 'founder-cart-photos-ready' ahora vive
+// dentro de cart.js y re-renderiza automáticamente. Esta página ya no lo
+// necesita localmente.
 </script>
 
 <script src="components/founder-reviews.js"></script>

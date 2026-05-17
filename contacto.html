@@ -787,7 +787,9 @@ function openCheckout() {
 updateCartUI();
 // Carga fotos en background y re-renderiza el carrito cuando llegan
 window.founderCart?.ensurePhotoMap?.();
-window.addEventListener('founder-cart-photos-ready', updateCartUI);
+// Sesión 53 Bloque 0 — el listener 'founder-cart-photos-ready' ahora vive
+// dentro de cart.js y re-renderiza automáticamente. Esta página ya no lo
+// necesita localmente.
 </script>
 </body>
 </html>
