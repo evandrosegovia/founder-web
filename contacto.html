@@ -741,62 +741,10 @@ function formatPrice(n) {
 }
 
 function updateCartUI() {
-  const cart    = loadCart();
-  const total   = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const count   = cart.reduce((s, i) => s + i.qty, 0);
-  const countEl = document.getElementById('cartCount');
-  const footer  = document.getElementById('cartFooter');
-  const itemsEl = document.getElementById('cartItems');
-
-  if (countEl) {
-    countEl.textContent = count;
-    countEl.classList.toggle('is-visible', count > 0);
-  }
-
-  if (!itemsEl) return;
-
-  if (cart.length === 0) {
-    itemsEl.innerHTML = '<div class="cart__empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>';
-    if (footer) footer.style.display = 'none';
-    return;
-  }
-
-  itemsEl.innerHTML = cart.map((item, i) => {
-    const inicial = (item.name || '?')[0].toUpperCase();
-    const photo = window.founderCart?.getPhotoUrl?.(item.name, item.color);
-    const imgHTML = photo
-      ? `<img src="${cld(photo, 'thumb')}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
-             onerror="this.outerHTML='<div class=&quot;cart-item__img-placeholder&quot; aria-hidden=&quot;true&quot;>${inicial}</div>'">`
-      : `<div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>`;
-    return `
-      <div class="cart-item">
-        ${imgHTML}
-        <div class="cart-item__info">
-          <div class="cart-item__name">Founder ${item.name}</div>
-          <div class="cart-item__variant">${item.color || ''}</div>
-          <div class="cart-item__controls">
-            <button class="qty-btn" onclick="changeQty(${i}, -1)" aria-label="Restar">−</button>
-            <span class="qty-val">${item.qty}</span>
-            <button class="qty-btn" onclick="changeQty(${i}, 1)" aria-label="Sumar">+</button>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="cart-item__price">${formatPrice(item.price * item.qty)}</div>
-          <button class="cart-item__remove" onclick="removeItem(${i})" aria-label="Eliminar">✕</button>
-        </div>
-      </div>`;
-  }).join('');
-
-  if (footer) {
-    footer.style.display = 'block';
-    document.getElementById('cartTotal').textContent = formatPrice(total) + ' UYU';
-    const shipNote = document.getElementById('cartShipNote');
-    if (shipNote) {
-      shipNote.textContent = total >= FREE_SHIPPING
-        ? '🎁 ¡Tenés envío gratis!'
-        : `Agregá ${formatPrice(FREE_SHIPPING - total)} más para envío gratis`;
-      shipNote.style.color = total >= FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
-    }
+  // Sesión 53 Bloque 0 — delegamos en cart.js (única fuente de verdad).
+  // El render incluye: items + footer (subtotal + nota de envío gratis) + badge.
+  if (window.founderCart && typeof window.founderCart.renderItems === 'function') {
+    window.founderCart.renderItems({ freeShippingThreshold: FREE_SHIPPING });
   }
 }
 

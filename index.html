@@ -1725,31 +1725,9 @@ function getPhotos(model, color) {
   return state.photoMap[model]?.[color] || [];
 }
 
-/** Placeholder elegante: cuadrado oscuro con la inicial del modelo en dorado */
-function cartPhotoPlaceholder(name) {
-  const inicial = (name || '?')[0].toUpperCase();
-  const el = document.createElement('div');
-  el.className = 'cart-item__img-placeholder';
-  el.setAttribute('aria-hidden', 'true');
-  el.textContent = inicial;
-  return el;
-}
-
-/** Si una imagen del carrito falla, intenta reconstruir la URL desde Supabase.
- *  Si eso también falla, muestra el placeholder elegante. */
-async function recoverCartPhoto(imgEl, name, color) {
-  try {
-    const photoMap = await window.founderDB.fetchPhotoMap();
-    const foto = photoMap[name]?.[color]?.[0];
-    if (foto) {
-      imgEl.src = cld(foto, 'thumb');
-      imgEl.onerror = () => imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
-      return;
-    }
-  } catch (_) {}
-  // Fallback: placeholder elegante
-  imgEl.parentNode?.replaceChild(cartPhotoPlaceholder(name), imgEl);
-}
+// Sesión 53 Bloque 0 — `cartPhotoPlaceholder` y `recoverCartPhoto`
+// se centralizaron en `cart.js`. Esta página ya no las necesita
+// definidas localmente.
 
 // ── INDEX — Grilla de productos ─────────────────────────────────
 function renderProducts() {
@@ -2054,79 +2032,11 @@ function updateCart() {
   // Persistir en localStorage para sincronizar con producto.html
   saveCartToStorage();
 
-  // Sesión 28 Bloque B: precio efectivo del item incluye extra de personalización
-  const itemEffectivePrice = (i) => i.price + (i.personalizacion?.extra || 0);
-
-  const total  = state.cart.reduce((s, i) => s + itemEffectivePrice(i) * i.qty, 0);
-  const footer = $('cartFooter');
-
-  // Badge del carrito: una sola fuente de verdad en cart.js → refreshCartCountBadge().
-  // Sesión 52 — antes acá había código inline duplicado; ahora delegamos al helper
-  // compartido para que index/producto/contacto/etc. muestren todos lo mismo.
-  if (window.founderCart && typeof window.founderCart.refreshCartCountBadge === 'function') {
-    window.founderCart.refreshCartCountBadge();
-  }
-
-  if (!state.cart.length) {
-    setHTML('cartItems', '<div class="cart__empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>');
-    if (footer) footer.style.display = 'none';
-    return;
-  }
-
-  if (footer) footer.style.display = 'block';
-  setHTML('cartItems', state.cart.map((item, idx) => {
-    // Busca foto directo en photoMap (funciona antes y después de cargar productos)
-    const photo = getPhotos(item.name, item.color)[0] || null;
-    const inicial = (item.name || '?')[0].toUpperCase();
-    const lineTotal = itemEffectivePrice(item) * item.qty;
-
-    // Sesión 28 Bloque B: tags chiquitos con las personalizaciones
-    let personalizHtml = '';
-    if (item.personalizacion) {
-      const tags = [];
-      if (item.personalizacion.adelante) tags.push('Adelante');
-      if (item.personalizacion.interior) tags.push('Interior');
-      if (item.personalizacion.atras)    tags.push('Atrás');
-      if (item.personalizacion.texto)    tags.push(`Texto: "${item.personalizacion.texto}"`);
-      if (tags.length > 0) {
-        personalizHtml = `
-          <div style="font-size:9px;color:var(--color-gold);letter-spacing:1px;margin-top:4px;text-transform:uppercase">
-            ✦ ${tags.join(' · ')}
-          </div>`;
-      }
-    }
-
-    return `
-      <div class="cart-item">
-        ${photo
-          ? `<img src="${cld(photo, 'thumb')}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
-               onerror="recoverCartPhoto(this,'${item.name.replace(/'/g,"\\'")}','${item.color.replace(/'/g,"\\'")}');">`
-          : `<div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>`}
-        <div class="cart-item__info">
-          <div class="cart-item__name">Founder ${item.name}</div>
-          <div class="cart-item__variant">${item.color}</div>
-          ${personalizHtml}
-          <div class="cart-item__controls">
-            <button class="qty-btn" onclick="changeQty(${idx},-1)" aria-label="Reducir cantidad">−</button>
-            <span class="qty-val" aria-label="Cantidad">${item.qty}</span>
-            <button class="qty-btn" onclick="changeQty(${idx},1)" aria-label="Aumentar cantidad">+</button>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="cart-item__price">$${lineTotal.toLocaleString('es-UY')}</div>
-          <button class="cart-item__remove" onclick="removeItem(${idx})" aria-label="Eliminar producto">✕</button>
-        </div>
-      </div>`;
-  }).join(''));
-
-  setText('cartTotal', `$${total.toLocaleString('es-UY')} UYU`);
-
-  const note = $('cartShipNote');
-  if (note) {
-    note.textContent = total >= CONFIG.FREE_SHIPPING
-      ? '🎁 ¡Tenés envío gratis!'
-      : `Agregá $${(CONFIG.FREE_SHIPPING - total).toLocaleString('es-UY')} más para envío gratis`;
-    note.style.color = total >= CONFIG.FREE_SHIPPING ? 'var(--color-gold)' : 'var(--color-muted)';
+  // Sesión 53 Bloque 0 — toda la lógica de pintar items + footer está
+  // centralizada en cart.js (window.founderCart.renderItems). Esta función
+  // queda como adaptador local: persiste y delega.
+  if (window.founderCart && typeof window.founderCart.renderItems === 'function') {
+    window.founderCart.renderItems({ freeShippingThreshold: CONFIG.FREE_SHIPPING });
   }
 }
 

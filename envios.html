@@ -749,59 +749,9 @@ function formatPrice(n) {
 }
 
 function updateCartUI() {
-  const cart    = loadCart();
-  const total   = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const count   = cart.reduce((s, i) => s + i.qty, 0);
-  const countEl = document.getElementById('cartCount');
-  const footer  = document.getElementById('cartFooter');
-  const itemsEl = document.getElementById('cartItems');
-
-  if (countEl) {
-    countEl.textContent = count;
-    countEl.classList.toggle('is-visible', count > 0);
-  }
-
-  if (!itemsEl) return;
-
-  if (cart.length === 0) {
-    itemsEl.innerHTML = '<div class="cart__empty"><p>Tu carrito está vacío</p><span>Agregá productos para continuar</span></div>';
-    if (footer) footer.style.display = 'none';
-    return;
-  }
-
-  itemsEl.innerHTML = cart.map((item, i) => {
-    const photo = window.founderCart?.getPhotoUrl?.(item.name, item.color);
-    const imgHTML = photo
-      ? `<img src="${cld(photo, 'thumb')}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
-             onerror="this.outerHTML='<div class=&quot;cart-item__img-placeholder&quot;>🛍️</div>'">`
-      : `<div class="cart-item__img-placeholder">🛍️</div>`;
-    return `
-    <div class="cart-item">
-      ${imgHTML}
-      <div class="cart-item__info">
-        <div class="cart-item__name">${item.name}</div>
-        <div class="cart-item__variant">${item.color || ''}</div>
-        <div class="cart-item__controls">
-          <button class="qty-btn" onclick="changeQty(${i}, -1)" aria-label="Restar">−</button>
-          <span class="qty-val">${item.qty}</span>
-          <button class="qty-btn" onclick="changeQty(${i}, 1)" aria-label="Sumar">+</button>
-          <button class="cart-item__remove" onclick="removeItem(${i})" aria-label="Eliminar">✕</button>
-        </div>
-      </div>
-      <div class="cart-item__price">${formatPrice(item.price * item.qty)}</div>
-    </div>
-  `;
-  }).join('');
-
-  if (footer) {
-    footer.style.display = 'block';
-    document.getElementById('cartTotal').textContent = formatPrice(total);
-    const shipNote = document.getElementById('cartShipNote');
-    if (shipNote) {
-      shipNote.textContent = total >= FREE_SHIPPING
-        ? '🎁 ¡Envío gratis en tu pedido!'
-        : `Sumá ${formatPrice(FREE_SHIPPING - total)} más para envío gratis`;
-    }
+  // Sesión 53 Bloque 0 — delegamos en cart.js (única fuente de verdad).
+  if (window.founderCart && typeof window.founderCart.renderItems === 'function') {
+    window.founderCart.renderItems({ freeShippingThreshold: FREE_SHIPPING });
   }
 }
 
