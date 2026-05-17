@@ -163,6 +163,9 @@
    *    3) Si tiene items: pinta cada uno con foto / nombre / color /
    *       tags de personalización / controles +/− / precio / botón ✕.
    *    4) Actualiza subtotal y la nota de envío gratis.
+   *    5) Si el photoMap aún no está cargado, lo dispara en background
+   *       — cuando termina, cart.js mismo re-renderiza (las páginas no
+   *       tienen que hacer nada).
    *
    *  Las páginas exponen `window.changeQty(idx, delta)` y
    *  `window.removeItem(idx)` como callbacks — esos handlers se ocupan
@@ -190,6 +193,12 @@
       if (footer) footer.style.display = 'none';
       return;
     }
+
+    // ── Disparar carga del photoMap si aún no está listo ──────
+    // Hacelo en background (sin await). Cuando termine, cart.js dispara
+    // el evento 'founder-cart-photos-ready' y nuestro listener interno
+    // re-llama a renderItems() automáticamente (ver final del IIFE).
+    if (!photoMapReady) ensurePhotoMap();
 
     // ── Items ─────────────────────────────────────────────────
     const total = cart.reduce((s, i) => s + itemEffectivePrice(i) * i.qty, 0);
@@ -242,7 +251,16 @@
         note.style.color = 'var(--color-muted)';
       }
     }
+
+    // ── Recordar la última config usada para que el auto-rerender
+    //    post-photoMap-ready use el mismo umbral de envío. ──
+    lastRenderOpts = { freeShippingThreshold: freeShipping };
   }
+
+  // Estado del último render — usado por el listener interno de
+  // 'founder-cart-photos-ready' para re-renderizar cuando llegan las fotos
+  // sin que las páginas tengan que hacer nada.
+  let lastRenderOpts = null;
 
   // ── Mapa de fotos compartido ─────────────────────────────────
   // Se carga UNA vez por carga de página desde Supabase y queda en memoria
@@ -633,4 +651,15 @@
   // correctamente, no solo las que invocan updateCart() (index/producto).
   // El render() de arriba se ejecutó sync — DOM ya está listo.
   refreshCartCountBadge();
+
+  // Sesión 53 Bloque 0 — Auto-rerender al recibir el evento de fotos listas.
+  // Antes cada página secundaria tenía su propio
+  //   window.addEventListener('founder-cart-photos-ready', updateCartUI);
+  // Ahora cart.js mismo se suscribe una sola vez: cuando llegan las fotos,
+  // si el drawer ya tiene items renderizados, los re-pinta para que las
+  // fotos aparezcan sin que las páginas tengan que hacer nada. Funciona
+  // tanto en páginas principales (index/producto) como secundarias.
+  window.addEventListener('founder-cart-photos-ready', () => {
+    if (lastRenderOpts) renderItems(lastRenderOpts);
+  });
 })();
