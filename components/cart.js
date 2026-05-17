@@ -99,6 +99,19 @@
     return String(s || '').replace(/'/g, "\\'");
   }
 
+  /** Escapa caracteres HTML (`&`, `<`, `>`, `"`, `'`) para insertar texto
+   *  de forma segura dentro de innerHTML / template strings. Usar siempre
+   *  que se mezcle data del DB con HTML literal (ej: nombres de productos
+   *  o colores que podrían tener un `<` accidental). */
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   /** HTML del bloque de tags de personalización debajo del color.
    *  Antes solo aparecían en index/producto. Ahora aparecen en todas. */
   function buildPersonalizacionTags(item) {
@@ -1004,16 +1017,18 @@
     const cardsHTML = items.map(({ product, color, basePrice, precioDescontado }) => {
       const photoUrl = getPhotoUrl(product.name, color.name);
       const inicial = (product.name || '?')[0].toUpperCase();
+      const nameSafe  = escHtml(product.name);
+      const colorSafe = escHtml(color.name);
       const imgHTML = photoUrl
-        ? `<img src="${thumb(photoUrl)}" class="cart-cs__img" alt="Founder ${product.name}" loading="lazy"
+        ? `<img src="${thumb(photoUrl)}" class="cart-cs__img" alt="Founder ${nameSafe}" loading="lazy"
                 onerror="window.recoverCartPhoto && window.recoverCartPhoto(this,'${escAttr(product.name)}','${escAttr(color.name)}');">`
         : `<div class="cart-cs__img-placeholder" aria-hidden="true">${inicial}</div>`;
       return `
         <div class="cart-cs__card" data-product-id="${product.dbId}">
           ${imgHTML}
           <div class="cart-cs__info">
-            <div class="cart-cs__name">Founder ${product.name}</div>
-            <div class="cart-cs__color">${color.name}</div>
+            <div class="cart-cs__name">Founder ${nameSafe}</div>
+            <div class="cart-cs__color">${colorSafe}</div>
             <div class="cart-cs__prices">
               <span class="cart-cs__price-old">${fmtPriceCompact(basePrice)}</span>
               <span class="cart-cs__price-new">${fmtPriceCompact(precioDescontado)}</span>
@@ -1021,7 +1036,7 @@
           </div>
           <button class="cart-cs__add"
                   onclick="window.founderCart.addCrossSellToCart('${escAttr(String(product.dbId))}','${escAttr(color.name)}')"
-                  aria-label="Agregar ${product.name} al carrito">
+                  aria-label="Agregar ${nameSafe} al carrito">
             +
           </button>
         </div>`;
@@ -1032,7 +1047,7 @@
     block.className = 'cart-cs';
     block.innerHTML = `
       <div class="cart-cs__head">
-        <div class="cart-cs__title">${titulo}</div>
+        <div class="cart-cs__title">${escHtml(titulo)}</div>
         ${descPct > 0 ? `<div class="cart-cs__badge">${descPct}% OFF</div>` : ''}
       </div>
       <div class="cart-cs__list">${cardsHTML}</div>
@@ -1199,7 +1214,7 @@
       // de la elección del cliente en la burbuja).
       const baseSinExtra = Number(it.price) || 0;
       const precioDesc = Math.round(baseSinExtra * (1 - descPct / 100));
-      return `<option value="${idx}">Founder ${esc(it.name)} (${esc(it.color)}) — $${precioDesc.toLocaleString('es-UY')}</option>`;
+      return `<option value="${idx}">Founder ${escHtml(it.name)} (${escHtml(it.color)}) — $${precioDesc.toLocaleString('es-UY')}</option>`;
     }).join('');
 
     removeLlevaOtraBlock();
@@ -1213,7 +1228,7 @@
     block.className = 'cart-lo';
     block.innerHTML = `
       <div class="cart-lo__head">
-        <div class="cart-lo__title">🎁 ${esc(titulo)}</div>
+        <div class="cart-lo__title">🎁 ${escHtml(titulo)}</div>
         ${descPct > 0 ? `<div class="cart-lo__badge">${descPct}% OFF</div>` : ''}
       </div>
       <div class="cart-lo__hint">Sumá otra unidad de tu favorito${candidates.length > 1 ? ' — elegí cuál' : ''}</div>
