@@ -1977,12 +1977,18 @@
 .cart-cs__card {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 8px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 3px;
   transition: border-color .2s ease, background .2s ease;
+  /* Sesión 53 Bloque 4 — Position relative para anclar el botón "+"
+     en absoluto dentro de la card (ver .cart-cs__add abajo). Sacar el
+     botón del flujo flex libera ancho horizontal real para el nombre
+     del producto, que ahora ocupa toda la línea horizontal de su
+     columna sin competir con el botón. */
+  position: relative;
 }
 .cart-cs__card:hover {
   border-color: rgba(201, 169, 110, 0.35);
@@ -2051,6 +2057,8 @@
   align-items: baseline;
   gap: 8px;
   margin-top: 2px;
+  /* Sesión 53 Bloque 4 — Espacio reservado para el botón absolute (ver chips). */
+  padding-right: 40px;
 }
 .cart-cs__price-old {
   font-size: 10px;
@@ -2064,13 +2072,28 @@
   font-variant-numeric: tabular-nums;
 }
 .cart-cs__add {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  /* Sesión 53 Bloque 4 — Botón "+" en position absolute, anclado al
+     borde derecho de la card. Vertical: a 4/5 de la altura (más cerca
+     del borde inferior). Esto saca al botón del flujo flex, libera
+     ancho horizontal completo para el nombre del producto en la fila
+     superior, y deja al botón "flotando" en la esquina inferior derecha.
+     La card reserva padding-right para que el botón no se solape con
+     el contenido visualmente.
+
+     Cálculo del top: la card tiene altura ≈ 64px (foto 48 + padding 8×2).
+     Centro vertical (3/5) = 26px desde arriba. 4/5 ≈ 38px desde arriba
+     (32px de altura del botón). En la práctica usamos bottom:8px para
+     anclarlo justo arriba del padding inferior, lo que da 4/5 visual
+     en cards de esta altura. */
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--color-gold);
   background: transparent;
   color: var(--color-gold);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
   border-radius: 2px;
@@ -2130,6 +2153,11 @@
   gap: 4px;
   margin-top: 6px;
   flex-wrap: wrap;
+  /* Sesión 53 Bloque 4 — Espacio reservado a la derecha para que los
+     chips de color no se solapen visualmente con el botón "+" que
+     está posicionado en absolute en la esquina inferior derecha de
+     la card. 40px = 32px del botón + 8px de aire. */
+  padding-right: 40px;
 }
 .cart-cs__chip {
   width: 18px;
