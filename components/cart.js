@@ -1977,7 +1977,7 @@
 .cart-cs__card {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 8px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -2065,12 +2065,12 @@
 }
 .cart-cs__add {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: 1px solid var(--color-gold);
   background: transparent;
   color: var(--color-gold);
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
   border-radius: 2px;
@@ -2103,6 +2103,15 @@
   margin-left: 8px;
   line-height: 1.3;
   transition: background .2s ease, color .2s ease;
+  /* Sesión 53 Bloque 4 — Forzar ✎ + texto en una sola línea.
+     Sin esto, el letter-spacing 1.5px sobre "EDITAR" mete wrap
+     cuando el ancho del control es estrecho (mobile), y el lapicito
+     queda arriba del texto. inline-flex + nowrap los mantiene
+     pegados horizontalmente con un pequeño gap. */
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 .cart-item__edit:hover {
   background: var(--color-gold);
