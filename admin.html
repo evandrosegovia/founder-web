@@ -1162,6 +1162,7 @@ textarea.fi{resize:vertical;min-height:70px}
       <div class="nav-item" onclick="nav('cupones',this)"><span class="nav-icon">🏷️</span>Cupones</div>
       <div class="nav-item" onclick="nav('resenas',this)"><span class="nav-icon">⭐</span>Reseñas</div>
       <div class="nav-item" onclick="nav('banner',this)"><span class="nav-icon">🖼️</span>Banner inicio</div>
+      <div class="nav-item" onclick="nav('carrito',this)"><span class="nav-icon">🛒</span>Carrito</div>
       <div class="nav-item" onclick="nav('personalizacion',this)"><span class="nav-icon">✦</span>Personalización láser</div>
       <div class="nav-section">Accesos</div>
       <div class="nav-item" onclick="window.open('https://www.founder.uy','_blank')"><span class="nav-icon">🌐</span>Ver tienda</div>
@@ -1605,6 +1606,133 @@ textarea.fi{resize:vertical;min-height:70px}
             </div>
             <div class="fhint" style="margin-top:8px">
               💡 No necesitás hacer nada — el cron del domingo se encarga solo. El botón es solo para forzar el envío antes (útil para testing).
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CARRITO (Sesión 53) ────────────────────────────────────
+           Configuración del drawer del carrito que ven los clientes.
+           3 sub-features (cada uno con su master switch):
+             1) Contador de urgencia    (Bloque 1)
+             2) Cross-sell de productos (Bloque 2)
+             3) Llevá otra              (Bloque 3)
+           Todo se guarda en site_settings.cart_config (JSON). -->
+      <div class="page" id="page-carrito">
+        <div class="ph">
+          <div>
+            <div class="ph-title">Carrito</div>
+            <div class="ph-sub">Configurá el contador, cross-sell y mecánicas extra del carrito</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="loadCartConfig()">↻ Actualizar</button>
+        </div>
+
+        <div class="info-box" style="margin-bottom:18px">
+          <strong>💡 Cómo funciona:</strong> Cada feature tiene su propio interruptor. Si está apagado, los clientes <strong>no lo ven</strong> y el sitio no consume recursos por ese feature.<br>
+          • <strong>Contador de urgencia:</strong> aparece un temporizador "Carrito reservado por MM:SS" arriba de los items.<br>
+          • <strong>Cross-sell</strong> y <strong>Llevá otra:</strong> mecánicas de venta cruzada. Son <strong>mutuamente excluyentes</strong> — solo una puede estar activa a la vez.
+        </div>
+
+        <!-- ═══ Sub-panel 1: Contador de urgencia ════════════════════ -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title" id="cartContadorTitle">⏱ Contador de urgencia</div>
+          </div>
+          <div class="card-body">
+            <div class="laser-master" id="cartContadorMaster" onclick="toggleCartContadorMaster()" role="button" tabindex="0">
+              <div class="laser-master__txt">
+                <div class="laser-master__title">Activar contador de urgencia</div>
+                <div class="laser-master__sub" id="cartContadorMasterSub">El feature está apagado — los clientes no lo ven.</div>
+              </div>
+              <div class="laser-master__switch" aria-hidden="true"></div>
+            </div>
+
+            <div class="laser-grid" style="margin-top:14px">
+              <div class="fg">
+                <div class="fl">Duración (minutos)</div>
+                <input type="number" class="fi" id="cartContadorDuracion" min="1" max="120" step="1">
+                <div class="fhint">Cuánto tiempo dura el countdown desde que el cliente agrega el primer producto. Default: 7 minutos.</div>
+              </div>
+              <div class="fg form-full">
+                <div class="fl">Texto del contador</div>
+                <input type="text" class="fi" id="cartContadorTexto" maxlength="80" placeholder="Carrito reservado por {tiempo}">
+                <div class="fhint">Usá <code>{tiempo}</code> donde quieras que aparezca el contador MM:SS. Ej: <em>"Carrito reservado por {tiempo}"</em>.</div>
+              </div>
+            </div>
+
+            <div style="margin-top:18px;display:flex;gap:10px;justify-content:flex-end">
+              <button class="btn btn-primary btn-sm" onclick="saveCartConfig()">Guardar cambios</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Sub-panel 2: Cross-sell de productos ═══════════════════ -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-head">
+            <div class="card-title" id="cartCrossSellTitle">✦ Cross-sell de productos</div>
+          </div>
+          <div class="card-body">
+            <div class="info-box" style="margin-bottom:14px">
+              Elegí 3 productos del catálogo para sugerir en el carrito con un descuento. Aparecen al final de la lista cuando hay al menos un producto en el carrito. Los items que ya están en el carrito se ocultan automáticamente del cross-sell.<br><br>
+              <strong>Importante:</strong> los productos del cross-sell <strong>no permiten personalización láser</strong>. Si el cliente quiere grabarlos, debe entrar al producto desde el catálogo normal.
+            </div>
+
+            <div class="laser-master" id="cartCrossSellMaster" onclick="toggleCartCrossSellMaster()" role="button" tabindex="0">
+              <div class="laser-master__txt">
+                <div class="laser-master__title">Activar cross-sell</div>
+                <div class="laser-master__sub" id="cartCrossSellMasterSub">El feature está apagado — los clientes no lo ven.</div>
+              </div>
+              <div class="laser-master__switch" aria-hidden="true"></div>
+            </div>
+
+            <div class="laser-grid" style="margin-top:14px">
+              <div class="fg form-full">
+                <div class="fl">Título del bloque</div>
+                <input type="text" class="fi" id="cartCrossSellTitulo" maxlength="80" placeholder="✦ Comprá juntos y ahorrá">
+                <div class="fhint">Texto en dorado que aparece arriba de las 3 sugerencias.</div>
+              </div>
+              <div class="fg">
+                <div class="fl">Descuento (%)</div>
+                <input type="number" class="fi" id="cartCrossSellDescuento" min="0" max="99" step="1">
+                <div class="fhint">Porcentaje off sobre el precio del producto. Default: 25%.</div>
+              </div>
+            </div>
+
+            <div class="laser-grid" style="margin-top:14px">
+              <div class="fg form-full">
+                <div class="fl">Producto 1</div>
+                <select class="fi" id="cartCrossSellProd1">
+                  <option value="">— Elegir producto —</option>
+                </select>
+              </div>
+              <div class="fg form-full">
+                <div class="fl">Producto 2</div>
+                <select class="fi" id="cartCrossSellProd2">
+                  <option value="">— Elegir producto —</option>
+                </select>
+              </div>
+              <div class="fg form-full">
+                <div class="fl">Producto 3</div>
+                <select class="fi" id="cartCrossSellProd3">
+                  <option value="">— Elegir producto —</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-top:18px;display:flex;gap:10px;justify-content:flex-end">
+              <button class="btn btn-primary btn-sm" onclick="saveCartConfig()">Guardar cambios</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Sub-panel 3: Llevá otra (placeholder hasta Bloque 3) ════ -->
+        <div class="card" style="margin-top:14px">
+          <div class="card-head">
+            <div class="card-title">🎁 Llevá otra</div>
+          </div>
+          <div class="card-body">
+            <div style="padding:24px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px;text-transform:uppercase">
+              Próximamente — Sesión 53 Bloque 3
             </div>
           </div>
         </div>

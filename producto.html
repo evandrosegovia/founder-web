@@ -4085,6 +4085,14 @@ function showToast(msg, variant) {
 updateCart(); // reflejar carrito persistido (puede venir de index.html)
 init();
 
+// Sesión 53 Bloque 2 — escuchar cambios externos del carrito (cross-sell,
+// lleva-otra) que escriben al localStorage desde cart.js. Re-sincronizamos
+// state.cart y re-renderizamos para que +/− siga apuntando al item correcto.
+window.addEventListener('founder-cart-external-update', () => {
+  state.cart = loadCartFromStorage();
+  updateCart();
+});
+
 // Sesión 51 — Fix bfcache. Mismo patrón que index.html.
 // Si el visitante vuelve a producto.html desde otra página y el navegador
 // restauró la página desde bfcache pero state.product está vacío, re-init.
