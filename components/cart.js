@@ -64,6 +64,186 @@
     badge.classList.toggle('is-visible', count > 0);
   }
 
+  // ── Sesión 53 Bloque 0 — Render unificado del contenido del drawer ─
+  //
+  // Antes de Sesión 53, cada página (index, producto, contacto, envios,
+  // seguimiento, sobre-nosotros, tecnologia-rfid) tenía su propia copia
+  // de `updateCart()` / `updateCartUI()` con ~60 líneas casi idénticas.
+  // Esa duplicación generaba inconsistencias accidentales (placeholder
+  // 🛍️ vs inicial, "Founder X" vs "X", tags de personalización solo en
+  // 2 páginas, layouts distintos del botón ✕, etc.).
+  //
+  // `renderItems()` centraliza la pintada de los items + el footer
+  // (subtotal, nota de envío). Cada página solo se ocupa de exponer
+  // `changeQty(idx, delta)` y `removeItem(idx)` como funciones globales,
+  // y el resto es uniforme.
+
+  /** Precio efectivo de un item del carrito = precio base + extra de
+   *  personalización láser. Si el item no tiene personalización, el extra
+   *  es 0 y queda igual al precio base. */
+  function itemEffectivePrice(item) {
+    return (item?.price || 0) + (item?.personalizacion?.extra || 0);
+  }
+
+  /** Helper que devuelve el thumbnail optimizado si Cloudinary está
+   *  disponible. Si no, devuelve la URL cruda. Es defensivo: muchas páginas
+   *  cargan cloudinary.js, pero si alguna no lo hace, esto no rompe. */
+  function thumb(url) {
+    if (!url) return '';
+    return (typeof window.cld === 'function') ? window.cld(url, 'thumb') : url;
+  }
+
+  /** Escapa comillas simples para que el atributo HTML `onerror` no se
+   *  rompa con nombres con apóstrofes ("Founder D'Oro", etc.). */
+  function escAttr(s) {
+    return String(s || '').replace(/'/g, "\\'");
+  }
+
+  /** HTML del bloque de tags de personalización debajo del color.
+   *  Antes solo aparecían en index/producto. Ahora aparecen en todas. */
+  function buildPersonalizacionTags(item) {
+    if (!item?.personalizacion) return '';
+    const p = item.personalizacion;
+    const tags = [];
+    if (p.adelante) tags.push('Adelante');
+    if (p.interior) tags.push('Interior');
+    if (p.atras)    tags.push('Atrás');
+    if (p.texto)    tags.push(`Texto: "${p.texto}"`);
+    if (tags.length === 0) return '';
+    return `
+      <div style="font-size:9px;color:var(--color-gold);letter-spacing:1px;margin-top:4px;text-transform:uppercase">
+        ✦ ${tags.join(' · ')}
+      </div>`;
+  }
+
+  /** Recupera la foto si la URL guardada falla. Usado en `onerror` de
+   *  cada <img>. Reconstruye desde el photoMap si está disponible, y
+   *  si todo falla, muestra el placeholder con la inicial. */
+  async function recoverCartPhoto(imgEl, name, color) {
+    try {
+      const url = getPhotoUrl(name, color);
+      if (url) {
+        imgEl.src = thumb(url);
+        imgEl.onerror = () => {
+          const ph = document.createElement('div');
+          ph.className = 'cart-item__img-placeholder';
+          ph.setAttribute('aria-hidden', 'true');
+          ph.textContent = (name || '?')[0].toUpperCase();
+          imgEl.parentNode?.replaceChild(ph, imgEl);
+        };
+        return;
+      }
+      // Sin foto en cache: forzar fetch del photoMap por si recién no estaba.
+      await ensurePhotoMap();
+      const url2 = getPhotoUrl(name, color);
+      if (url2) {
+        imgEl.src = thumb(url2);
+        return;
+      }
+    } catch (_) { /* cae al placeholder */ }
+    const ph = document.createElement('div');
+    ph.className = 'cart-item__img-placeholder';
+    ph.setAttribute('aria-hidden', 'true');
+    ph.textContent = (name || '?')[0].toUpperCase();
+    imgEl.parentNode?.replaceChild(ph, imgEl);
+  }
+  // Expongo `recoverCartPhoto` como global para que el `onerror` inline
+  // del <img> lo encuentre (los atributos onerror evalúan en window scope).
+  window.recoverCartPhoto = recoverCartPhoto;
+
+  /** Formatea un precio en pesos uruguayos con separador de miles. */
+  function fmt(n) {
+    return '$' + Number(n || 0).toLocaleString('es-UY');
+  }
+
+  /** Render principal del contenido del drawer. Idempotente: se puede
+   *  llamar las veces que haga falta. Cada llamada:
+   *    1) Refresca el badge numérico del header.
+   *    2) Si el carrito está vacío: muestra el empty state + esconde footer.
+   *    3) Si tiene items: pinta cada uno con foto / nombre / color /
+   *       tags de personalización / controles +/− / precio / botón ✕.
+   *    4) Actualiza subtotal y la nota de envío gratis.
+   *
+   *  Las páginas exponen `window.changeQty(idx, delta)` y
+   *  `window.removeItem(idx)` como callbacks — esos handlers se ocupan
+   *  de mutar el state local de la página y re-llamar a `renderItems()`.
+   *
+   *  Opciones:
+   *    - freeShippingThreshold: monto a partir del cual el envío es gratis.
+   *      Default: 2000 (consistente con todas las páginas). */
+  function renderItems(opts = {}) {
+    const freeShipping = Number(opts.freeShippingThreshold) || 2000;
+    const cart    = readCartFromStorage();
+    const itemsEl = document.getElementById('cartItems');
+    const footer  = document.getElementById('cartFooter');
+
+    // Badge siempre se refresca (todas las páginas lo tienen)
+    refreshCartCountBadge();
+
+    if (!itemsEl) return;  // página sin drawer renderizado todavía
+
+    // ── Empty state ───────────────────────────────────────────
+    if (cart.length === 0) {
+      itemsEl.innerHTML =
+        '<div class="cart__empty"><p>Tu carrito está vacío</p>' +
+        '<span>Agregá productos para continuar</span></div>';
+      if (footer) footer.style.display = 'none';
+      return;
+    }
+
+    // ── Items ─────────────────────────────────────────────────
+    const total = cart.reduce((s, i) => s + itemEffectivePrice(i) * i.qty, 0);
+
+    itemsEl.innerHTML = cart.map((item, idx) => {
+      const photoUrl  = getPhotoUrl(item.name, item.color);
+      const inicial   = (item.name || '?')[0].toUpperCase();
+      const lineTotal = itemEffectivePrice(item) * item.qty;
+      const tags      = buildPersonalizacionTags(item);
+
+      const imgHTML = photoUrl
+        ? `<img src="${thumb(photoUrl)}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
+                onerror="window.recoverCartPhoto && window.recoverCartPhoto(this,'${escAttr(item.name)}','${escAttr(item.color)}');">`
+        : `<div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>`;
+
+      return `
+        <div class="cart-item">
+          ${imgHTML}
+          <div class="cart-item__info">
+            <div class="cart-item__name">Founder ${item.name}</div>
+            <div class="cart-item__variant">${item.color || ''}</div>
+            ${tags}
+            <div class="cart-item__controls">
+              <button class="qty-btn" onclick="changeQty(${idx},-1)" aria-label="Reducir cantidad">−</button>
+              <span class="qty-val" aria-label="Cantidad">${item.qty}</span>
+              <button class="qty-btn" onclick="changeQty(${idx},1)" aria-label="Aumentar cantidad">+</button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="cart-item__price">${fmt(lineTotal)}</div>
+            <button class="cart-item__remove" onclick="removeItem(${idx})" aria-label="Eliminar producto">✕</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    // ── Footer (subtotal + nota de envío) ─────────────────────
+    if (footer) footer.style.display = 'block';
+
+    const totalEl = document.getElementById('cartTotal');
+    if (totalEl) totalEl.textContent = `${fmt(total)} UYU`;
+
+    const note = document.getElementById('cartShipNote');
+    if (note) {
+      if (total >= freeShipping) {
+        note.textContent = '🎁 ¡Tenés envío gratis!';
+        note.style.color = 'var(--color-gold)';
+      } else {
+        const falta = freeShipping - total;
+        note.textContent = `Agregá ${fmt(falta)} más para envío gratis`;
+        note.style.color = 'var(--color-muted)';
+      }
+    }
+  }
+
   // ── Mapa de fotos compartido ─────────────────────────────────
   // Se carga UNA vez por carga de página desde Supabase y queda en memoria
   // para que el carrito (en cualquier página) pueda mostrar las fotos reales
@@ -362,6 +542,9 @@
     personalizacionFingerprint,
     // Sesión 52 — badge numérico del carrito en el header (todas las páginas)
     refreshCartCountBadge,
+    // Sesión 53 Bloque 0 — render unificado del drawer (reemplaza updateCart/updateCartUI duplicado)
+    renderItems,
+    itemEffectivePrice,
   };
 
   // ── Markup del drawer ────────────────────────────────────────
