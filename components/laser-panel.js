@@ -55,6 +55,7 @@
     texto:       '',
     indicaciones:'',
     uploads:     { adelante: null, interior: null, atras: null },
+    confirmLabel:'Agregar al carrito',
   };
 
   // ── Fallback COLOR_MAP autosuficiente ───────────────────────
@@ -889,7 +890,9 @@
       } else if (pendientes) {
         confirmBtn.textContent = 'Subí las imágenes primero';
       } else {
-        confirmBtn.textContent = 'Agregar al carrito';
+        // Sesión 53 Bloque 4 — label dinámico ("Agregar al carrito" /
+        // "Guardar cambios"), lo provee el caller en opts.confirmLabel.
+        confirmBtn.textContent = state.confirmLabel || 'Agregar al carrito';
       }
     }
   }
@@ -1097,6 +1100,7 @@
     state.texto = '';
     state.indicaciones = '';
     state.uploads = { adelante: null, interior: null, atras: null };
+    state.confirmLabel = 'Agregar al carrito';
   }
 
   // ── API pública ────────────────────────────────────────────
@@ -1119,6 +1123,59 @@
     state.indicaciones = '';
     state.uploads = { adelante: null, interior: null, atras: null };
 
+    // Sesión 53 Bloque 4 — Modo edición. Si el caller pasa
+    // `initialPersonalizacion`, precargamos los toggles, texto e
+    // indicaciones, y marcamos los uploads existentes como `ready`
+    // (no se vuelven a subir — ya están en Supabase).
+    //
+    // Estructura esperada de initialPersonalizacion (igual a la que se
+    // guarda en items del carrito):
+    //   { adelante: {path,filename}|null,
+    //     interior: {path,filename}|null,
+    //     atras:    {path,filename}|null,
+    //     texto:    string,
+    //     indicaciones: string }
+    const initialPers = opts.initialPersonalizacion;
+    if (initialPers && typeof initialPers === 'object') {
+      if (initialPers.adelante && initialPers.adelante.path) {
+        state.selected.adelante = true;
+        state.uploads.adelante = {
+          filename: initialPers.adelante.filename || 'archivo',
+          path:     initialPers.adelante.path,
+          bucket:   initialPers.adelante.bucket || 'personalizacion-uploads',
+          status:   'ready',
+          previewDataUrl: '',  // sin preview local — solo nombre + check
+        };
+      }
+      if (initialPers.interior && initialPers.interior.path) {
+        state.selected.interior = true;
+        state.uploads.interior = {
+          filename: initialPers.interior.filename || 'archivo',
+          path:     initialPers.interior.path,
+          bucket:   initialPers.interior.bucket || 'personalizacion-uploads',
+          status:   'ready',
+          previewDataUrl: '',
+        };
+      }
+      if (initialPers.atras && initialPers.atras.path) {
+        state.selected.atras = true;
+        state.uploads.atras = {
+          filename: initialPers.atras.filename || 'archivo',
+          path:     initialPers.atras.path,
+          bucket:   initialPers.atras.bucket || 'personalizacion-uploads',
+          status:   'ready',
+          previewDataUrl: '',
+        };
+      }
+      if (initialPers.texto) {
+        state.selected.texto = true;
+        state.texto = String(initialPers.texto);
+      }
+      if (initialPers.indicaciones) {
+        state.indicaciones = String(initialPers.indicaciones);
+      }
+    }
+
     // Color preseleccionado
     const colors = state.product.colors || [];
     const estados = state.product?.extras?.colores_estado || {};
@@ -1131,8 +1188,12 @@
     buildModal();
     $('lpBubbleTitle').textContent = opts.title || 'Personalizar';
     $('lpBubbleSub').textContent   = opts.subtitle || '';
-    $('lpBubbleTextField').value   = '';
-    $('lpBubbleIndicField').value  = '';
+    $('lpBubbleTextField').value   = state.texto;
+    $('lpBubbleIndicField').value  = state.indicaciones;
+
+    // Sesión 53 Bloque 4 — Etiqueta del botón confirmar. Por defecto
+    // "Agregar al carrito". En modo edición, "Guardar cambios".
+    state.confirmLabel = opts.confirmLabel || 'Agregar al carrito';
 
     // Render inicial
     renderColors();

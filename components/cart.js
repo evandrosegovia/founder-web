@@ -229,6 +229,18 @@
       const inicial   = (item.name || '?')[0].toUpperCase();
       const lineTotal = itemEffectivePrice(item) * item.qty;
       const tags      = buildPersonalizacionTags(item);
+      // Sesión 53 Bloque 4 — Botón "Editar" condicional. Solo se muestra si:
+      //   - El item NO es de cross-sell (cross-sell no admite edición por
+      //     diseño, ver ESTADO.md sesión 53).
+      //   - Existe algo para editar: producto con personalización habilitada,
+      //     O producto con más de 1 color disponible.
+      // `canEditItem` revisa el catálogo cacheado para responder estas
+      // preguntas. Si todavía no se cargó el catálogo, retorna true por
+      // defecto (mejor mostrar y que se descubra en el modal que no hay
+      // nada que editar, antes que ocultar incorrectamente).
+      const editBtnHTML = canEditItem(item)
+        ? `<button class="cart-item__edit" onclick="window.founderCart.editCartItem(${idx})" aria-label="Editar personalización o color">✎ Editar</button>`
+        : '';
 
       const imgHTML = photoUrl
         ? `<img src="${thumb(photoUrl)}" class="cart-item__img" alt="Founder ${item.name}" loading="lazy"
@@ -246,6 +258,7 @@
               <button class="qty-btn" onclick="changeQty(${idx},-1)" aria-label="Reducir cantidad">−</button>
               <span class="qty-val" aria-label="Cantidad">${item.qty}</span>
               <button class="qty-btn" onclick="changeQty(${idx},1)" aria-label="Aumentar cantidad">+</button>
+              ${editBtnHTML}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:12px">
@@ -1387,6 +1400,184 @@
     return persConfigPromise;
   }
 
+  // ── Sesión 53 Bloque 4 — Editar item del carrito ───────────────
+  //
+  // Permite al cliente reabrir el modal de personalización para un item
+  // que ya está en el carrito. Caso de uso: el cliente agregó un Confort
+  // Crema con texto "ANV" y al revisar el carrito quiere cambiar el color
+  // a Camel o el texto a "JM" sin tener que eliminar y agregar de nuevo.
+  //
+  // Reglas:
+  //   - Items de cross-sell NO se editan (decisión documentada en ESTADO).
+  //   - El item editado REEMPLAZA al original. Si el itemKey resultante
+  //     coincide con OTRO item existente del carrito, se fusionan sumando
+  //     qty (caso ejemplo: editar Confort Crema → cambiar a Camel y ya
+  //     había un Confort Camel sin grabado: queda un solo Camel con
+  //     qty viejo + qty existente).
+  //   - El botón Editar se oculta si no hay nada útil para editar
+  //     (producto con 1 solo color Y sin permiso de personalización
+  //     Y la config global de personalización está OFF).
+
+  /** Decide si el item tiene algo editable. Conservador: si el catálogo
+   *  todavía no se cargó (`crossSellProductsCache` vacío), retorna true
+   *  para no ocultar el botón por error. Falsos positivos se manifiestan
+   *  como modales que se cierran con un toast — preferible a no mostrar
+   *  el botón cuando sí había algo. */
+  function canEditItem(item) {
+    if (!item) return false;
+    // Cross-sell nunca se edita.
+    if (item.from_cross_sell) return false;
+
+    // Sin catálogo aún → permitir; el modal validará luego.
+    if (!crossSellProductsCache) return true;
+    const product = crossSellProductsCache.find(p => norm(p.name) === norm(item.name));
+    if (!product) return false;  // producto borrado del catálogo: no editar
+
+    // Hay algo para editar si:
+    //  (a) el producto tiene más de 1 color disponible (no agotado), o
+    //  (b) el producto admite al menos un tipo de personalización.
+    const estados = product?.extras?.colores_estado || {};
+    const coloresDisp = (product.colors || []).filter(c => estados[c.name] !== 'sin_stock');
+    const variosColores = coloresDisp.length > 1;
+    const permGrabado =
+      product.permite_grabado_adelante ||
+      product.permite_grabado_interior ||
+      product.permite_grabado_atras    ||
+      product.permite_grabado_texto;
+
+    return variosColores || !!permGrabado;
+  }
+
+  /** Reemplaza el item en `cart[idx]` con `newItem`. Si el itemKey nuevo
+   *  coincide con otro item distinto del carrito, fusiona sumando qty.
+   *  Mantiene la cantidad original del item editado. */
+  function replaceCartItem(idx, newItem) {
+    const cart = readCartFromStorage();
+    if (idx < 0 || idx >= cart.length) return;
+    const old = cart[idx];
+    if (!old) return;
+
+    // Preservar qty del item viejo (la edición no cambia cantidad)
+    newItem.qty = old.qty;
+
+    const newKey = itemKey(newItem);
+
+    // Buscar otro item (≠ idx) con el mismo itemKey resultante → fusión
+    const collisionIdx = cart.findIndex((it, i) => i !== idx && itemKey(it) === newKey);
+    if (collisionIdx !== -1) {
+      // Fusión: sumar qty al item existente y eliminar el viejo
+      cart[collisionIdx].qty += old.qty;
+      cart.splice(idx, 1);
+    } else {
+      // Reemplazo directo en su lugar
+      cart[idx] = newItem;
+    }
+
+    try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (_) {}
+    window.dispatchEvent(new CustomEvent('founder-cart-external-update'));
+    if (lastRenderOpts) renderItems(lastRenderOpts);
+  }
+
+  /** Abre el modal de personalización con datos pre-cargados del item.
+   *  Expuesta como `window.founderCart.editCartItem(idx)`. */
+  function editCartItem(idx) {
+    const cart = readCartFromStorage();
+    const item = cart[idx];
+    if (!item) return;
+
+    // Cross-sell: defensa redundante (el botón no se muestra, pero por si acaso)
+    if (item.from_cross_sell) return;
+
+    // Asegurar catálogo cargado
+    if (!crossSellProductsCache) {
+      ensureCrossSellProducts().then(() => editCartItem(idx));
+      return;
+    }
+    const product = crossSellProductsCache.find(p => norm(p.name) === norm(item.name));
+    if (!product) {
+      if (typeof window.showToast === 'function') {
+        window.showToast('No pudimos encontrar el producto para editar', 'error');
+      }
+      return;
+    }
+
+    // Cargar config de personalización
+    ensurePersonalizacionConfig().then(persCfg => {
+      const permGrabado =
+        persCfg?.enabled &&
+        (product.permite_grabado_adelante || product.permite_grabado_interior ||
+         product.permite_grabado_atras    || product.permite_grabado_texto);
+
+      // Enriquecer colores con FOUNDER_COLOR_MAP (si está disponible)
+      const COLOR_MAP = window.FOUNDER_COLOR_MAP || {};
+      const enrichedProduct = {
+        ...product,
+        colors: (product.colors || []).map(c => ({
+          ...c,
+          ...(COLOR_MAP[c.name] || {}),
+        })),
+      };
+
+      // Si no se puede ni cambiar color ni personalizar → el modal no
+      // tendría nada útil. (No debería pasar gracias a canEditItem, pero
+      // por defensa.)
+      const estados = product?.extras?.colores_estado || {};
+      const coloresDisp = (product.colors || []).filter(c => estados[c.name] !== 'sin_stock');
+      if (coloresDisp.length <= 1 && !permGrabado) {
+        if (typeof window.showToast === 'function') {
+          window.showToast('Este producto no tiene opciones editables', 'info');
+        }
+        return;
+      }
+
+      // basePrice del item: usamos `item.price` (que ya tiene el precio
+      // descontado si el item es de Llevá otra, o el precio normal si es
+      // un item común). El extra de personalización se suma adentro del
+      // modal automáticamente.
+      const basePrice = Number(item.price) || 0;
+
+      // Si el laser-panel no cargó (edge case), mostrar un fallback simple.
+      // Por ahora exigimos que esté disponible — si no, abortamos limpiamente.
+      if (!window.founderLaserPanel || typeof window.founderLaserPanel.open !== 'function') {
+        console.warn('[founderCart] laser-panel.js no cargado — edit no disponible');
+        return;
+      }
+
+      window.founderLaserPanel.open({
+        product:                 enrichedProduct,
+        colorName:               item.color,
+        allowColorChange:        coloresDisp.length > 1,
+        config:                  persCfg,
+        title:                   'Editar producto',
+        subtitle:                `Founder ${product.name}`,
+        basePrice:               basePrice,
+        initialPersonalizacion:  item.personalizacion || null,
+        confirmLabel:            'Guardar cambios',
+        onConfirm: (payload) => {
+          // Reconstruir el item nuevo respetando flags de origen
+          const newItem = {
+            id:    product.id,
+            name:  product.name,
+            color: payload.colorName || item.color,
+            price: basePrice,
+            qty:   item.qty,  // se preserva en replaceCartItem también, doble redundancia OK
+          };
+          if (payload.personalizacion) {
+            newItem.personalizacion = payload.personalizacion;
+          }
+          // Preservar flag de Llevá otra (cross-sell no llega acá por canEditItem)
+          if (item.from_lleva_otra) newItem.from_lleva_otra = true;
+
+          replaceCartItem(idx, newItem);
+
+          if (typeof window.showToast === 'function') {
+            window.showToast('Producto actualizado', 'success');
+          }
+        },
+      });
+    });
+  }
+
   // ── API pública ──────────────────────────────────────────────
   window.founderCart = {
     // Nuevos (fetch autónomo)
@@ -1412,6 +1603,8 @@
     itemEffectivePrice,
     // Sesión 53 Bloque 2 — cross-sell: agregar producto al carrito desde el bloque
     addCrossSellToCart,
+    // Sesión 53 Bloque 4 — editar item del carrito (abre modal con datos pre-cargados)
+    editCartItem,
   };
 
   // ── Markup del drawer ────────────────────────────────────────
@@ -1652,6 +1845,33 @@
 }
 .cart-cs__add:active {
   transform: scale(0.95);
+}
+
+/* ── Sesión 53 Bloque 4 — Botón "Editar" en cada item ─────────────
+   Aparece al lado de los controles +/− para abrir el modal de
+   personalización con los datos del item pre-cargados. Estilo
+   discreto en dorado, consistente con el resto del drawer. */
+.cart-item__edit {
+  background: transparent;
+  border: 1px solid rgba(201, 169, 110, 0.4);
+  color: var(--color-gold);
+  padding: 4px 10px;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-radius: 2px;
+  font-family: inherit;
+  cursor: pointer;
+  margin-left: 8px;
+  line-height: 1.3;
+  transition: background .2s ease, color .2s ease;
+}
+.cart-item__edit:hover {
+  background: var(--color-gold);
+  color: var(--color-bg);
+}
+.cart-item__edit:active {
+  transform: scale(0.97);
 }
 
 /* ── Sesión 53 Bloque 3 — Llevá otra ──────────────────────────────
