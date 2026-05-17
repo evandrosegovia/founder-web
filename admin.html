@@ -1725,14 +1725,48 @@ textarea.fi{resize:vertical;min-height:70px}
           </div>
         </div>
 
-        <!-- ═══ Sub-panel 3: Llevá otra (placeholder hasta Bloque 3) ════ -->
+        <!-- ═══ Sub-panel 3: Llevá otra ════════════════════════════════ -->
         <div class="card" style="margin-top:14px">
           <div class="card-head">
-            <div class="card-title">🎁 Llevá otra</div>
+            <div class="card-title" id="cartLlevaOtraTitle">🎁 Llevá otra</div>
           </div>
           <div class="card-body">
-            <div style="padding:24px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:2px;text-transform:uppercase">
-              Próximamente — Sesión 53 Bloque 3
+            <div class="info-box" style="margin-bottom:14px">
+              Sugiere al cliente sumar otra unidad de un producto que ya tiene en el carrito con un descuento. Aparece al final del carrito.<br><br>
+              <strong>Mutuamente excluyente con Cross-sell:</strong> si activás esta feature, el cross-sell se apaga automáticamente.
+            </div>
+
+            <div class="laser-master" id="cartLlevaOtraMaster" onclick="toggleCartLlevaOtraMaster()" role="button" tabindex="0">
+              <div class="laser-master__txt">
+                <div class="laser-master__title">Activar "Llevá otra"</div>
+                <div class="laser-master__sub" id="cartLlevaOtraMasterSub">El feature está apagado — los clientes no lo ven.</div>
+              </div>
+              <div class="laser-master__switch" aria-hidden="true"></div>
+            </div>
+
+            <div class="laser-grid" style="margin-top:14px">
+              <div class="fg form-full">
+                <div class="fl">Texto del bloque</div>
+                <input type="text" class="fi" id="cartLlevaOtraTexto" maxlength="80" placeholder="Llevá otra para regalar">
+                <div class="fhint">Texto del título dorado. Se muestra como "🎁 (tu texto)".</div>
+              </div>
+              <div class="fg">
+                <div class="fl">Descuento (%)</div>
+                <input type="number" class="fi" id="cartLlevaOtraDescuento" min="0" max="99" step="1">
+                <div class="fhint">Porcentaje off sobre el precio del producto. Default: 25%.</div>
+              </div>
+              <div class="fg">
+                <div class="fl">Permitir cambiar color</div>
+                <select class="fi" id="cartLlevaOtraCambioColor">
+                  <option value="true">Sí — el cliente puede elegir otro color</option>
+                  <option value="false">No — usa el mismo color del item original</option>
+                </select>
+                <div class="fhint">Si está activado, se abre una burbuja para elegir el color al hacer click.</div>
+              </div>
+            </div>
+
+            <div style="margin-top:18px;display:flex;gap:10px;justify-content:flex-end">
+              <button class="btn btn-primary btn-sm" onclick="saveCartConfig()">Guardar cambios</button>
             </div>
           </div>
         </div>

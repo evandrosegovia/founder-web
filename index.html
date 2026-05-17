@@ -1257,6 +1257,7 @@ body.cart-open .wa-bubble {
 <div id="site-cart"></div>
 <!-- supabase-client.js debe ir ANTES que cart.js (cart.js depende de window.founderDB) -->
 <script src="components/supabase-client.js"></script>
+<script src="components/laser-panel.js"></script>
 <script src="components/cart.js"></script>
 <script src="components/scroll-reveal.js" defer></script>
 <script src="components/meta-pixel.js"></script>
@@ -1292,6 +1293,12 @@ const COLOR_MAP = Object.freeze({
   'Carbon':       { hex: '#3a3a3a', css: 'var(--swatch-carbon)', pattern: true },
   'Verde Oliva':  { hex: '#6a7a3a', css: 'var(--swatch-verde-oliva)' },
 });
+
+// Sesión 53 Bloque 3 — expongo COLOR_MAP como global para que el
+// componente compartido `laser-panel.js` lo use al pintar los swatches
+// de la burbuja "Llevá otra". Sin esto, el panel cae a un hex gris
+// neutro (sigue funcional pero menos prolijo visualmente).
+window.FOUNDER_COLOR_MAP = COLOR_MAP;
 
 /** Genera el valor CSS de background para un color de producto.
  *  Centraliza la lógica del patrón de Carbon en un solo lugar. */
