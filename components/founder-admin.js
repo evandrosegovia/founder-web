@@ -4656,6 +4656,19 @@
     // Poblar dropdowns con productos del catálogo
     renderCrossSellDropdowns();
 
+    // ── Sub-panel Llevá otra ──────────────────────────────────
+    const masterLO = $('cartLlevaOtraMaster');
+    if (masterLO) masterLO.classList.toggle('is-on', !!c.lleva_otra.enabled);
+    const masterSubLO = $('cartLlevaOtraMasterSub');
+    if (masterSubLO) {
+      masterSubLO.textContent = c.lleva_otra.enabled
+        ? '✅ El feature está activo — los clientes lo ven en el carrito.'
+        : 'El feature está apagado — los clientes no lo ven.';
+    }
+    setVal('cartLlevaOtraTexto',          c.lleva_otra.texto);
+    setVal('cartLlevaOtraDescuento',      c.lleva_otra.descuento_pct);
+    setVal('cartLlevaOtraCambioColor',    String(c.lleva_otra.permite_cambio_color));
+
     // ── Dirty tracker ─────────────────────────────────────────
     if (cartDirtyTracker) {
       cartDirtyTracker.captureSnapshot();
@@ -4708,6 +4721,20 @@
     if (willEnable && state.cartConfig.lleva_otra.enabled) {
       state.cartConfig.lleva_otra.enabled = false;
       toast('"Llevá otra" se apagó automáticamente — son mutuamente excluyentes', false);
+    }
+    renderCartPanel();
+    markCartPanelDirty();
+  }
+
+  /** Toggle del master switch de "Llevá otra".
+   *  Regla mutuamente excluyente: si cross_sell estaba prendido, se apaga. */
+  function toggleCartLlevaOtraMaster() {
+    if (!state.cartConfig) return;
+    const willEnable = !state.cartConfig.lleva_otra.enabled;
+    state.cartConfig.lleva_otra.enabled = willEnable;
+    if (willEnable && state.cartConfig.cross_sell.enabled) {
+      state.cartConfig.cross_sell.enabled = false;
+      toast('"Cross-sell" se apagó automáticamente — son mutuamente excluyentes', false);
     }
     renderCartPanel();
     markCartPanelDirty();
@@ -4775,7 +4802,28 @@
     c.cross_sell.descuento_pct = csDesc;
     c.cross_sell.product_ids   = csIds.filter(Boolean);  // guarda solo los que tienen valor
 
-    // ── Persistir (objeto completo, incluyendo lleva_otra intacto) ─
+    // ── Validar y aplicar: Llevá otra ─────────────────────────
+    const loTexto = String($('cartLlevaOtraTexto')?.value || '').trim();
+    if (!loTexto) {
+      toast('El texto de "Llevá otra" no puede estar vacío', true);
+      return;
+    }
+    const loDesc = parseInt($('cartLlevaOtraDescuento')?.value || '', 10);
+    if (!Number.isFinite(loDesc) || loDesc < 0 || loDesc > 99) {
+      toast('El descuento de "Llevá otra" debe estar entre 0 y 99%', true);
+      return;
+    }
+    const loCambioColor = String($('cartLlevaOtraCambioColor')?.value || 'true') === 'true';
+    c.lleva_otra.texto                = loTexto;
+    c.lleva_otra.descuento_pct        = loDesc;
+    c.lleva_otra.permite_cambio_color = loCambioColor;
+
+    // Defensa final: si por alguna razón ambos features quedaron en true
+    // (no debería pasar gracias a los toggles, pero por las dudas), priorizar
+    // el último que se modificó. Como no tenemos historial de orden, dejamos
+    // tal cual y el frontend público también desempata por prioridad.
+
+    // ── Persistir (objeto completo) ─────────────────────────────
     const payload = JSON.stringify(c);
     const { ok, data } = await apiAdmin('set_setting', { key: CART_KEY, value: payload });
     if (!ok) {
@@ -4801,6 +4849,9 @@
         'cartCrossSellProd1',
         'cartCrossSellProd2',
         'cartCrossSellProd3',
+        'cartLlevaOtraTexto',
+        'cartLlevaOtraDescuento',
+        'cartLlevaOtraCambioColor',
       ],
       containerEl,
       // Usamos el título del primer card como marker. Cuando hay cambios
@@ -4905,6 +4956,7 @@
   window.saveCartConfig            = saveCartConfig;
   window.toggleCartContadorMaster  = toggleCartContadorMaster;
   window.toggleCartCrossSellMaster = toggleCartCrossSellMaster;
+  window.toggleCartLlevaOtraMaster = toggleCartLlevaOtraMaster;
 
   // Personalización láser (Sesión 28)
   window.loadPersonalizacion = loadPersonalizacion;

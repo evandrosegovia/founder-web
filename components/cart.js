@@ -197,6 +197,8 @@
       // Sesión 53 Bloque 2 — apagar el cross-sell si quedó visible.
       // (innerHTML='...' arriba ya lo borró pero por claridad lo dejamos.)
       removeCrossSellBlock();
+      // Sesión 53 Bloque 3 — apagar el bloque Llevá otra.
+      removeLlevaOtraBlock();
       return;
     }
 
@@ -271,6 +273,11 @@
     //    Se inserta al final de #cartItems. Si no aplica (apagado,
     //    carrito vacío, productos faltantes, etc.), no pinta nada.
     renderCrossSell();
+
+    // ── Sesión 53 Bloque 3 — render del bloque "Llevá otra".
+    //    Mutuamente excluyente con cross-sell (si cross-sell está ON,
+    //    este no se muestra). Se inserta al final de #cartItems.
+    renderLlevaOtra();
   }
 
   // Estado del último render — usado por el listener interno de
@@ -1122,6 +1129,249 @@
     }
   }
 
+  // ── Sesión 53 Bloque 3 — Llevá otra ────────────────────────────
+  //
+  // Renderiza un bloque al final de #cartItems que ofrece sumar otra
+  // unidad de un producto del carrito a precio descontado. Reglas:
+  //
+  //   - Solo se muestra si: config enabled + carrito tiene al menos
+  //     1 item normal (no cross-sell ni lleva_otra) + cross_sell.enabled
+  //     no está prendido (regla mutuamente excluyente: prioridad
+  //     cross-sell por consistencia con el admin).
+  //
+  //   - El cliente elige cuál producto duplicar desde un <select>.
+  //
+  //   - Al hacer click "Llevá otra":
+  //     * Si permite_cambio_color === false Y el producto NO admite
+  //       personalización → agrego directo (item con from_lleva_otra=true).
+  //     * En otro caso → abro modal de personalización (lp-bubble) con
+  //       el color preseleccionado y el panel de grabado disponible.
+  //
+  //   - El item agregado nunca se combina con uno normal del carrito
+  //     gracias al `from_lleva_otra: true` (itemKey lo distingue).
+
+  const LLEVA_OTRA_BLOCK_ID = 'cartLlevaOtra';
+
+  function removeLlevaOtraBlock() {
+    const block = document.getElementById(LLEVA_OTRA_BLOCK_ID);
+    if (block) block.remove();
+  }
+
+  /** Lista de items del carrito que SON candidatos para "Llevá otra".
+   *  Excluye items que ya son cross-sell o lleva-otra (no queremos
+   *  cascada infinita). */
+  function llevaOtraCandidates() {
+    return readCartFromStorage().filter(i => !i.from_cross_sell && !i.from_lleva_otra);
+  }
+
+  function renderLlevaOtra() {
+    // Esperar a que urgencyConfig esté cargada (compartida con los otros sub-features)
+    if (urgencyConfig === null) {
+      ensureUrgencyConfig();
+      return;
+    }
+    const cfg = urgencyConfig && urgencyConfig.lleva_otra;
+    if (!cfg || !cfg.enabled) { removeLlevaOtraBlock(); return; }
+
+    // Mutuamente excluyente con cross-sell (prioridad cross-sell si por
+    // error ambos quedaron prendidos)
+    if (urgencyConfig.cross_sell?.enabled) { removeLlevaOtraBlock(); return; }
+
+    const candidates = llevaOtraCandidates();
+    if (candidates.length === 0) { removeLlevaOtraBlock(); return; }
+
+    // Asegurar catálogo (para resolver el producto al hacer click).
+    // Si todavía no cargó, disparamos y salimos: el listener interno
+    // re-renderiza cuando termine.
+    if (!crossSellProductsCache) {
+      ensureCrossSellProducts().then(() => {
+        if (lastRenderOpts) renderItems(lastRenderOpts);
+      });
+      return;
+    }
+
+    // Construir lista de opciones del select. Cada opción muestra
+    // "Founder X (Color) — $precio_descontado" y guarda el índice del
+    // candidate como value para resolverlo al hacer click.
+    const descPct = Math.max(0, Math.min(99, Number(cfg.descuento_pct) || 0));
+    const optionsHTML = candidates.map((it, idx) => {
+      // Precio base del item (sin extras de personalización, eso vendrá
+      // de la elección del cliente en la burbuja).
+      const baseSinExtra = Number(it.price) || 0;
+      const precioDesc = Math.round(baseSinExtra * (1 - descPct / 100));
+      return `<option value="${idx}">Founder ${esc(it.name)} (${esc(it.color)}) — $${precioDesc.toLocaleString('es-UY')}</option>`;
+    }).join('');
+
+    removeLlevaOtraBlock();
+
+    const itemsEl = document.getElementById('cartItems');
+    if (!itemsEl) return;
+
+    const titulo = cfg.texto || 'Llevá otra para regalar';
+    const block = document.createElement('div');
+    block.id = LLEVA_OTRA_BLOCK_ID;
+    block.className = 'cart-lo';
+    block.innerHTML = `
+      <div class="cart-lo__head">
+        <div class="cart-lo__title">🎁 ${esc(titulo)}</div>
+        ${descPct > 0 ? `<div class="cart-lo__badge">${descPct}% OFF</div>` : ''}
+      </div>
+      <div class="cart-lo__hint">Sumá otra unidad de tu favorito${candidates.length > 1 ? ' — elegí cuál' : ''}</div>
+      <div class="cart-lo__row">
+        <select class="cart-lo__select" id="cartLoSelect" aria-label="Producto a duplicar">
+          ${candidates.length > 1 ? '<option value="">— Elegí cuál —</option>' : ''}
+          ${optionsHTML}
+        </select>
+        <button class="cart-lo__add" id="cartLoAdd" aria-label="Llevá otra">Agregar</button>
+      </div>
+    `;
+    itemsEl.appendChild(block);
+
+    // Listeners (idempotente: el block recién se inyectó, no hay dups)
+    const addBtn = document.getElementById('cartLoAdd');
+    if (addBtn) addBtn.addEventListener('click', onLlevaOtraAdd);
+  }
+
+  function onLlevaOtraAdd() {
+    const sel = document.getElementById('cartLoSelect');
+    if (!sel) return;
+    const idx = parseInt(sel.value, 10);
+    if (!Number.isFinite(idx)) {
+      if (typeof window.showToast === 'function') {
+        window.showToast('Elegí un producto primero', 'error');
+      }
+      return;
+    }
+    const candidates = llevaOtraCandidates();
+    const item = candidates[idx];
+    if (!item) return;
+
+    const cfg = urgencyConfig?.lleva_otra;
+    if (!cfg || !cfg.enabled) return;
+
+    // Buscar el producto en el catálogo cacheado para conocer sus colores
+    // disponibles y flags de personalización.
+    const product = (crossSellProductsCache || []).find(p => norm(p.name) === norm(item.name));
+    if (!product) {
+      console.warn('[founderCart] llevaOtra: producto no encontrado en catálogo:', item.name);
+      return;
+    }
+
+    // Cargar config de personalización (puede que ya esté en cache)
+    ensurePersonalizacionConfig().then(persCfg => {
+      const permiteCambioColor = cfg.permite_cambio_color === true;
+      const permiteGrabado =
+        persCfg?.enabled &&
+        (product.permite_grabado_adelante || product.permite_grabado_interior ||
+         product.permite_grabado_atras    || product.permite_grabado_texto);
+
+      const descPct = Math.max(0, Math.min(99, Number(cfg.descuento_pct) || 0));
+      const baseSinExtra = Number(item.price) || 0;
+      const precioDesc = Math.round(baseSinExtra * (1 - descPct / 100));
+
+      // Camino corto: no admite cambio de color ni grabado → agregar directo
+      if (!permiteCambioColor && !permiteGrabado) {
+        pushLlevaOtraToCart({
+          product,
+          colorName:       item.color,
+          basePrice:       precioDesc,
+          personalizacion: null,
+        });
+        return;
+      }
+
+      // Camino con modal: abrir lp-bubble
+      if (!window.founderLaserPanel || typeof window.founderLaserPanel.open !== 'function') {
+        console.warn('[founderCart] laser-panel.js no cargado — agregando sin modal');
+        pushLlevaOtraToCart({
+          product,
+          colorName:       item.color,
+          basePrice:       precioDesc,
+          personalizacion: null,
+        });
+        return;
+      }
+
+      // Enriquecer colores con el COLOR_MAP global si está disponible
+      // (lo expone index.html/producto.html en window.FOUNDER_COLOR_MAP).
+      const COLOR_MAP = window.FOUNDER_COLOR_MAP || {};
+      const enrichedProduct = {
+        ...product,
+        colors: (product.colors || []).map(c => ({
+          ...c,
+          ...(COLOR_MAP[c.name] || {}),
+        })),
+      };
+
+      window.founderLaserPanel.open({
+        product:           enrichedProduct,
+        colorName:         item.color,
+        allowColorChange:  permiteCambioColor,
+        config:            persCfg,
+        title:             cfg.texto || 'Llevá otra',
+        subtitle:          `Founder ${product.name} a ${descPct}% OFF`,
+        basePrice:         precioDesc,
+        onConfirm: (payload) => {
+          pushLlevaOtraToCart({
+            product,
+            colorName:        payload.colorName || item.color,
+            basePrice:        precioDesc,
+            personalizacion:  payload.personalizacion,
+          });
+        },
+      });
+    });
+  }
+
+  /** Inserta el item de "Llevá otra" en el carrito + dispara re-render. */
+  function pushLlevaOtraToCart({ product, colorName, basePrice, personalizacion }) {
+    const cart = readCartFromStorage();
+    const newItem = {
+      id:    product.id,
+      name:  product.name,
+      color: colorName,
+      price: basePrice,            // Precio ya descontado, SIN extras de pers (el extra va aparte)
+      qty:   1,
+      from_lleva_otra: true,
+    };
+    if (personalizacion) newItem.personalizacion = personalizacion;
+
+    // Deduplicación por itemKey (incluye origen + huella de personalización)
+    const newKey = itemKey(newItem);
+    const existing = cart.find(i => itemKey(i) === newKey);
+    if (existing) {
+      existing.qty++;
+    } else {
+      cart.push(newItem);
+    }
+    try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (_) {}
+
+    window.dispatchEvent(new CustomEvent('founder-cart-external-update'));
+    if (lastRenderOpts) renderItems(lastRenderOpts);
+
+    if (typeof window.showToast === 'function') {
+      window.showToast(`Founder ${product.name} agregado`, 'success');
+    }
+  }
+
+  // Cache de personalizacion_config (compartida con producto.html — la
+  // página principal ya la fetcheó, pero acá funcionamos en cualquier
+  // página). Una sola fetch por sesión.
+  let persConfigCache = null;
+  let persConfigPromise = null;
+  function ensurePersonalizacionConfig() {
+    if (persConfigCache) return Promise.resolve(persConfigCache);
+    if (persConfigPromise) return persConfigPromise;
+    if (!window.founderDB || typeof window.founderDB.fetchPersonalizacionConfig !== 'function') {
+      persConfigCache = { enabled: false };
+      return Promise.resolve(persConfigCache);
+    }
+    persConfigPromise = window.founderDB.fetchPersonalizacionConfig()
+      .then(cfg => { persConfigCache = cfg || { enabled: false }; return persConfigCache; })
+      .catch(() => { persConfigCache = { enabled: false }; return persConfigCache; });
+    return persConfigPromise;
+  }
+
   // ── API pública ──────────────────────────────────────────────
   window.founderCart = {
     // Nuevos (fetch autónomo)
@@ -1387,6 +1637,91 @@
 }
 .cart-cs__add:active {
   transform: scale(0.95);
+}
+
+/* ── Sesión 53 Bloque 3 — Llevá otra ──────────────────────────────
+   Bloque que aparece al final de #cartItems con un select para que el
+   cliente elija qué producto del carrito duplicar a precio descontado.
+   Look complementario al cross-sell pero más compacto (es 1 sola
+   acción, no 3 cards). */
+.cart-lo {
+  margin: 24px 16px 12px;
+  padding: 14px 0 0;
+  border-top: 1px dashed rgba(201, 169, 110, 0.25);
+}
+.cart-lo__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.cart-lo__title {
+  color: var(--color-gold);
+  font-family: var(--font-serif, 'Cormorant Garamond', serif);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+.cart-lo__badge {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--color-gold);
+  color: var(--color-bg);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.cart-lo__hint {
+  font-size: 10px;
+  color: var(--color-muted);
+  letter-spacing: 0.5px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.cart-lo__row {
+  display: flex;
+  gap: 8px;
+}
+.cart-lo__select {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(201, 169, 110, 0.35);
+  color: var(--color-text);
+  padding: 8px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.cart-lo__select:focus {
+  outline: none;
+  border-color: var(--color-gold);
+}
+.cart-lo__add {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--color-gold);
+  color: var(--color-gold);
+  padding: 8px 14px;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 2px;
+  font-family: inherit;
+  transition: all .2s ease;
+}
+.cart-lo__add:hover {
+  background: var(--color-gold);
+  color: var(--color-bg);
+}
+.cart-lo__add:active {
+  transform: scale(0.97);
 }
 `;
 
