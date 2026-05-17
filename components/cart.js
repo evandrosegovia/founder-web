@@ -810,27 +810,62 @@
    *  ofertas activas en algún color. Si todas las variantes están a precio
    *  normal, devuelve product.price. Toma el color con mejor precio
    *  disponible (no agotado) para mostrar el descuento sobre el real. */
+  /** Calcula el precio efectivo de un producto del catálogo y el color a
+   *  mostrar en el cross-sell. Reglas (en orden de prioridad):
+   *
+   *  1. Excluir colores agotados (`sin_stock`).
+   *  2. **Preferir colores que tengan foto en el photoMap** — esto evita
+   *     que el cross-sell muestre un placeholder con la inicial mientras
+   *     hay otros colores válidos con foto disponible.
+   *  3. Entre los elegibles, elegir el de menor precio (considerando
+   *     ofertas activas en cada color).
+   *
+   *  Si todos los colores están sin stock → devuelve {price:0,color:null}
+   *  (el cross-sell salta ese producto). Si ningún color tiene foto en el
+   *  photoMap aún (carrera de carga), cae al mejor precio sin filtro
+   *  para no bloquear el render — la foto va a aparecer cuando el
+   *  photoMap termine de cargar y se dispare el re-render. */
   function bestPriceForCrossSell(product) {
     const basePrice = Number(product?.price) || 0;
     const colores = product?.colors || [];
     const estados = product?.extras?.colores_estado || {};
 
-    // Buscar el color con menor precio NO agotado
-    let best = null;
-    let bestColor = null;
-    for (const c of colores) {
+    // Calcula el precio efectivo de un color (considerando oferta).
+    const precioDe = (c) => {
       const estado = estados[c.name];
-      if (estado === 'sin_stock') continue;
+      if (estado === 'sin_stock') return null;
       const precioOferta = (estado === 'oferta')
         ? Number(estados[`${c.name}_precio_oferta`])
         : null;
-      const precio = (precioOferta && precioOferta > 0) ? precioOferta : basePrice;
+      return (precioOferta && precioOferta > 0) ? precioOferta : basePrice;
+    };
+
+    // Primer pase: colores disponibles que ADEMÁS tienen foto en el photoMap.
+    let best = null;
+    let bestColor = null;
+    for (const c of colores) {
+      const precio = precioDe(c);
+      if (precio === null) continue;
+      const tieneFoto = !!getPhotoUrl(product.name, c.name);
+      if (!tieneFoto) continue;
       if (best === null || precio < best) {
         best = precio;
         bestColor = c;
       }
     }
-    // Si todos los colores están agotados, no se puede ofrecer
+    if (bestColor) return { price: best, color: bestColor };
+
+    // Segundo pase (fallback): si ningún color tiene foto (raro — solo
+    // pasaría si photoMap aún no cargó), elegir el mejor precio igual.
+    // El re-render automático va a corregir la foto cuando cargue.
+    for (const c of colores) {
+      const precio = precioDe(c);
+      if (precio === null) continue;
+      if (best === null || precio < best) {
+        best = precio;
+        bestColor = c;
+      }
+    }
     if (best === null) return { price: 0, color: null };
     return { price: best, color: bestColor };
   }
@@ -936,7 +971,7 @@
             </div>
           </div>
           <button class="cart-cs__add"
-                  onclick="window.founderCart.addCrossSellToCart('${escAttr(String(product.dbId))}')"
+                  onclick="window.founderCart.addCrossSellToCart('${escAttr(String(product.dbId))}','${escAttr(color.name)}')"
                   aria-label="Agregar ${product.name} al carrito">
             +
           </button>
@@ -958,8 +993,14 @@
 
   /** Agrega un producto del cross-sell al carrito a precio descontado.
    *  Expuesta como window.founderCart.addCrossSellToCart() para el
-   *  onclick inline de cada card. `productId` aquí es el UUID (dbId). */
-  function addCrossSellToCart(productId) {
+   *  onclick inline de cada card.
+   *
+   *  @param productId  UUID del producto (dbId).
+   *  @param colorName  Nombre del color que se mostró en la card. Lo pasamos
+   *                    explícito desde el HTML para garantizar que el item
+   *                    que entra al carrito sea idéntico al que el cliente
+   *                    vio en pantalla. Si no se provee, se recalcula. */
+  function addCrossSellToCart(productId, colorName) {
     if (!crossSellProductsCache) return;
     const product = crossSellProductsCache.find(p => String(p.dbId) === String(productId));
     if (!product) return;
@@ -967,8 +1008,35 @@
     const cfg = urgencyConfig?.cross_sell;
     if (!cfg || !cfg.enabled) return;
 
-    const { price: basePrice, color } = bestPriceForCrossSell(product);
-    if (!color || basePrice <= 0) return;
+    // Buscar el color por nombre (si vino del click) o recalcular si no.
+    let chosenColor = null;
+    let basePrice = 0;
+    if (colorName) {
+      chosenColor = (product.colors || []).find(c => c.name === colorName) || null;
+      const estados = product?.extras?.colores_estado || {};
+      const estado = chosenColor ? estados[chosenColor.name] : null;
+      if (estado === 'sin_stock') {
+        // El color quedó agotado entre el render y el click — abortar.
+        if (typeof window.showToast === 'function') {
+          window.showToast('Ese color se agotó, refrescá el carrito.', 'error');
+        }
+        return;
+      }
+      const precioOferta = (estado === 'oferta')
+        ? Number(estados[`${chosenColor.name}_precio_oferta`])
+        : null;
+      basePrice = (precioOferta && precioOferta > 0)
+        ? precioOferta
+        : (Number(product.price) || 0);
+    }
+    if (!chosenColor) {
+      // Fallback defensivo: si por algún motivo el color no se pasó o no
+      // existe ya, usar bestPriceForCrossSell.
+      const r = bestPriceForCrossSell(product);
+      chosenColor = r.color;
+      basePrice   = r.price;
+    }
+    if (!chosenColor || basePrice <= 0) return;
 
     const descPct = Math.max(0, Math.min(99, Number(cfg.descuento_pct) || 0));
     const precioDescontado = Math.round(basePrice * (1 - descPct / 100));
@@ -978,7 +1046,7 @@
     const newItem = {
       id:    product.id,
       name:  product.name,
-      color: color.name,
+      color: chosenColor.name,
       price: precioDescontado,
       qty:   1,
       from_cross_sell: true,    // flag para no permitir personalización

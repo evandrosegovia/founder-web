@@ -4664,14 +4664,22 @@
   }
 
   /** Pinta las 3 selects con la lista de productos del catálogo y
-   *  preselecciona los IDs guardados en state.cartConfig.cross_sell. */
+   *  preselecciona los IDs guardados en state.cartConfig.cross_sell.
+   *
+   *  Nota: state.products del admin tiene los campos en español
+   *  (nombre, precio) — distinto del cliente público que usa name/price.
+   *  Por eso acá leemos `p.nombre` y `p.precio` directamente.
+   *  Solo mostramos productos activos (descartamos los pausados). */
   function renderCrossSellDropdowns() {
-    const products = state.products || [];
+    const products = (state.products || []).filter(p => p.activo !== false);
     const ids = state.cartConfig?.cross_sell?.product_ids || [];
-    // Construir opciones <option>. Usamos product.id (que es número/string
-    // estable del DB). Mostramos "Nombre — $precio".
+
     const optionsHTML = products
-      .map(p => `<option value="${p.id}">Founder ${p.name} — $${Number(p.price).toLocaleString('es-UY')}</option>`)
+      .map(p => {
+        const precio = Number(p.precio) || 0;
+        const precioFmt = precio.toLocaleString('es-UY');
+        return `<option value="${p.id}">Founder ${p.nombre} — $${precioFmt}</option>`;
+      })
       .join('');
 
     [1, 2, 3].forEach(slot => {
