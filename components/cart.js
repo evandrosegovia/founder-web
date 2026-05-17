@@ -1154,8 +1154,7 @@
         <div class="cart-cs__card" data-product-id="${product.dbId}">
           ${imgHTML}
           <div class="cart-cs__info">
-            <div class="cart-cs__name">Founder ${nameSafe}</div>
-            <div class="cart-cs__color">${colorSafe}</div>
+            <div class="cart-cs__name">Founder ${nameSafe}<span class="cart-cs__color-inline"> — ${colorSafe}</span></div>
             <div class="cart-cs__prices">
               <span class="cart-cs__price-old">${fmtPriceCompact(basePrice)}</span>
               <span class="cart-cs__price-new">${fmtPriceCompact(precioDescontado)}</span>
@@ -1398,8 +1397,7 @@
         <div class="cart-cs__card" data-lo-candidate-idx="${idx}">
           ${imgHTML}
           <div class="cart-cs__info">
-            <div class="cart-cs__name">Founder ${nameSafe}</div>
-            <div class="cart-cs__color">${colorSafe}</div>
+            <div class="cart-cs__name">Founder ${nameSafe}<span class="cart-cs__color-inline"> — ${colorSafe}</span></div>
             <div class="cart-cs__prices">
               <span class="cart-cs__price-old">${fmtPriceCompact(basePrice)}</span>
               <span class="cart-cs__price-new">${fmtPriceCompact(precioDesc)}</span>
@@ -1978,6 +1976,19 @@
   letter-spacing: 1.5px;
   text-transform: uppercase;
 }
+/* Sesión 53 Bloque 4 — Color inline al lado del nombre del producto.
+   Reemplaza al .cart-cs__color que ocupaba una línea propia. Usa el
+   mismo estilo discreto (muted + uppercase + letter-spacing) pero
+   sans-serif chico para contrastar con el serif del nombre y darle
+   jerarquía clara. */
+.cart-cs__color-inline {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 9px;
+  color: var(--color-muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 400;
+}
 .cart-cs__prices {
   display: flex;
   align-items: baseline;
@@ -2055,8 +2066,8 @@
   flex-wrap: wrap;
 }
 .cart-cs__chip {
-  width: 16px;
-  height: 24px;
+  width: 18px;
+  height: 14px;
   border-radius: 2px;
   border: 1.5px solid transparent;
   padding: 0;
