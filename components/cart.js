@@ -112,41 +112,77 @@
       .replace(/'/g, '&#39;');
   }
 
-  // ── Sesión 53 Bloque 4 — Toast contextual dorado ────────────────
-  // Toast independiente del showToast global de la página, porque:
-  //   1. Las páginas secundarias (contacto, envíos, etc.) no tienen
-  //      showToast definido — y necesitamos avisar al cliente igual.
-  //   2. El showToast existente pisa el toast anterior si llamás
-  //      rápido — y queremos mostrar el toast contextual SIN pisar
-  //      el toast de "✓ Agregado" que viene primero.
-  //   3. Duración configurable (8s en lugar de 3s del default).
-  // Mantiene su propio elemento DOM con id #fcContextToast, posicionado
-  // fixed arriba a la derecha (sin chocar con el toast global que vive
-  // abajo). Auto-injecta el CSS al cargar.
+  // ── Sesión 53 Bloque 4 — Highlight tip dorado anclado al item ─────
+  //
+  // Reemplaza al "toast contextual global" anterior. En lugar de un
+  // mensaje flotante fixed en pantalla, este tip aparece JUSTO DEBAJO
+  // del item del carrito que el cliente acaba de agregar. Es más
+  // contextual: el cliente ve el item nuevo + la sugerencia en el
+  // mismo lugar visual.
+  //
+  // Diseño:
+  //   - Estado: { itemKey, message, expiresAt } guardado en memoria.
+  //   - En cada renderItems, después de pintar los items normales,
+  //     buscamos el div del item con ese key y le inyectamos el tip
+  //     debajo. Si el item ya no está (lo eliminaron, expiró el
+  //     timer), no inyectamos nada.
+  //   - Auto-limpieza por timer de 8s.
+  //   - Si se agrega otro producto antes de los 8s, el tip se mueve
+  //     al nuevo item (un solo tip activo a la vez).
 
-  const CONTEXT_TOAST_ID = 'fcContextToast';
-  let contextToastTimer = null;
+  const HIGHLIGHT_TIP_CLASS = 'cart-tip';
+  let highlightTip = null;       // { itemKey, message, expiresAt } | null
+  let highlightTipTimer = null;
 
-  function ensureContextToastMounted() {
-    if (document.getElementById(CONTEXT_TOAST_ID)) return;
-    const el = document.createElement('div');
-    el.id = CONTEXT_TOAST_ID;
-    el.setAttribute('role', 'status');
-    el.setAttribute('aria-live', 'polite');
-    document.body.appendChild(el);
+  /** Activa un tip vinculado a un item. itemKey debe ser el resultado de
+   *  itemKey(newItem) exactamente, para que sea reproducible en cada
+   *  re-render del drawer. */
+  function showItemTip(itemKeyValue, message, ms) {
+    highlightTip = {
+      itemKey:   itemKeyValue,
+      message:   String(message || ''),
+      expiresAt: Date.now() + Math.max(1000, Number(ms) || 8000),
+    };
+    if (highlightTipTimer) clearTimeout(highlightTipTimer);
+    highlightTipTimer = setTimeout(() => {
+      highlightTip = null;
+      highlightTipTimer = null;
+      // Re-render para quitar el tip del DOM
+      if (lastRenderOpts) renderItems(lastRenderOpts);
+    }, Math.max(1000, Number(ms) || 8000));
   }
 
-  function showContextToast(msg, ms) {
-    ensureContextToastMounted();
-    const el = document.getElementById(CONTEXT_TOAST_ID);
-    if (!el) return;
-    el.textContent = msg;
-    el.classList.add('is-visible');
-    if (contextToastTimer) clearTimeout(contextToastTimer);
-    contextToastTimer = setTimeout(() => {
-      el.classList.remove('is-visible');
-      contextToastTimer = null;
-    }, Math.max(1000, Number(ms) || 8000));
+  /** Inyecta el tip debajo del item con itemKey activo. Llamada desde
+   *  renderItems después de pintar los items. Idempotente. */
+  function applyHighlightTip() {
+    if (!highlightTip) return;
+    if (Date.now() >= highlightTip.expiresAt) {
+      highlightTip = null;
+      return;
+    }
+    const itemsEl = document.getElementById('cartItems');
+    if (!itemsEl) return;
+
+    // Buscar el div del item con ese itemKey. Como `cart-item` no expone
+    // el key directamente en el DOM, lo agregamos como data-attr durante
+    // el render (ver mod en renderItems abajo).
+    const targetItemEl = itemsEl.querySelector(
+      `[data-item-key="${CSS.escape(highlightTip.itemKey)}"]`
+    );
+    if (!targetItemEl) {
+      // El item ya no está en el carrito (lo eliminaron o cambió su key)
+      // → limpiar el tip silenciosamente.
+      highlightTip = null;
+      if (highlightTipTimer) { clearTimeout(highlightTipTimer); highlightTipTimer = null; }
+      return;
+    }
+    const tip = document.createElement('div');
+    tip.className = HIGHLIGHT_TIP_CLASS;
+    tip.setAttribute('role', 'status');
+    tip.setAttribute('aria-live', 'polite');
+    tip.textContent = highlightTip.message;
+    // Insertar justo después del item recién agregado
+    targetItemEl.insertAdjacentElement('afterend', tip);
   }
 
   /** HTML del bloque de tags de personalización debajo del color.
@@ -285,7 +321,7 @@
         : `<div class="cart-item__img-placeholder" aria-hidden="true">${inicial}</div>`;
 
       return `
-        <div class="cart-item">
+        <div class="cart-item" data-item-key="${escAttr(itemKey(item))}">
           ${imgHTML}
           <div class="cart-item__info">
             <div class="cart-item__name">Founder ${item.name}</div>
@@ -331,6 +367,12 @@
     //    Se llama después de pintar items para que el bloque pueda
     //    insertarse arriba de #cartItems sin pelearse con innerHTML.
     renderUrgencyCounter();
+
+    // ── Sesión 53 Bloque 4 — Highlight tip anclado al item recién
+    //    agregado. Se inserta como sibling después del item, ANTES
+    //    del bloque cross-sell, para que visualmente quede pegado al
+    //    item que acabás de agregar.
+    applyHighlightTip();
 
     // ── Sesión 53 Bloque 2 — render del cross-sell.
     //    Se inserta al final de #cartItems. Si no aplica (apagado,
@@ -1287,13 +1329,19 @@
       window.showToast(`Founder ${product.name} agregado con ${descPct}% OFF`, 'success');
     }
 
-    // Sesión 53 Bloque 4 — Toast contextual de 8s avisando al cliente
-    // que puede personalizar o ajustar desde el botón "Editar". Se
-    // muestra ligeramente después para no superponerse al "Agregado"
-    // verde. Funciona en todas las páginas (incluidas las secundarias
-    // sin window.showToast).
+    // Sesión 53 Bloque 4 — Highlight tip anclado al item recién agregado.
+    // Aparece como una pequeña banda dorada debajo del item con un mensaje
+    // contextual de 8s sugiriendo editar/personalizar. Si el cliente
+    // agrega otro item del cross-sell durante esos 8s, el tip salta al
+    // nuevo item (reemplazo limpio).
+    //
+    // Pequeño delay (700ms) para no competir con el toast verde de
+    // "Agregado con X% OFF" del sistema global — primero el cliente ve
+    // confirmación, después la sugerencia contextual.
     setTimeout(() => {
-      showContextToast('✨ Podés personalizarlo o cambiar color desde Editar', 8000);
+      showItemTip(newKey, '✨ Podés personalizarlo o cambiar color desde Editar', 8000);
+      // Triggear un re-render para que applyHighlightTip lo inyecte
+      if (lastRenderOpts) renderItems(lastRenderOpts);
     }, 700);
   }
 
@@ -1969,6 +2017,15 @@
   font-size: 14px;
   color: var(--color-text);
   line-height: 1.2;
+  /* Sesión 53 Bloque 4 — Forzar nombre + color en UNA sola línea.
+     En mobile el ancho del drawer es chico (~340px - 16px*2 padding -
+     foto 48 - botón 32 = ~196px disponibles). "Founder Classic — CAMEL"
+     no entra y el "— CAMEL" salta a otra línea, sumando altura a la
+     card. Con white-space nowrap + overflow-ellipsis truncamos
+     elegantemente y mantenemos siempre la altura constante. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .cart-cs__color {
   font-size: 9px;
@@ -2087,36 +2144,26 @@
   border-color: var(--color-gold);
 }
 
-/* ── Sesión 53 Bloque 4 — Toast contextual dorado de 8s ──────────
-   Toast independiente del showToast global de la página. Posicionado
-   abajo, centrado horizontalmente, sobre el drawer. Animación suave
-   de entrada/salida con transform + opacity (sin layout shift).
-   z-index alto para superponerse al drawer del carrito. */
-#fcContextToast {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  transform: translateX(-50%) translateY(20px);
-  background: rgba(20, 20, 20, 0.95);
-  border: 1px solid var(--color-gold);
+/* ── Sesión 53 Bloque 4 — Highlight tip dorado anclado al item ───
+   Mensaje contextual que aparece debajo del item recién agregado,
+   dentro del flujo del drawer. NO es position:fixed — es un sibling
+   normal del cart-item, así que se mueve con el scroll del drawer.
+   Animación: fade-in suave al aparecer. Hover no aplica (es solo lectura). */
+.cart-tip {
+  margin: 4px 16px 8px;
+  padding: 8px 12px;
+  background: rgba(201, 169, 110, 0.08);
+  border: 1px solid rgba(201, 169, 110, 0.35);
   color: var(--color-gold);
-  padding: 12px 18px;
-  font-size: 12px;
-  letter-spacing: 0.5px;
+  font-size: 11px;
+  letter-spacing: 0.3px;
   line-height: 1.4;
-  border-radius: 3px;
-  font-family: inherit;
-  max-width: 90vw;
-  text-align: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .3s ease, transform .3s ease;
-  z-index: 10001;  /* sobre el drawer del carrito (10000) y el modal lp-bubble */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  animation: cart-tip-fade-in .3s ease both;
 }
-#fcContextToast.is-visible {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+@keyframes cart-tip-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Sesión 53 Bloque 3 — Llevá otra ──────────────────────────────
