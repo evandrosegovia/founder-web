@@ -112,6 +112,43 @@
       .replace(/'/g, '&#39;');
   }
 
+  // ── Sesión 53 Bloque 4 — Toast contextual dorado ────────────────
+  // Toast independiente del showToast global de la página, porque:
+  //   1. Las páginas secundarias (contacto, envíos, etc.) no tienen
+  //      showToast definido — y necesitamos avisar al cliente igual.
+  //   2. El showToast existente pisa el toast anterior si llamás
+  //      rápido — y queremos mostrar el toast contextual SIN pisar
+  //      el toast de "✓ Agregado" que viene primero.
+  //   3. Duración configurable (8s en lugar de 3s del default).
+  // Mantiene su propio elemento DOM con id #fcContextToast, posicionado
+  // fixed arriba a la derecha (sin chocar con el toast global que vive
+  // abajo). Auto-injecta el CSS al cargar.
+
+  const CONTEXT_TOAST_ID = 'fcContextToast';
+  let contextToastTimer = null;
+
+  function ensureContextToastMounted() {
+    if (document.getElementById(CONTEXT_TOAST_ID)) return;
+    const el = document.createElement('div');
+    el.id = CONTEXT_TOAST_ID;
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
+
+  function showContextToast(msg, ms) {
+    ensureContextToastMounted();
+    const el = document.getElementById(CONTEXT_TOAST_ID);
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('is-visible');
+    if (contextToastTimer) clearTimeout(contextToastTimer);
+    contextToastTimer = setTimeout(() => {
+      el.classList.remove('is-visible');
+      contextToastTimer = null;
+    }, Math.max(1000, Number(ms) || 8000));
+  }
+
   /** HTML del bloque de tags de personalización debajo del color.
    *  Antes solo aparecían en index/producto. Ahora aparecen en todas. */
   function buildPersonalizacionTags(item) {
@@ -858,6 +895,33 @@
   let crossSellProductsCache = null;
   let crossSellProductsPromise = null;
 
+  // Sesión 53 Bloque 4 — Selección de color por card del cross-sell.
+  // Cada card recuerda qué color tiene seleccionado el cliente. Se
+  // resetea cuando el cliente cierra el carrito o navega de página.
+  // Mapa: { [dbId]: colorName }.
+  const crossSellSelectedColors = {};
+
+  /** Genera el background CSS de un swatch de color, respetando el
+   *  patrón rayado del color "Carbon". Replica exactamente lo que hace
+   *  swatchBackground() en index.html y producto.html — lo duplicamos
+   *  acá adentro para que cart.js sea autosuficiente y funcione en
+   *  páginas secundarias que no exponen esa función. */
+  function swatchBackgroundForChip(color) {
+    if (!color) return '#555';
+    if (color.pattern) {
+      return 'repeating-linear-gradient(45deg,var(--swatch-carbon) 0,var(--swatch-carbon) 4px,#4a4a4a 4px,#4a4a4a 8px)';
+    }
+    return color.css || color.hex || '#555';
+  }
+
+  /** Resuelve los datos visuales (hex/css/pattern) para un color del DB
+   *  buscando en window.FOUNDER_COLOR_MAP. En páginas que no lo expongan
+   *  (secundarias), cae a un fallback hex con el color crudo. */
+  function getColorVisualForChip(name) {
+    const map = (typeof window !== 'undefined' && window.FOUNDER_COLOR_MAP) || {};
+    return map[name] || { hex: '#555' };
+  }
+
   function ensureCrossSellProducts() {
     if (crossSellProductsCache) return Promise.resolve(crossSellProductsCache);
     if (crossSellProductsPromise) return crossSellProductsPromise;
@@ -1010,12 +1074,41 @@
 
     // 8) Aplicar descuento + filtrar agotados
     const descPct = Math.max(0, Math.min(99, Number(cfg.descuento_pct) || 0));
+    // Calcular el "estado base" de cada item: color inicial (mejor precio)
+    // y la lista completa de colores disponibles para elegir.
     const items = candidates
       .map(p => {
-        const { price: basePrice, color } = bestPriceForCrossSell(p);
-        if (!color || basePrice <= 0) return null;
+        const { price: bestBasePrice, color: bestColor } = bestPriceForCrossSell(p);
+        if (!bestColor || bestBasePrice <= 0) return null;
+
+        // Colores disponibles (no agotados) para mostrar como chips.
+        const estados = p?.extras?.colores_estado || {};
+        const coloresDisp = (p.colors || []).filter(c => estados[c.name] !== 'sin_stock');
+
+        // ¿Qué color se muestra en esta card? El cliente puede haber
+        // tocado un chip y haber seleccionado otro — eso lo memoriza
+        // `crossSellSelectedColors[dbId]`. Si no eligió nada todavía,
+        // usamos el "best price" como default.
+        const selectedName = crossSellSelectedColors[p.dbId] || bestColor.name;
+        const selectedColor = coloresDisp.find(c => c.name === selectedName) || bestColor;
+
+        // Recalcular precio para el color realmente seleccionado.
+        const estadoSel = estados[selectedColor.name];
+        const precioOfertaSel = (estadoSel === 'oferta')
+          ? Number(estados[`${selectedColor.name}_precio_oferta`])
+          : null;
+        const basePrice = (precioOfertaSel && precioOfertaSel > 0)
+          ? precioOfertaSel
+          : (Number(p.price) || 0);
         const precioDescontado = Math.round(basePrice * (1 - descPct / 100));
-        return { product: p, color, basePrice, precioDescontado };
+
+        return {
+          product:        p,
+          color:          selectedColor,
+          basePrice,
+          precioDescontado,
+          coloresDisp,
+        };
       })
       .filter(x => x);
     if (items.length === 0) { removeCrossSellBlock(); return; }
@@ -1027,7 +1120,7 @@
     removeCrossSellBlock();  // limpiamos antes de re-pintar
 
     const titulo = cfg.titulo || '✦ Comprá juntos y ahorrá';
-    const cardsHTML = items.map(({ product, color, basePrice, precioDescontado }) => {
+    const cardsHTML = items.map(({ product, color, basePrice, precioDescontado, coloresDisp }) => {
       const photoUrl = getPhotoUrl(product.name, color.name);
       const inicial = (product.name || '?')[0].toUpperCase();
       const nameSafe  = escHtml(product.name);
@@ -1036,6 +1129,27 @@
         ? `<img src="${thumb(photoUrl)}" class="cart-cs__img" alt="Founder ${nameSafe}" loading="lazy"
                 onerror="window.recoverCartPhoto && window.recoverCartPhoto(this,'${escAttr(product.name)}','${escAttr(color.name)}');">`
         : `<div class="cart-cs__img-placeholder" aria-hidden="true">${inicial}</div>`;
+
+      // Sesión 53 Bloque 4 — Chips rectangulares de color (mini, estilo
+      // producto.html pero más chico). Solo se muestran si hay más de 1
+      // color disponible — si hay 1, no tiene sentido un selector.
+      let chipsHTML = '';
+      if (coloresDisp.length > 1) {
+        chipsHTML = `<div class="cart-cs__chips">${coloresDisp.map(c => {
+          const visual = { ...c, ...(getColorVisualForChip(c.name)) };
+          const bg = swatchBackgroundForChip(visual);
+          const isSel = c.name === color.name;
+          return `<button type="button"
+                          class="cart-cs__chip ${isSel ? 'is-selected' : ''}"
+                          style="background:${bg}"
+                          data-cs-dbid="${escAttr(String(product.dbId))}"
+                          data-cs-color="${escAttr(c.name)}"
+                          title="${escHtml(c.name)}"
+                          aria-label="${escHtml(c.name)}"
+                          aria-pressed="${isSel}"></button>`;
+        }).join('')}</div>`;
+      }
+
       return `
         <div class="cart-cs__card" data-product-id="${product.dbId}">
           ${imgHTML}
@@ -1046,6 +1160,7 @@
               <span class="cart-cs__price-old">${fmtPriceCompact(basePrice)}</span>
               <span class="cart-cs__price-new">${fmtPriceCompact(precioDescontado)}</span>
             </div>
+            ${chipsHTML}
           </div>
           <button class="cart-cs__add"
                   onclick="window.founderCart.addCrossSellToCart('${escAttr(String(product.dbId))}','${escAttr(color.name)}')"
@@ -1066,6 +1181,23 @@
       <div class="cart-cs__list">${cardsHTML}</div>
     `;
     itemsEl.appendChild(block);
+
+    // Wirear los chips de color con event delegation. Click en un chip
+    // → guardar el color seleccionado para ese dbId y re-renderizar el
+    // bloque (el resto del drawer no necesita re-render).
+    block.querySelectorAll('.cart-cs__chip').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        e.preventDefault();
+        const dbId = chip.dataset.csDbid;
+        const colorName = chip.dataset.csColor;
+        if (!dbId || !colorName) return;
+        crossSellSelectedColors[dbId] = colorName;
+        // Re-render del cross-sell completo (solo este bloque). renderItems
+        // hace más cosas que no queremos repetir, así que llamamos al
+        // helper directamente.
+        renderCrossSell();
+      });
+    });
   }
 
   /** Agrega un producto del cross-sell al carrito a precio descontado.
@@ -1155,6 +1287,15 @@
     if (typeof window.showToast === 'function') {
       window.showToast(`Founder ${product.name} agregado con ${descPct}% OFF`, 'success');
     }
+
+    // Sesión 53 Bloque 4 — Toast contextual de 8s avisando al cliente
+    // que puede personalizar o ajustar desde el botón "Editar". Se
+    // muestra ligeramente después para no superponerse al "Agregado"
+    // verde. Funciona en todas las páginas (incluidas las secundarias
+    // sin window.showToast).
+    setTimeout(() => {
+      showContextToast('✨ Podés personalizarlo o cambiar color desde Editar', 8000);
+    }, 700);
   }
 
   // ── Sesión 53 Bloque 3 — Llevá otra ────────────────────────────
@@ -1209,8 +1350,6 @@
     if (candidates.length === 0) { removeLlevaOtraBlock(); return; }
 
     // Asegurar catálogo (para resolver el producto al hacer click).
-    // Si todavía no cargó, disparamos y salimos: el listener interno
-    // re-renderiza cuando termine.
     if (!crossSellProductsCache) {
       ensureCrossSellProducts().then(() => {
         if (lastRenderOpts) renderItems(lastRenderOpts);
@@ -1218,58 +1357,87 @@
       return;
     }
 
-    // Construir lista de opciones del select. Cada opción muestra
-    // "Founder X (Color) — $precio_descontado" y guarda el índice del
-    // candidate como value para resolverlo al hacer click.
+    // Sesión 53 Bloque 4 — Reemplazo del dropdown por mini-cards
+    // horizontales (mismo estilo que cross-sell). Cada candidate del
+    // carrito se convierte en una card con foto + nombre + color
+    // original + precio descontado + botón "+".
     const descPct = Math.max(0, Math.min(99, Number(cfg.descuento_pct) || 0));
-    const optionsHTML = candidates.map((it, idx) => {
-      // Precio base del item (sin extras de personalización, eso vendrá
-      // de la elección del cliente en la burbuja).
+
+    // Para cada candidate, buscar su producto en el catálogo para
+    // obtener la foto correcta (sin esto sale placeholder).
+    const items = candidates.map((it, idx) => {
+      const product = (crossSellProductsCache || []).find(p => norm(p.name) === norm(it.name));
       const baseSinExtra = Number(it.price) || 0;
       const precioDesc = Math.round(baseSinExtra * (1 - descPct / 100));
-      return `<option value="${idx}">Founder ${escHtml(it.name)} (${escHtml(it.color)}) — $${precioDesc.toLocaleString('es-UY')}</option>`;
-    }).join('');
+      return {
+        item:        it,
+        idx,
+        product:     product || null,
+        basePrice:   baseSinExtra,
+        precioDesc,
+      };
+    });
 
     removeLlevaOtraBlock();
-
     const itemsEl = document.getElementById('cartItems');
     if (!itemsEl) return;
 
     const titulo = cfg.texto || 'Llevá otra para regalar';
+    const cardsHTML = items.map(({ item, idx, product, basePrice, precioDesc }) => {
+      const colorName  = item.color || '';
+      const productName = item.name || '';
+      const photoUrl = product ? getPhotoUrl(productName, colorName) : null;
+      const inicial = (productName || '?')[0].toUpperCase();
+      const nameSafe  = escHtml(productName);
+      const colorSafe = escHtml(colorName);
+      const imgHTML = photoUrl
+        ? `<img src="${thumb(photoUrl)}" class="cart-cs__img" alt="Founder ${nameSafe}" loading="lazy"
+                onerror="window.recoverCartPhoto && window.recoverCartPhoto(this,'${escAttr(productName)}','${escAttr(colorName)}');">`
+        : `<div class="cart-cs__img-placeholder" aria-hidden="true">${inicial}</div>`;
+      return `
+        <div class="cart-cs__card" data-lo-candidate-idx="${idx}">
+          ${imgHTML}
+          <div class="cart-cs__info">
+            <div class="cart-cs__name">Founder ${nameSafe}</div>
+            <div class="cart-cs__color">${colorSafe}</div>
+            <div class="cart-cs__prices">
+              <span class="cart-cs__price-old">${fmtPriceCompact(basePrice)}</span>
+              <span class="cart-cs__price-new">${fmtPriceCompact(precioDesc)}</span>
+            </div>
+          </div>
+          <button class="cart-cs__add"
+                  data-lo-add-idx="${idx}"
+                  aria-label="Llevá otra Founder ${nameSafe}">
+            +
+          </button>
+        </div>`;
+    }).join('');
+
     const block = document.createElement('div');
     block.id = LLEVA_OTRA_BLOCK_ID;
-    block.className = 'cart-lo';
+    block.className = 'cart-cs cart-lo-as-cs';  // reusa estilo del cross-sell
     block.innerHTML = `
-      <div class="cart-lo__head">
-        <div class="cart-lo__title">🎁 ${escHtml(titulo)}</div>
-        ${descPct > 0 ? `<div class="cart-lo__badge">${descPct}% OFF</div>` : ''}
+      <div class="cart-cs__head">
+        <div class="cart-cs__title">🎁 ${escHtml(titulo)}</div>
+        ${descPct > 0 ? `<div class="cart-cs__badge">${descPct}% OFF</div>` : ''}
       </div>
-      <div class="cart-lo__hint">Sumá otra unidad de tu favorito${candidates.length > 1 ? ' — elegí cuál' : ''}</div>
-      <div class="cart-lo__row">
-        <select class="cart-lo__select" id="cartLoSelect" aria-label="Producto a duplicar">
-          ${candidates.length > 1 ? '<option value="">— Elegí cuál —</option>' : ''}
-          ${optionsHTML}
-        </select>
-        <button class="cart-lo__add" id="cartLoAdd" aria-label="Llevá otra">Agregar</button>
-      </div>
+      <div class="cart-cs__list">${cardsHTML}</div>
     `;
     itemsEl.appendChild(block);
 
-    // Listeners (idempotente: el block recién se inyectó, no hay dups)
-    const addBtn = document.getElementById('cartLoAdd');
-    if (addBtn) addBtn.addEventListener('click', onLlevaOtraAdd);
+    // Wirear los botones "+" de cada mini-card
+    block.querySelectorAll('[data-lo-add-idx]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.loAddIdx, 10);
+        if (Number.isFinite(idx)) onLlevaOtraAddByIdx(idx);
+      });
+    });
   }
 
-  function onLlevaOtraAdd() {
-    const sel = document.getElementById('cartLoSelect');
-    if (!sel) return;
-    const idx = parseInt(sel.value, 10);
-    if (!Number.isFinite(idx)) {
-      if (typeof window.showToast === 'function') {
-        window.showToast('Elegí un producto primero', 'error');
-      }
-      return;
-    }
+  /** Llamado al hacer click "+" en una mini-card de Llevá otra.
+   *  Decide entre camino corto (sin modal) o camino con modal según
+   *  los permisos del producto + config admin. */
+  function onLlevaOtraAddByIdx(idx) {
     const candidates = llevaOtraCandidates();
     const item = candidates[idx];
     if (!item) return;
@@ -1277,15 +1445,12 @@
     const cfg = urgencyConfig?.lleva_otra;
     if (!cfg || !cfg.enabled) return;
 
-    // Buscar el producto en el catálogo cacheado para conocer sus colores
-    // disponibles y flags de personalización.
     const product = (crossSellProductsCache || []).find(p => norm(p.name) === norm(item.name));
     if (!product) {
       console.warn('[founderCart] llevaOtra: producto no encontrado en catálogo:', item.name);
       return;
     }
 
-    // Cargar config de personalización (puede que ya esté en cache)
     ensurePersonalizacionConfig().then(persCfg => {
       const permiteCambioColor = cfg.permite_cambio_color === true;
       const permiteGrabado =
@@ -1297,7 +1462,7 @@
       const baseSinExtra = Number(item.price) || 0;
       const precioDesc = Math.round(baseSinExtra * (1 - descPct / 100));
 
-      // Camino corto: no admite cambio de color ni grabado → agregar directo
+      // Camino corto: ni cambio de color ni grabado → agregar directo
       if (!permiteCambioColor && !permiteGrabado) {
         pushLlevaOtraToCart({
           product,
@@ -1308,7 +1473,7 @@
         return;
       }
 
-      // Camino con modal: abrir lp-bubble
+      // Camino con modal
       if (!window.founderLaserPanel || typeof window.founderLaserPanel.open !== 'function') {
         console.warn('[founderCart] laser-panel.js no cargado — agregando sin modal');
         pushLlevaOtraToCart({
@@ -1320,8 +1485,6 @@
         return;
       }
 
-      // Enriquecer colores con el COLOR_MAP global si está disponible
-      // (lo expone index.html/producto.html en window.FOUNDER_COLOR_MAP).
       const COLOR_MAP = window.FOUNDER_COLOR_MAP || {};
       const enrichedProduct = {
         ...product,
@@ -1422,11 +1585,14 @@
    *  todavía no se cargó (`crossSellProductsCache` vacío), retorna true
    *  para no ocultar el botón por error. Falsos positivos se manifiestan
    *  como modales que se cierran con un toast — preferible a no mostrar
-   *  el botón cuando sí había algo. */
+   *  el botón cuando sí había algo.
+   *
+   *  Sesión 53 Bloque 4: regla "cross-sell no se edita" ELIMINADA.
+   *  Ahora cualquier item (normal, cross-sell, lleva-otra) puede
+   *  editarse si el producto admite cambio de color o personalización.
+   *  El precio descontado se preserva al editar. */
   function canEditItem(item) {
     if (!item) return false;
-    // Cross-sell nunca se edita.
-    if (item.from_cross_sell) return false;
 
     // Sin catálogo aún → permitir; el modal validará luego.
     if (!crossSellProductsCache) return true;
@@ -1485,8 +1651,9 @@
     const item = cart[idx];
     if (!item) return;
 
-    // Cross-sell: defensa redundante (el botón no se muestra, pero por si acaso)
-    if (item.from_cross_sell) return;
+    // Sesión 53 Bloque 4: items de cross-sell SÍ se editan (regla
+    // anterior eliminada). El flag `from_cross_sell` se preserva en
+    // el item resultante.
 
     // Asegurar catálogo cargado
     if (!crossSellProductsCache) {
@@ -1565,8 +1732,11 @@
           if (payload.personalizacion) {
             newItem.personalizacion = payload.personalizacion;
           }
-          // Preservar flag de Llevá otra (cross-sell no llega acá por canEditItem)
-          if (item.from_lleva_otra) newItem.from_lleva_otra = true;
+          // Sesión 53 Bloque 4: preservar flags de origen (cross-sell
+          // o lleva_otra) para que el item editado mantenga su
+          // identidad y siga siendo distinguible por itemKey.
+          if (item.from_lleva_otra)  newItem.from_lleva_otra  = true;
+          if (item.from_cross_sell)  newItem.from_cross_sell  = true;
 
           replaceCartItem(idx, newItem);
 
@@ -1872,6 +2042,70 @@
 }
 .cart-item__edit:active {
   transform: scale(0.97);
+}
+
+/* ── Sesión 53 Bloque 4 — Chips de color en cross-sell ────────────
+   Rectángulos pequeños (estilo producto.html .color-item__swatch
+   pero más chicos: 16x24px en lugar de 22x36px). El seleccionado
+   tiene borde dorado. */
+.cart-cs__chips {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.cart-cs__chip {
+  width: 16px;
+  height: 24px;
+  border-radius: 2px;
+  border: 1.5px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .2s ease;
+  flex-shrink: 0;
+  background-clip: padding-box;
+}
+.cart-cs__chip:hover {
+  transform: scale(1.12);
+}
+.cart-cs__chip.is-selected {
+  border-color: var(--color-gold);
+}
+.cart-cs__chip:focus-visible {
+  outline: none;
+  border-color: var(--color-gold);
+}
+
+/* ── Sesión 53 Bloque 4 — Toast contextual dorado de 8s ──────────
+   Toast independiente del showToast global de la página. Posicionado
+   abajo, centrado horizontalmente, sobre el drawer. Animación suave
+   de entrada/salida con transform + opacity (sin layout shift).
+   z-index alto para superponerse al drawer del carrito. */
+#fcContextToast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(20, 20, 20, 0.95);
+  border: 1px solid var(--color-gold);
+  color: var(--color-gold);
+  padding: 12px 18px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+  border-radius: 3px;
+  font-family: inherit;
+  max-width: 90vw;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s ease, transform .3s ease;
+  z-index: 10001;  /* sobre el drawer del carrito (10000) y el modal lp-bubble */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+#fcContextToast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 /* ── Sesión 53 Bloque 3 — Llevá otra ──────────────────────────────
