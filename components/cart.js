@@ -191,6 +191,12 @@
         '<div class="cart__empty"><p>Tu carrito está vacío</p>' +
         '<span>Agregá productos para continuar</span></div>';
       if (footer) footer.style.display = 'none';
+      // Sesión 53 Bloque 1 — apagar el contador si quedó visible.
+      removeUrgencyBlock();
+      writeUrgencyExpiresAt(null);
+      // Sesión 53 Bloque 2 — apagar el cross-sell si quedó visible.
+      // (innerHTML='...' arriba ya lo borró pero por claridad lo dejamos.)
+      removeCrossSellBlock();
       return;
     }
 
@@ -255,6 +261,16 @@
     // ── Recordar la última config usada para que el auto-rerender
     //    post-photoMap-ready use el mismo umbral de envío. ──
     lastRenderOpts = { freeShippingThreshold: freeShipping };
+
+    // ── Sesión 53 Bloque 1 — render del contador de urgencia.
+    //    Se llama después de pintar items para que el bloque pueda
+    //    insertarse arriba de #cartItems sin pelearse con innerHTML.
+    renderUrgencyCounter();
+
+    // ── Sesión 53 Bloque 2 — render del cross-sell.
+    //    Se inserta al final de #cartItems. Si no aplica (apagado,
+    //    carrito vacío, productos faltantes, etc.), no pinta nada.
+    renderCrossSell();
   }
 
   // Estado del último render — usado por el listener interno de
@@ -338,9 +354,18 @@
     return JSON.stringify(stable);
   }
 
-  /** Devuelve la clave de unicidad completa (producto|color|huella). */
+  /** Devuelve la clave de unicidad completa (producto|color|huella|origen).
+   *
+   *  Sesión 53 Bloque 2: agregamos el "origen" del item para que un
+   *  producto agregado normal (precio completo) y otro del cross-sell
+   *  (precio descontado) NO se combinen en qty — son 2 items lógicos
+   *  distintos aunque el producto + color sea el mismo.
+   *  Origen posible: '', 'cross_sell', 'lleva_otra'. */
   function itemKey(item) {
-    return `${norm(item.name)}|${norm(item.color)}|${personalizacionFingerprint(item.personalizacion)}`;
+    let origen = '';
+    if (item?.from_cross_sell) origen = 'cross_sell';
+    else if (item?.from_lleva_otra) origen = 'lleva_otra';
+    return `${norm(item.name)}|${norm(item.color)}|${personalizacionFingerprint(item.personalizacion)}|${origen}`;
   }
 
   function readLS(k, fallback) {
@@ -540,6 +565,453 @@
     }
   }
 
+  // ── Sesión 53 Bloque 1 — Contador de urgencia ──────────────────────
+  //
+  // Renderiza un bloque arriba de #cartItems con un countdown MM:SS
+  // configurable desde el admin. Reglas:
+  //   - Si la config está apagada → no se muestra nada.
+  //   - Si el carrito está vacío → no se muestra y se borra cualquier
+  //     timer en curso (próxima vez que agregue, arranca fresh).
+  //   - El timestamp de expiración se persiste en localStorage para
+  //     sobrevivir navegación entre páginas (founder_cart_expires_at).
+  //   - El timer arranca cuando el carrito pasa de 0 → 1+ items.
+  //   - Cuando llega a 0:00, el bloque desaparece silenciosamente
+  //     (no fuerza nada — es solo UX/urgencia).
+  //   - Si el cliente vuelve a la página después de que expiró, no se
+  //     reinicia hasta que vacíe y vuelva a llenar el carrito.
+
+  const URGENCY_EXPIRES_KEY = 'founder_cart_expires_at';
+  const URGENCY_BLOCK_ID    = 'cartUrgencyCounter';
+
+  // Estado interno del módulo
+  let urgencyConfig    = null;   // null = aún no cargada
+  let urgencyConfigPromise = null;
+  let urgencyTickTimer = null;   // id de setInterval, null si parado
+
+  /** Lee la cart_config (idempotente, cachea el resultado).
+   *  Si supabase-client.js no está disponible o falla, devuelve null
+   *  y el contador no se muestra nunca (graceful degradation). */
+  function ensureUrgencyConfig() {
+    if (urgencyConfig !== null) return Promise.resolve(urgencyConfig);
+    if (urgencyConfigPromise)   return urgencyConfigPromise;
+
+    if (!window.founderDB || typeof window.founderDB.fetchCartConfig !== 'function') {
+      urgencyConfig = false;  // marca como "intentado", evita reintentos
+      return Promise.resolve(null);
+    }
+
+    urgencyConfigPromise = window.founderDB.fetchCartConfig()
+      .then(cfg => {
+        urgencyConfig = cfg || null;
+        return urgencyConfig;
+      })
+      .catch(err => {
+        console.warn('[founderCart] No se pudo cargar cart_config:', err);
+        urgencyConfig = false;
+        return null;
+      });
+
+    return urgencyConfigPromise;
+  }
+
+  /** Formatea segundos restantes a "MM:SS". Para valores > 60 min queda
+   *  como "MM:SS" igual (no esperamos contadores tan largos). */
+  function formatUrgencyTime(seconds) {
+    const s = Math.max(0, Math.floor(seconds));
+    const mm = String(Math.floor(s / 60)).padStart(2, '0');
+    const ss = String(s % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  }
+
+  /** Lee/escribe el expires_at del localStorage (timestamp en ms epoch). */
+  function readUrgencyExpiresAt() {
+    try {
+      const raw = localStorage.getItem(URGENCY_EXPIRES_KEY);
+      const n   = raw ? parseInt(raw, 10) : NaN;
+      return Number.isFinite(n) ? n : null;
+    } catch (_) { return null; }
+  }
+  function writeUrgencyExpiresAt(ts) {
+    try {
+      if (ts == null) localStorage.removeItem(URGENCY_EXPIRES_KEY);
+      else            localStorage.setItem(URGENCY_EXPIRES_KEY, String(ts));
+    } catch (_) { /* ignore */ }
+  }
+
+  /** Quita el bloque del DOM si estaba inyectado + detiene el tick. */
+  function removeUrgencyBlock() {
+    const block = document.getElementById(URGENCY_BLOCK_ID);
+    if (block) block.remove();
+    if (urgencyTickTimer) {
+      clearInterval(urgencyTickTimer);
+      urgencyTickTimer = null;
+    }
+  }
+
+  /** Inyecta el HTML del bloque arriba de #cartItems si todavía no existe. */
+  function ensureUrgencyBlockMounted() {
+    if (document.getElementById(URGENCY_BLOCK_ID)) return true;
+    const itemsEl = document.getElementById('cartItems');
+    if (!itemsEl) return false;
+    const div = document.createElement('div');
+    div.id = URGENCY_BLOCK_ID;
+    div.className = 'cart-urgency';
+    div.setAttribute('role', 'status');
+    div.setAttribute('aria-live', 'polite');
+    div.innerHTML = '<span class="cart-urgency__icon" aria-hidden="true">⏱</span><span class="cart-urgency__text"></span>';
+    itemsEl.parentNode.insertBefore(div, itemsEl);
+    return true;
+  }
+
+  /** Pinta el texto del countdown reemplazando {tiempo} por MM:SS. */
+  function paintUrgencyText(secondsLeft) {
+    const block = document.getElementById(URGENCY_BLOCK_ID);
+    if (!block) return;
+    const textEl = block.querySelector('.cart-urgency__text');
+    if (!textEl) return;
+    const tpl = (urgencyConfig?.contador?.texto || 'Carrito reservado por {tiempo}');
+    textEl.textContent = tpl.replace('{tiempo}', formatUrgencyTime(secondsLeft));
+  }
+
+  /** Tick principal del contador. Se llama una vez por segundo.
+   *  Si el carrito quedó vacío durante el tick, se autodestruye. */
+  function urgencyTick() {
+    const cart = readCartFromStorage();
+    if (cart.length === 0) {
+      writeUrgencyExpiresAt(null);
+      removeUrgencyBlock();
+      return;
+    }
+    const expiresAt = readUrgencyExpiresAt();
+    if (!expiresAt) { removeUrgencyBlock(); return; }
+
+    const secondsLeft = (expiresAt - Date.now()) / 1000;
+    if (secondsLeft <= 0) {
+      // Expiró: borrar todo, no recrear hasta que el cart pase 0 → 1+
+      writeUrgencyExpiresAt(null);
+      removeUrgencyBlock();
+      return;
+    }
+    paintUrgencyText(secondsLeft);
+  }
+
+  /** Render del contador. Se llama desde `renderItems()` cada vez que
+   *  el drawer se re-pinta. Idempotente:
+   *    - Si la config está apagada o sin cargar todavía → quita el bloque.
+   *    - Si el carrito está vacío → quita el bloque + borra expires_at.
+   *    - Si hay items y no había expires_at → lo crea (= NOW + duracion_min).
+   *    - Si hay items y ya había expires_at vigente → respeta el que estaba.
+   *    - Si hay items pero el expires_at vencido → no recrea, queda oculto. */
+  function renderUrgencyCounter() {
+    // 1) Asegurar que la config esté cargada. Es async — la primera vez
+    //    devuelve sin pintar; el render se va a re-disparar cuando vuelvan
+    //    las fotos o cuando el usuario interactúe con el carrito.
+    if (urgencyConfig === null) {
+      ensureUrgencyConfig().then(cfg => {
+        // Trigger un re-render del drawer si ya estaba pintado. Se hace
+        // vía dispatch de un evento custom escuchado abajo (idéntico
+        // patrón que el de fotos).
+        if (cfg) window.dispatchEvent(new CustomEvent('founder-cart-config-ready'));
+      });
+      return;
+    }
+
+    // 2) Si la config falló o el contador está apagado → fuera.
+    const cfg = urgencyConfig && urgencyConfig.contador;
+    if (!cfg || !cfg.enabled) { removeUrgencyBlock(); return; }
+
+    const cart = readCartFromStorage();
+    if (cart.length === 0) {
+      writeUrgencyExpiresAt(null);
+      removeUrgencyBlock();
+      return;
+    }
+
+    // 3) Decidir el expires_at.
+    let expiresAt = readUrgencyExpiresAt();
+    const now = Date.now();
+    if (!expiresAt || expiresAt <= now) {
+      // Si no había expires_at pero hay items, este render es justo
+      // después del primer addToCart. Creamos el timer.
+      if (!expiresAt) {
+        const duracionMin = Math.max(1, Number(cfg.duracion_min) || 7);
+        expiresAt = now + duracionMin * 60 * 1000;
+        writeUrgencyExpiresAt(expiresAt);
+      } else {
+        // expires_at vencido — no recreamos. Queda oculto.
+        removeUrgencyBlock();
+        return;
+      }
+    }
+
+    // 4) Inyectar el bloque (idempotente) y arrancar el tick si no corre.
+    if (!ensureUrgencyBlockMounted()) return;
+    const secondsLeft = (expiresAt - now) / 1000;
+    paintUrgencyText(secondsLeft);
+
+    if (!urgencyTickTimer) {
+      urgencyTickTimer = setInterval(urgencyTick, 1000);
+    }
+  }
+
+  // Re-render cuando la config termina de cargar (primera visita)
+  window.addEventListener('founder-cart-config-ready', () => {
+    if (lastRenderOpts) renderItems(lastRenderOpts);
+  });
+
+  // ── Sesión 53 Bloque 2 — Cross-sell de 3 productos ───────────────
+  //
+  // Renderiza un bloque debajo de #cartItems con 3 productos del catálogo
+  // a precio descontado. Reglas:
+  //   - Si la config está apagada → no se muestra nada.
+  //   - Si el carrito está vacío → no se muestra (no tiene sentido sugerir
+  //     cuando todavía no hay nada).
+  //   - Necesita 3 product_ids válidos. Si faltan o algún producto ya no
+  //     existe en el catálogo, se ignoran los huecos y se muestran solo
+  //     los válidos.
+  //   - No se muestra ningún producto que ya esté en el carrito como item
+  //     normal (evita "agregalo, ya lo tenés").
+  //   - Click "Agregar" → entra al carrito con precio descontado y flag
+  //     `from_cross_sell: true`. NO admite personalización láser.
+  //   - El bloque vive dentro de #cartItems (queda dentro del scroll
+  //     del drawer, no fijo abajo). Posición: al final del scroll.
+
+  const CROSS_SELL_BLOCK_ID = 'cartCrossSell';
+
+  // Cache de productos para el cross-sell (autónoma, no depende de state
+  // de páginas principales).
+  let crossSellProductsCache = null;
+  let crossSellProductsPromise = null;
+
+  function ensureCrossSellProducts() {
+    if (crossSellProductsCache) return Promise.resolve(crossSellProductsCache);
+    if (crossSellProductsPromise) return crossSellProductsPromise;
+
+    if (!window.founderDB || typeof window.founderDB.fetchProducts !== 'function') {
+      crossSellProductsCache = [];
+      return Promise.resolve([]);
+    }
+
+    crossSellProductsPromise = window.founderDB.fetchProducts()
+      .then(products => {
+        crossSellProductsCache = Array.isArray(products) ? products : [];
+        return crossSellProductsCache;
+      })
+      .catch(err => {
+        console.warn('[founderCart] No se pudieron cargar productos para cross-sell:', err);
+        crossSellProductsCache = [];
+        return [];
+      });
+
+    return crossSellProductsPromise;
+  }
+
+  /** Calcula el precio efectivo de un producto del catálogo considerando
+   *  ofertas activas en algún color. Si todas las variantes están a precio
+   *  normal, devuelve product.price. Toma el color con mejor precio
+   *  disponible (no agotado) para mostrar el descuento sobre el real. */
+  function bestPriceForCrossSell(product) {
+    const basePrice = Number(product?.price) || 0;
+    const colores = product?.colors || [];
+    const estados = product?.extras?.colores_estado || {};
+
+    // Buscar el color con menor precio NO agotado
+    let best = null;
+    let bestColor = null;
+    for (const c of colores) {
+      const estado = estados[c.name];
+      if (estado === 'sin_stock') continue;
+      const precioOferta = (estado === 'oferta')
+        ? Number(estados[`${c.name}_precio_oferta`])
+        : null;
+      const precio = (precioOferta && precioOferta > 0) ? precioOferta : basePrice;
+      if (best === null || precio < best) {
+        best = precio;
+        bestColor = c;
+      }
+    }
+    // Si todos los colores están agotados, no se puede ofrecer
+    if (best === null) return { price: 0, color: null };
+    return { price: best, color: bestColor };
+  }
+
+  /** Formatea un precio sin ',00' cuando es entero (UX más limpio).
+   *  Antes: "$1.500,00 UYU" → Ahora: "$1.500" en bloques compactos. */
+  function fmtPriceCompact(n) {
+    return '$' + Number(n || 0).toLocaleString('es-UY', { maximumFractionDigits: 0 });
+  }
+
+  /** Quita el bloque del DOM si estaba inyectado. */
+  function removeCrossSellBlock() {
+    const block = document.getElementById(CROSS_SELL_BLOCK_ID);
+    if (block) block.remove();
+  }
+
+  /** Renderiza el bloque de cross-sell debajo de los items.
+   *  Idempotente. Se llama desde renderItems(). */
+  function renderCrossSell() {
+    // 1) Asegurar que urgencyConfig esté cargada (compartida con el contador).
+    //    Si todavía no está, salimos sin pintar — el listener de
+    //    'founder-cart-config-ready' va a re-disparar el render.
+    if (urgencyConfig === null) {
+      ensureUrgencyConfig();  // ya dispara la carga si no estaba
+      return;
+    }
+
+    const cfg = urgencyConfig && urgencyConfig.cross_sell;
+
+    // 2) Master switch apagado o config corrupta
+    if (!cfg || !cfg.enabled) { removeCrossSellBlock(); return; }
+
+    // 3) Carrito vacío → no tiene sentido sugerir
+    const cart = readCartFromStorage();
+    if (cart.length === 0) { removeCrossSellBlock(); return; }
+
+    // 4) IDs configurados (filtramos huecos)
+    const ids = (Array.isArray(cfg.product_ids) ? cfg.product_ids : [])
+      .filter(id => id != null && id !== '');
+    if (ids.length === 0) { removeCrossSellBlock(); return; }
+
+    // 5) Cargar catálogo (async). Mientras carga no pintamos nada.
+    //    Cuando termine, el evento de fotos-listas dispara un re-render
+    //    (porque fetchProducts y fetchPhotoMap usan el mismo path lógico
+    //    en Supabase, suelen completarse en el mismo ciclo).
+    if (!crossSellProductsCache) {
+      ensureCrossSellProducts().then(() => {
+        if (lastRenderOpts) renderItems(lastRenderOpts);
+      });
+      return;
+    }
+
+    // 6) Buscar productos por dbId (UUID de Supabase, estable entre admin
+    //    y frontend público). El campo `id` del cliente público es un
+    //    entero secuencial generado en cada fetch — NO sirve como clave.
+    const products = ids
+      .map(id => crossSellProductsCache.find(p => String(p.dbId) === String(id)))
+      .filter(p => p);
+    if (products.length === 0) { removeCrossSellBlock(); return; }
+
+    // 7) Excluir productos que YA están en el carrito como items normales.
+    //    Comparamos por NOMBRE — los IDs son numéricos secuenciales del Sheet
+    //    y pueden cambiar; el nombre es estable.
+    const cartNames = new Set(cart.map(i => norm(i.name)));
+    const candidates = products.filter(p => !cartNames.has(norm(p.name)));
+    if (candidates.length === 0) { removeCrossSellBlock(); return; }
+
+    // 8) Aplicar descuento + filtrar agotados
+    const descPct = Math.max(0, Math.min(99, Number(cfg.descuento_pct) || 0));
+    const items = candidates
+      .map(p => {
+        const { price: basePrice, color } = bestPriceForCrossSell(p);
+        if (!color || basePrice <= 0) return null;
+        const precioDescontado = Math.round(basePrice * (1 - descPct / 100));
+        return { product: p, color, basePrice, precioDescontado };
+      })
+      .filter(x => x);
+    if (items.length === 0) { removeCrossSellBlock(); return; }
+
+    // 9) Inyectar el bloque al final de #cartItems
+    const itemsEl = document.getElementById('cartItems');
+    if (!itemsEl) return;
+
+    removeCrossSellBlock();  // limpiamos antes de re-pintar
+
+    const titulo = cfg.titulo || '✦ Comprá juntos y ahorrá';
+    const cardsHTML = items.map(({ product, color, basePrice, precioDescontado }) => {
+      const photoUrl = getPhotoUrl(product.name, color.name);
+      const inicial = (product.name || '?')[0].toUpperCase();
+      const imgHTML = photoUrl
+        ? `<img src="${thumb(photoUrl)}" class="cart-cs__img" alt="Founder ${product.name}" loading="lazy"
+                onerror="window.recoverCartPhoto && window.recoverCartPhoto(this,'${escAttr(product.name)}','${escAttr(color.name)}');">`
+        : `<div class="cart-cs__img-placeholder" aria-hidden="true">${inicial}</div>`;
+      return `
+        <div class="cart-cs__card" data-product-id="${product.dbId}">
+          ${imgHTML}
+          <div class="cart-cs__info">
+            <div class="cart-cs__name">Founder ${product.name}</div>
+            <div class="cart-cs__color">${color.name}</div>
+            <div class="cart-cs__prices">
+              <span class="cart-cs__price-old">${fmtPriceCompact(basePrice)}</span>
+              <span class="cart-cs__price-new">${fmtPriceCompact(precioDescontado)}</span>
+            </div>
+          </div>
+          <button class="cart-cs__add"
+                  onclick="window.founderCart.addCrossSellToCart('${escAttr(String(product.dbId))}')"
+                  aria-label="Agregar ${product.name} al carrito">
+            +
+          </button>
+        </div>`;
+    }).join('');
+
+    const block = document.createElement('div');
+    block.id = CROSS_SELL_BLOCK_ID;
+    block.className = 'cart-cs';
+    block.innerHTML = `
+      <div class="cart-cs__head">
+        <div class="cart-cs__title">${titulo}</div>
+        ${descPct > 0 ? `<div class="cart-cs__badge">${descPct}% OFF</div>` : ''}
+      </div>
+      <div class="cart-cs__list">${cardsHTML}</div>
+    `;
+    itemsEl.appendChild(block);
+  }
+
+  /** Agrega un producto del cross-sell al carrito a precio descontado.
+   *  Expuesta como window.founderCart.addCrossSellToCart() para el
+   *  onclick inline de cada card. `productId` aquí es el UUID (dbId). */
+  function addCrossSellToCart(productId) {
+    if (!crossSellProductsCache) return;
+    const product = crossSellProductsCache.find(p => String(p.dbId) === String(productId));
+    if (!product) return;
+
+    const cfg = urgencyConfig?.cross_sell;
+    if (!cfg || !cfg.enabled) return;
+
+    const { price: basePrice, color } = bestPriceForCrossSell(product);
+    if (!color || basePrice <= 0) return;
+
+    const descPct = Math.max(0, Math.min(99, Number(cfg.descuento_pct) || 0));
+    const precioDescontado = Math.round(basePrice * (1 - descPct / 100));
+
+    // Leer cart actual + agregar item nuevo
+    const cart = readCartFromStorage();
+    const newItem = {
+      id:    product.id,
+      name:  product.name,
+      color: color.name,
+      price: precioDescontado,
+      qty:   1,
+      from_cross_sell: true,    // flag para no permitir personalización
+                                // y diferenciar del item normal en itemKey
+    };
+
+    // Deduplicación por itemKey (incluye origen, ver itemKey arriba).
+    // Si ya hay un item de cross-sell del mismo producto+color, sumar qty.
+    const newKey = itemKey(newItem);
+    const existing = cart.find(i => itemKey(i) === newKey);
+    if (existing) {
+      existing.qty++;
+    } else {
+      cart.push(newItem);
+    }
+
+    // Persistir y disparar re-render
+    try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (_) {}
+
+    // Avisar al state local de las páginas principales (index/producto)
+    // mediante un evento. Las páginas que tengan state.cart van a
+    // re-sincronizarlo desde localStorage al recibirlo.
+    window.dispatchEvent(new CustomEvent('founder-cart-external-update'));
+
+    // Re-render del drawer
+    if (lastRenderOpts) renderItems(lastRenderOpts);
+
+    // Feedback visual leve (toast) — usa la función global si existe
+    if (typeof window.showToast === 'function') {
+      window.showToast(`Founder ${product.name} agregado con ${descPct}% OFF`, 'success');
+    }
+  }
+
   // ── API pública ──────────────────────────────────────────────
   window.founderCart = {
     // Nuevos (fetch autónomo)
@@ -563,6 +1035,8 @@
     // Sesión 53 Bloque 0 — render unificado del drawer (reemplaza updateCart/updateCartUI duplicado)
     renderItems,
     itemEffectivePrice,
+    // Sesión 53 Bloque 2 — cross-sell: agregar producto al carrito desde el bloque
+    addCrossSellToCart,
   };
 
   // ── Markup del drawer ────────────────────────────────────────
@@ -624,6 +1098,165 @@
   opacity: 0.7; transition: opacity .2s;
 }
 .cart-removed-notice__close:hover { opacity: 1; }
+
+/* ── Sesión 53 Bloque 1 — Contador de urgencia ─────────────────────
+   Bloque que aparece arriba de los items del carrito cuando está
+   habilitado desde el admin. Look discreto, sin alarmas — es solo
+   un nudge visual de "tu carrito está esperándote". */
+.cart-urgency {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 16px 0;
+  padding: 10px 14px;
+  background: rgba(201, 169, 110, 0.08);
+  border: 1px solid rgba(201, 169, 110, 0.35);
+  border-radius: 3px;
+  color: var(--color-gold);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+.cart-urgency__icon {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.85;
+}
+.cart-urgency__text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+/* ── Sesión 53 Bloque 2 — Cross-sell de productos ──────────────────
+   Bloque que aparece al final de #cartItems con 3 sugerencias a precio
+   descontado. Look complementario a los items principales: foto chica,
+   precio tachado + nuevo en dorado, botón "+" minimalista. */
+.cart-cs {
+  margin: 24px 16px 12px;
+  padding: 14px 0 0;
+  border-top: 1px dashed rgba(201, 169, 110, 0.25);
+}
+.cart-cs__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.cart-cs__title {
+  color: var(--color-gold);
+  font-family: var(--font-serif, 'Cormorant Garamond', serif);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+.cart-cs__badge {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--color-gold);
+  color: var(--color-bg);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.cart-cs__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cart-cs__card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  transition: border-color .2s ease, background .2s ease;
+}
+.cart-cs__card:hover {
+  border-color: rgba(201, 169, 110, 0.35);
+  background: rgba(201, 169, 110, 0.04);
+}
+.cart-cs__img,
+.cart-cs__img-placeholder {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.cart-cs__img-placeholder {
+  background: var(--color-surface2, #2a2a2a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-gold);
+  font-family: var(--font-serif, 'Cormorant Garamond', serif);
+  font-size: 20px;
+}
+.cart-cs__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cart-cs__name {
+  font-family: var(--font-serif, 'Cormorant Garamond', serif);
+  font-size: 14px;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+.cart-cs__color {
+  font-size: 9px;
+  color: var(--color-muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.cart-cs__prices {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 2px;
+}
+.cart-cs__price-old {
+  font-size: 10px;
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+.cart-cs__price-new {
+  font-size: 13px;
+  color: var(--color-gold);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.cart-cs__add {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-gold);
+  background: transparent;
+  color: var(--color-gold);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all .2s ease;
+  font-family: inherit;
+}
+.cart-cs__add:hover {
+  background: var(--color-gold);
+  color: var(--color-bg);
+}
+.cart-cs__add:active {
+  transform: scale(0.95);
+}
 `;
 
   function injectCSS() {

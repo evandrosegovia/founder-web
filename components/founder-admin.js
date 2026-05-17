@@ -304,6 +304,7 @@
       loadRecompraStatus();
     }
     if (page === 'banner')   loadBanner();
+    if (page === 'carrito')  loadCartConfig();
     if (page === 'personalizacion') {
       loadPersonalizacion();
       loadCleanupStatus();
@@ -4539,6 +4540,269 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // CARRITO — Sesión 53 (panel "🛒 Carrito")
+  // ───────────────────────────────────────────────────────────────
+  // Gestiona site_settings.cart_config (JSON serializado, mismo
+  // patrón que hero_slides y personalizacion_config).
+  //
+  // En Bloque 1 sólo se implementa el sub-feature "Contador de urgencia"
+  // — el resto del panel queda con placeholders "Próximamente" hasta
+  // que los bloques 2 y 3 los completen.
+  //
+  // Estado en memoria: `state.cartConfig` se llena al entrar al panel.
+  // Si la fila no existe en Supabase, arrancamos con defaults seguros
+  // (todo apagado).
+  // ═══════════════════════════════════════════════════════════════
+
+  const CART_KEY = 'cart_config';
+
+  // Defaults: misma forma que en supabase-client.js. Duplicados a
+  // propósito para que el admin sea autosuficiente y no dependa de
+  // que supabase-client.js esté cargado en admin.html (que no lo está).
+  const CART_DEFAULTS = Object.freeze({
+    contador: {
+      enabled:      false,
+      duracion_min: 7,
+      texto:        'Carrito reservado por {tiempo}',
+    },
+    cross_sell: {
+      enabled:       false,
+      titulo:        '✦ Comprá juntos y ahorrá',
+      product_ids:   [],
+      descuento_pct: 25,
+    },
+    lleva_otra: {
+      enabled:              false,
+      texto:                'Llevá otra para regalar',
+      descuento_pct:        25,
+      permite_cambio_color: true,
+    },
+  });
+
+  function cartCloneDefaults() { return JSON.parse(JSON.stringify(CART_DEFAULTS)); }
+
+  /** Merge tolerante: parte de defaults y sobreescribe con lo que vino
+   *  del backend. Si el JSON guardado es viejo y le faltan campos, se
+   *  completan; si trae campos extra, se preservan. */
+  function cartMerge(incoming) {
+    const out = cartCloneDefaults();
+    if (!incoming || typeof incoming !== 'object') return out;
+    ['contador', 'cross_sell', 'lleva_otra'].forEach(k => {
+      if (incoming[k] && typeof incoming[k] === 'object') {
+        out[k] = { ...out[k], ...incoming[k] };
+      }
+    });
+    return out;
+  }
+
+  /** Carga la config desde Supabase + refresca el panel.
+   *  Llamada al entrar al panel y desde el botón "↻ Actualizar". */
+  async function loadCartConfig() {
+    // Inicializar dirty tracker al primer load (idempotente)
+    initCartDirtyTracker();
+
+    // Asegurar que el catálogo esté disponible para poblar los dropdowns
+    // del cross-sell. Si todavía no se cargó (el usuario no entró a
+    // "Productos" antes), lo disparamos ahora.
+    if (!state.products || state.products.length === 0) {
+      try { await loadProducts(); } catch (_) { /* no bloqueante */ }
+    }
+
+    const { ok, data } = await apiAdmin('get_setting', { key: CART_KEY });
+    if (!ok) {
+      toast('Error cargando configuración del carrito', true);
+      state.cartConfig = cartCloneDefaults();
+    } else {
+      const raw = data?.value || '';
+      let parsed = null;
+      if (raw) {
+        try { parsed = JSON.parse(raw); }
+        catch (e) { console.warn('[cart] JSON corrupto, usando defaults:', e); }
+      }
+      state.cartConfig = cartMerge(parsed);
+    }
+    renderCartPanel();
+  }
+
+  /** Pinta el panel con el state actual. Idempotente. */
+  function renderCartPanel() {
+    const c = state.cartConfig;
+    if (!c) return;
+
+    // ── Sub-panel Contador ─────────────────────────────────────
+    const masterContador = $('cartContadorMaster');
+    if (masterContador) masterContador.classList.toggle('is-on', !!c.contador.enabled);
+    const masterSubContador = $('cartContadorMasterSub');
+    if (masterSubContador) {
+      masterSubContador.textContent = c.contador.enabled
+        ? '✅ El feature está activo — los clientes lo ven en el carrito.'
+        : 'El feature está apagado — los clientes no lo ven.';
+    }
+    setVal('cartContadorDuracion', c.contador.duracion_min);
+    setVal('cartContadorTexto',    c.contador.texto);
+
+    // ── Sub-panel Cross-sell ──────────────────────────────────
+    const masterCS = $('cartCrossSellMaster');
+    if (masterCS) masterCS.classList.toggle('is-on', !!c.cross_sell.enabled);
+    const masterSubCS = $('cartCrossSellMasterSub');
+    if (masterSubCS) {
+      masterSubCS.textContent = c.cross_sell.enabled
+        ? '✅ El feature está activo — los clientes lo ven en el carrito.'
+        : 'El feature está apagado — los clientes no lo ven.';
+    }
+    setVal('cartCrossSellTitulo',    c.cross_sell.titulo);
+    setVal('cartCrossSellDescuento', c.cross_sell.descuento_pct);
+
+    // Poblar dropdowns con productos del catálogo
+    renderCrossSellDropdowns();
+
+    // ── Dirty tracker ─────────────────────────────────────────
+    if (cartDirtyTracker) {
+      cartDirtyTracker.captureSnapshot();
+      cartDirtyTracker.bindAutoCheck();
+    }
+  }
+
+  /** Pinta las 3 selects con la lista de productos del catálogo y
+   *  preselecciona los IDs guardados en state.cartConfig.cross_sell. */
+  function renderCrossSellDropdowns() {
+    const products = state.products || [];
+    const ids = state.cartConfig?.cross_sell?.product_ids || [];
+    // Construir opciones <option>. Usamos product.id (que es número/string
+    // estable del DB). Mostramos "Nombre — $precio".
+    const optionsHTML = products
+      .map(p => `<option value="${p.id}">Founder ${p.name} — $${Number(p.price).toLocaleString('es-UY')}</option>`)
+      .join('');
+
+    [1, 2, 3].forEach(slot => {
+      const sel = $('cartCrossSellProd' + slot);
+      if (!sel) return;
+      sel.innerHTML = `<option value="">— Elegir producto —</option>${optionsHTML}`;
+      const id = ids[slot - 1];
+      if (id != null) sel.value = String(id);
+    });
+  }
+
+  /** Toggle del master switch del contador. */
+  function toggleCartContadorMaster() {
+    if (!state.cartConfig) return;
+    state.cartConfig.contador.enabled = !state.cartConfig.contador.enabled;
+    renderCartPanel();
+    markCartPanelDirty();
+  }
+
+  /** Toggle del master switch del cross-sell.
+   *  Regla mutuamente excluyente: si lleva_otra estaba prendido, se apaga. */
+  function toggleCartCrossSellMaster() {
+    if (!state.cartConfig) return;
+    const willEnable = !state.cartConfig.cross_sell.enabled;
+    state.cartConfig.cross_sell.enabled = willEnable;
+    if (willEnable && state.cartConfig.lleva_otra.enabled) {
+      state.cartConfig.lleva_otra.enabled = false;
+      toast('"Llevá otra" se apagó automáticamente — son mutuamente excluyentes', false);
+    }
+    renderCartPanel();
+    markCartPanelDirty();
+  }
+
+  /** Forzar que el dirty tracker marque cambios pendientes (los toggles
+   *  no disparan input/change events). */
+  function markCartPanelDirty() {
+    const containerEl = $('page-carrito');
+    if (containerEl) containerEl.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  /** Lee TODOS los inputs del panel y persiste el JSON en Supabase. */
+  async function saveCartConfig() {
+    if (!state.cartConfig) return;
+    const c = state.cartConfig;
+
+    // ── Validar y aplicar: Contador ────────────────────────────
+    const dur = parseInt($('cartContadorDuracion')?.value || '', 10);
+    if (!Number.isFinite(dur) || dur < 1 || dur > 120) {
+      toast('La duración del contador debe estar entre 1 y 120 minutos', true);
+      return;
+    }
+    const texto = String($('cartContadorTexto')?.value || '').trim();
+    if (!texto) {
+      toast('El texto del contador no puede estar vacío', true);
+      return;
+    }
+    if (!texto.includes('{tiempo}')) {
+      toast('El texto del contador debe contener {tiempo}', true);
+      return;
+    }
+    c.contador.duracion_min = dur;
+    c.contador.texto        = texto;
+
+    // ── Validar y aplicar: Cross-sell ─────────────────────────
+    const csTitulo = String($('cartCrossSellTitulo')?.value || '').trim();
+    if (!csTitulo) {
+      toast('El título del cross-sell no puede estar vacío', true);
+      return;
+    }
+    const csDesc = parseInt($('cartCrossSellDescuento')?.value || '', 10);
+    if (!Number.isFinite(csDesc) || csDesc < 0 || csDesc > 99) {
+      toast('El descuento del cross-sell debe estar entre 0 y 99%', true);
+      return;
+    }
+    const csIds = [
+      String($('cartCrossSellProd1')?.value || '').trim(),
+      String($('cartCrossSellProd2')?.value || '').trim(),
+      String($('cartCrossSellProd3')?.value || '').trim(),
+    ];
+    // Si el feature está enabled, los 3 IDs son obligatorios y únicos
+    if (c.cross_sell.enabled) {
+      if (csIds.some(id => !id)) {
+        toast('Si el cross-sell está activo, elegí los 3 productos', true);
+        return;
+      }
+      const unicos = new Set(csIds);
+      if (unicos.size !== 3) {
+        toast('Los 3 productos del cross-sell deben ser distintos', true);
+        return;
+      }
+    }
+    c.cross_sell.titulo        = csTitulo;
+    c.cross_sell.descuento_pct = csDesc;
+    c.cross_sell.product_ids   = csIds.filter(Boolean);  // guarda solo los que tienen valor
+
+    // ── Persistir (objeto completo, incluyendo lleva_otra intacto) ─
+    const payload = JSON.stringify(c);
+    const { ok, data } = await apiAdmin('set_setting', { key: CART_KEY, value: payload });
+    if (!ok) {
+      toast('Error guardando: ' + (data?.message || 'desconocido'), true);
+      return;
+    }
+    toast('✅ Configuración guardada');
+    if (cartDirtyTracker) cartDirtyTracker.captureSnapshot();
+  }
+
+  // Dirty tracker para el panel — se inicializa al primer load del panel.
+  let cartDirtyTracker = null;
+  function initCartDirtyTracker() {
+    if (cartDirtyTracker) return;
+    const containerEl = $('page-carrito');
+    if (!containerEl) return;
+    cartDirtyTracker = createDirtyTracker({
+      fieldIds: [
+        'cartContadorDuracion',
+        'cartContadorTexto',
+        'cartCrossSellTitulo',
+        'cartCrossSellDescuento',
+        'cartCrossSellProd1',
+        'cartCrossSellProd2',
+        'cartCrossSellProd3',
+      ],
+      containerEl,
+      // Usamos el título del primer card como marker. Cuando hay cambios
+      // sin guardar en cualquier sub-panel, ese título recibe la clase
+      // 'is-dirty' (puntito dorado, ver CSS de Sesión 52).
+      dirtyMarker: '#cartContadorTitle',
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // EXPONER FUNCIONES USADAS POR onclick INLINE DEL HTML
   // ───────────────────────────────────────────────────────────────
   // El HTML del admin usa atributos onclick="xxx()" por toda la
@@ -4627,6 +4891,12 @@
   window.moveHeroSlide         = moveHeroSlide;
   window.deleteHeroSlide       = deleteHeroSlide;
   window.duplicateHeroSlide    = duplicateHeroSlide;
+
+  // Carrito (Sesión 53)
+  window.loadCartConfig            = loadCartConfig;
+  window.saveCartConfig            = saveCartConfig;
+  window.toggleCartContadorMaster  = toggleCartContadorMaster;
+  window.toggleCartCrossSellMaster = toggleCartCrossSellMaster;
 
   // Personalización láser (Sesión 28)
   window.loadPersonalizacion = loadPersonalizacion;

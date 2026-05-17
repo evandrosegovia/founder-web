@@ -377,6 +377,103 @@
     return out;
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // CART CONFIG (Sesión 53) — config del carrito gestionada desde admin
+  // ─────────────────────────────────────────────────────────────
+  // Todo lo que controla el comportamiento del drawer del carrito
+  // vive en `site_settings.cart_config` como JSON serializado en `value`.
+  //
+  // Forma del JSON:
+  //   {
+  //     "contador": {                          // Fase 1
+  //       "enabled":      false,                // master switch del contador
+  //       "duracion_min": 7,                    // minutos del countdown
+  //       "texto":        "Carrito reservado por {tiempo}"  // {tiempo} se reemplaza con MM:SS
+  //     },
+  //     "cross_sell": {                         // Fase 2 (Bloque 2 de Sesión 53)
+  //       "enabled":       false,
+  //       "titulo":        "✦ Comprá juntos y ahorrá",
+  //       "product_ids":   [],                  // IDs de productos a mostrar
+  //       "descuento_pct": 25                   // % off sobre el precio normal
+  //     },
+  //     "lleva_otra": {                         // Fase 3 (Bloque 3 de Sesión 53)
+  //       "enabled":              false,
+  //       "texto":                "Llevá otra para regalar",
+  //       "descuento_pct":        25,
+  //       "permite_cambio_color": true
+  //     }
+  //   }
+  //
+  // Por default TODO está apagado → cero impacto en producción hasta
+  // que el admin lo active manualmente desde el panel.
+  //
+  // Regla mutuamente excluyente (Bloques 2-3): cross_sell.enabled y
+  // lleva_otra.enabled no pueden estar prendidos a la vez. El admin
+  // se encarga de garantizar eso (apaga uno cuando se prende el otro);
+  // el frontend público ignora esa regla y simplemente respeta los
+  // flags tal cual los lee — si por algún motivo llegaran ambos en
+  // true, se prioriza cross_sell.
+
+  const CART_CONFIG_DEFAULTS = Object.freeze({
+    contador: {
+      enabled:      false,
+      duracion_min: 7,
+      texto:        'Carrito reservado por {tiempo}',
+    },
+    cross_sell: {
+      enabled:       false,
+      titulo:        '✦ Comprá juntos y ahorrá',
+      product_ids:   [],
+      descuento_pct: 25,
+    },
+    lleva_otra: {
+      enabled:              false,
+      texto:                'Llevá otra para regalar',
+      descuento_pct:        25,
+      permite_cambio_color: true,
+    },
+  });
+
+  /** Clona los defaults — la copia es segura para mutar sin contaminar
+   *  la fuente. JSON parse/stringify alcanza (sin funciones ni Dates). */
+  function cloneCartConfigDefaults() {
+    return JSON.parse(JSON.stringify(CART_CONFIG_DEFAULTS));
+  }
+
+  /** Toma un objeto parseado y lo fusiona contra los defaults, garantizando
+   *  que todas las keys esperadas existan. Si el JSON guardado en Supabase
+   *  es viejo y le faltan campos (ej: tiene `contador` pero no `lleva_otra`),
+   *  se completan con los defaults. Si trae campos extra, se preservan. */
+  function mergeCartConfig(incoming) {
+    const out = cloneCartConfigDefaults();
+    if (!incoming || typeof incoming !== 'object') return out;
+    ['contador', 'cross_sell', 'lleva_otra'].forEach(k => {
+      if (incoming[k] && typeof incoming[k] === 'object') {
+        out[k] = { ...out[k], ...incoming[k] };
+      }
+    });
+    return out;
+  }
+
+  /** Lee `site_settings.cart_config` y devuelve un objeto válido SIEMPRE.
+   *  - Si la fila no existe → defaults (todo apagado).
+   *  - Si el JSON está corrupto → defaults + warning en consola.
+   *  - Si el JSON existe pero le faltan campos → merge con defaults. */
+  async function fetchCartConfig() {
+    try {
+      const path = '/site_settings?select=value&key=eq.cart_config&limit=1';
+      const rows = await supaGet(path);
+      const raw  = rows[0]?.value;
+      if (!raw) return cloneCartConfigDefaults();
+
+      const parsed = JSON.parse(raw);
+      return mergeCartConfig(parsed);
+    } catch (e) {
+      console.warn('[founderDB] No se pudo leer cart_config — usando defaults:', e);
+      return cloneCartConfigDefaults();
+    }
+  }
+
   // ── Exponer globalmente ──────────────────────────────────────
   window.founderDB = {
     fetchProducts,
@@ -384,8 +481,10 @@
     fetchHeroSlides,
     fetchPersonalizacionConfig,
     fetchPersonalizacionExamples,
+    fetchCartConfig,
     HERO_SLIDES_DEFAULTS,
     PERSONALIZACION_DEFAULTS,
+    CART_CONFIG_DEFAULTS,
     // Útiles para debugging en consola del navegador
     _url:  SUPABASE_URL,
     _api:  API,
